@@ -139,6 +139,104 @@ async function deleteProductImageRequest(productId, imageKey, businessId) {
   return data;
 }
 
+function PublicCatalogImage({ businessId, product }) {
+  const imageKey = (product.image_paths || [])[0];
+  const [element, setElement] = useState(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [source, setSource] = useState("");
+
+  useEffect(() => {
+    if (!element || !imageKey) return;
+    if (typeof IntersectionObserver === "undefined") { setShouldLoad(true); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setShouldLoad(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "180px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element, imageKey]);
+
+  useEffect(() => {
+    if (!shouldLoad || !imageKey) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data, error: imageError } = await supabase.rpc("get_public_catalog_image", {
+          p_business_id: businessId, p_product_id: product.id, p_image_key: imageKey
+        });
+        if (imageError) throw imageError;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (active && row?.image_data) setSource("data:" + (row.content_type || "image/webp") + ";base64," + row.image_data);
+      } catch { /* El catálogo sigue visible aunque falte una imagen. */ }
+    })();
+    return () => { active = false; };
+  }, [businessId, product.id, imageKey, shouldLoad]);
+
+  return <div className="public-catalog-image" ref={setElement}>
+    {source ? <img src={source} alt={product.name} loading="lazy" /> : <span aria-hidden="true">▦</span>}
+  </div>;
+}
+
+function PublicCatalog({ businessId }) {
+  const [page, setPage] = useState(0);
+  const [payload, setPayload] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const pageSize = 12;
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true); setError("");
+    (async () => {
+      try {
+        const { data, error: catalogError } = await supabase.rpc("get_public_catalog", {
+          p_business_id: businessId, p_limit: pageSize, p_offset: page * pageSize
+        });
+        if (catalogError) throw catalogError;
+        if (active) setPayload(data || null);
+      } catch (e) {
+        if (active) setError(friendlyError(e));
+      } finally { if (active) setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [businessId, page]);
+
+  const business = payload?.business;
+  const items = payload?.products || [];
+  const total = Number(payload?.total || 0);
+  return <main className="public-catalog-shell">
+    <header className="public-catalog-header">
+      <a href={window.location.origin} className="public-catalog-brand" aria-label="Treintayuno">31</a>
+      <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.name || "Catálogo"}</h1></div>
+    </header>
+    {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
+      : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setPage((current) => current)}>Reintentar</button></div>
+      : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
+      : <section className="public-catalog-content">
+        <div className="public-catalog-intro"><div><p>Una selección de productos de {business.name}.</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id}>
+          <PublicCatalogImage businessId={businessId} product={product} />
+          <div className="public-catalog-card-copy">
+            <span className="public-catalog-category">{product.category_name || "Producto"}</span>
+            <h2>{product.name}</h2>
+            {product.description && <p>{product.description}</p>}
+            {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
+            <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
+          </div>
+        </article>)}</div>
+          : <div className="public-catalog-message"><h2>Pronto habrá productos aquí</h2><p>Este negocio aún no ha publicado productos para compartir.</p></div>}
+        {total > pageSize && <nav className="public-catalog-pagination" aria-label="Páginas del catálogo">
+          <button type="button" className="secondary-button" disabled={page <= 0} onClick={() => { setPage((current) => Math.max(0, current - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Anterior</button>
+          <span>Página {page + 1} de {Math.ceil(total / pageSize)}</span>
+          <button type="button" className="secondary-button" disabled={(page + 1) * pageSize >= total} onClick={() => { setPage((current) => current + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Siguiente</button>
+        </nav>}
+      </section>}
+    <footer className="public-catalog-footer">Catálogo compartido con Treintayuno</footer>
+  </main>;
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);

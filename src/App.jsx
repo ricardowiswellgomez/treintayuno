@@ -2107,10 +2107,9 @@ export default function App() {
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
   const businessPermissions = activeBusiness?.permissions || {};
-  const requestedBusinessPermissions = businessPermissions._modules_requested || businessPermissions;
   const canPermission = (permission) => isBusinessManager
-    || Boolean(requestedBusinessPermissions[permission])
-    || (permission === "suppliers_manage" && Boolean(requestedBusinessPermissions.purchases_manage));
+    || Boolean(businessPermissions[permission])
+    || (permission === "suppliers_manage" && Boolean(businessPermissions.purchases_manage));
   const canManageProducts = canPermission("products_manage");
   const canManageSales = canPermission("sales_manage");
   const canManageCustomers = canPermission("customers_manage");

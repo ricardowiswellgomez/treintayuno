@@ -343,6 +343,13 @@ export default function App() {
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleItems, setSaleItems] = useState([]);
   const [salePayment, setSalePayment] = useState("");
+  const [saleInitialPaymentMethod, setSaleInitialPaymentMethod] = useState("Efectivo");
+  const [salePaymentFormFor, setSalePaymentFormFor] = useState(null);
+  const [salePaymentAmount, setSalePaymentAmount] = useState("");
+  const [salePaymentMethod, setSalePaymentMethod] = useState("Efectivo");
+  const [salePaymentDate, setSalePaymentDate] = useState(todayInBogota());
+  const [salePaymentNotes, setSalePaymentNotes] = useState("");
+  const [salePaymentSaving, setSalePaymentSaving] = useState(false);
   const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsChecking, setSettingsChecking] = useState(false);
@@ -969,19 +976,31 @@ export default function App() {
         const salesRows = salesResult.data || [];
         const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
         const itemsBySale = {};
+        const paymentsBySale = {};
         if (salesRows.length) {
-          const itemsResult = await supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor")
-            .eq("business_id", activeBusiness.id).in("sale_id", salesRows.map((sale) => sale.id)).order("created_at");
+          const saleIds = salesRows.map((sale) => sale.id);
+          const [itemsResult, paymentsResult] = await Promise.all([
+            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor")
+              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("created_at"),
+            supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,paid_at,notes")
+              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true })
+          ]);
           if (itemsResult.error) throw itemsResult.error;
+          if (paymentsResult.error) throw paymentsResult.error;
           for (const item of itemsResult.data || []) {
             if (!itemsBySale[item.sale_id]) itemsBySale[item.sale_id] = [];
             itemsBySale[item.sale_id].push(item);
+          }
+          for (const paymentRow of paymentsResult.data || []) {
+            if (!paymentsBySale[paymentRow.sale_id]) paymentsBySale[paymentRow.sale_id] = [];
+            paymentsBySale[paymentRow.sale_id].push(paymentRow);
           }
         }
         setCustomers(customersResult.data || []);
         setSalesData(salesRows.map((sale) => ({ ...sale,
           customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
-          items: itemsBySale[sale.id] || []
+          items: itemsBySale[sale.id] || [],
+          payments: paymentsBySale[sale.id] || []
         })));
       }
     } catch (e) {
@@ -1454,21 +1473,59 @@ export default function App() {
       const { data, error: saleError } = await supabase.rpc("create_sale", {
         p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
         p_items: saleItems.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })),
-        p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null
+        p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null, p_initial_payment_method: saleInitialPaymentMethod
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;
       setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-      setSaleItems([]); setSalePayment(""); setSaleNotes("");
+      setSaleItems([]); setSalePayment(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó.");
       await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
 
+  async function registerSalePayment(event, sale) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !sale || !canManageSales) return;
+    const amount = toMinorUnits(salePaymentAmount, currencyCode);
+    const outstanding = Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0));
+    if (!Number.isFinite(amount) || amount <= 0) { setError("El abono debe ser mayor que cero."); return; }
+    if (amount > outstanding) { setError("El abono no puede superar el saldo pendiente de la venta."); return; }
+    setSalePaymentSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: paymentError } = await supabase.rpc("record_sale_payment", {
+        p_business_id: activeBusiness.id,
+        p_sale_id: sale.id,
+        p_amount_minor: amount,
+        p_payment_method: salePaymentMethod,
+        p_paid_at: new Date((salePaymentDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
+        p_notes: salePaymentNotes.trim() || null
+      });
+      if (paymentError) throw paymentError;
+      setSalePaymentFormFor(null);
+      setSalePaymentAmount(""); setSalePaymentMethod("Efectivo");
+      setSalePaymentDate(todayInBogota()); setSalePaymentNotes("");
+      const result = Array.isArray(data) ? data[0] : data;
+      setNotice("Abono registrado. Saldo pendiente: " + money(result?.balance_minor ?? Math.max(0, outstanding - amount), currencyCode) + ".");
+      await loadSalesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setSalePaymentSaving(false); }
+  }
+
+  function openSalePaymentForm(sale) {
+    const outstanding = Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0));
+    setSalePaymentFormFor(sale.id);
+    setSalePaymentAmount(String(outstanding / (10 ** currencyDigits(currencyCode))));
+    setSalePaymentMethod("Efectivo");
+    setSalePaymentDate(todayInBogota());
+    setSalePaymentNotes("");
+    setError(""); setNotice("");
+  }
+
   function clearSaleDraft() {
     setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-    setSaleItems([]); setSalePayment(""); setSaleNotes(""); setError("");
+    setSaleItems([]); setSalePayment(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
   }
 
   function saleStatusLabel(status) {
@@ -1631,7 +1688,7 @@ export default function App() {
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
 {saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label>Cantidad<input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
 <div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum,item)=>sum+Math.round(item.unit_price_minor*Number(item.quantity||0)),0),currencyCode)}</strong></div></div>}
-<div className="sale-bottom-fields"><label>Abono recibido {currencyCode}<input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label>Nota<input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
+<div className="sale-bottom-fields"><label>Abono recibido {currencyCode}<input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label>Forma de pago inicial<select value={saleInitialPaymentMethod} onChange={e=>setSaleInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label><label>Nota<input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
 <div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={busy||!saleItems.length}>{busy?"Guardando…":"Guardar venta"}</button></div>
 </form>}
@@ -1641,6 +1698,17 @@ export default function App() {
 <div className="sale-record-customer">{sale.customer_name}</div>
 {sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
+<div className="sale-payment-history"><div className="sale-payment-history-heading"><strong>Historial de abonos</strong><span>{(sale.payments||[]).length} {(sale.payments||[]).length===1?"pago":"pagos"}</span></div>
+{(sale.payments||[]).length ? <div className="sale-payment-list">{sale.payments.map((paymentRow)=><div className="sale-payment-row" key={paymentRow.id}><div><strong>{money(paymentRow.amount_minor,sale.currency_code||currencyCode)}</strong><span>{paymentRow.payment_method} · {new Date(paymentRow.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span>{paymentRow.notes&&<small>{paymentRow.notes}</small>}</div></div>)}</div> : <p className="sale-payment-empty">No hay abonos registrados.</p>}
+{canManageSales && Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))>0 && !["canceled","refunded","draft"].includes(sale.status) && <button type="button" className="secondary-button sale-register-payment-button" onClick={()=>salePaymentFormFor===sale.id?setSalePaymentFormFor(null):openSalePaymentForm(sale)}>{salePaymentFormFor===sale.id?"Cancelar":"＋ Registrar abono"}</button>}
+{canManageSales && salePaymentFormFor===sale.id && <form className="sale-payment-form" onSubmit={(event)=>registerSalePayment(event,sale)}>
+<label>Valor del abono<input type="number" min="0.01" max={Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePaymentAmount} onChange={e=>setSalePaymentAmount(e.target.value)} required/></label>
+<label>Forma de pago<select value={salePaymentMethod} onChange={e=>setSalePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label>
+<label>Fecha del abono<input type="date" max={todayInBogota()} value={salePaymentDate} onChange={e=>setSalePaymentDate(e.target.value)} required/></label>
+<label className="sale-payment-notes">Nota<input value={salePaymentNotes} onChange={e=>setSalePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago"/></label>
+<div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={salePaymentSaving}>{salePaymentSaving?"Registrando…":"Guardar abono"}</button></div>
+</form>}
+</div>
 {sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p>{canManageSales && <button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button>}</div>}
 </section>
 ) : screen === "customers" ? (

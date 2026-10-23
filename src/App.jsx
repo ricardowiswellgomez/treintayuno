@@ -59,6 +59,7 @@ const unitOptions = [
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
 const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
@@ -155,12 +156,18 @@ export default function App() {
   const [productsCount, setProductsCount] = useState(0);
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(12);
+  const [showArchivedProducts, setShowArchivedProducts] = useState(false);
   const [viewMode, setViewMode] = useState("rows");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
   const [stagedImages, setStagedImages] = useState([]);
   const [productImageUrls, setProductImageUrls] = useState({});
+  const [variantsByProduct, setVariantsByProduct] = useState({});
+  const [viewingVariantsFor, setViewingVariantsFor] = useState(null);
+  const [variantDraft, setVariantDraft] = useState(blankVariantDraft);
+  const [editingVariantId, setEditingVariantId] = useState(null);
+  const [variantBusy, setVariantBusy] = useState(false);
   const [openProductGalleries, setOpenProductGalleries] = useState({});
   const [galleryLoadingFor, setGalleryLoadingFor] = useState(null);
   const [uploadingImagesFor, setUploadingImagesFor] = useState(null);
@@ -213,8 +220,9 @@ export default function App() {
       const from = (productPage - 1) * productPageSize;
       const to = from + productPageSize - 1;
       let productsQuery = supabase.from("products")
-        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,created_at", { count: "exact" })
+        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at", { count: "exact" })
         .eq("business_id", activeBusiness.id).order("name").range(from, to);
+      productsQuery = showArchivedProducts ? productsQuery.not("archived_at", "is", null) : productsQuery.is("archived_at", null);
       if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
       const [productResult, categoryResult] = await Promise.all([
         productsQuery,
@@ -222,12 +230,29 @@ export default function App() {
       ]);
       if (productResult.error) throw productResult.error;
       if (categoryResult.error) throw categoryResult.error;
-      setProducts(productResult.data || []);
+      const pageProducts = productResult.data || [];
+      const productIds = pageProducts.map((product) => product.id);
+      let variantRows = [];
+      if (productIds.length) {
+        const variantsResult = await supabase.from("product_variants")
+          .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,created_at")
+          .eq("business_id", activeBusiness.id).in("product_id", productIds)
+          .order("variant_name").order("variant_value").limit(1000);
+        if (variantsResult.error) throw variantsResult.error;
+        variantRows = variantsResult.data || [];
+      }
+      const variantsMap = {};
+      for (const variant of variantRows) {
+        if (!variantsMap[variant.product_id]) variantsMap[variant.product_id] = [];
+        variantsMap[variant.product_id].push(variant);
+      }
+      setProducts(pageProducts);
+      setVariantsByProduct(variantsMap);
       setProductsCount(productResult.count || 0);
       setCategories(categoryResult.data || []);
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
-  }, [activeBusiness?.id, productPage, productPageSize, search]);
+  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts]);
 
   useEffect(() => {
     let alive = true;
@@ -531,6 +556,114 @@ export default function App() {
     });
     setError("");
     setNotice("");
+  }
+
+  async function loadProductVariants(productId) {
+    if (!activeBusiness?.id || !productId) return;
+    const { data, error: variantsError } = await supabase.from("product_variants")
+      .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,created_at")
+      .eq("business_id", activeBusiness.id).eq("product_id", productId)
+      .order("variant_name").order("variant_value").limit(500);
+    if (variantsError) throw variantsError;
+    setVariantsByProduct((current) => ({ ...current, [productId]: data || [] }));
+  }
+
+  function openProductVariants(product) {
+    setViewingVariantsFor(product.id);
+    setVariantDraft(blankVariantDraft);
+    setEditingVariantId(null);
+    setError("");
+    loadProductVariants(product.id).catch((e) => setError(friendlyError(e)));
+  }
+
+  function editProductVariant(variant) {
+    const digits = currencyDigits(currencyCode);
+    setVariantDraft({
+      variant_name: variant.variant_name || "",
+      variant_value: variant.variant_value || "",
+      sku: variant.sku || "",
+      sale_price: variant.sale_price_minor == null ? "" : String(Number(variant.sale_price_minor) / (10 ** digits)),
+      stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand)
+    });
+    setEditingVariantId(variant.id);
+    setError("");
+  }
+
+  function resetVariantDraft() {
+    setVariantDraft(blankVariantDraft);
+    setEditingVariantId(null);
+  }
+
+  async function saveProductVariant(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !viewingVariantsFor) return;
+    if (!variantDraft.variant_name.trim() || !variantDraft.variant_value.trim()) {
+      setError("Completa el nombre y el valor de la variante.");
+      return;
+    }
+    setVariantBusy(true); setError(""); setNotice("");
+    try {
+      const payload = {
+        business_id: activeBusiness.id,
+        product_id: viewingVariantsFor,
+        variant_name: variantDraft.variant_name.trim(),
+        variant_value: variantDraft.variant_value.trim(),
+        sku: variantDraft.sku.trim() || null,
+        sale_price_minor: variantDraft.sale_price.trim() === "" ? null : toMinorUnits(variantDraft.sale_price, currencyCode),
+        stock_on_hand: variantDraft.stock_on_hand.trim() === "" ? null : Number(variantDraft.stock_on_hand),
+        is_active: true
+      };
+      let mutation = supabase.from("product_variants");
+      if (editingVariantId) {
+        mutation = mutation.update({ ...payload, updated_at: new Date().toISOString() })
+          .eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor);
+      } else {
+        mutation = mutation.insert(payload);
+      }
+      const { error: saveError } = await mutation;
+      if (saveError) throw saveError;
+      await loadProductVariants(viewingVariantsFor);
+      resetVariantDraft();
+      setNotice(editingVariantId ? "Variante actualizada." : "Variante agregada.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setVariantBusy(false); }
+  }
+
+  async function removeProductVariant(variant) {
+    if (!activeBusiness?.id || !viewingVariantsFor) return;
+    if (!window.confirm("¿Quitar la variante " + variant.variant_name + " · " + variant.variant_value + "?")) return;
+    setVariantBusy(true); setError(""); setNotice("");
+    try {
+      const { error: deleteError } = await supabase.from("product_variants").delete()
+        .eq("id", variant.id).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor);
+      if (deleteError) throw deleteError;
+      await loadProductVariants(viewingVariantsFor);
+      if (editingVariantId === variant.id) resetVariantDraft();
+      setNotice("Variante eliminada.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setVariantBusy(false); }
+  }
+
+  async function archiveProduct(product) {
+    if (!activeBusiness?.id) return;
+    const restoring = Boolean(product.archived_at);
+    const confirmation = restoring
+      ? "¿Restaurar " + product.name + " para que vuelva a la lista de productos?"
+      : "¿Archivar " + product.name + "? No se borrará ni se alterará su historial.";
+    if (!window.confirm(confirmation)) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: archiveError } = await supabase.from("products")
+        .update({ archived_at: restoring ? null : new Date().toISOString() })
+        .eq("business_id", activeBusiness.id).eq("id", product.id).select("id").maybeSingle();
+      if (archiveError) throw archiveError;
+      if (!data) throw new Error("No se pudo actualizar el producto. Comprueba tus permisos.");
+      setNotice(restoring ? "Producto restaurado." : "Producto archivado. Puedes encontrarlo en «Archivados».");
+      if (viewingVariantsFor === product.id) setViewingVariantsFor(null);
+      await loadProducts();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
   }
 
   async function addProduct(event) {
@@ -977,21 +1110,30 @@ export default function App() {
             </div>
             {showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
+              {!editingProductId && <div className="product-photo-uploader full-span">
+                <span className="photo-section-label">Fotos del producto (máximo 3)</span>
+                <div className="photo-slot-grid">
+                  {stagedImages.map((image, index) => <figure className="photo-filled-slot" key={image.preview}>
+                    <img src={image.preview} alt={image.name} />
+                    <button type="button" className="photo-remove-button" title="Quitar foto" aria-label={"Quitar foto " + (index + 1)} onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>×</button>
+                  </figure>)}
+                  {Array.from({ length: Math.max(0, 3 - stagedImages.length) }).map((_, index) => <label className="photo-empty-slot" key={"photo-empty-" + index}>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || stagedImages.length >= 3} onChange={chooseNewProductImages} />
+                    <span className="photo-plus" aria-hidden="true">＋</span><strong>Agregar foto</strong>
+                  </label>)}
+                </div>
+                <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
+              </div>}
               <div className="form-grid">
                 <label>Nombre *<input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label>Categoría<select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label>Tipo<select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
-                <label>Precio de venta ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
-                <label>Costo por unidad ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <label>Precio de venta<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <label>Costo por unidad<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Unidad<select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 <label>Presentación comercial<input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label>Nombre de la unidad<input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && <><label>{editingProductId ? "Existencias actuales" : "Existencias iniciales"}<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} readOnly={!!editingProductId} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
-                {!editingProductId && <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
-                  <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || stagedImages.length >= 3} onChange={chooseNewProductImages} />
-                </label>}
-                {stagedImages.length > 0 && <div className="staged-image-grid full-span">{stagedImages.map((image, index) => <figure className="staged-image" key={image.preview}><img src={image.preview} alt={image.name} /><figcaption>{image.name}</figcaption><button type="button" className="text-button danger-text" onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>Quitar foto</button></figure>)}</div>}
                 <label className="full-span">Descripción<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
               {editingProductId && products.find((item) => item.id === editingProductId) && <div className="product-edit-tools full-span">
@@ -1005,6 +1147,7 @@ export default function App() {
             <div className="product-tools">
               <label className="search-box"><span>⌕</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
               <div className="product-tools-actions">
+                <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>
                 <div className="view-switch" role="group" aria-label="Vista de productos">
                   <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>
                   <button type="button" className={viewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setViewMode("cards")} aria-pressed={viewMode === "cards"}><span>▦</span> Tarjetas</button>
@@ -1012,6 +1155,32 @@ export default function App() {
                 <span className="count-label">{productsCount} {productsCount === 1 ? "producto" : "productos"}</span>
               </div>
             </div>
+            {viewingVariantsFor && (() => {
+              const variantProduct = products.find((product) => product.id === viewingVariantsFor);
+              if (!variantProduct) return null;
+              const rows = variantsByProduct[variantProduct.id] || [];
+              return <div className="variant-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setViewingVariantsFor(null); resetVariantDraft(); } }}>
+                <section className="variant-manager panel" role="dialog" aria-modal="true" aria-label={"Variantes de " + variantProduct.name}>
+                  <div className="variant-manager-heading"><div><p className="eyebrow">PRODUCTO</p><h3>Variantes de {variantProduct.name}</h3><p>Ejemplos: talla M, color azul o presentación de 500 ml.</p></div><button type="button" className="icon-action-button" title="Cerrar" aria-label="Cerrar variantes" onClick={() => { setViewingVariantsFor(null); resetVariantDraft(); }}>×</button></div>
+                  {rows.length ? <div className="variant-list">{rows.map((variant) => <article className={"variant-row" + (!variant.is_active ? " variant-inactive" : "")} key={variant.id}>
+                    <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}</div>
+                    <div className="variant-row-actions"><button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button><button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button></div>
+                  </article>)}</div> : <div className="variant-empty"><strong>Este producto todavía no tiene variantes</strong><span>Añade talla, color, tamaño u otra opción que necesites distinguir.</span></div>}
+                  <form className="variant-form" onSubmit={saveProductVariant}>
+                    <h4>{editingVariantId ? "Editar variante" : "Añadir variante"}</h4>
+                    <div className="variant-form-grid">
+                      <label>Tipo de variante *<input value={variantDraft.variant_name} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_name: event.target.value }))} maxLength={80} required placeholder="Ej. Talla" /></label>
+                      <label>Valor *<input value={variantDraft.variant_value} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_value: event.target.value }))} maxLength={120} required placeholder="Ej. M" /></label>
+                      <label>Código de variante<input value={variantDraft.sku} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sku: event.target.value }))} maxLength={100} placeholder="Opcional" /></label>
+                      <label>Precio propio<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={variantDraft.sale_price} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sale_price: event.target.value }))} placeholder="Usar precio del producto" /></label>
+                      <label>Existencias propias<input type="number" min="0" step="0.001" value={variantDraft.stock_on_hand} onChange={(event) => setVariantDraft((draft) => ({ ...draft, stock_on_hand: event.target.value }))} placeholder="Sin inventario separado" /></label>
+                    </div>
+                    <p className="helper-text">Si dejas precio o existencias vacíos, esta variante usará los datos generales del producto. Las variantes aún no sustituyen el inventario principal en el registro de ventas.</p>
+                    <div className="form-actions"><button type="button" className="secondary-button" onClick={resetVariantDraft}>Limpiar</button><button type="submit" className="primary-button" disabled={variantBusy}>{variantBusy ? "Guardando…" : editingVariantId ? "Guardar cambios" : "Añadir variante"}</button></div>
+                  </form>
+                </section>
+              </div>;
+            })()}
             {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? (
               viewMode === "rows" ? (
                 <div className="product-table-wrap panel">
@@ -1031,36 +1200,42 @@ export default function App() {
                         <td><span className="muted-value">—</span></td>
                         <td>{p.commercial_presentation || <span className="muted-value">—</span>}</td>
                         <td><div className="product-table-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong>{p.track_inventory && <small>{p.unit_name || "unidades"}</small>}{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <span className="stock-alert">Pocas existencias</span>}</div></td>
-                        <td><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></td>
+                        <td><span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
-                          <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
+                          <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>
                         </div></td>
                       </tr>
                     </React.Fragment>)}</tbody>
                   </table>
                 </div>
               ) : (
-                <div className="product-list product-list-cards">{filteredProducts.map((p) => <article className="product-card panel product-card-wa" key={p.id}>
-  <div className="product-card-wa-top">
-    <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
-    <div className="product-card-wa-copy">
-      <h3>{p.name}</h3>
-      <span className="product-card-wa-category">{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"}</span>
-      <div className="product-card-wa-code"><span>Código</span><code>{p.sku || "—"}</code></div>
+                <div className="product-list product-list-cards">{filteredProducts.map((p) => {
+  const productVariants = variantsByProduct[p.id] || [];
+  return <article className="product-card panel product-card-wa" key={p.id}>
+    <div className="product-card-wa-top">
+      <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+      <div className="product-card-wa-copy">
+        <h3>{p.name}</h3>
+        <span className="product-card-wa-category">{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"}</span>
+        <div className="product-card-wa-code"><span>Código</span><code>{p.sku || "—"}</code></div>
+      </div>
     </div>
-  </div>
-  <div className="product-card-wa-price-row">
-    <div className="product-card-wa-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
-    <span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span>
-  </div>
-  <div className="product-card-wa-details">
-    <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
-    <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
-    {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
-  </div>
-  <div className="product-row-actions product-card-actions"><button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button></div>
-</article>)}</div>
+    <div className="product-card-wa-price-row">
+      <div className="product-card-wa-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
+      <span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span>
+    </div>
+    <div className="product-card-wa-details">
+      <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
+      <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
+      {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
+    </div>
+    <div className="product-card-actions">
+      <div className="product-card-variants"><div><span>Variantes</span><strong>{productVariants.length} {productVariants.length === 1 ? "variante" : "variantes"}</strong></div><button type="button" className="text-button" onClick={() => openProductVariants(p)}>Ver variantes</button></div>
+      <div className="product-card-action-buttons"><button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button><button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button></div>
+    </div>
+  </article>;
+})}</div>
               )
             ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
 

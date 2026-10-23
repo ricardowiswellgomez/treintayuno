@@ -3,10 +3,11 @@ import { supabase } from "./lib/supabase.js";
 
 const areas = [
   { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
-  { icon: "↗", title: "Ventas y clientes", description: "Ventas, clientes y pagos registrados.", screen: "sales" },
+  { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
+  { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
   { icon: "◷", title: "Costos y rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
-  { icon: "◎", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
+  { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
@@ -58,6 +59,7 @@ const unitOptions = [
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
 const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
 
@@ -167,14 +169,14 @@ export default function App() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [salesTab, setSalesTab] = useState("sales");
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [saleProducts, setSaleProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerForm, setShowCustomerForm] = useState(false);
-  const [customerDraft, setCustomerDraft] = useState({ full_name: "", email: "", phone: "" });
+  const [customerDraft, setCustomerDraft] = useState(blankCustomer);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [saleCustomerId, setSaleCustomerId] = useState("");
   const [saleProductChoice, setSaleProductChoice] = useState("");
@@ -645,15 +647,23 @@ export default function App() {
     </div>;
   }
 
+  const customerFields = "id,full_name,first_name,last_name,company_name,document_type,document_number,email,phone,whatsapp,city,address,notes,created_at";
+
   async function loadSalesModuleData() {
-    if (!activeBusiness?.id || screen !== "sales") return;
+    if (!activeBusiness?.id || (screen !== "sales" && screen !== "customers")) return;
     setSalesLoading(true);
     setError("");
     try {
-      if (salesTab === "customers") {
-        let query = supabase.from("customers").select("id,full_name,email,phone,created_at", { count: "exact" })
-          .eq("business_id", activeBusiness.id).order("full_name").limit(200);
-        if (customerSearch.trim()) query = query.ilike("full_name", "%" + customerSearch.trim() + "%");
+      if (screen === "customers") {
+        let query = supabase.from("customers")
+          .select(customerFields, { count: "exact" })
+          .eq("business_id", activeBusiness.id).order("full_name").limit(500);
+        const safeTerm = customerSearch.trim().replace(/[^\p{L}\p{N}@.+\-_\s]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
+        if (safeTerm) {
+          const filter = ["full_name", "company_name", "email", "phone", "whatsapp", "document_number", "city"]
+            .map((field) => field + ".ilike.%" + safeTerm + "%").join(",");
+          query = query.or(filter);
+        }
         const result = await query;
         if (result.error) throw result.error;
         setCustomers(result.data || []);
@@ -663,10 +673,12 @@ export default function App() {
             .eq("business_id", activeBusiness.id).order("created_at", { ascending: false }).limit(100),
           supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable")
             .eq("business_id", activeBusiness.id).eq("is_sellable", true).order("name").limit(500),
-          supabase.from("customers").select("id,full_name,email,phone").eq("business_id", activeBusiness.id).order("full_name").limit(500)
+          supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp")
+            .eq("business_id", activeBusiness.id).order("full_name").limit(500)
         ]);
         if (salesResult.error) throw salesResult.error;
         if (productsResult.error) throw productsResult.error;
+        if (customersResult.error) throw customersResult.error;
         setSaleProducts(productsResult.data || []);
         const salesRows = salesResult.data || [];
         const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
@@ -682,36 +694,88 @@ export default function App() {
         }
         setCustomers(customersResult.data || []);
         setSalesData(salesRows.map((sale) => ({ ...sale,
-          customer_name: customersById[sale.customer_id]?.full_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
+          customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
           items: itemsBySale[sale.id] || []
         })));
       }
     } catch (e) {
       setError(friendlyError(e));
-      if (salesTab === "customers") setCustomers([]);
+      if (screen === "customers") setCustomers([]);
       else { setSalesData([]); setSaleProducts([]); }
     } finally { setSalesLoading(false); }
   }
 
   useEffect(() => {
-    if (screen === "sales" && activeBusiness?.id) loadSalesModuleData();
-  }, [screen, activeBusiness?.id, salesTab, customerSearch]);
+    if ((screen === "sales" || screen === "customers") && activeBusiness?.id) loadSalesModuleData();
+  }, [screen, activeBusiness?.id, customerSearch]);
+
+  function fullCustomerName(draft) {
+    const person = [draft.first_name, draft.last_name].map((part) => (part || "").trim()).filter(Boolean).join(" ");
+    return person || (draft.company_name || "").trim();
+  }
+
+  function resetCustomerForm() {
+    setShowCustomerForm(false);
+    setEditingCustomerId(null);
+    setCustomerDraft(blankCustomer);
+    setError("");
+  }
+
+  function startEditCustomer(customer) {
+    setCustomerDraft({
+      first_name: customer.first_name || "",
+      last_name: customer.last_name || "",
+      company_name: customer.company_name || "",
+      document_type: customer.document_type || "",
+      document_number: customer.document_number || "",
+      email: customer.email || "",
+      phone: customer.phone || "",
+      whatsapp: customer.whatsapp || "",
+      city: customer.city || "",
+      address: customer.address || "",
+      notes: customer.notes || ""
+    });
+    setEditingCustomerId(customer.id);
+    setShowCustomerForm(true);
+    setError("");
+    setNotice("");
+  }
 
   async function addCustomer(event) {
     event.preventDefault();
-    if (!activeBusiness?.id || !customerDraft.full_name.trim()) return;
+    if (!activeBusiness?.id) return;
+    const displayName = fullCustomerName(customerDraft);
+    if (!displayName) { setError("Escribe un nombre o una empresa."); return; }
     setBusy(true); setError(""); setNotice("");
+    const payload = {
+      business_id: activeBusiness.id,
+      full_name: displayName,
+      first_name: customerDraft.first_name.trim() || null,
+      last_name: customerDraft.last_name.trim() || null,
+      company_name: customerDraft.company_name.trim() || null,
+      document_type: customerDraft.document_type || null,
+      document_number: customerDraft.document_number.trim() || null,
+      email: customerDraft.email.trim() || null,
+      phone: customerDraft.phone.trim() || null,
+      whatsapp: customerDraft.whatsapp.trim() || null,
+      city: customerDraft.city.trim() || null,
+      address: customerDraft.address.trim() || null,
+      notes: customerDraft.notes.trim() || null
+    };
     try {
-      const { data, error: insertError } = await supabase.from("customers").insert({
-        business_id: activeBusiness.id,
-        full_name: customerDraft.full_name.trim(),
-        email: customerDraft.email.trim() || null,
-        phone: customerDraft.phone.trim() || null
-      }).select("id,full_name,email,phone,created_at").single();
-      if (insertError) throw insertError;
-      setCustomerDraft({ full_name: "", email: "", phone: "" });
+      let result;
+      if (editingCustomerId) {
+        result = await supabase.from("customers").update(payload)
+          .eq("business_id", activeBusiness.id).eq("id", editingCustomerId)
+          .select(customerFields).single();
+      } else {
+        result = await supabase.from("customers").insert(payload).select(customerFields).single();
+      }
+      if (result.error) throw result.error;
+      setCustomerDraft(blankCustomer);
       setShowCustomerForm(false);
-      setNotice("Cliente guardado: " + data.full_name + ".");
+      setNotice(editingCustomerId ? "Cliente actualizado: " + result.data.full_name + "." : "Cliente guardado: " + result.data.full_name + ".");
+      setEditingCustomerId(null);
       await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }

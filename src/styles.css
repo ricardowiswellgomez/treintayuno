@@ -951,3 +951,40 @@
  .stock-history-heading{align-items:flex-start}
  .stock-history-page-label{white-space:nowrap;padding-top:2px}
 }
+
+
+/* Navegación editable en el propio sidebar */
+.sidebar-nav-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding:0 6px}
+.sidebar-nav-heading .nav-label{margin:0;padding:0}
+.sidebar-edit-toggle{border:1px solid #dfe2d9;background:#fffefa;color:var(--green);border-radius:7px;padding:5px 8px;font-size:10px;font-weight:700}
+.sidebar-edit-toggle.active{background:var(--soft-green);border-color:#cbd9c9}
+.nav-list{gap:12px}
+.sidebar-nav-group{display:flex;flex-direction:column;gap:3px;min-width:0;border-radius:9px}
+.sidebar-group-heading{display:flex;align-items:center;gap:6px;min-width:0;padding:0 6px 4px}
+.sidebar-group-heading .nav-label{margin:0;padding:0;flex:1}
+.sidebar-group-heading input{min-width:0;width:100%;border:1px solid #dfe2d9;border-radius:6px;padding:6px 7px;background:#fff;font-size:10px;font-weight:700;color:var(--green)}
+.sidebar-nav-row{display:flex;align-items:center;gap:4px;min-width:0;border-radius:8px}
+.sidebar-nav-row[draggable="true"],.sidebar-group-heading[draggable="true"]{cursor:grab}
+.sidebar-nav-row .nav-item{flex:1;min-width:0}
+.sidebar-drag-handle{color:#9a9c93;font-size:17px;cursor:grab;padding:0 2px}
+.sidebar-icon-edit{width:29px;flex:0 0 29px;border:1px solid #dfe2d9;border-radius:6px;padding:6px 2px;text-align:center;background:#fff;font-size:12px}
+.sidebar-label-edit{width:100%;min-width:0;flex:1;border:1px solid #dfe2d9;border-radius:6px;padding:7px 6px;background:#fff;font-size:10px;color:var(--ink)}
+.sidebar-mini-action{border:0;background:transparent;font-size:17px;line-height:1;padding:4px 6px;border-radius:6px}
+.sidebar-mini-action:disabled{opacity:.35;cursor:not-allowed}
+.sidebar-editor-actions{display:flex;flex-direction:column;gap:7px;padding-top:8px;border-top:1px solid var(--line);margin-top:5px}
+.sidebar-editor-actions .primary-button{width:100%}
+.nav-list-editing .sidebar-nav-group{padding:5px 3px 7px;border:1px dashed #cfd7cc;background:#fbfcf8}
+.nav-list-editing .sidebar-nav-row:active{opacity:.65}
+.supplier-directory-page{display:flex;flex-direction:column;gap:10px}
+.supplier-directory-page .supplier-directory-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:15px}
+.supplier-directory-page .supplier-directory-row>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.supplier-directory-page .supplier-directory-row strong{font-size:12px;overflow-wrap:anywhere}
+.supplier-directory-page .supplier-directory-row span,.supplier-directory-page .supplier-directory-row small{font-size:10px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+@media(max-width:600px){
+ .sidebar-nav-heading{padding:0 2px}
+ .sidebar-nav-group{min-width:0}
+ .sidebar-group-heading{grid-column:1/-1}
+ .nav-list{grid-template-columns:1fr}
+ .sidebar-editor-actions{display:grid;grid-template-columns:1fr 1fr}
+ .supplier-directory-page .supplier-directory-row{grid-template-columns:1fr;gap:10px}
+}

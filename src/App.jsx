@@ -11,6 +11,38 @@ const areas = [
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
+const defaultSidebarLayout = () => [{
+  id: "business",
+  type: "group",
+  title: "TU NEGOCIO",
+  items: [
+    { id: "home", screen: "home", label: "Resumen", icon: "⌂" },
+    ...areas.map((area) => ({ id: area.screen, screen: area.screen, label: area.title, icon: area.icon })),
+    { id: "suppliers", screen: "purchases", tab: "suppliers", label: "Proveedores", icon: "♧" },
+    { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }
+  ]
+}];
+const normalizeSidebarLayout = (layout) => {
+  const fallback = defaultSidebarLayout();
+  if (!Array.isArray(layout) || !layout.length) return fallback;
+  const known = new Map(fallback[0].items.map((item) => [item.id, item]));
+  const groups = layout.filter((group) => group && group.type === "group" && typeof group.id === "string")
+    .map((group) => ({
+      id: group.id,
+      type: "group",
+      title: String(group.title || "Sección").slice(0, 60),
+      items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map((item) => ({
+        ...known.get(item.id), label: String(item.label || known.get(item.id).label).slice(0, 60),
+        icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
+      })) : []
+    }));
+  if (!groups.length) return fallback;
+  const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
+  const missing = fallback[0].items.filter((item) => !placed.has(item.id));
+  groups[0].items.push(...missing);
+  return groups;
+};
+
 const currencyDigits = (code = "COP") => {
   try { return new Intl.NumberFormat("es-CO", { style: "currency", currency: code }).resolvedOptions().maximumFractionDigits; }
   catch { return 0; }
@@ -261,6 +293,10 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
+  const [sidebarEditing, setSidebarEditing] = useState(false);
+  const [sidebarSaving, setSidebarSaving] = useState(false);
+  const [sidebarLayout, setSidebarLayout] = useState(defaultSidebarLayout);
+  const [draggedSidebarItem, setDraggedSidebarItem] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -420,7 +456,7 @@ export default function App() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code)")
+      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
     const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} })).filter((b) => b?.id);
@@ -1764,9 +1800,12 @@ export default function App() {
   const canManageExpenses = canPermission("expenses_manage");
   const canViewPurchases = canPermission("purchases_view");
   const canViewExpenses = canPermission("expenses_view");
-  const effectivePurchaseTab = canViewPurchases
-    ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
-    : "expenses";
+  const canViewSuppliers = canPermission("suppliers_view") || canViewPurchases;
+  const effectivePurchaseTab = purchaseModuleTab === "suppliers" && canViewSuppliers
+    ? "suppliers"
+    : canViewPurchases
+      ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
+      : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "settings") return isBusinessOwner;
@@ -1774,18 +1813,88 @@ export default function App() {
     if (next === "products") return canPermission("products_view");
     if (next === "sales") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
-    if (next === "purchases") return canViewPurchases || canViewExpenses;
+    if (next === "purchases") return canViewPurchases || canViewExpenses || canPermission("suppliers_view");
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
     if (next === "catalog") return canManageProducts;
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
 
-  function navigate(next) {
+  function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
+    if (next === "purchases") setPurchaseModuleTab(purchaseTab);
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
+  }
+
+  useEffect(() => {
+    setSidebarLayout(normalizeSidebarLayout(activeBusiness?.settings?.sidebar_layout));
+    setSidebarEditing(false);
+  }, [activeBusiness?.id]);
+
+  function updateSidebarDraft(updater) {
+    setSidebarLayout((current) => normalizeSidebarLayout(typeof updater === "function" ? updater(current) : updater));
+  }
+
+  async function saveSidebarLayout() {
+    if (!activeBusiness?.id || !isBusinessOwner) return;
+    setSidebarSaving(true); setError(""); setNotice("");
+    const nextLayout = normalizeSidebarLayout(sidebarLayout);
+    const nextSettings = { ...(activeBusiness.settings || {}), sidebar_layout: nextLayout };
+    try {
+      const { data, error: saveError } = await supabase.from("businesses")
+        .update({ settings: nextSettings }).eq("id", activeBusiness.id)
+        .select("id,settings").maybeSingle();
+      if (saveError) throw saveError;
+      if (!data) throw new Error("No se pudo guardar el menú. Comprueba que tu sesión siga activa.");
+      setActiveBusiness((current) => current ? { ...current, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, settings: data.settings || nextSettings } : business));
+      setSidebarLayout(normalizeSidebarLayout(data.settings?.sidebar_layout));
+      setSidebarEditing(false);
+      setNotice("Menú guardado. El orden y los nombres se conservaron.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setSidebarSaving(false);
+    }
+  }
+
+  function moveSidebarItem(itemId, targetGroupId, targetItemId = null) {
+    updateSidebarDraft((current) => {
+      const next = current.map((group) => ({ ...group, items: [...group.items] }));
+      let moving = null;
+      for (const group of next) {
+        const index = group.items.findIndex((item) => item.id === itemId);
+        if (index >= 0) { [moving] = group.items.splice(index, 1); break; }
+      }
+      if (!moving) return current;
+      const target = next.find((group) => group.id === targetGroupId);
+      if (!target) return current;
+      const targetIndex = targetItemId ? target.items.findIndex((item) => item.id === targetItemId) : -1;
+      target.items.splice(targetIndex < 0 ? target.items.length : targetIndex, 0, moving);
+      return next;
+    });
+  }
+
+  function moveSidebarGroup(groupId, targetGroupId) {
+    updateSidebarDraft((current) => {
+      const next = [...current];
+      const from = next.findIndex((group) => group.id === groupId);
+      const to = next.findIndex((group) => group.id === targetGroupId);
+      if (from < 0 || to < 0 || from === to) return current;
+      const [moving] = next.splice(from, 1);
+      next.splice(to, 0, moving);
+      return next;
+    });
+  }
+
+  function navigateSidebarItem(item) {
+    if (item.id === "suppliers") {
+      navigate("purchases", "suppliers");
+      return;
+    }
+    navigate(item.screen);
   }
 
   function switchActiveBusiness(businessId) {
@@ -1858,11 +1967,33 @@ export default function App() {
             ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
             : <span className="business-name">{activeBusiness?.name}</span>}
         </div>
-        <p className="nav-label">TU NEGOCIO</p>
-        <nav className="nav-list">
-          <button className={screen === "home" ? "nav-item active" : "nav-item"} onClick={() => navigate("home")}><span>⌂</span> Resumen</button>
-          {visibleAreas.map((area) => <button key={area.title} className={screen === area.screen ? "nav-item active" : "nav-item"} onClick={() => navigate(area.screen)}><span>{area.icon}</span>{area.title}</button>)}
-          {isBusinessOwner && <button className={screen === "settings" ? "nav-item active" : "nav-item"} onClick={() => navigate("settings")}><span>⚙</span> Configuración</button>}
+        <div className="sidebar-nav-heading">
+          <p className="nav-label">TU NEGOCIO</p>
+          {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
+        </div>
+        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "")} aria-label="Navegación del negocio">
+          {sidebarLayout.map((group) => <section key={group.id} className="sidebar-nav-group"
+            onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
+            onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
+            <div className="sidebar-group-heading" draggable={sidebarEditing}
+              onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
+              {sidebarEditing ? <input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /> : <p className="nav-label">{group.title}</p>}
+              {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
+            </div>
+            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
+              <div key={item.id} className="sidebar-nav-row" draggable={sidebarEditing}
+                onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "item", id: item.id })}
+                onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
+                onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) moveSidebarItem(payload.id, group.id, item.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
+                {sidebarEditing ? <>
+                  <span className="sidebar-drag-handle" title="Arrastra para mover">⠿</span>
+                  <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
+                  <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
+                </> : <button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => navigateSidebarItem(item)}><span>{item.icon}</span>{item.label}</button>}
+              </div>
+            ))}
+          </section>)}
+          {sidebarEditing && <div className="sidebar-editor-actions"><button type="button" className="secondary-button" onClick={() => updateSidebarDraft((current) => [...current, { id: "group-" + Date.now(), type: "group", title: "Nuevo grupo", items: [] }])}>+ Grupo</button><button type="button" className="primary-button compact-button" disabled={sidebarSaving} onClick={saveSidebarLayout}>{sidebarSaving ? "Guardando…" : "Guardar menú"}</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
@@ -2069,6 +2200,7 @@ export default function App() {
             </div>
             <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchasesCount}</span></button>}
+              {canViewSuppliers && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "suppliers"} className={effectivePurchaseTab === "suppliers" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("suppliers")}>Proveedores <span>{suppliers.length}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expensesCount}</span></button>}
             </div>
             {effectivePurchaseTab === "purchases" ? <>
@@ -2146,6 +2278,24 @@ export default function App() {
               })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p>{canManagePurchases && <button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button>}</div>}
               {!purchaseLoading && purchasesCount > purchasesPageSize && <div className="pagination-bar purchase-pagination"><span className="count-label">Mostrando {(purchasesPage-1)*purchasesPageSize+1}–{Math.min(purchasesPage*purchasesPageSize,purchasesCount)} de {purchasesCount} compras</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={purchasesPage<=1} onClick={()=>setPurchasesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{purchasesPage} / {Math.ceil(purchasesCount/purchasesPageSize)}</span><button type="button" className="secondary-button" disabled={purchasesPage>=Math.ceil(purchasesCount/purchasesPageSize)} onClick={()=>setPurchasesPage((page)=>page+1)}>Siguiente</button></div></div>}
               {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
+            </> : effectivePurchaseTab === "suppliers" ? <>
+              <div className="products-intro purchase-subintro">
+                <div><h3>Proveedores</h3><p>Administra los contactos de las empresas y personas a quienes compras.</p></div>
+                {canPermission("suppliers_manage") && <button type="button" className="primary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar" : "+ Nuevo proveedor"}</button>}
+              </div>
+              {canPermission("suppliers_manage") && showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
+                <div className="purchase-form-heading"><div><p className="eyebrow">CONTACTOS</p><h3>Nuevo proveedor</h3></div></div>
+                <div className="purchase-form-grid">
+                  <label>Nombre del proveedor *<input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required placeholder="Nombre o empresa" /></label>
+                  <label>NIT o documento<input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} placeholder="Opcional" /></label>
+                  <label>Teléfono<input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} placeholder="Número de contacto" /></label>
+                  <label>Correo<input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} placeholder="proveedor@correo.com" /></label>
+                  <label className="purchase-span-two">Dirección<input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} placeholder="Dirección del proveedor" /></label>
+                  <label className="purchase-span-two">Notas<input value={supplierDraft.notes} onChange={(e) => setSupplierDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1000} placeholder="Información útil" /></label>
+                </div>
+                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowSupplierForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar proveedor"}</button></div>
+              </form>}
+              {purchaseLoading ? <div className="empty-state">Cargando proveedores…</div> : suppliers.length ? <div className="supplier-directory-list supplier-directory-page">{suppliers.map((supplier) => <article className="supplier-directory-row panel" key={supplier.id}><div><strong>{supplier.name}</strong><span>{supplier.tax_id || "Sin NIT/documento"}</span></div><div><span>{supplier.phone || "Sin teléfono"}</span><span>{supplier.email || "Sin correo"}</span></div><div><span>{supplier.address || "Sin dirección"}</span>{supplier.notes && <small>{supplier.notes}</small>}</div></article>)}</div> : <div className="empty-state"><span className="empty-icon">♧</span><h3>Aún no hay proveedores</h3><p>Agrega tus proveedores para asociarlos a las compras y gastos. No hay datos de ejemplo.</p>{canPermission("suppliers_manage") && <button type="button" className="primary-button" onClick={() => setShowSupplierForm(true)}>+ Nuevo proveedor</button>}</div>}
             </> : <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Gastos del negocio</h3><p>Registra servicios, arriendo, reparaciones, herramientas y otros pagos.</p></div>

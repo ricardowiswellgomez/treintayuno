@@ -2926,8 +2926,8 @@ export default function App() {
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
       <div className="ai-assistant-layer">
-        {aiOpen && <section className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
-          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>Datos reales · acceso según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
+        {aiOpen && <section id="treintayuno-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
+          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
           <div className="ai-assistant-messages" aria-live="polite">
             {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
             {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && item.elapsedMs != null && <small className="ai-assistant-meta">{item.dataBacked ? "Datos del negocio" : "IA"} · {item.elapsedMs} ms en servidor</small>}</div>)}
@@ -2936,10 +2936,10 @@ export default function App() {
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder="Escribe tu pregunta…" rows={2} maxLength={1500} disabled={aiBusy} /><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Las consultas respetan los permisos de tu perfil. Las cifras provienen de registros y las estimaciones se identifican como tales.</p>
         </section>}
-        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} onClick={() => setAiOpen((open) => !open)}><span>✦</span> IA</button>
+        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treintayuno-ai-panel" onClick={() => { setHelpOpen(false); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
       {contextualHelpEnabled && <div className="context-help-layer">
-        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => setHelpOpen((open) => !open)}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
+        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
         {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>
           <header className="context-help-header"><div><p>AYUDA CONTEXTUAL</p><h2>{contextualHelp.title}</h2></div><button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button></header>
           <p className="context-help-intro">{contextualHelp.intro}</p>

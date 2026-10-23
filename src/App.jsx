@@ -1149,7 +1149,7 @@ export default function App() {
       if (key === "sales_manage" && checked) { next.sales_view = true; next.products_view = true; next.customers_view = true; }
       if (key === "purchases_view" && checked) { next.suppliers_view = true; next.products_view = true; }
       if (key === "purchases_manage" && checked) {
-        next.purchases_view = true; next.suppliers_view = true; next.products_view = true; next.products_manage = true;
+        next.purchases_view = true; next.suppliers_view = true; next.suppliers_manage = true; next.products_view = true; next.products_manage = true;
       }
       if (key === "expenses_view" && checked) next.suppliers_view = true;
       if (key === "expenses_manage" && checked) { next.expenses_view = true; next.suppliers_view = true; }
@@ -1957,7 +1957,7 @@ export default function App() {
                     <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}</div>
                     <div className="variant-row-actions">{canManageProducts && <button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button>}{canManageProducts && <button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button>}</div>
                   </article>)}</div> : <div className="variant-empty"><strong>Este producto todavía no tiene variantes</strong><span>Añade talla, color, tamaño u otra opción que necesites distinguir.</span></div>}
-                  <form className="variant-form" onSubmit={saveProductVariant}>
+                  {canManageProducts && <form className="variant-form" onSubmit={saveProductVariant}>
                     <h4>{editingVariantId ? "Editar variante" : "Añadir variante"}</h4>
                     <div className="variant-form-grid">
                       <label>Tipo de variante *<input value={variantDraft.variant_name} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_name: event.target.value }))} maxLength={80} required placeholder="Ej. Talla" /></label>
@@ -1968,7 +1968,7 @@ export default function App() {
                     </div>
                     <p className="helper-text">Si dejas precio o existencias vacíos, esta variante usará los datos generales del producto. Las variantes aún no sustituyen el inventario principal en el registro de ventas.</p>
                     <div className="form-actions"><button type="button" className="secondary-button" onClick={resetVariantDraft}>Limpiar</button><button type="submit" className="primary-button" disabled={variantBusy}>{variantBusy ? "Guardando…" : editingVariantId ? "Guardar cambios" : "Añadir variante"}</button></div>
-                  </form>
+                  </form>}
                 </section>
               </div>;
             })()}

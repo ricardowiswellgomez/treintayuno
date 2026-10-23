@@ -1554,10 +1554,12 @@ export default function App() {
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;
+      const wasOnFirstSalesPage = salesPage === 1;
+      setSalesPage(1);
       setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
       setSaleItems([]); setSalePayment(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó.");
-      await loadSalesModuleData();
+      if (wasOnFirstSalesPage) await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }

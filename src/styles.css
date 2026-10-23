@@ -870,3 +870,28 @@
  .sale-payment-notes,.sale-payment-form .form-actions{grid-column:auto}
  .sale-payment-form .form-actions>*{flex:1}
 }
+
+
+/* Historial de pagos a proveedores y abonos pendientes de compra. */
+.purchase-payment-history{display:flex;flex-direction:column;gap:9px;padding-top:11px;border-top:1px solid var(--line);min-width:0}
+.purchase-payment-history-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.purchase-payment-history-heading>strong{font-size:10px}
+.purchase-payment-history-heading>span{font-size:9px;color:var(--muted);background:#f0f3eb;border-radius:99px;padding:4px 7px}
+.purchase-payment-list{display:flex;flex-direction:column;gap:7px}
+.purchase-payment-row{display:flex;align-items:flex-start;gap:10px;background:#f8f9f4;border-radius:8px;padding:9px 10px}
+.purchase-payment-row>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.purchase-payment-row>div strong{font-size:11px;color:#315d43}
+.purchase-payment-row>div span,.purchase-payment-row>div small{font-size:9px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.purchase-payment-empty{font-size:10px;color:var(--muted);margin:0}
+.purchase-register-payment-button{align-self:flex-start;font-size:10px;padding:8px 11px}
+.purchase-payment-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:13px;border:1px solid var(--line);border-radius:10px;background:#fcfcf8}
+.purchase-payment-form label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:700;color:#465347;min-width:0}
+.purchase-payment-form input,.purchase-payment-form select{width:100%;min-width:0;border:1px solid #dedfd7;border-radius:8px;background:#fffefa;padding:9px 10px;outline:none;color:var(--ink);font:400 11px "DM Sans",sans-serif}
+.purchase-payment-form input:focus,.purchase-payment-form select:focus{border-color:#648674;box-shadow:0 0 0 3px #2d59471a}
+.purchase-payment-notes{grid-column:1/-1}
+.purchase-payment-form .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
+@media(max-width:600px){
+ .purchase-payment-form{grid-template-columns:1fr;padding:10px}
+ .purchase-payment-notes,.purchase-payment-form .form-actions{grid-column:auto}
+ .purchase-payment-form .form-actions>*{flex:1}
+}

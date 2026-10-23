@@ -895,3 +895,17 @@
  .purchase-payment-notes,.purchase-payment-form .form-actions{grid-column:auto}
  .purchase-payment-form .form-actions>*{flex:1}
 }
+
+
+/* Navegación por páginas para historiales largos. */
+.sales-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sales-toolbar>span{font-size:10px;color:var(--muted)}
+.sales-page-size{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--muted)}
+.sales-page-size select{border:1px solid #dedfd7;border-radius:8px;padding:7px 9px;background:#fffefa;color:var(--ink);font:400 10px "DM Sans",sans-serif}
+.sales-pagination,.customer-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:3px}
+.pagination-controls .page-label{font-size:10px;color:var(--muted);min-width:52px;text-align:center}
+@media(max-width:550px){
+ .sales-pagination,.customer-pagination{align-items:stretch;flex-direction:column}
+ .sales-pagination .pagination-controls,.customer-pagination .pagination-controls{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px}
+ .sales-pagination .pagination-controls>* , .customer-pagination .pagination-controls>*{min-width:0}
+}

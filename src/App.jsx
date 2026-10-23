@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase.js";
 
 const areas = [
@@ -231,6 +231,11 @@ export default function App() {
   }, [loadBusinesses]);
 
   useEffect(() => { if (screen === "products" && activeBusiness?.id) loadProducts(); }, [screen, activeBusiness?.id, loadProducts]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(productsCount / productPageSize));
+    if (productPage > maxPage) setProductPage(maxPage);
+  }, [productsCount, productPageSize, productPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -589,10 +594,19 @@ export default function App() {
               <p className="helper-text">El código del producto se genera automáticamente para uso interno. En Rentabilidad vincularemos materiales, empaque y mano de obra para calcular el costo unitario real. El inventario inicial queda guardado en el historial.</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowProductForm(false)}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</button></div>
             </form>}
-            <div className="product-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o código…" /></label><span className="count-label">{products.length} {products.length === 1 ? "producto" : "productos"}</span></div>
-            {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? <div className="product-list">{filteredProducts.map((p) => <article className="product-row panel" key={p.id}>
-              <div className="product-symbol">{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</div>
-              <div className="product-main"><h3>{p.name}</h3><p>{categories.find((c) => c.id === p.category_id)?.name || "Sin categoría"}{p.sku ? " · " + p.sku : ""} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
+            <div className="product-tools">
+              <label className="search-box"><span>⌕</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
+              <div className="product-tools-actions">
+                <div className="view-switch" role="group" aria-label="Vista de productos">
+                  <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>
+                  <button type="button" className={viewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setViewMode("cards")} aria-pressed={viewMode === "cards"}><span>▦</span> Tarjetas</button>
+                </div>
+                <span className="count-label">{productsCount} {productsCount === 1 ? "producto" : "productos"}</span>
+              </div>
+            </div>
+            {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? <div className={viewMode === "cards" ? "product-list product-list-cards" : "product-list"}>{filteredProducts.map((p) => <article className={viewMode === "cards" ? "product-row product-card panel" : "product-row panel"} key={p.id}>
+              <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto principal de " + p.name} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+              <div className="product-main"><h3>{p.name}</h3><p>{categories.find((c) => c.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
               <div className="product-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><span>Costo {money(p.cost_price_minor, currencyCode)}</span></div>
               <div className="product-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong><span>{p.track_inventory ? (p.unit_name || "unidades") : "inventario"}</span>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
               {p.track_inventory && <button className="secondary-button stock-button" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar" : "Ajustar"}</button>}
@@ -600,7 +614,7 @@ export default function App() {
               <div className="product-gallery">
                 <div className="product-gallery-heading"><strong>Fotos</strong><span>{(p.image_paths || []).length}/3</span></div>
                 {(p.image_paths || []).length ? <div className="product-gallery-list">{p.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
-                  {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} /> : <div className="image-placeholder">Cargando foto…</div>}
+                  {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} /> : <div className="image-placeholder">Imagen no disponible</div>}
                   <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === p.id} onClick={() => removeExistingProductImage(p.id, imageKey)}>Quitar</button>
                 </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
                 {(p.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto
@@ -608,7 +622,20 @@ export default function App() {
                 </label>}
                 {uploadingImagesFor === p.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
               </div>
-            </article>)}</div> : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre o código." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
+            </article>)}</div> : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
+            {!productsLoading && productsCount > 0 && <div className="pagination-bar">
+              <label className="page-size-control">Mostrar
+                <select value={productPageSize} onChange={(e) => { setProductPageSize(Number(e.target.value)); setProductPage(1); }}>
+                  <option value={12}>12</option><option value={24}>24</option><option value={48}>48</option>
+                </select>
+                por página
+              </label>
+              <div className="pagination-controls">
+                <button type="button" className="secondary-button" disabled={productPage <= 1 || productsLoading} onClick={() => setProductPage((page) => Math.max(1, page - 1))}>Anterior</button>
+                <span className="pagination-status">Página {Math.min(productPage, totalProductPages)} de {totalProductPages}</span>
+                <button type="button" className="secondary-button" disabled={productPage >= totalProductPages || productsLoading} onClick={() => setProductPage((page) => Math.min(totalProductPages, page + 1))}>Siguiente</button>
+              </div>
+            </div>}
             
           </section>
         ) : screen === "settings" ? (

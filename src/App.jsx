@@ -1130,8 +1130,14 @@ export default function App() {
   function startEditTeamMember(member) {
     const role = member.role;
     if (role !== "employee") return;
+    const requested = (member.permissions || {})._modules_requested || member.permissions || {};
+    const draft = { ...blankTeamPermissions };
+    for (const group of teamPermissionGroups) {
+      draft[group.view] = Boolean(requested[group.view]);
+      draft[group.manage] = Boolean(requested[group.manage]);
+    }
     setTeamEmail(member.email || "");
-    setTeamPermissionDraft({ ...blankTeamPermissions, ...(member.permissions || {}) });
+    setTeamPermissionDraft(draft);
     setTeamEditingUserId(member.user_id);
     setTeamFormOpen(true);
     setError(""); setNotice("");
@@ -1145,26 +1151,6 @@ export default function App() {
         if (key === moduleGroup.manage && checked) next[moduleGroup.view] = true;
         if (key === moduleGroup.view && !checked) next[moduleGroup.manage] = false;
       }
-      if (key === "sales_view" && checked) { next.products_view = true; next.customers_view = true; }
-      if (key === "sales_manage" && checked) { next.sales_view = true; next.products_view = true; next.customers_view = true; }
-      if (key === "purchases_view" && checked) { next.suppliers_view = true; next.products_view = true; }
-      if (key === "purchases_manage" && checked) {
-        next.purchases_view = true; next.suppliers_view = true; next.suppliers_manage = true; next.products_view = true; next.products_manage = true;
-      }
-      if (key === "expenses_view" && checked) next.suppliers_view = true;
-      if (key === "expenses_manage" && checked) { next.expenses_view = true; next.suppliers_view = true; }
-      if (key === "products_view" && !checked) {
-        next.products_manage = false; next.purchases_view = false; next.purchases_manage = false;
-        next.sales_view = false; next.sales_manage = false;
-      }
-      if (key === "customers_view" && !checked) { next.customers_manage = false; next.sales_view = false; next.sales_manage = false; }
-      if (key === "suppliers_view" && !checked) {
-        next.suppliers_manage = false; next.purchases_view = false; next.purchases_manage = false;
-        next.expenses_view = false; next.expenses_manage = false;
-      }
-      if (key === "sales_view" && !checked) next.sales_manage = false;
-      if (key === "purchases_view" && !checked) next.purchases_manage = false;
-      if (key === "expenses_view" && !checked) next.expenses_manage = false;
       return next;
     });
   }
@@ -1509,7 +1495,10 @@ export default function App() {
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
   const businessPermissions = activeBusiness?.permissions || {};
-  const canPermission = (permission) => isBusinessManager || Boolean(businessPermissions[permission]);
+  const requestedBusinessPermissions = businessPermissions._modules_requested || businessPermissions;
+  const canPermission = (permission) => isBusinessManager
+    || Boolean(requestedBusinessPermissions[permission])
+    || (permission === "suppliers_manage" && Boolean(requestedBusinessPermissions.purchases_manage));
   const canManageProducts = canPermission("products_manage");
   const canManageSales = canPermission("sales_manage");
   const canManageCustomers = canPermission("customers_manage");

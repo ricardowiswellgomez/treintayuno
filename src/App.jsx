@@ -1657,6 +1657,48 @@ export default function App() {
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
 </section>
+ ) : screen === "team" ? (
+          <section className="team-page">
+            <div className="products-intro team-intro">
+              <div><h2>Equipo y permisos</h2><p>Decide qué puede consultar o modificar cada colaborador.</p></div>
+              <button type="button" className="primary-button compact-button" onClick={() => {
+                if (teamFormOpen && !teamEditingUserId) clearTeamForm();
+                else { setTeamEmail(""); setTeamPermissionDraft(blankTeamPermissions); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
+              }}>{teamFormOpen && !teamEditingUserId ? "Cancelar" : "+ Añadir colaborador"}</button>
+            </div>
+            <div className="team-info-panel panel">
+              <span className="team-info-icon">♙</span>
+              <div><strong>¿Cómo agregar a alguien?</strong><p>La persona debe crear primero su cuenta en Treintayuno. Después, escribe aquí el mismo correo y elige sus permisos. Este formulario no envía correos.</p></div>
+            </div>
+            {teamFormOpen && <form className="team-form panel" onSubmit={saveTeamMember}>
+              <div className="team-form-heading"><div><p className="eyebrow">{teamEditingUserId ? "PERMISOS DEL COLABORADOR" : "NUEVO ACCESO"}</p><h3>{teamEditingUserId ? "Editar permisos" : "Añadir colaborador"}</h3><p>Marca solo lo que esa persona necesita para trabajar.</p></div></div>
+              <label className="team-email-field">Correo de la cuenta de Treintayuno *
+                <input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
+              </label>
+              <div className="team-permission-header"><span>Módulo</span><span>Consultar</span><span>Crear y modificar</span></div>
+              <div className="team-permission-list">{teamPermissionGroups.map((group) => <div className="team-permission-row" key={group.view}>
+                <strong>{group.label}</strong>
+                <label className="team-check"><input type="checkbox" checked={Boolean(teamPermissionDraft[group.view])} onChange={(e) => changeTeamPermission(group.view, e.target.checked)} /><span>Ver</span></label>
+                <label className="team-check"><input type="checkbox" checked={Boolean(teamPermissionDraft[group.manage])} onChange={(e) => changeTeamPermission(group.manage, e.target.checked)} /><span>Administrar</span></label>
+              </div>)}</div>
+              <p className="helper-text">Para que una tarea funcione, algunos datos relacionados también deben poder leerse. Por ejemplo, ventas necesita consultar productos y clientes; compras puede actualizar existencias y costos.</p>
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={clearTeamForm}>Cancelar</button><button type="submit" className="primary-button" disabled={teamSaving}>{teamSaving ? "Guardando…" : teamEditingUserId ? "Guardar permisos" : "Añadir al equipo"}</button></div>
+            </form>}
+            {teamLoading ? <div className="empty-state">Cargando el equipo…</div>
+              : teamRows.length ? <div className="team-member-list">{teamRows.map((member) => {
+                const isEmployee = member.role === "employee";
+                const granted = teamPermissionGroups.filter((group) => Boolean((member.permissions || {})[group.view] || (member.permissions || {})[group.manage])).map((group) => group.label);
+                return <article className="team-member panel" key={member.member_id}>
+                  <div className="team-member-avatar">{(member.display_name || member.email || "?").slice(0, 1).toLocaleUpperCase("es")}</div>
+                  <div className="team-member-main"><div className="team-member-title"><strong>{member.display_name || member.email}</strong><span className={"team-role-pill " + (isEmployee ? "team-role-employee" : "team-role-admin")}>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</span></div>
+                    <span className="team-member-email">{member.email}</span>
+                    <p>{isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>
+                  </div>
+                  {isEmployee && <div className="team-member-actions"><button type="button" className="icon-action-button" title="Editar permisos" aria-label={"Editar permisos de " + (member.display_name || member.email)} onClick={() => startEditTeamMember(member)}>✎</button><button type="button" className="text-button danger-text" disabled={teamSaving} onClick={() => removeTeamMember(member)}>Quitar acceso</button></div>}
+                </article>;
+              })}</div>
+              : <div className="empty-state"><span className="empty-icon">♙</span><h3>El equipo empieza aquí</h3><p>Por ahora solo hay miembros que ya pertenecen al negocio. No se ha creado ningún colaborador de ejemplo.</p><button type="button" className="primary-button" onClick={() => { setTeamEmail(""); setTeamPermissionDraft(blankTeamPermissions); setTeamEditingUserId(null); setTeamFormOpen(true); }}>+ Añadir colaborador</button></div>}
+          </section>
  ) : screen === "catalog" ? (
           <section className="catalog-admin-page">
             <div className="products-intro catalog-admin-intro">

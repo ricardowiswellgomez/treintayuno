@@ -300,6 +300,7 @@ export default function App() {
   const [sidebarTouchDragging, setSidebarTouchDragging] = useState(false);
   const sidebarTouchRef = useRef(null);
   const sidebarLongPressTimerRef = useRef(null);
+  const sidebarSuppressClickRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -1893,7 +1894,7 @@ export default function App() {
   }
 
   function startSidebarTouchDrag(event, payload) {
-    if (!sidebarEditing || (event.target?.closest && event.target.closest("input, button"))) return;
+    if (sidebarEditing && event.target?.closest && event.target.closest("input, button")) return;
     if (!event.touches || event.touches.length !== 1) return;
     const touch = event.touches[0];
     sidebarTouchRef.current = {
@@ -1908,6 +1909,8 @@ export default function App() {
       const active = sidebarTouchRef.current;
       if (!active) return;
       active.dragging = true;
+      if (!sidebarEditing) setSidebarEditing(true);
+      sidebarSuppressClickRef.current = true;
       setDraggedSidebarItem({ type: active.type, id: active.id });
       setSidebarTouchDragging(true);
     }, 320);
@@ -1962,6 +1965,7 @@ export default function App() {
     if (sidebarTouchRef.current?.dragging) {
       setSidebarTouchDragging(false);
       setDraggedSidebarItem(null);
+      window.setTimeout(() => { sidebarSuppressClickRef.current = false; }, 650);
     }
     sidebarTouchRef.current = null;
   }
@@ -2068,7 +2072,7 @@ export default function App() {
                   <span className="sidebar-drag-handle" title="Arrastra para mover">⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => navigateSidebarItem(item)}><span>{item.icon}</span>{item.label}</button>}
+                </> : <button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button>}
               </div>
             ))}
           </section>)}

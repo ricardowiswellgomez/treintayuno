@@ -29,8 +29,10 @@ BEGIN
   IF auth.uid() IS NULL OR NOT private.can_access_business(p_business_id, 'sales_manage') THEN
     RAISE EXCEPTION 'No tienes permiso para registrar ventas en este negocio.';
   END IF;
-  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array'
-     OR jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 50 THEN
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'La lista de artículos no tiene un formato válido.';
+  END IF;
+  IF jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 50 THEN
     RAISE EXCEPTION 'Añade entre 1 y 50 artículos a la venta.';
   END IF;
   IF v_paid < 0 THEN RAISE EXCEPTION 'El abono no puede ser negativo.'; END IF;
@@ -105,7 +107,13 @@ BEGIN
     WHEN v_paid > 0 THEN 'partially_paid'::public.document_status
     ELSE 'pending'::public.document_status
   END;
-  v_sale_number := 'VTA-' || to_char(now() AT TIME ZONE 'UTC', 'YYYYMMDD') || '-' || upper(substr(replace(v_sale_id::text, '-', ''), 1, 8));
+  v_sale_number := 'VTA-' || to_char(
+    now() AT TIME ZONE coalesce(
+      (SELECT nullif(b.timezone, '') FROM public.businesses b WHERE b.id = p_business_id),
+      'America/Bogota'
+    ),
+    'YYYYMMDD'
+  ) || '-' || upper(substr(replace(v_sale_id::text, '-', ''), 1, 8));
 
   INSERT INTO public.sales (
     id,business_id,customer_id,sale_number,status,currency_code,subtotal_minor,

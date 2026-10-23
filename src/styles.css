@@ -220,3 +220,14 @@
  .product-card-data{grid-template-columns:repeat(2,minmax(0,1fr))}
  .product-card-identifiers{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 }
+
+/* Afinar el tamaño de la miniatura dentro del encabezado de cada tarjeta. */
+.product-list-cards .product-card .product-card-heading .product-thumb{width:74px;min-width:74px;height:74px;min-height:74px}
+@media(max-width:600px){
+ .product-list-cards .product-card .product-card-heading{align-items:flex-start;flex-direction:column}
+ .product-list-cards .product-card .product-card-heading .product-thumb{width:100%;min-width:0;height:130px;min-height:130px}
+}
+@media(max-width:390px){
+ .product-list-cards .product-card .product-card-heading{flex-direction:row;align-items:center}
+ .product-list-cards .product-card .product-card-heading .product-thumb{width:65px;min-width:65px;height:65px;min-height:65px}
+}

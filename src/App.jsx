@@ -1499,7 +1499,36 @@ export default function App() {
     return groups;
   }, {})).sort((a, b) => b.amount - a.amount);
 
+  const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
+  const isBusinessOwner = activeBusiness?.role === "owner";
+  const businessPermissions = activeBusiness?.permissions || {};
+  const canPermission = (permission) => isBusinessManager || Boolean(businessPermissions[permission]);
+  const canManageProducts = canPermission("products_manage");
+  const canManageSales = canPermission("sales_manage");
+  const canManageCustomers = canPermission("customers_manage");
+  const canManagePurchases = canPermission("purchases_manage");
+  const canManageExpenses = canPermission("expenses_manage");
+  const canViewPurchases = canPermission("purchases_view");
+  const canViewExpenses = canPermission("expenses_view");
+  const effectivePurchaseTab = canViewPurchases
+    ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
+    : "expenses";
+  function canAccessScreen(next) {
+    if (next === "home" || next === "setup") return true;
+    if (next === "settings") return isBusinessOwner;
+    if (next === "team") return isBusinessManager;
+    if (next === "products") return canPermission("products_view");
+    if (next === "sales") return canPermission("sales_view");
+    if (next === "customers") return canPermission("customers_view");
+    if (next === "purchases") return canViewPurchases || canViewExpenses;
+    if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
+    if (next === "catalog") return canManageProducts;
+    return false;
+  }
+  const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
+
   function navigate(next) {
+    if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
@@ -1555,8 +1584,8 @@ export default function App() {
         <p className="nav-label">TU NEGOCIO</p>
         <nav className="nav-list">
           <button className={screen === "home" ? "nav-item active" : "nav-item"} onClick={() => navigate("home")}><span>⌂</span> Resumen</button>
-          {areas.map((area) => <button key={area.title} className={screen === area.screen ? "nav-item active" : "nav-item"} onClick={() => navigate(area.screen)}><span>{area.icon}</span>{area.title}</button>)}
-          <button className={screen === "settings" ? "nav-item active" : "nav-item"} onClick={() => navigate("settings")}><span>⚙</span> Configuración</button>
+          {visibleAreas.map((area) => <button key={area.title} className={screen === area.screen ? "nav-item active" : "nav-item"} onClick={() => navigate(area.screen)}><span>{area.icon}</span>{area.title}</button>)}
+          {isBusinessOwner && <button className={screen === "settings" ? "nav-item active" : "nav-item"} onClick={() => navigate("settings")}><span>⚙</span> Configuración</button>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
@@ -1986,7 +2015,7 @@ export default function App() {
         ) : screen === "home" ? <>
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">7 áreas</span></div>
-          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability" || area.screen === "catalog"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
+          <section className="area-grid">{visibleAreas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability" || area.screen === "catalog" || area.screen === "team"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>

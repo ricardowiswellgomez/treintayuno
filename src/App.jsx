@@ -206,6 +206,11 @@ export default function App() {
   const [profitabilityPeriod, setProfitabilityPeriod] = useState("month");
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenseDraft, setExpenseDraft] = useState(blankExpense);
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogCategories, setCatalogCategories] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogPublishingId, setCatalogPublishingId] = useState(null);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [saleProducts, setSaleProducts] = useState([]);
@@ -918,6 +923,60 @@ export default function App() {
   useEffect(() => {
     if (screen === "purchases" && activeBusiness?.id) loadPurchasesModuleData();
   }, [screen, activeBusiness?.id]);
+
+  async function loadCatalogAdminData() {
+    if (!activeBusiness?.id || screen !== "catalog") return;
+    setCatalogLoading(true); setError("");
+    try {
+      const [productsResult, categoriesResult] = await Promise.all([
+        supabase.from("products").select("id,business_id,name,category_id,description,commercial_presentation,unit_name,sale_price_minor,is_published,is_sellable,image_paths,archived_at")
+          .eq("business_id", activeBusiness.id).is("archived_at", null).order("name").limit(1000),
+        supabase.from("product_categories").select("id,name").eq("business_id", activeBusiness.id).order("name")
+      ]);
+      if (productsResult.error) throw productsResult.error;
+      if (categoriesResult.error) throw categoriesResult.error;
+      setCatalogProducts(productsResult.data || []);
+      setCatalogCategories(categoriesResult.data || []);
+    } catch (e) {
+      setError(friendlyError(e)); setCatalogProducts([]); setCatalogCategories([]);
+    } finally { setCatalogLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "catalog" && activeBusiness?.id) loadCatalogAdminData();
+  }, [screen, activeBusiness?.id]);
+
+  async function toggleCatalogPublication(product) {
+    if (!activeBusiness?.id) return;
+    const publish = !product.is_published;
+    if (publish && !product.is_sellable) {
+      setError("Activa el producto antes de publicarlo en el catálogo.");
+      return;
+    }
+    setCatalogPublishingId(product.id); setError(""); setNotice("");
+    try {
+      const { data, error: updateError } = await supabase.from("products")
+        .update({ is_published: publish })
+        .eq("business_id", activeBusiness.id).eq("id", product.id)
+        .select("id,is_published").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("No se pudo cambiar la publicación. Comprueba tus permisos.");
+      setCatalogProducts((current) => current.map((item) => item.id === product.id ? { ...item, is_published: data.is_published } : item));
+      setNotice(data.is_published ? product.name + " ya aparece en tu catálogo." : product.name + " dejó de aparecer en el catálogo.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setCatalogPublishingId(null); }
+  }
+
+  async function copyPublicCatalogLink() {
+    if (!activeBusiness?.id) return;
+    const link = window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
+    try {
+      await navigator.clipboard.writeText(link);
+      setNotice("Enlace del catálogo copiado. Ya puedes compartirlo.");
+    } catch {
+      window.prompt("Copia este enlace para compartir tu catálogo:", link);
+    }
+  }
 
   async function loadProfitabilityData() {
     if (!activeBusiness?.id || screen !== "profitability") return;

@@ -639,15 +639,20 @@ export default function App() {
               {p.track_inventory && <button className="secondary-button stock-button" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar" : "Ajustar"}</button>}
               {adjustingId === p.id && <form className="stock-adjust-form" onSubmit={adjustStock}><div><label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label><label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label></div><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button></form>}
               <div className="product-gallery">
-                <div className="product-gallery-heading"><strong>Fotos</strong><span>{(p.image_paths || []).length}/3</span></div>
-                {(p.image_paths || []).length ? <div className="product-gallery-list">{p.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
-                  {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} /> : <div className="image-placeholder">Imagen no disponible</div>}
-                  <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === p.id} onClick={() => removeExistingProductImage(p.id, imageKey)}>Quitar</button>
-                </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
-                {(p.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto
-                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingImagesFor === p.id || busy} onChange={(event) => chooseExistingProductImages(p, event)} />
-                </label>}
-                {uploadingImagesFor === p.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
+                <button type="button" className="product-gallery-toggle" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>
+                  <span>▧ {openProductGalleries[p.id] ? "Ocultar fotos" : "Ver fotos"}</span>
+                  <span>{(p.image_paths || []).length}/3</span>
+                </button>
+                {openProductGalleries[p.id] && <div className="product-gallery-content">
+                  {(p.image_paths || []).length ? <div className="product-gallery-list">{p.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
+                    {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} /> : <div className="image-placeholder">{galleryLoadingFor === p.id ? "Cargando…" : "Imagen no disponible"}</div>}
+                    <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === p.id} onClick={() => removeExistingProductImage(p.id, imageKey)}>Quitar</button>
+                  </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
+                  {(p.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingImagesFor === p.id || busy} onChange={(event) => chooseExistingProductImages(p, event)} />
+                  </label>}
+                  {uploadingImagesFor === p.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
+                </div>}
               </div>
             </article>)}</div> : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
             {!productsLoading && productsCount > 0 && <div className="pagination-bar">

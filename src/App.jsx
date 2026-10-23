@@ -49,7 +49,72 @@ const friendlyError = (error) => {
   return message;
 };
 
-const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const unitOptions = [
+  ["unidad", "Unidad"], ["par", "Par"], ["docena", "Docena"], ["gramo", "Gramo (g)"],
+  ["kilogramo", "Kilogramo (kg)"], ["mililitro", "Mililitro (ml)"], ["litro", "Litro (l)"],
+  ["centímetro", "Centímetro (cm)"], ["metro", "Metro (m)"], ["hora", "Hora"],
+  ["servicio", "Servicio"], ["caja", "Caja"], ["paquete", "Paquete"], ["personalizada", "Otra unidad…"]
+];
+const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+
+async function prepareProductImage(file) {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) throw new Error("Elige una imagen JPG, PNG o WebP.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Cada foto original debe pesar 10 MB o menos.");
+  let bitmap;
+  try { bitmap = await createImageBitmap(file); }
+  catch { throw new Error("No pudimos abrir esa imagen. Prueba con otro archivo JPG, PNG o WebP."); }
+  try {
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("Este navegador no permite preparar la foto.");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const toBlob = (quality) => new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    let blob = await toBlob(0.82);
+    if (!blob || blob.type !== "image/webp") throw new Error("Este navegador no pudo convertir la imagen a WebP.");
+    if (blob.size > 5 * 1024 * 1024) blob = await toBlob(0.68);
+    if (!blob || blob.size > 5 * 1024 * 1024) throw new Error("La foto sigue pesando demasiado después de optimizarla. Prueba una imagen más pequeña.");
+    const baseName = (file.name || "foto").replace(/\.[^.]+$/, "").slice(0, 80) || "foto";
+    return new File([blob], baseName + ".webp", { type: "image/webp", lastModified: Date.now() });
+  } finally { bitmap.close?.(); }
+}
+
+async function getProductImageToken() {
+  const { data: { session: currentSession } } = await supabase.auth.getSession();
+  if (!currentSession?.access_token) throw new Error("Tu sesión ha caducado. Inicia sesión de nuevo.");
+  return currentSession.access_token;
+}
+
+async function uploadProductImage(productId, file) {
+  const token = await getProductImageToken();
+  const response = await fetch("/api/product-images?productId=" + encodeURIComponent(productId), {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "image/webp" },
+    body: file
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) throw new Error(payload.error || "No se pudo subir la foto.");
+  return payload;
+}
+
+async function deleteProductImageRequest(productId, imageKey) {
+  const token = await getProductImageToken();
+  const response = await fetch("/api/product-images", {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ productId, imageKey })
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) throw new Error(payload.error || "No se pudo eliminar la foto.");
+  return payload;
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -70,6 +135,9 @@ export default function App() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState(blankProduct);
+  const [stagedImages, setStagedImages] = useState([]);
+  const [productImageUrls, setProductImageUrls] = useState({});
+  const [uploadingImagesFor, setUploadingImagesFor] = useState(null);
   const [categoryName, setCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
@@ -101,7 +169,7 @@ export default function App() {
     setProductsLoading(true); setError("");
     try {
       const [productResult, categoryResult] = await Promise.all([
-        supabase.from("products").select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,created_at").eq("business_id", activeBusiness.id).order("name"),
+        supabase.from("products").select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,image_paths,created_at").eq("business_id", activeBusiness.id).order("name"),
         supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name")
       ]);
       if (productResult.error) throw productResult.error;
@@ -135,6 +203,81 @@ export default function App() {
   }, [loadBusinesses]);
 
   useEffect(() => { if (screen === "products" && activeBusiness?.id) loadProducts(); }, [screen, activeBusiness?.id, loadProducts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls = [];
+    setProductImageUrls({});
+    async function loadImages() {
+      if (screen !== "products" || !session?.access_token) return;
+      const references = products.flatMap((product) => (product.image_paths || []).map((imageKey) => ({ productId: product.id, imageKey })));
+      await Promise.all(references.map(async ({ productId, imageKey }) => {
+        try {
+          const response = await fetch("/api/product-images?productId=" + encodeURIComponent(productId) + "&key=" + encodeURIComponent(imageKey), {
+            headers: { Authorization: "Bearer " + session.access_token }
+          });
+          if (!response.ok) return;
+          const url = URL.createObjectURL(await response.blob());
+          urls.push(url);
+          if (!cancelled) setProductImageUrls((current) => ({ ...current, [productId + "|" + imageKey]: url }));
+        } catch { /* Sin URL no hay imagen que mostrar; nunca se sustituye por una imagen ficticia. */ }
+      }));
+    }
+    loadImages();
+    return () => { cancelled = true; urls.forEach((url) => URL.revokeObjectURL(url)); };
+  }, [products, screen, session?.access_token]);
+
+  async function chooseNewProductImages(event) {
+    const picked = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!picked.length) return;
+    const room = Math.max(0, 3 - stagedImages.length);
+    if (!room) { setError("Cada producto puede tener como máximo tres fotos."); return; }
+    setBusy(true); setError("");
+    const next = [];
+    try {
+      for (const file of picked.slice(0, room)) {
+        const converted = await prepareProductImage(file);
+        next.push({ file: converted, preview: URL.createObjectURL(converted), name: converted.name });
+      }
+      setStagedImages((current) => [...current, ...next].slice(0, 3));
+      if (picked.length > room) setError("Solo puedes adjuntar tres fotos por producto. Se añadieron las primeras disponibles.");
+    } catch (e) {
+      next.forEach((image) => URL.revokeObjectURL(image.preview));
+      setError(friendlyError(e));
+    } finally { setBusy(false); }
+  }
+
+  async function chooseExistingProductImages(product, event) {
+    const picked = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!picked.length) return;
+    const currentCount = (product.image_paths || []).length;
+    const room = Math.max(0, 3 - currentCount);
+    if (!room) { setError("Este producto ya tiene tres fotos."); return; }
+    setUploadingImagesFor(product.id); setError(""); setNotice("");
+    let uploaded = 0;
+    try {
+      for (const file of picked.slice(0, room)) {
+        const converted = await prepareProductImage(file);
+        try { await uploadProductImage(product.id, converted); uploaded += 1; }
+        finally { /* El navegador libera el archivo temporal al salir de este bloque. */ }
+      }
+      setNotice(uploaded ? (uploaded === 1 ? "Foto agregada al producto." : uploaded + " fotos agregadas al producto.") : "No se subió ninguna foto.");
+      if (picked.length > room) setError("El producto solo admite tres fotos en total; se procesaron las primeras disponibles.");
+      await loadProducts();
+    } catch (e) { setError("La foto no se pudo subir. " + friendlyError(e)); await loadProducts(); }
+    finally { setUploadingImagesFor(null); }
+  }
+
+  async function removeExistingProductImage(productId, imageKey) {
+    setUploadingImagesFor(productId); setError(""); setNotice("");
+    try {
+      await deleteProductImageRequest(productId, imageKey);
+      setNotice("Foto eliminada."); await loadProducts();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setUploadingImagesFor(null); }
+  }
 
   useEffect(() => {
     if (screen !== "settings" || !activeBusiness?.id) return;
@@ -269,21 +412,32 @@ export default function App() {
     if (!activeBusiness?.id) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const { error: rpcError } = await supabase.rpc("create_product_with_opening_stock", {
+      const pendingImages = [...stagedImages];
+      const { data: newProductId, error: rpcError } = await supabase.rpc("create_product_with_opening_stock", {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
         p_category_id: productForm.category_id || null,
         p_sku: null,
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
-        p_unit_name: productForm.unit_name.trim() || "unidad",
+        p_unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
         p_sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
         p_cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
         p_opening_stock: Number(productForm.stock || 0),
         p_low_stock_threshold: productForm.low_stock === "" ? null : Number(productForm.low_stock)
       });
       if (rpcError) throw rpcError;
-      setProductForm(blankProduct); setShowProductForm(false); setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial.");
+      setProductForm(blankProduct); setShowProductForm(false);
+      setStagedImages([]);
+      pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
+      let uploaded = 0;
+      let imageFailures = 0;
+      for (const image of pendingImages) {
+        try { await uploadProductImage(newProductId, image.file); uploaded += 1; }
+        catch { imageFailures += 1; }
+      }
+      setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
+      if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }

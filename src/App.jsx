@@ -1813,7 +1813,7 @@ export default function App() {
     if (next === "products") return canPermission("products_view");
     if (next === "sales") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
-    if (next === "purchases") return canViewPurchases || canViewExpenses;
+    if (next === "purchases") return canViewPurchases || canViewExpenses || canPermission("suppliers_view");
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
     if (next === "catalog") return canManageProducts;
     return false;
@@ -1969,7 +1969,7 @@ export default function App() {
         </div>
         <div className="sidebar-nav-heading">
           <p className="nav-label">TU NEGOCIO</p>
-          {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => setSidebarEditing((editing) => !editing)} title={sidebarEditing ? "Terminar de editar" : "Editar menú"}>{sidebarEditing ? "Listo" : "Editar"}</button>}
+          {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
         </div>
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "")} aria-label="Navegación del negocio">
           {sidebarLayout.map((group) => <section key={group.id} className="sidebar-nav-group"

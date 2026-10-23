@@ -98,7 +98,8 @@ function isDataQuestion(q) {
     || /(este|el|mes pasado|ultimo|actual|esta)\s+(mes|ano|semana|periodo)/.test(q)
     || /(mas vendido|menos vendido|quien.*compro|cliente.*compro|compro.*cliente|ventas de|ventas del|ventas en|cuanto vend)/.test(q);
   const adviceOnly = /(mejorar|ideas|estrategia|consejos?|tips|promocion|como vender|como organizar)/.test(q)
-    && !/\b(quien|cuanto|cuantos|cuantas|total|ranking|historico|historial|stock|existencias|agotados?|ganancia|utilidad|rentabilidad|reporte|resumen)\b/.test(q);
+    && !/\b(quien|cuanto|cuantos|cuantas|total|ranking|historico|historial|stock|existencias|agotados?|ganancia|utilidad|rentabilidad|reporte|resumen)\b/.test(q)
+    && !/(este mes|mes pasado|ultimo mes|este ano|ano actual|esta semana|ultimos 7 dias)/.test(q);
   return explicit && !adviceOnly;
 }
 function intentFor(question) {

@@ -57,7 +57,7 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
 
@@ -194,7 +194,7 @@ export default function App() {
       const from = (productPage - 1) * productPageSize;
       const to = from + productPageSize - 1;
       let productsQuery = supabase.from("products")
-        .select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,image_paths,created_at", { count: "exact" })
+        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,created_at", { count: "exact" })
         .eq("business_id", activeBusiness.id).order("name").range(from, to);
       if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
       const [productResult, categoryResult] = await Promise.all([
@@ -269,7 +269,7 @@ export default function App() {
         setProductImageUrls(imageMap);
         const missingKeys = imageKeys.filter((key) => !foundKeys.has(key));
         if (missingKeys.length) {
-          setError("Hay fotos registradas en la ficha del producto que no se pudieron leer. Abre «Ver fotos» y vuelve a cargarlas.");
+          setError("Hay fotos registradas que no se pudieron leer. Usa la acción «Fotos» del producto para revisarlas y volver a cargarlas.");
         }
       } catch (e) {
         if (!cancelled) setError(friendlyError(e));
@@ -342,7 +342,7 @@ export default function App() {
       delete next[key];
       return next;
     });
-    setError("Una foto registrada no se pudo mostrar. Abre «Ver fotos» y vuelve a cargarla.");
+    setError("Una foto registrada no se pudo mostrar. Usa la acción «Fotos» del producto para revisarla y volver a cargarla.");
   }
 
   function toggleProductGallery(product) {
@@ -494,7 +494,8 @@ export default function App() {
         p_sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
         p_cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
         p_opening_stock: Number(productForm.stock || 0),
-        p_low_stock_threshold: productForm.low_stock === "" ? null : Number(productForm.low_stock)
+        p_low_stock_threshold: productForm.low_stock === "" ? null : Number(productForm.low_stock),
+        p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
       setProductForm(blankProduct); setShowProductForm(false);
@@ -530,6 +531,33 @@ export default function App() {
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
+  }
+
+  function renderStockAdjustment(product) {
+    if (adjustingId !== product.id) return null;
+    return <form className="stock-adjust-form" onSubmit={adjustStock}>
+      <div>
+        <label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label>
+        <label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label>
+      </div>
+      <button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button>
+    </form>;
+  }
+
+  function renderPhotoManager(product) {
+    if (!openProductGalleries[product.id]) return null;
+    return <div className="product-gallery-content">
+      {(product.image_paths || []).length ? <div className="product-gallery-list">{product.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
+        {productImageUrls[product.id + "|" + imageKey]
+          ? <img src={productImageUrls[product.id + "|" + imageKey]} alt={"Foto de " + product.name} onError={() => handleProductImageError(product.id, imageKey)} />
+          : <div className="image-placeholder">{galleryLoadingFor === product.id ? "Cargando…" : "Imagen no disponible"}</div>}
+        <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === product.id} onClick={() => removeExistingProductImage(product.id, imageKey)}>Quitar</button>
+      </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
+      {(product.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingImagesFor === product.id || busy} onChange={(event) => chooseExistingProductImages(product, event)} />
+      </label>}
+      {uploadingImagesFor === product.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
+    </div>;
   }
 
   const filteredProducts = products;
@@ -618,6 +646,7 @@ export default function App() {
                 <label>Precio de venta ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Costo por unidad ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Unidad<select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Presentación comercial<input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label>Nombre de la unidad<input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
                 <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
@@ -628,7 +657,7 @@ export default function App() {
                 <label className="full-span">Descripción<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
               {!categories.length && <p className="helper-text full-span">Primero puedes crear una categoría en «Administrar categorías»; después aparecerá aquí para elegirla.</p>}
-              <p className="helper-text">El código del producto se genera automáticamente para uso interno. En Rentabilidad vincularemos materiales, empaque y mano de obra para calcular el costo unitario real. El inventario inicial queda guardado en el historial.</p>
+              <p className="helper-text">El SKU y el slug se generan automáticamente. La presentación comercial es opcional. El inventario inicial queda guardado en el historial; el catálogo público sigue en preparación.</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowProductForm(false)}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</button></div>
             </form>}
             <div className="product-tools">
@@ -641,30 +670,68 @@ export default function App() {
                 <span className="count-label">{productsCount} {productsCount === 1 ? "producto" : "productos"}</span>
               </div>
             </div>
-            {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? <div className={viewMode === "cards" ? "product-list product-list-cards" : "product-list"}>{filteredProducts.map((p) => <article className={viewMode === "cards" ? "product-row product-card panel" : "product-row panel"} key={p.id}>
-              <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto principal de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
-              <div className="product-main"><h3>{p.name}</h3><p>{categories.find((c) => c.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
-              <div className="product-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><span>Costo {money(p.cost_price_minor, currencyCode)}</span></div>
-              <div className="product-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong><span>{p.track_inventory ? (p.unit_name || "unidades") : "inventario"}</span>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
-              {p.track_inventory && <button className="secondary-button stock-button" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar" : "Ajustar"}</button>}
-              {adjustingId === p.id && <form className="stock-adjust-form" onSubmit={adjustStock}><div><label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label><label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label></div><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button></form>}
-              <div className="product-gallery">
-                <button type="button" className="product-gallery-toggle" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>
-                  <span>▧ {openProductGalleries[p.id] ? "Ocultar fotos" : "Ver fotos"}</span>
-                  <span>{(p.image_paths || []).length}/3</span>
-                </button>
-                {openProductGalleries[p.id] && <div className="product-gallery-content">
-                  {(p.image_paths || []).length ? <div className="product-gallery-list">{p.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
-                    {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, imageKey)} /> : <div className="image-placeholder">{galleryLoadingFor === p.id ? "Cargando…" : "Imagen no disponible"}</div>}
-                    <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === p.id} onClick={() => removeExistingProductImage(p.id, imageKey)}>Quitar</button>
-                  </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
-                  {(p.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto
-                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingImagesFor === p.id || busy} onChange={(event) => chooseExistingProductImages(p, event)} />
-                  </label>}
-                  {uploadingImagesFor === p.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
-                </div>}
-              </div>
-            </article>)}</div> : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
+            {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? (
+              viewMode === "rows" ? (
+                <div className="product-table-wrap panel">
+                  <table className="product-table">
+                    <thead><tr>
+                      <th>Producto</th><th>SKU</th><th>Slug</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación comercial</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
+                    </tr></thead>
+                    <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
+                      <tr className="product-table-row">
+                        <td className="product-table-name"><div className="product-cell">
+                          <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+                          <div className="product-cell-copy"><strong>{p.name}</strong><span>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</span></div>
+                        </div></td>
+                        <td><code className="product-code">{p.sku || "—"}</code></td>
+                        <td><code className="product-slug" title={p.slug || ""}>{p.slug || "—"}</code></td>
+                        <td>{p.unit_name || "unidad"}</td>
+                        <td className="product-table-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></td>
+                        <td><span className="muted-value">—</span></td>
+                        <td>{p.commercial_presentation || <span className="muted-value">—</span>}</td>
+                        <td><div className="product-table-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong>{p.track_inventory && <small>{p.unit_name || "unidades"}</small>}{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <span className="stock-alert">Pocas existencias</span>}</div></td>
+                        <td><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></td>
+                        <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span><button type="button" className="publish-soon" disabled title="El catálogo público todavía está en preparación">Publicar</button></div></td>
+                        <td><div className="product-row-actions">
+                          {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
+                          <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
+                        </div></td>
+                      </tr>
+                      {(adjustingId === p.id || openProductGalleries[p.id]) && <tr className="product-extra-row"><td colSpan={11}>
+                        {renderStockAdjustment(p)}
+                        {renderPhotoManager(p)}
+                      </td></tr>}
+                    </React.Fragment>)}</tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="product-list product-list-cards">{filteredProducts.map((p) => <article className="product-card panel" key={p.id}>
+                  <div className="product-card-heading">
+                    <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+                    <div className="product-main"><h3>{p.name}</h3><p>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
+                  </div>
+                  <div className="product-card-identifiers"><div><span>SKU</span><code>{p.sku || "—"}</code></div><div><span>Slug</span><code title={p.slug || ""}>{p.slug || "—"}</code></div></div>
+                  <div className="product-card-data">
+                    <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
+                    <div><span>Precio {currencyCode}</span><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
+                    <div><span>Otras monedas</span><strong>—</strong></div>
+                    <div><span>Presentación comercial</span><strong>{p.commercial_presentation || "—"}</strong></div>
+                    <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong></div>
+                    <div><span>Estado</span><strong><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></strong></div>
+                    <div><span>Catálogo</span><strong><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></strong><small>Publicación disponible cuando se active el catálogo público.</small></div>
+                  </div>
+                  <div className="product-row-actions product-card-actions">
+                    {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
+                    <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
+                  </div>
+                  {(adjustingId === p.id || openProductGalleries[p.id]) && <div className="product-card-extra">
+                    {renderStockAdjustment(p)}
+                    {renderPhotoManager(p)}
+                  </div>}
+                </article>)}</div>
+              )
+            ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
+
             {!productsLoading && productsCount > 0 && <div className="pagination-bar">
               <label className="page-size-control">Mostrar
                 <select value={productPageSize} onChange={(e) => { setProductPageSize(Number(e.target.value)); setProductPage(1); }}>

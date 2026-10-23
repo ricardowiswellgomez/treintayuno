@@ -184,6 +184,7 @@ function PublicCatalog({ businessId }) {
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   const pageSize = 12;
 
   useEffect(() => {
@@ -201,7 +202,7 @@ function PublicCatalog({ businessId }) {
       } finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-  }, [businessId, page]);
+  }, [businessId, page, retryKey]);
 
   const business = payload?.business;
   const items = payload?.products || [];
@@ -212,7 +213,7 @@ function PublicCatalog({ businessId }) {
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.name || "Catálogo"}</h1></div>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
-      : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setPage((current) => current)}>Reintentar</button></div>
+      : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
         <div className="public-catalog-intro"><div><p>Una selección de productos de {business.name}.</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>

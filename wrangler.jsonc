@@ -8,5 +8,9 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": true
+  },
+  "vars": {
+    "SUPABASE_URL": "https://maogebecfottfvlrjbho.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Vte7r7Sm7tlo8S7B1N4Z0g_NzmENoFX"
   }
 }

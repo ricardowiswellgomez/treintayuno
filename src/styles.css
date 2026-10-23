@@ -1053,7 +1053,7 @@ button{line-height:1.35}
 .settings-logo-controls .helper-text{margin:10px 0}
 .settings-remove-logo{margin-top:6px}
 .settings-logo-filename{font-size:14px;line-height:1.5;overflow-wrap:anywhere;color:var(--muted)}
-.settings-color-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.settings-color-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
 .settings-color-field{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:13px;border:1px solid var(--line);border-radius:11px;background:var(--app-background,#f7f6f1);font-weight:700;font-size:14px}
 .settings-color-field input[type=color]{appearance:none;-webkit-appearance:none;width:100%;height:44px;min-width:0;padding:3px;border:1px solid #c9cdc3;border-radius:8px;background:var(--paper);cursor:pointer}
 .settings-color-field input[type=color]::-webkit-color-swatch-wrapper{padding:2px}

@@ -843,7 +843,15 @@ export default function App() {
       };
       let mutation = supabase.from("product_variants");
       if (editingVariantId) {
-        mutation = mutation.update({ ...payload, updated_at: new Date().toISOString() })
+        mutation = mutation.update({
+          variant_name: payload.variant_name,
+          variant_value: payload.variant_value,
+          sku: payload.sku,
+          sale_price_minor: payload.sale_price_minor,
+          stock_on_hand: payload.stock_on_hand,
+          is_active: payload.is_active,
+          updated_at: new Date().toISOString()
+        })
           .eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor);
       } else {
         mutation = mutation.insert(payload);

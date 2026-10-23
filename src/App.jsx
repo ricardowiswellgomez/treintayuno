@@ -68,7 +68,6 @@ const teamPermissionGroups = [
   { label: "Ventas", view: "sales_view", manage: "sales_manage" },
   { label: "Clientes", view: "customers_view", manage: "customers_manage" },
   { label: "Compras", view: "purchases_view", manage: "purchases_manage" },
-  { label: "Proveedores", view: "suppliers_view", manage: "suppliers_manage" },
   { label: "Gastos", view: "expenses_view", manage: "expenses_manage" }
 ];
 const blankTeamPermissions = {

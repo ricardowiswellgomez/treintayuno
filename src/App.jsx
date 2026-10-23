@@ -109,6 +109,35 @@ const blankTeamPermissions = {
 };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
+const defaultBusinessTheme = Object.freeze({ primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f" });
+const normalizeBusinessTheme = (theme) => {
+  const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+  return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text) };
+};
+const getBusinessLogoUrl = (path) => {
+  if (!path) return "";
+  try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
+};
+const contextualHelpContent = {
+  home: { title: "Resumen del negocio", intro: "Este es el punto de partida de Treintayuno. Cada módulo trabaja con la información real de tu negocio.", steps: ["En Productos registra lo que vendes y confirma su precio y existencias.", "En Ventas registra cada operación: el sistema calcula el total y descuenta inventario cuando corresponde.", "En Compras y gastos registra entradas y egresos para consultar la rentabilidad."], tip: "Mantén los productos y las existencias al día: las demás secciones dependen de esos datos." },
+  products: { title: "Productos e inventario", intro: "Aquí defines el catálogo interno que se usa en ventas, compras y rentabilidad.", steps: ["Crea o edita un producto con nombre, unidad, precio y costo.", "Activa «Se puede vender» para que aparezca en el formulario de ventas.", "Indica si controla inventario y registra las entradas o ajustes de existencias."], tip: "Antes de vender, revisa el precio, el estado de venta y las existencias." },
+  productForm: { title: "Crear o editar producto", intro: "Guarda la información comercial con la que se calcularán las ventas.", steps: ["Usa un nombre fácil de reconocer; el código es un identificador.", "Define precio de venta, costo, unidad y control de inventario.", "Revisa los campos y pulsa Guardar. Las fotos se optimizan antes de almacenarse."], tip: "Para servicios o productos digitales, desactiva el control de inventario si no corresponde." },
+  sales: { title: "Ventas", intro: "Registra ventas reales, consulta su estado de pago y registra abonos posteriores.", steps: ["Pulsa «Nueva venta». El cliente es opcional.", "Elige un producto, revisa cantidad y pulsa «+ Agregar» para incluirlo.", "Revisa el total, indica el abono si recibiste dinero y guarda."], tip: "Guardar requiere al menos un artículo agregado. Venta y salida de inventario se registran juntas." },
+  saleForm: { title: "Registrar una venta", intro: "El formulario solo vende productos activos. El inventario se descuenta al confirmar el registro.", steps: ["Elige un producto en la lista desplegable.", "Escribe la cantidad y pulsa «+ Agregar». Repite para otros productos.", "Revisa el carrito y el total; puedes dejar el cliente vacío.", "Registra el abono inicial, selecciona su forma de pago y pulsa Guardar venta."], tip: "Si el producto no aparece, revisa que esté activo para la venta. Si no hay existencias suficientes, el sistema explica el motivo." },
+  customers: { title: "Clientes", intro: "Guarda los datos de contacto para relacionarlos con las ventas cuando sea necesario.", steps: ["Pulsa «Nuevo cliente» y registra el nombre o empresa.", "Completa solo los datos de contacto que tengas.", "Guarda y luego podrás elegirlo en una venta."], tip: "También puedes registrar una venta sin cliente." },
+  customerForm: { title: "Guardar un cliente", intro: "Registra datos útiles para identificar o contactar a tu cliente.", steps: ["Escribe el nombre o la empresa.", "Añade teléfono, correo, ciudad u otros datos disponibles.", "Pulsa Guardar cliente y verifica el mensaje de confirmación."], tip: "No necesitas llenar los campos opcionales para guardar el cliente." },
+  purchases: { title: "Compras", intro: "Registra compras de mercancía o materiales y conserva su historial.", steps: ["Pulsa «Nueva compra».", "Añade descripción, cantidad y costo unitario de cada artículo.", "Vincula un producto cuando la compra deba aumentar sus existencias.", "Guarda la compra y registra el pago inicial si corresponde."], tip: "Solo los artículos vinculados a un producto modifican el inventario." },
+  purchaseForm: { title: "Registrar una compra", intro: "Esta entrada conserva los artículos, sus costos y los cambios reales de inventario.", steps: ["Selecciona proveedor y fecha si los conoces.", "Añade cada artículo con su cantidad y costo.", "Verifica total e importe pagado antes de guardar."], tip: "No vincules un material a un producto vendible si no debe aumentar las unidades de ese producto." },
+  suppliers: { title: "Proveedores", intro: "Centraliza quién te suministra productos, materiales o servicios.", steps: ["Pulsa «Nuevo proveedor».", "Registra el nombre y agrega NIT, correo, teléfono o dirección si los tienes.", "Guarda y selecciona ese proveedor en futuras compras o gastos."], tip: "El nombre del proveedor es imprescindible; el resto puede añadirse más adelante." },
+  supplierForm: { title: "Guardar un proveedor", intro: "Este registro ayuda a mantener las compras y gastos relacionados con su origen.", steps: ["Escribe el nombre del proveedor.", "Agrega los datos disponibles y cualquier nota útil.", "Pulsa Guardar proveedor."], tip: "Si cambia un dato, actualiza su ficha en lugar de duplicarla." },
+  expenses: { title: "Gastos", intro: "Registra salidas de dinero que no forman parte de la entrada de mercancía de una compra.", steps: ["Pulsa «Nuevo gasto».", "Describe el gasto, categoría, fecha e importe.", "Añade proveedor, método de pago o nota si aplica.", "Guarda y revisa el registro."], tip: "Registra cada gasto una sola vez. Los artículos de inventario corresponden a Compras." },
+  expenseForm: { title: "Registrar un gasto", intro: "Un gasto afecta los resultados de rentabilidad del período.", steps: ["Escribe una descripción concreta y un importe mayor que cero.", "Confirma la fecha y la categoría.", "Guarda cuando la información esté correcta."], tip: "Incluye la referencia o el soporte en Notas para facilitar una revisión posterior." },
+  profitability: { title: "Costos y rentabilidad", intro: "Este módulo resume valores a partir de ventas, costos registrados y gastos.", steps: ["Elige el período que quieres revisar.", "Compara ventas con el costo de los productos vendidos.", "Revisa los gastos asociados antes de interpretar la utilidad."], tip: "Los resultados dependen de que hayas registrado los costos y gastos de forma completa." },
+  catalog: { title: "Catálogo para compartir", intro: "Controla qué productos activos quieres mostrar a tus clientes en el catálogo público.", steps: ["Revisa nombre, precio, fotos y descripción en Productos.", "Publica solo los artículos que quieres mostrar.", "Abre el enlace público para comprobar lo que verá un cliente."], tip: "El catálogo muestra productos publicados y disponibles para vender; no sustituye el registro interno." },
+  team: { title: "Equipo y permisos", intro: "Permite que cada colaborador vea o gestione solo los módulos que necesita.", steps: ["La persona debe tener primero una cuenta de Treintayuno.", "Escribe el mismo correo que usa para iniciar sesión.", "Marca los permisos necesarios y guarda los cambios."], tip: "Otorga solo los accesos que la persona necesita para trabajar." },
+  settings: { title: "Configuración y personalización", intro: "Los ajustes se conservan en el negocio y se aplican cuando vuelvas a entrar.", steps: ["Actualiza nombre y moneda si el negocio aún no tiene importes que impidan cambiarla.", "Carga un logo y elige colores para personalizar las pantallas.", "Activa o desactiva el panel en «Ayudas contextuales».", "Pulsa Guardar configuración al terminar."], tip: "Los cambios visuales no alteran las operaciones. La moneda se protege cuando ya existen datos financieros." }
+};
+
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
 
 async function prepareProductImage(file) {
@@ -416,6 +445,12 @@ export default function App() {
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
+  const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
+  const [settingsHelpEnabled, setSettingsHelpEnabled] = useState(true);
+  const [settingsLogoFile, setSettingsLogoFile] = useState(null);
+  const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
+  const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [adjustingId, setAdjustingId] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState("");
@@ -657,6 +692,11 @@ export default function App() {
     let alive = true;
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
+    setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
+    setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
+    setSettingsLogoFile(null);
+    setSettingsLogoPreview("");
+    setSettingsRemoveLogo(false);
     setSettingsChecking(true);
     setError("");
     businessHasFinancialData(activeBusiness.id)
@@ -665,6 +705,41 @@ export default function App() {
       .finally(() => { if (alive) setSettingsChecking(false); });
     return () => { alive = false; };
   }, [screen, activeBusiness?.id, activeBusiness?.currency_code]);
+
+  useEffect(() => () => {
+    if (settingsLogoPreview?.startsWith("blob:")) URL.revokeObjectURL(settingsLogoPreview);
+  }, [settingsLogoPreview]);
+
+  useEffect(() => {
+    if (activeBusiness?.settings?.contextual_help_enabled === false) setHelpOpen(false);
+  }, [activeBusiness?.settings?.contextual_help_enabled]);
+
+  function chooseBusinessLogo(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("El logo debe ser una imagen JPG, PNG o WebP.");
+      return;
+    }
+    if (file.size > 5000000) {
+      setError("El logo original debe pesar máximo 5 MB.");
+      return;
+    }
+    setSettingsLogoFile(file);
+    setSettingsLogoPreview(URL.createObjectURL(file));
+    setSettingsRemoveLogo(false);
+    setError("");
+    setNotice("");
+  }
+
+  function clearBusinessLogo() {
+    setSettingsLogoFile(null);
+    setSettingsLogoPreview("");
+    setSettingsRemoveLogo(Boolean(activeBusiness?.logo_path));
+    setError("");
+    setNotice("");
+  }
 
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
@@ -761,32 +836,65 @@ export default function App() {
     if (activeBusiness.role !== "owner") { setError("Solo el propietario puede cambiar la configuración del negocio."); return; }
     const businessName = settingsBusinessName.trim();
     if (!businessName) { setError("Escribe el nombre del negocio."); return; }
+    const nextTheme = normalizeBusinessTheme(settingsTheme);
+    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled };
+    const nameChanged = businessName !== activeBusiness.name;
+    const currencyChanged = settingsCurrency !== currencyCode;
+    const themeChanged = JSON.stringify(nextTheme) !== JSON.stringify(normalizeBusinessTheme(activeBusiness.theme));
+    const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
+    const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
+    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged) {
+      setNotice("No hay cambios pendientes.");
+      return;
+    }
     setBusy(true); setError(""); setNotice("");
+    let uploadedLogoPath = null;
+    let businessUpdated = false;
     try {
       const hasData = await businessHasFinancialData(activeBusiness.id);
       setSettingsHasData(hasData);
-      if (hasData && settingsCurrency !== currencyCode) {
+      if (hasData && currencyChanged) {
         throw new Error("Para cambiar la moneda después de registrar productos u operaciones, primero se necesita una conversión de importes.");
       }
-      const nameChanged = businessName !== activeBusiness.name;
-      const currencyChanged = settingsCurrency !== currencyCode;
-      if (!nameChanged && !currencyChanged) {
-        setNotice("No hay cambios pendientes.");
-        return;
+      let nextLogoPath = settingsRemoveLogo ? null : activeBusiness.logo_path || null;
+      if (settingsLogoFile) {
+        const converted = await prepareProductImage(settingsLogoFile);
+        uploadedLogoPath = activeBusiness.id + "/" + crypto.randomUUID() + ".webp";
+        const { error: uploadError } = await supabase.storage.from("business-logos").upload(
+          uploadedLogoPath, converted, { contentType: "image/webp", cacheControl: "3600", upsert: false }
+        );
+        if (uploadError) throw uploadError;
+        nextLogoPath = uploadedLogoPath;
       }
       const { data, error: updateError } = await supabase.from("businesses")
-        .update({ name: businessName, currency_code: settingsCurrency })
-        .eq("id", activeBusiness.id).select("id,name,currency_code").maybeSingle();
+        .update({ name: businessName, currency_code: settingsCurrency, theme: nextTheme, logo_path: nextLogoPath, settings: nextSettings })
+        .eq("id", activeBusiness.id)
+        .select("id,name,currency_code,theme,logo_path,settings")
+        .maybeSingle();
       if (updateError) throw updateError;
-      if (!data) throw new Error("No se pudo guardar la configuración. Comprueba que hayas iniciado sesión como propietario.");
-      setActiveBusiness((current) => current ? { ...current, name: data.name, currency_code: data.currency_code } : current);
-      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code } : business));
+      if (!data) throw new Error("No se pudo guardar la personalización. Comprueba que hayas iniciado sesión como propietario.");
+      businessUpdated = true;
+      setActiveBusiness((current) => current ? { ...current, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
       setSettingsBusinessName(data.name);
-      setNotice(nameChanged && currencyChanged
-        ? "Nombre y moneda del negocio actualizados."
-        : nameChanged ? "Nombre del negocio actualizado." : "Moneda guardada. Los nuevos importes usarán esta moneda.");
-    } catch (e) { setError(friendlyError(e)); }
-    finally { setBusy(false); }
+      setSettingsCurrency(data.currency_code);
+      setSettingsTheme(normalizeBusinessTheme(data.theme));
+      setSettingsHelpEnabled(data.settings?.contextual_help_enabled !== false);
+      setSettingsLogoFile(null);
+      setSettingsLogoPreview("");
+      setSettingsRemoveLogo(false);
+      setNotice("Configuración guardada. El nombre, el tema, el logo y las ayudas se conservaron.");
+      const previousLogoPath = activeBusiness.logo_path;
+      if (previousLogoPath && previousLogoPath !== data.logo_path) {
+        try { await supabase.storage.from("business-logos").remove([previousLogoPath]); }
+        catch { /* Un archivo antiguo huérfano no afecta al logo activo. */ }
+      }
+    } catch (e) {
+      if (uploadedLogoPath && !businessUpdated) {
+        try { await supabase.storage.from("business-logos").remove([uploadedLogoPath]); } catch { /* Limpieza opcional tras un fallo de guardado. */ }
+      }
+      setError(friendlyError(e));
+    } finally { setBusy(false); }
   }
 
   function cancelProductForm() {
@@ -2030,6 +2138,19 @@ export default function App() {
     setError(""); setNotice("");
   }
 
+  const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
+  const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+  const appThemeStyle = { "--green": activeTheme.primary, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
+  const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
+  const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
+    : screen === "sales" && showSaleForm ? "saleForm"
+    : screen === "customers" && showCustomerForm ? "customerForm"
+    : screen === "purchases" && effectivePurchaseTab === "suppliers" ? (showSupplierForm ? "supplierForm" : "suppliers")
+    : screen === "purchases" && effectivePurchaseTab === "expenses" ? (showExpenseForm ? "expenseForm" : "expenses")
+    : screen === "purchases" && showPurchaseForm ? "purchaseForm"
+    : screen;
+  const contextualHelp = contextualHelpContent[contextualHelpKey] || contextualHelpContent.home;
+
   const requestedPublicCatalog = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("catalog") : null;
   if (requestedPublicCatalog && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)) {
     return <PublicCatalog businessId={requestedPublicCatalog} />;
@@ -2073,9 +2194,9 @@ export default function App() {
   );
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" style={appThemeStyle}>
       <aside className="sidebar">
-        <a className="brand" href="/"><span className="brand-mark">31</span><span className="brand-name">treintayuno</span></a>
+        <a className="brand" href="/"><span className="brand-mark">{activeBusinessLogoUrl ? <img className="brand-logo-image" src={activeBusinessLogoUrl} alt="" /> : "31"}</span><span className="brand-name">treintayuno</span></a>
         <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
           <span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>
           {businesses.length > 1
@@ -2611,18 +2732,52 @@ export default function App() {
           </section>
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Configura tu negocio</h2><p>Estas preferencias se guardan para que el sistema las use en las demás pantallas.</p></div>
+            <div className="settings-intro"><h2>Configura tu negocio</h2><p>Personalización permanente, preferencias de ayuda y datos comerciales en un solo sitio.</p></div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div className="settings-icon">¤</div>
+              <div className="settings-icon">⚙</div>
               <h3>Datos del negocio</h3>
-              <p>Actualiza el nombre y configura la moneda de las operaciones.</p>
+              <p>Actualiza el nombre y la moneda de las operaciones.</p>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
                 <label className="settings-field">Nombre del negocio<input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
                 <label className="settings-field">Moneda principal<select value={settingsCurrency} disabled={settingsHasData || activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label>
-                {settingsHasData ? <p className="helper-text">Ya existen productos u operaciones con importes. Para evitar alterar tus registros, no permitimos cambiar la moneda sin una herramienta de conversión.</p> : <p className="helper-text">Elige la moneda antes de registrar productos o movimientos de dinero. Podrás definir otros ajustes aquí más adelante.</p>}
-                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar esta opción.</p>}
-                <div className="form-actions"><button className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner" || (settingsBusinessName.trim() === (activeBusiness?.name || "") && settingsCurrency === currencyCode)}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
+                {settingsHasData ? <p className="helper-text">Ya existen productos u operaciones con importes. Para evitar alterar tus registros, no permitimos cambiar la moneda sin una herramienta de conversión.</p> : <p className="helper-text">Elige la moneda antes de registrar productos o movimientos de dinero.</p>}
+                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos ajustes.</p>}
               </>}
+
+              <div className="settings-section-divider" />
+              <h3>Logo del negocio</h3>
+              <p>Tu logo se conservará para las próximas sesiones y se mostrará en la navegación y el catálogo público.</p>
+              <div className="settings-logo-editor">
+                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>31</span>}</div>
+                <div className="settings-logo-controls">
+                  <label className="settings-field">Elegir logo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseBusinessLogo} disabled={activeBusiness?.role !== "owner" || busy} /></label>
+                  <p className="helper-text">JPG, PNG o WebP; máximo 5 MB. Se optimiza al guardar.</p>
+                  {(settingsLogoFile || activeBusiness?.logo_path) && <button type="button" className="secondary-button settings-remove-logo" onClick={clearBusinessLogo} disabled={activeBusiness?.role !== "owner" || busy}>{settingsRemoveLogo ? "Logo marcado para quitar" : "Quitar logo"}</button>}
+                  {settingsLogoFile && <p className="settings-logo-filename">Seleccionado: {settingsLogoFile.name}</p>}
+                </div>
+              </div>
+
+              <div className="settings-section-divider" />
+              <h3>Colores y apariencia</h3>
+              <p>Elige una paleta que se aplique a las pantallas del negocio y se conserve al volver a entrar.</p>
+              <div className="settings-color-grid">
+                <label className="settings-color-field"><span>Color principal</span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span>Fondo de pantalla</span><input type="color" aria-label="Color de fondo" value={settingsTheme.background} onChange={(e) => setSettingsTheme((current) => ({ ...current, background: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.background.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span>Fondo de tarjetas</span><input type="color" aria-label="Color de tarjetas" value={settingsTheme.surface} onChange={(e) => setSettingsTheme((current) => ({ ...current, surface: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.surface.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span>Color del texto</span><input type="color" aria-label="Color del texto" value={settingsTheme.text} onChange={(e) => setSettingsTheme((current) => ({ ...current, text: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.text.toUpperCase()}</code></label>
+              </div>
+              <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": settingsTheme.text }}>
+                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>31</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
+                <p>Así se verán tus tarjetas y acciones.</p><button type="button">Acción principal</button>
+              </div>
+              {activeBusiness?.role === "owner" && <button type="button" className="text-button settings-reset-theme" onClick={() => setSettingsTheme(defaultBusinessTheme)}>Restablecer paleta original</button>}
+
+              <div className="settings-section-divider" />
+              <h3>Ayudas contextuales</h3>
+              <p>Una guía clara que cambia según la sección en la que estés, con instrucciones y consejos prácticos.</p>
+              <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar ayudas contextuales</strong><small>El botón «Ayuda» abre el mismo panel explicativo sobre formularios y ventanas.</small></span></label>
+              {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar esta preferencia.</p>}
+              <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
@@ -2633,6 +2788,16 @@ export default function App() {
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>
+      {contextualHelpEnabled && <div className="context-help-layer">
+        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => setHelpOpen((open) => !open)}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
+        {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>
+          <header className="context-help-header"><div><p>AYUDA CONTEXTUAL</p><h2>{contextualHelp.title}</h2></div><button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button></header>
+          <p className="context-help-intro">{contextualHelp.intro}</p>
+          <div className="context-help-section"><strong>Cómo hacerlo</strong><ol>{contextualHelp.steps.map((step, index) => <li key={index}><span>{index + 1}</span><p>{step}</p></li>)}</ol></div>
+          <div className="context-help-tip"><strong><span aria-hidden="true">✦</span> Consejo útil</strong><p>{contextualHelp.tip}</p></div>
+          <footer className="context-help-footer"><span>Treintayuno · Guía de uso</span><button type="button" className="primary-button" onClick={() => setHelpOpen(false)}>Entendido</button></footer>
+        </aside>}
+      </div>}
     </main>
   );
 }

@@ -1268,7 +1268,7 @@ button{line-height:1.35}
 
 
 /* Inicio: tarjetas más amplias que aprovechan la pantalla sin desplazar el tablero. */
-.main-content-home{height:100vh;height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding-top:clamp(10px,1.35vh,16px);padding-bottom:10px}
+.main-content-home{height:100vh;height:100dvh;min-height:0;max-width:none;width:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;padding-top:clamp(10px,1.35vh,16px);padding-bottom:10px}
 .main-content-home .main-header{flex:0 0 auto;margin-bottom:clamp(8px,1.2vh,14px)}
 .home-dashboard{display:flex;flex:1 1 auto;min-height:0;flex-direction:column;gap:clamp(8px,1.2vh,12px);overflow:hidden}
 .home-dashboard .welcome-card{flex:0 0 auto;padding:clamp(12px,1.6vh,19px) clamp(15px,1.5vw,23px);margin:0;gap:16px;border-radius:14px}

@@ -1000,15 +1000,22 @@ export default function App() {
     if (!activeBusiness?.id || screen !== "purchases") return;
     setPurchaseLoading(true); setError("");
     try {
+      const privileged = ["owner", "admin"].includes(activeBusiness.role);
+      const permissions = activeBusiness.permissions || {};
+      const mayReadPurchases = privileged || Boolean(permissions.purchases_view);
+      const mayReadExpenses = privileged || Boolean(permissions.expenses_view);
+      const mayReadSuppliers = privileged || Boolean(permissions.suppliers_view);
+      const mayManagePurchases = privileged || Boolean(permissions.purchases_manage);
+      const none = Promise.resolve({ data: [], error: null });
       const [purchaseResult, expenseResult, supplierResult, productResult] = await Promise.all([
-        supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at")
-          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false }).limit(100),
-        supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at")
-          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(100),
-        supabase.from("suppliers").select("id,business_id,name,email,phone,tax_id,address,notes")
-          .eq("business_id", activeBusiness.id).order("name").limit(500),
-        supabase.from("products").select("id,name,sku,cost_price_minor,unit_name,stock_on_hand,track_inventory,archived_at")
-          .eq("business_id", activeBusiness.id).is("archived_at", null).order("name").limit(1000)
+        mayReadPurchases ? supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at")
+          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false }).limit(100) : none,
+        mayReadExpenses ? supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at")
+          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(100) : none,
+        mayReadSuppliers ? supabase.from("suppliers").select("id,business_id,name,email,phone,tax_id,address,notes")
+          .eq("business_id", activeBusiness.id).order("name").limit(500) : none,
+        mayManagePurchases ? supabase.from("products").select("id,name,sku,cost_price_minor,unit_name,stock_on_hand,track_inventory,archived_at")
+          .eq("business_id", activeBusiness.id).is("archived_at", null).order("name").limit(1000) : none
       ]);
       if (purchaseResult.error) throw purchaseResult.error;
       if (expenseResult.error) throw expenseResult.error;

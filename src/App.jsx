@@ -50,10 +50,12 @@ const friendlyError = (error) => {
 };
 
 const unitOptions = [
-  ["unidad", "Unidad"], ["par", "Par"], ["docena", "Docena"], ["gramo", "Gramo (g)"],
-  ["kilogramo", "Kilogramo (kg)"], ["mililitro", "Mililitro (ml)"], ["litro", "Litro (l)"],
-  ["centímetro", "Centímetro (cm)"], ["metro", "Metro (m)"], ["hora", "Hora"],
-  ["servicio", "Servicio"], ["caja", "Caja"], ["paquete", "Paquete"], ["personalizada", "Otra unidad…"]
+  ["unidad", "Unidad"], ["pieza", "Pieza"], ["par", "Par"], ["docena", "Docena"],
+  ["hoja", "Hoja"], ["lámina", "Lámina"], ["rollo", "Rollo"], ["caja", "Caja"], ["paquete", "Paquete"],
+  ["kit", "Kit"], ["set", "Set o juego"], ["gramo", "Gramo (g)"], ["kilogramo", "Kilogramo (kg)"],
+  ["mililitro", "Mililitro (ml)"], ["litro", "Litro (l)"], ["centímetro", "Centímetro (cm)"],
+  ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
+  ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
 const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 

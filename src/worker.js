@@ -56,7 +56,7 @@ function periodFor(question, timezone, now) {
   }
   if (/este ano|ano actual|durante el ano/.test(q)) {
     const start = String(p.year).padStart(4, "0") + "-01-01";
-    return { label: "este año (" + p.year + ")", startDate: start, endDate: shiftDateKey(String(p.year + 1) + "-01-01", 0), startISO: localMidnightUtc(start, timezone).toISOString(), endISO: now.toISOString() };
+    return { label: "este año (" + p.year + ")", startDate: start, endDate: shiftDateKey(today, 1), startISO: localMidnightUtc(start, timezone).toISOString(), endISO: now.toISOString() };
   }
   const monthStart = String(p.year).padStart(4, "0") + "-" + String(p.month).padStart(2, "0") + "-01";
   const next = shiftMonth(p.year, p.month, 1);
@@ -295,17 +295,13 @@ export default {
         const timezone = business.timezone || "America/Bogota";
         const period = periodFor(question, timezone, new Date());
         const salesNeeded = intent.dataQuestion && permissionsNeeded.includes("sales_view");
-        const paramsForSales = {
+        const salesParams = {
           select: "id,customer_id,sale_number,status,currency_code,subtotal_minor,discount_minor,total_minor,amount_paid_minor,sold_at,created_at",
           business_id: "eq." + businessId,
-          sold_at: "gte." + period.startISO,
-          order: "sold_at.desc",
+          or: "(sold_at.gte." + period.startISO + ",created_at.gte." + period.startISO + ")",
+          order: "created_at.desc",
           limit: String(MAX_ROWS)
         };
-        if (period.endISO) paramsForSales.sold_at = "gte." + period.startISO;
-        const salesParams = { ...paramsForSales };
-        salesParams.sold_at = "gte." + period.startISO;
-        salesParams.and = "(sold_at.lt." + period.endISO + ")";
         const dataPromises = [
           salesNeeded ? restRows("sales", salesParams, token, publishableKey) : Promise.resolve([]),
           (intent.dataQuestion && intent.inventory) ? restRows("products", {
@@ -329,7 +325,12 @@ export default {
           }, token, publishableKey) : Promise.resolve([])
         ];
         const [salesRaw, products, expenses, purchases, customersList] = await Promise.all(dataPromises);
-        const sales = salesRaw.filter(row => !isCancelledSale(row));
+        const periodStart = Date.parse(period.startISO);
+        const periodEnd = Date.parse(period.endISO);
+        const sales = salesRaw.filter(row => {
+          const saleDate = Date.parse(row.sold_at || row.created_at || "");
+          return !isCancelledSale(row) && Number.isFinite(saleDate) && saleDate >= periodStart && saleDate < periodEnd;
+        });
         let items = [];
         if (intent.dataQuestion && (intent.productRanking || intent.profitability) && sales.length) {
           const ids = sales.map(row => row.id).filter(Boolean);

@@ -10,19 +10,46 @@ const areas = [
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
-const money = (value) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(Number(value || 0));
+const currencyDigits = (code = "COP") => {
+  try { return new Intl.NumberFormat("es-CO", { style: "currency", currency: code }).resolvedOptions().maximumFractionDigits; }
+  catch { return 0; }
+};
+const money = (minorUnits, code = "COP") => {
+  const digits = currencyDigits(code);
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: code, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(minorUnits || 0) / (10 ** digits));
+};
+const toMinorUnits = (amount, code = "COP") => Math.round(Number(amount || 0) * (10 ** currencyDigits(code)));
+const currencyOptions = [
+  ["COP", "Peso colombiano"], ["USD", "Dólar estadounidense"], ["EUR", "Euro"],
+  ["MXN", "Peso mexicano"], ["PEN", "Sol peruano"], ["CLP", "Peso chileno"],
+  ["ARS", "Peso argentino"], ["BRL", "Real brasileño"], ["CAD", "Dólar canadiense"],
+  ["GBP", "Libra esterlina"], ["JPY", "Yen japonés"], ["AUD", "Dólar australiano"]
+];
+async function businessHasFinancialData(businessId) {
+  const results = await Promise.all([
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+    supabase.from("sales").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+    supabase.from("purchases").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+    supabase.from("expenses").select("id", { count: "exact", head: true }).eq("business_id", businessId)
+  ]);
+  const failed = results.find((result) => result.error);
+  if (failed) throw failed.error;
+  return results.some((result) => Number(result.count || 0) > 0);
+}
 const friendlyError = (error) => {
   const message = error?.message || "Ocurrió un error. Inténtalo de nuevo.";
   if (/invalid login credentials/i.test(message)) return "El correo o la contraseña no coinciden.";
   if (/email not confirmed/i.test(message)) return "Confirma tu correo antes de iniciar sesión.";
   if (/user already registered/i.test(message)) return "Ese correo ya tiene una cuenta. Inicia sesión.";
   if (/password should be at least/i.test(message)) return "Usa una contraseña de al menos 6 caracteres.";
+  if (/foreign key constraint|violates foreign key/i.test(message)) return "No puedes eliminar esta categoría porque todavía tiene productos. Cambia esos productos a otra categoría y vuelve a intentarlo.";
+  if (/no puedes cambiar la moneda|convertir los importes/i.test(message)) return message;
   if (/duplicate key|already exists/i.test(message)) return "Ya existe un registro con ese nombre o código.";
   if (/failed to fetch|network/i.test(message)) return "No pudimos conectar con el servicio. Revisa tu conexión e inténtalo otra vez.";
   return message;
 };
 
-const blankProduct = { name: "", sku: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -44,10 +71,17 @@ export default function App() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState(blankProduct);
   const [categoryName, setCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
+  const [settingsCurrency, setSettingsCurrency] = useState("COP");
+  const [settingsChecking, setSettingsChecking] = useState(false);
+  const [settingsHasData, setSettingsHasData] = useState(false);
   const [search, setSearch] = useState("");
   const [adjustingId, setAdjustingId] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
+  const currencyCode = activeBusiness?.currency_code || "COP";
 
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
@@ -101,6 +135,19 @@ export default function App() {
   }, [loadBusinesses]);
 
   useEffect(() => { if (screen === "products" && activeBusiness?.id) loadProducts(); }, [screen, activeBusiness?.id, loadProducts]);
+
+  useEffect(() => {
+    if (screen !== "settings" || !activeBusiness?.id) return;
+    let alive = true;
+    setSettingsCurrency(activeBusiness.currency_code || "COP");
+    setSettingsChecking(true);
+    setError("");
+    businessHasFinancialData(activeBusiness.id)
+      .then((hasData) => { if (alive) setSettingsHasData(hasData); })
+      .catch((e) => { if (alive) setError(friendlyError(e)); })
+      .finally(() => { if (alive) setSettingsChecking(false); });
+    return () => { alive = false; };
+  }, [screen, activeBusiness?.id, activeBusiness?.currency_code]);
 
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
@@ -158,6 +205,65 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  async function updateCategory(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !editingCategoryId || !editingCategoryName.trim()) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: updateError } = await supabase.from("product_categories")
+        .update({ name: editingCategoryName.trim() })
+        .eq("business_id", activeBusiness.id).eq("id", editingCategoryId)
+        .select("id").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("No tienes permiso para editar esta categoría.");
+      setEditingCategoryId(null); setEditingCategoryName("");
+      setNotice("Categoría actualizada."); await loadProducts();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteCategory(categoryId) {
+    if (!activeBusiness?.id || !categoryId) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: deleteError } = await supabase.from("product_categories")
+        .delete().eq("business_id", activeBusiness.id).eq("id", categoryId)
+        .select("id").maybeSingle();
+      if (deleteError) throw deleteError;
+      if (!data) throw new Error("No tienes permiso para eliminar esta categoría.");
+      setConfirmDeleteCategoryId(null);
+      if (productForm.category_id === categoryId) setProductForm((current) => ({ ...current, category_id: "" }));
+      setNotice("Categoría eliminada."); await loadProducts();
+    } catch (e) { setError(friendlyError(e)); setConfirmDeleteCategoryId(null); }
+    finally { setBusy(false); }
+  }
+
+  async function saveSettings(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    if (activeBusiness.role !== "owner") { setError("Solo el propietario puede cambiar la configuración del negocio."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const hasData = await businessHasFinancialData(activeBusiness.id);
+      setSettingsHasData(hasData);
+      if (hasData && settingsCurrency !== currencyCode) {
+        throw new Error("Para cambiar la moneda después de registrar productos u operaciones, primero se necesita una conversión de importes.");
+      }
+      if (settingsCurrency === currencyCode) {
+        setNotice("La moneda ya está configurada."); return;
+      }
+      const { data, error: updateError } = await supabase.from("businesses")
+        .update({ currency_code: settingsCurrency })
+        .eq("id", activeBusiness.id).select("id,currency_code").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("No se pudo guardar la moneda. Comprueba que hayas iniciado sesión como propietario.");
+      setActiveBusiness((current) => current ? { ...current, currency_code: data.currency_code } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, currency_code: data.currency_code } : business));
+      setNotice("Moneda guardada. Los nuevos importes usarán esta moneda.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
   async function addProduct(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
@@ -167,12 +273,12 @@ export default function App() {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
         p_category_id: productForm.category_id || null,
-        p_sku: productForm.sku.trim() || null,
+        p_sku: null,
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
         p_unit_name: productForm.unit_name.trim() || "unidad",
-        p_sale_price_minor: Math.round(Number(productForm.sale_price || 0)),
-        p_cost_price_minor: Math.round(Number(productForm.cost_price || 0)),
+        p_sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
+        p_cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
         p_opening_stock: Number(productForm.stock || 0),
         p_low_stock_threshold: productForm.low_stock === "" ? null : Number(productForm.low_stock)
       });
@@ -257,11 +363,12 @@ export default function App() {
         <nav className="nav-list">
           <button className={screen === "home" ? "nav-item active" : "nav-item"} onClick={() => navigate("home")}><span>⌂</span> Resumen</button>
           {areas.map((area) => <button key={area.title} className={screen === area.screen ? "nav-item active" : "nav-item"} onClick={() => navigate(area.screen)}><span>{area.icon}</span>{area.title}</button>)}
+          <button className={screen === "settings" ? "nav-item active" : "nav-item"} onClick={() => navigate("settings")}><span>⚙</span> Configuración</button>
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className="main-content">
-        <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "products" ? (
@@ -271,23 +378,23 @@ export default function App() {
               <h3>Datos del producto</h3>
               <div className="form-grid">
                 <label>Nombre *<input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
-                <label>Código (opcional)<input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={80} placeholder="Ej. CAM-001" /></label>
-                <label>Categoría<select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+                <label>Categoría<select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label>Tipo<select value={productForm.product_type} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
-                <label>Precio de venta (COP)<input type="number" min="0" step="1" value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder="0" /></label>
-                <label>Costo por unidad (COP)<input type="number" min="0" step="1" value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder="0" /></label>
+                <label>Precio de venta ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <label>Costo por unidad ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Unidad<input value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} maxLength={30} required placeholder="unidad, hora, caja…" /></label>
                 {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden (opcional)<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
                 <label className="full-span">Descripción (opcional)<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
-              <p className="helper-text">El precio y el costo se guardan en pesos colombianos. El inventario inicial también queda en el historial.</p>
+              {!categories.length && <p className="helper-text full-span">Primero puedes crear una categoría en «Administrar categorías»; después aparecerá aquí para elegirla.</p>}
+              <p className="helper-text">El código del producto se genera automáticamente para uso interno. En Rentabilidad vincularemos materiales, empaque y mano de obra para calcular el costo unitario real. El inventario inicial queda guardado en el historial.</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowProductForm(false)}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</button></div>
             </form>}
             <div className="product-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o código…" /></label><span className="count-label">{products.length} {products.length === 1 ? "producto" : "productos"}</span></div>
             {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? <div className="product-list">{filteredProducts.map((p) => <article className="product-row panel" key={p.id}>
               <div className="product-symbol">{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</div>
               <div className="product-main"><h3>{p.name}</h3><p>{categories.find((c) => c.id === p.category_id)?.name || "Sin categoría"}{p.sku ? " · " + p.sku : ""} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
-              <div className="product-price"><strong>{money(p.sale_price_minor)}</strong><span>Costo {money(p.cost_price_minor)}</span></div>
+              <div className="product-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><span>Costo {money(p.cost_price_minor, currencyCode)}</span></div>
               <div className="product-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong><span>{p.track_inventory ? "existencias" : "inventario"}</span>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
               {p.track_inventory && <button className="secondary-button stock-button" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar" : "Ajustar"}</button>}
               {adjustingId === p.id && <form className="stock-adjust-form" onSubmit={adjustStock}><div><label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label><label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label></div><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button></form>}

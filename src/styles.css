@@ -991,8 +991,8 @@
 
 
 /* Drag táctil de uno o varios niveles del menú en celular */
-.sidebar-drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:36px;flex:0 0 32px;touch-action:none;user-select:none;-webkit-user-select:none}
-.nav-list-editing .sidebar-nav-row,.nav-list-editing .sidebar-group-heading{touch-action:none;user-select:none;-webkit-user-select:none}
+.sidebar-drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:42px;flex:0 0 38px;touch-action:none;user-select:none;-webkit-user-select:none}
+.nav-list-editing .sidebar-nav-row,.nav-list-editing .sidebar-group-heading{user-select:none;-webkit-user-select:none}
 .nav-list-touch-dragging .sidebar-nav-row{opacity:.82}
 .nav-list-touch-dragging .sidebar-nav-row:active{outline:2px solid #aac2aa;outline-offset:1px;background:#eff4ec}
 @media(max-width:600px){

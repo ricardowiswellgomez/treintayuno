@@ -1820,9 +1820,10 @@ export default function App() {
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
 
-  function navigate(next) {
+  function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
+    if (next === "purchases") setPurchaseModuleTab(purchaseTab);
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
   }
@@ -1890,8 +1891,7 @@ export default function App() {
 
   function navigateSidebarItem(item) {
     if (item.id === "suppliers") {
-      setPurchaseModuleTab("suppliers");
-      navigate("purchases");
+      navigate("purchases", "suppliers");
       return;
     }
     navigate(item.screen);

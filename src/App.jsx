@@ -1097,6 +1097,106 @@ export default function App() {
     }
   }
 
+  async function loadTeamModuleData() {
+    if (!activeBusiness?.id || screen !== "team" || !["owner", "admin"].includes(activeBusiness.role)) return;
+    setTeamLoading(true); setError("");
+    try {
+      const { data, error: teamError } = await supabase.rpc("list_business_team", { p_business_id: activeBusiness.id });
+      if (teamError) throw teamError;
+      setTeamRows(data || []);
+    } catch (e) {
+      setError(friendlyError(e)); setTeamRows([]);
+    } finally { setTeamLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "team" && activeBusiness?.id) loadTeamModuleData();
+  }, [screen, activeBusiness?.id, activeBusiness?.role]);
+
+  function clearTeamForm() {
+    setTeamFormOpen(false);
+    setTeamEmail("");
+    setTeamPermissionDraft(blankTeamPermissions);
+    setTeamEditingUserId(null);
+  }
+
+  function startEditTeamMember(member) {
+    const role = member.role;
+    if (role !== "employee") return;
+    setTeamEmail(member.email || "");
+    setTeamPermissionDraft({ ...blankTeamPermissions, ...(member.permissions || {}) });
+    setTeamEditingUserId(member.user_id);
+    setTeamFormOpen(true);
+    setError(""); setNotice("");
+  }
+
+  function changeTeamPermission(key, checked) {
+    setTeamPermissionDraft((current) => {
+      const next = { ...current, [key]: checked };
+      const moduleGroup = teamPermissionGroups.find((group) => group.view === key || group.manage === key);
+      if (moduleGroup) {
+        if (key === moduleGroup.manage && checked) next[moduleGroup.view] = true;
+        if (key === moduleGroup.view && !checked) next[moduleGroup.manage] = false;
+      }
+      if (key === "sales_view" && checked) { next.products_view = true; next.customers_view = true; }
+      if (key === "sales_manage" && checked) { next.sales_view = true; next.products_view = true; next.customers_view = true; }
+      if (key === "purchases_view" && checked) { next.suppliers_view = true; next.products_view = true; }
+      if (key === "purchases_manage" && checked) {
+        next.purchases_view = true; next.suppliers_view = true; next.products_view = true; next.products_manage = true;
+      }
+      if (key === "expenses_view" && checked) next.suppliers_view = true;
+      if (key === "expenses_manage" && checked) { next.expenses_view = true; next.suppliers_view = true; }
+      if (key === "products_view" && !checked) {
+        next.products_manage = false; next.purchases_view = false; next.purchases_manage = false;
+        next.sales_view = false; next.sales_manage = false;
+      }
+      if (key === "customers_view" && !checked) { next.customers_manage = false; next.sales_view = false; next.sales_manage = false; }
+      if (key === "suppliers_view" && !checked) {
+        next.suppliers_manage = false; next.purchases_view = false; next.purchases_manage = false;
+        next.expenses_view = false; next.expenses_manage = false;
+      }
+      if (key === "sales_view" && !checked) next.sales_manage = false;
+      if (key === "purchases_view" && !checked) next.purchases_manage = false;
+      if (key === "expenses_view" && !checked) next.expenses_manage = false;
+      return next;
+    });
+  }
+
+  async function saveTeamMember(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    if (!teamEmail.trim()) { setError("Escribe el correo de la persona."); return; }
+    setTeamSaving(true); setError(""); setNotice("");
+    try {
+      const { error: saveError } = await supabase.rpc("upsert_business_employee", {
+        p_business_id: activeBusiness.id,
+        p_email: teamEmail.trim(),
+        p_permissions: teamPermissionDraft
+      });
+      if (saveError) throw saveError;
+      setNotice(teamEditingUserId ? "Permisos actualizados." : "Colaborador agregado al equipo.");
+      clearTeamForm();
+      await loadTeamModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setTeamSaving(false); }
+  }
+
+  async function removeTeamMember(member) {
+    if (!activeBusiness?.id || member.role !== "employee") return;
+    if (!window.confirm("¿Quitar a " + (member.display_name || member.email) + " del equipo? Ya no podrá abrir este negocio.")) return;
+    setTeamSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: removeError } = await supabase.rpc("remove_business_employee", {
+        p_business_id: activeBusiness.id, p_user_id: member.user_id
+      });
+      if (removeError) throw removeError;
+      if (!data) throw new Error("No se encontró ese colaborador en el equipo.");
+      setTeamRows((current) => current.filter((row) => row.user_id !== member.user_id));
+      setNotice("Acceso retirado.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setTeamSaving(false); }
+  }
+
   async function loadProfitabilityData() {
     if (!activeBusiness?.id || screen !== "profitability") return;
     setProfitabilityLoading(true); setError("");

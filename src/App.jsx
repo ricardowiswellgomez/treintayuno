@@ -242,14 +242,22 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     setProductImageUrls({});
-    async function loadPrimaryImages() {
-      if (screen !== "products" || !activeBusiness?.id || !products.length) return;
-      const primaryKeys = products.map((product) => product.image_paths?.[0]).filter(Boolean);
-      if (!primaryKeys.length) return;
+    async function loadVisibleImages() {
+      if (screen !== "products" || !activeBusiness?.id || !products.length) {
+        setGalleryLoadingFor(null);
+        return;
+      }
+      const imageKeys = products.flatMap((product) => {
+        const paths = product.image_paths || [];
+        return openProductGalleries[product.id] ? paths : paths.slice(0, 1);
+      }).filter(Boolean);
+      const openProduct = products.find((product) => openProductGalleries[product.id]);
+      setGalleryLoadingFor(openProduct?.id || null);
+      if (!imageKeys.length) { setGalleryLoadingFor(null); return; }
       try {
         const { data, error: imageError } = await supabase.from("product_images")
           .select("product_id,image_key,image_data")
-          .eq("business_id", activeBusiness.id).in("image_key", primaryKeys);
+          .eq("business_id", activeBusiness.id).in("image_key", imageKeys);
         if (imageError) throw imageError;
         if (cancelled) return;
         const imageMap = {};
@@ -259,11 +267,13 @@ export default function App() {
         setProductImageUrls(imageMap);
       } catch (e) {
         if (!cancelled) setError(friendlyError(e));
+      } finally {
+        if (!cancelled) setGalleryLoadingFor(null);
       }
     }
-    loadPrimaryImages();
+    loadVisibleImages();
     return () => { cancelled = true; };
-  }, [products, screen, activeBusiness?.id]);
+  }, [products, screen, activeBusiness?.id, openProductGalleries]);
 
   async function chooseNewProductImages(event) {
     const picked = Array.from(event.target.files || []);
@@ -318,27 +328,8 @@ export default function App() {
     finally { setUploadingImagesFor(null); }
   }
 
-  async function toggleProductGallery(product) {
-    const productId = product.id;
-    if (openProductGalleries[productId]) {
-      setOpenProductGalleries((current) => ({ ...current, [productId]: false }));
-      return;
-    }
-    setOpenProductGalleries((current) => ({ ...current, [productId]: true }));
-    const imageKeys = product.image_paths || [];
-    const missingKeys = imageKeys.filter((key) => !productImageUrls[productId + "|" + key]);
-    if (!missingKeys.length) return;
-    setGalleryLoadingFor(productId);
-    try {
-      const { data, error: imageError } = await supabase.from("product_images")
-        .select("product_id,image_key,image_data")
-        .eq("business_id", activeBusiness?.id).eq("product_id", productId).in("image_key", missingKeys);
-      if (imageError) throw imageError;
-      const imageMap = {};
-      for (const image of data || []) imageMap[image.product_id + "|" + image.image_key] = "data:image/webp;base64," + image.image_data;
-      setProductImageUrls((current) => ({ ...current, ...imageMap }));
-    } catch (e) { setError(friendlyError(e)); }
-    finally { setGalleryLoadingFor(null); }
+  function toggleProductGallery(product) {
+    setOpenProductGalleries((current) => ({ ...current, [product.id]: !current[product.id] }));
   }
 
   useEffect(() => {
@@ -611,7 +602,8 @@ export default function App() {
                 <label>Unidad<select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 {productForm.unit_name === "personalizada" && <label>Nombre de la unidad<input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
-                <label className="full-span">Fotos del producto (máximo 3)
+                <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
+                  <span className="photo-help">JPG, PNG o WebP. Se optimizan antes de guardarse en la base de datos; máximo 150 KB por foto.</span>
                   <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || stagedImages.length >= 3} onChange={chooseNewProductImages} />
                 </label>
                 {stagedImages.length > 0 && <div className="staged-image-grid full-span">{stagedImages.map((image, index) => <figure className="staged-image" key={image.preview}><img src={image.preview} alt={image.name} /><figcaption>{image.name}</figcaption><button type="button" className="text-button danger-text" onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>Quitar foto</button></figure>)}</div>}

@@ -16,7 +16,7 @@ const defaultSidebarLayout = () => [{
   type: "group",
   title: "TU NEGOCIO",
   items: [
-    { id: "home", screen: "home", label: "Resumen", icon: "⌂" },
+    { id: "home", screen: "home", label: "Inicio", icon: "⌂" },
     ...areas.map((area) => ({ id: area.screen, screen: area.screen, label: area.title, icon: area.icon })),
     { id: "suppliers", screen: "purchases", tab: "suppliers", label: "Proveedores", icon: "♧" },
     { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }
@@ -32,7 +32,7 @@ const normalizeSidebarLayout = (layout) => {
       type: "group",
       title: String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map((item) => ({
-        ...known.get(item.id), label: String(item.label || known.get(item.id).label).slice(0, 60),
+        ...known.get(item.id), label: item.id === "home" ? "Inicio" : String(item.label || known.get(item.id).label).slice(0, 60),
         icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
       })) : []
     }));
@@ -2392,7 +2392,7 @@ export default function App() {
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
-      <section className="main-content">
+      <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
@@ -2955,11 +2955,11 @@ export default function App() {
             </form>
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
-        ) : screen === "home" ? <>
+        ) : screen === "home" ? <div className="home-dashboard">
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">{visibleAreas.length} áreas</span></div>
           <section className="area-grid">{visibleAreas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability" || area.screen === "catalog" || area.screen === "team"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p></button>; })}</section>
-        </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
+        </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
       <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>

@@ -63,6 +63,19 @@ const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_p
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
+const teamPermissionGroups = [
+  { label: "Productos e inventario", view: "products_view", manage: "products_manage" },
+  { label: "Ventas", view: "sales_view", manage: "sales_manage" },
+  { label: "Clientes", view: "customers_view", manage: "customers_manage" },
+  { label: "Compras", view: "purchases_view", manage: "purchases_manage" },
+  { label: "Proveedores", view: "suppliers_view", manage: "suppliers_manage" },
+  { label: "Gastos", view: "expenses_view", manage: "expenses_manage" }
+];
+const blankTeamPermissions = {
+  products_view: false, products_manage: false, sales_view: false, sales_manage: false,
+  customers_view: false, customers_manage: false, purchases_view: false, purchases_manage: false,
+  suppliers_view: false, suppliers_manage: false, expenses_view: false, expenses_manage: false
+};
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
@@ -310,6 +323,13 @@ export default function App() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogPublishingId, setCatalogPublishingId] = useState(null);
+  const [teamRows, setTeamRows] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamFormOpen, setTeamFormOpen] = useState(false);
+  const [teamEmail, setTeamEmail] = useState("");
+  const [teamPermissionDraft, setTeamPermissionDraft] = useState(blankTeamPermissions);
+  const [teamEditingUserId, setTeamEditingUserId] = useState(null);
+  const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [saleProducts, setSaleProducts] = useState([]);
@@ -337,10 +357,10 @@ export default function App() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, businesses(id, name, logo_path, theme, currency_code)")
+      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
-    const list = (data || []).map((row) => ({ ...row.businesses, role: row.role })).filter((b) => b?.id);
+    const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} })).filter((b) => b?.id);
     setBusinesses(list);
     setActiveBusiness((current) => list.find((b) => b.id === current?.id) || list[0] || null);
     setScreen((current) => list.length ? (current === "setup" ? "home" : current) : "setup");

@@ -2934,7 +2934,7 @@ export default function App() {
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
-      <div className="ai-assistant-layer">
+      <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>
         {aiOpen && <section id="treintayuno-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
           <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
           <div className="ai-assistant-messages" aria-live="polite">

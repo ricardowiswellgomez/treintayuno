@@ -553,7 +553,9 @@ export default function App() {
           .select("id").maybeSingle();
         if (updateError) throw updateError;
         if (!updated) throw new Error("No se pudo actualizar el producto. Comprueba tus permisos.");
-        setProductForm(blankProduct); setShowProductForm(false); setEditingProductId(null);
+        setProductForm(blankProduct); setShowProductForm(false);
+        setOpenProductGalleries((current) => ({ ...current, [editingProductId]: false }));
+        setEditingProductId(null);
         setStagedImages([]);
         pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
         await loadProducts();

@@ -1017,7 +1017,7 @@ export default function App() {
                 <div className="product-table-wrap panel">
                   <table className="product-table">
                     <thead><tr>
-                      <th>Producto</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
+                      <th>Producto</th><th>Código</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
                     </tr></thead>
                     <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
                       <tr className="product-table-row">
@@ -1025,6 +1025,7 @@ export default function App() {
                           <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
                           <div className="product-cell-copy"><strong>{p.name}</strong><span>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</span></div>
                         </div></td>
+                        <td><code className="product-code">{p.sku || "—"}</code></td>
                         <td>{p.unit_name || "unidad"}</td>
                         <td className="product-table-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></td>
                         <td><span className="muted-value">—</span></td>
@@ -1040,25 +1041,26 @@ export default function App() {
                   </table>
                 </div>
               ) : (
-                <div className="product-list product-list-cards">{filteredProducts.map((p) => <article className="product-card panel" key={p.id}>
-                  <div className="product-card-heading">
-                    <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
-                    <div className="product-main"><h3>{p.name}</h3><p>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
-                  </div>
-                  <div className="product-card-data">
-                    <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
-                    <div><span>Precio {currencyCode}</span><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
-                    <div><span>Otras monedas</span><strong>—</strong></div>
-                    <div><span>Presentación comercial</span><strong>{p.commercial_presentation || "—"}</strong></div>
-                    <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong></div>
-                    <div><span>Estado</span><strong><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></strong></div>
-                    <div><span>Catálogo</span><strong><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></strong><small>Publicación disponible cuando se active el catálogo público.</small></div>
-                  </div>
-                  <div className="product-row-actions product-card-actions">
-                    <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
-                  </div>
-                </article>)}</div>
-              )
+                <div className="product-list product-list-cards">{filteredProducts.map((p) => <article className="product-card panel product-card-wa" key={p.id}>
+  <div className="product-card-wa-top">
+    <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+    <div className="product-card-wa-copy">
+      <h3>{p.name}</h3>
+      <span className="product-card-wa-category">{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"}</span>
+      <div className="product-card-wa-code"><span>Código</span><code>{p.sku || "—"}</code></div>
+    </div>
+  </div>
+  <div className="product-card-wa-price-row">
+    <div className="product-card-wa-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
+    <span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span>
+  </div>
+  <div className="product-card-wa-details">
+    <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
+    <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
+    {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
+  </div>
+  <div className="product-row-actions product-card-actions"><button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button></div>
+</article>)}</div>
             ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
 
             {!productsLoading && productsCount > 0 && <div className="pagination-bar">
@@ -1094,8 +1096,8 @@ export default function App() {
           </section>
         ) : screen === "home" ? <>
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Empieza por registrar los productos que realmente tienes; después conectaremos ventas, compras y rentabilidad.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
-          <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">6 áreas</span></div>
-          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
+          <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">7 áreas</span></div>
+          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>

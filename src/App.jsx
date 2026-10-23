@@ -60,6 +60,9 @@ const unitOptions = [
 ];
 const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
+const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
+const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
@@ -176,6 +179,27 @@ export default function App() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [purchaseModuleTab, setPurchaseModuleTab] = useState("purchases");
+  const [purchaseRows, setPurchaseRows] = useState([]);
+  const [purchaseItemsByPurchase, setPurchaseItemsByPurchase] = useState({});
+  const [purchaseProducts, setPurchaseProducts] = useState([]);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [supplierDraft, setSupplierDraft] = useState(blankSupplier);
+  const [showPurchaseForm, setShowPurchaseForm] = useState(false);
+  const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(todayInBogota());
+  const [purchaseProductChoice, setPurchaseProductChoice] = useState("");
+  const [purchaseQuantity, setPurchaseQuantity] = useState("1");
+  const [purchaseUnitCost, setPurchaseUnitCost] = useState("");
+  const [purchaseCart, setPurchaseCart] = useState([]);
+  const [purchaseTax, setPurchaseTax] = useState("0");
+  const [purchasePayment, setPurchasePayment] = useState("0");
+  const [purchaseNotes, setPurchaseNotes] = useState("");
+  const [expenseRows, setExpenseRows] = useState([]);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseDraft, setExpenseDraft] = useState(blankExpense);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [saleProducts, setSaleProducts] = useState([]);
@@ -842,6 +866,150 @@ export default function App() {
     if ((screen === "sales" || screen === "customers") && activeBusiness?.id) loadSalesModuleData();
   }, [screen, activeBusiness?.id, customerSearch]);
 
+  async function loadPurchasesModuleData() {
+    if (!activeBusiness?.id || screen !== "purchases") return;
+    setPurchaseLoading(true); setError("");
+    try {
+      const [purchaseResult, expenseResult, supplierResult, productResult] = await Promise.all([
+        supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at")
+          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false }).limit(100),
+        supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at")
+          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(100),
+        supabase.from("suppliers").select("id,business_id,name,email,phone,tax_id,address,notes")
+          .eq("business_id", activeBusiness.id).order("name").limit(500),
+        supabase.from("products").select("id,name,sku,cost_price_minor,unit_name,stock_on_hand,track_inventory,archived_at")
+          .eq("business_id", activeBusiness.id).is("archived_at", null).order("name").limit(1000)
+      ]);
+      if (purchaseResult.error) throw purchaseResult.error;
+      if (expenseResult.error) throw expenseResult.error;
+      if (supplierResult.error) throw supplierResult.error;
+      if (productResult.error) throw productResult.error;
+      const purchaseList = purchaseResult.data || [];
+      const itemMap = {};
+      if (purchaseList.length) {
+        const itemsResult = await supabase.from("purchase_items")
+          .select("id,purchase_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
+          .eq("business_id", activeBusiness.id).in("purchase_id", purchaseList.map((purchase) => purchase.id))
+          .order("created_at");
+        if (itemsResult.error) throw itemsResult.error;
+        for (const item of itemsResult.data || []) {
+          if (!itemMap[item.purchase_id]) itemMap[item.purchase_id] = [];
+          itemMap[item.purchase_id].push(item);
+        }
+      }
+      setPurchaseRows(purchaseList);
+      setPurchaseItemsByPurchase(itemMap);
+      setExpenseRows(expenseResult.data || []);
+      setSuppliers(supplierResult.data || []);
+      setPurchaseProducts(productResult.data || []);
+    } catch (e) {
+      setError(friendlyError(e));
+      setPurchaseRows([]); setPurchaseItemsByPurchase({});
+      setExpenseRows([]); setSuppliers([]); setPurchaseProducts([]);
+    } finally { setPurchaseLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "purchases" && activeBusiness?.id) loadPurchasesModuleData();
+  }, [screen, activeBusiness?.id]);
+
+  function addPurchaseLine() {
+    const product = purchaseProducts.find((item) => item.id === purchaseProductChoice);
+    const quantity = Number(purchaseQuantity);
+    const unitCost = Number(purchaseUnitCost);
+    if (!product) { setError("Elige el artículo que compraste."); return; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { setError("La cantidad debe ser mayor que cero."); return; }
+    if (!Number.isFinite(unitCost) || unitCost < 0) { setError("Escribe un costo por unidad válido."); return; }
+    setPurchaseCart((current) => {
+      const exists = current.find((item) => item.product_id === product.id);
+      if (exists) return current.map((item) => item.product_id === product.id
+        ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)), unit_cost: String(unitCost) }
+        : item);
+      return [...current, { product_id: product.id, name: product.name, quantity, unit_cost: String(unitCost), unit_name: product.unit_name || "unidad" }];
+    });
+    setPurchaseProductChoice(""); setPurchaseQuantity("1"); setPurchaseUnitCost(""); setError("");
+  }
+
+  async function createPurchase(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    if (!purchaseCart.length) { setError("Añade al menos un artículo a la compra."); return; }
+    const subtotal = purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity)), 0);
+    const tax = toMinorUnits(purchaseTax || 0, currencyCode);
+    const payment = toMinorUnits(purchasePayment || 0, currencyCode);
+    const total = subtotal + tax;
+    if (tax < 0 || payment < 0 || payment > total) { setError("Revisa el impuesto y el abono: no pueden ser negativos y el abono no puede superar el total."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: purchaseError } = await supabase.rpc("create_purchase", {
+        p_business_id: activeBusiness.id,
+        p_supplier_id: purchaseSupplierId || null,
+        p_notes: purchaseNotes.trim() || null,
+        p_purchased_at: new Date(purchaseDate + "T12:00:00-05:00").toISOString(),
+        p_tax_minor: tax,
+        p_amount_paid_minor: payment,
+        p_items: purchaseCart.map((item) => ({
+          product_id: item.product_id, item_name: item.name, quantity: Number(item.quantity),
+          unit_cost_minor: toMinorUnits(item.unit_cost, currencyCode)
+        }))
+      });
+      if (purchaseError) throw purchaseError;
+      setShowPurchaseForm(false); setPurchaseSupplierId(""); setPurchaseDate(todayInBogota());
+      setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseNotes("");
+      setNotice("Compra guardada. El ingreso a inventario y su historial se actualizaron juntos.");
+      await loadPurchasesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function addSupplier(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    const name = supplierDraft.name.trim();
+    if (!name) { setError("Escribe el nombre del proveedor."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: supplierError } = await supabase.from("suppliers")
+        .insert({
+          business_id: activeBusiness.id, name,
+          email: supplierDraft.email.trim() || null, phone: supplierDraft.phone.trim() || null,
+          tax_id: supplierDraft.tax_id.trim() || null, address: supplierDraft.address.trim() || null,
+          notes: supplierDraft.notes.trim() || null
+        }).select("id,business_id,name,email,phone,tax_id,address,notes").single();
+      if (supplierError) throw supplierError;
+      setSuppliers((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name, "es")));
+      setPurchaseSupplierId(data.id); setSupplierDraft(blankSupplier); setShowSupplierForm(false);
+      setNotice("Proveedor guardado: " + data.name + ".");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function addExpense(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    if (!expenseDraft.description.trim()) { setError("Describe el gasto."); return; }
+    const amountMinor = toMinorUnits(expenseDraft.amount, currencyCode);
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) { setError("El importe debe ser mayor que cero."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { error: expenseError } = await supabase.from("expenses").insert({
+        business_id: activeBusiness.id, category: expenseDraft.category.trim() || "Otro",
+        description: expenseDraft.description.trim(), amount_minor: amountMinor, currency_code: currencyCode,
+        expense_date: expenseDraft.expense_date || todayInBogota(), payment_method: expenseDraft.payment_method || null,
+        supplier_id: expenseDraft.supplier_id || null, notes: expenseDraft.notes.trim() || null
+      });
+      if (expenseError) throw expenseError;
+      setExpenseDraft({ ...blankExpense, expense_date: todayInBogota() });
+      setShowExpenseForm(false); setNotice("Gasto guardado.");
+      await loadPurchasesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  function purchaseStatusLabel(status) {
+    return ({ paid: "Pagada", partially_paid: "Con abono", pending: "Por pagar", draft: "Borrador", canceled: "Anulada", refunded: "Devuelta" })[status] || status || "—";
+  }
+
   function fullCustomerName(draft) {
     const person = [draft.first_name, draft.last_name].map((part) => (part || "").trim()).filter(Boolean).join(" ");
     return person || (draft.company_name || "").trim();
@@ -971,6 +1139,7 @@ export default function App() {
 
   function navigate(next) {
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
+    if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
   }
 
@@ -1273,7 +1442,7 @@ export default function App() {
         ) : screen === "home" ? <>
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Empieza por registrar los productos que realmente tienes; después conectaremos ventas, compras y rentabilidad.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">7 áreas</span></div>
-          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
+          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>

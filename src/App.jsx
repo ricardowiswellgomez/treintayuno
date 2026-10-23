@@ -59,12 +59,12 @@ const unitOptions = [
 ];
 const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 
-const MAX_PRODUCT_IMAGE_BYTES = 150000;
+const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
 
 async function prepareProductImage(file) {
   const allowed = ["image/jpeg", "image/png", "image/webp"];
   if (!allowed.includes(file.type)) throw new Error("Elige una imagen JPG, PNG o WebP.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("Cada foto original debe pesar 10 MB o menos.");
+  if (file.size > 5_000_000) throw new Error("Cada foto original debe pesar máximo 5 MB antes de optimizarla.");
   let bitmap;
   try { bitmap = await createImageBitmap(file); }
   catch { throw new Error("No pudimos abrir esa imagen. Prueba con otro archivo JPG, PNG o WebP."); }
@@ -92,7 +92,7 @@ async function prepareProductImage(file) {
       }
       canvas.width = 0; canvas.height = 0;
     }
-    throw new Error("La foto no pudo reducirse a 150 KB. Prueba con otra imagen más pequeña.");
+    throw new Error("La foto no pudo reducirse a 1,5 MB en WebP. Prueba con otra imagen más pequeña.");
   } finally { bitmap.close?.(); }
 }
 
@@ -109,7 +109,7 @@ async function fileToBase64(file) {
 async function uploadProductImage(productId, file, businessId) {
   if (!businessId) throw new Error("No pudimos identificar el negocio de este producto.");
   if (file.type !== "image/webp" || file.size > MAX_PRODUCT_IMAGE_BYTES) {
-    throw new Error("La foto debe estar optimizada en WebP y pesar 150 KB o menos.");
+    throw new Error("La foto debe estar optimizada en WebP y pesar 1,5 MB o menos.");
   }
   const imageData = await fileToBase64(file);
   const { data, error } = await supabase.rpc("add_product_image_db", {
@@ -326,6 +326,17 @@ export default function App() {
       setNotice("Foto eliminada."); await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setUploadingImagesFor(null); }
+  }
+
+  function handleProductImageError(productId, imageKey) {
+    setProductImageUrls((current) => {
+      const key = productId + "|" + imageKey;
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setError("Una foto registrada no se pudo mostrar. Abre «Ver fotos» y vuelve a cargarla.");
   }
 
   function toggleProductGallery(product) {
@@ -604,7 +615,7 @@ export default function App() {
                 {productForm.unit_name === "personalizada" && <label>Nombre de la unidad<input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
                 <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
-                  <span className="photo-help">JPG, PNG o WebP. Se optimizan antes de guardarse en la base de datos; máximo 150 KB por foto.</span>
+                  <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
                   <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || stagedImages.length >= 3} onChange={chooseNewProductImages} />
                 </label>
                 {stagedImages.length > 0 && <div className="staged-image-grid full-span">{stagedImages.map((image, index) => <figure className="staged-image" key={image.preview}><img src={image.preview} alt={image.name} /><figcaption>{image.name}</figcaption><button type="button" className="text-button danger-text" onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>Quitar foto</button></figure>)}</div>}
@@ -625,7 +636,7 @@ export default function App() {
               </div>
             </div>
             {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? <div className={viewMode === "cards" ? "product-list product-list-cards" : "product-list"}>{filteredProducts.map((p) => <article className={viewMode === "cards" ? "product-row product-card panel" : "product-row panel"} key={p.id}>
-              <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto principal de " + p.name} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
+              <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto principal de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
               <div className="product-main"><h3>{p.name}</h3><p>{categories.find((c) => c.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
               <div className="product-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><span>Costo {money(p.cost_price_minor, currencyCode)}</span></div>
               <div className="product-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong><span>{p.track_inventory ? (p.unit_name || "unidades") : "inventario"}</span>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
@@ -638,7 +649,7 @@ export default function App() {
                 </button>
                 {openProductGalleries[p.id] && <div className="product-gallery-content">
                   {(p.image_paths || []).length ? <div className="product-gallery-list">{p.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
-                    {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} /> : <div className="image-placeholder">{galleryLoadingFor === p.id ? "Cargando…" : "Imagen no disponible"}</div>}
+                    {productImageUrls[p.id + "|" + imageKey] ? <img src={productImageUrls[p.id + "|" + imageKey]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, imageKey)} /> : <div className="image-placeholder">{galleryLoadingFor === p.id ? "Cargando…" : "Imagen no disponible"}</div>}
                     <button type="button" className="text-button danger-text" disabled={uploadingImagesFor === p.id} onClick={() => removeExistingProductImage(p.id, imageKey)}>Quitar</button>
                   </figure>)}</div> : <p className="no-product-photos">Este producto aún no tiene fotos.</p>}
                   {(p.image_paths || []).length < 3 && <label className="image-upload-label">+ Añadir foto

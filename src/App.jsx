@@ -514,6 +514,10 @@ export default function App() {
   const [aiHistory, setAiHistory] = useState([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    setAiHistory([]);
+    setAiMessage("");
+  }, [activeBusiness?.id]);
   async function sendAiMessage(event) {
     event.preventDefault();
     const message = aiMessage.trim();
@@ -533,12 +537,12 @@ export default function App() {
         body: JSON.stringify({
           message,
           history: nextHistory.slice(0, -1).slice(-6),
-          context: "Negocio activo: " + (activeBusiness?.name || "sin seleccionar") + ". Módulo abierto: " + (areas.find((area) => area.screen === screen)?.title || screen) + ". Moneda: " + (currencyCode || "COP") + ". No se ha enviado información de ventas, clientes ni inventario."
+          businessId: activeBusiness?.id
         })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No pudimos consultar la IA.");
-      setAiHistory((current) => [...current, { role: "assistant", content: payload.answer }]);
+      setAiHistory((current) => [...current, { role: "assistant", content: payload.answer, elapsedMs: payload.elapsedMs, dataBacked: payload.dataBacked }]);
     } catch (error) {
       setAiHistory((current) => [...current, { role: "assistant", content: "No pude responder: " + (error?.message || "inténtalo de nuevo.") }]);
     } finally { setAiBusy(false); }
@@ -2325,7 +2329,6 @@ export default function App() {
             : <span className="business-name">{activeBusiness?.name}</span>}
         </div>
         <div className="sidebar-nav-heading">
-          <p className="nav-label">TU NEGOCIO</p>
           {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
         </div>
         {!sidebarEditing && isBusinessOwner && <p className="sidebar-touch-tip">Mueve con ⠿: arrastra con el ratón o mantén presionado en celular.</p>}
@@ -2926,14 +2929,14 @@ export default function App() {
       </section>
       <div className="ai-assistant-layer">
         {aiOpen && <section className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
-          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>Asistente IA</strong><small>Treintayuno · Vista previa inicial</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
+          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>Datos reales · acceso según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
           <div className="ai-assistant-messages" aria-live="polite">
-            {!aiHistory.length && <div className="ai-assistant-welcome"><strong>¿En qué te ayudo?</strong><p>Puedo orientarte sobre cómo usar Treintayuno y organizar tu negocio. En esta primera versión no tengo acceso automático a tus cifras.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Cómo puedo organizar mejor las ventas de mi negocio?")}>Mejorar mis ventas</button><button type="button" onClick={() => setAiMessage("¿Qué debería revisar para mantener un inventario confiable?")}>Ordenar inventario</button></div></div>}
-            {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p></div>)}
-            {aiBusy && <div className="ai-assistant-thinking">Pensando…</div>}
+            {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
+            {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && item.elapsedMs != null && <small className="ai-assistant-meta">{item.dataBacked ? "Datos del negocio" : "IA"} · {item.elapsedMs} ms en servidor</small>}</div>)}
+            {aiBusy && <div className="ai-assistant-thinking">Consultando datos y preparando respuesta…</div>}
           </div>
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder="Escribe tu pregunta…" rows={2} maxLength={1500} disabled={aiBusy} /><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
-          <p className="ai-assistant-disclaimer">No inventa cifras ni ejecuta cambios. Verifica siempre los datos del negocio.</p>
+          <p className="ai-assistant-disclaimer">Las consultas respetan los permisos de tu perfil. Las cifras provienen de registros y las estimaciones se identifican como tales.</p>
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} onClick={() => setAiOpen((open) => !open)}><span>✦</span> IA</button>
       </div>

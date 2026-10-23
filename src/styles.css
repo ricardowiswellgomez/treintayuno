@@ -1426,3 +1426,36 @@ button{line-height:1.35}
     padding: 18px;
   }
 }
+
+
+/* Ajustes finales: catálogo con fotos, Inicio a pantalla completa y navegación más compacta. */
+.catalog-admin-symbol{flex:0 0 54px;width:54px;height:54px;min-width:54px;overflow:hidden;padding:0}
+.catalog-admin-symbol img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;padding:3px;border-radius:inherit;background:#fffefa}
+.main-content-home{box-sizing:border-box;padding-top:clamp(4px,.7vh,9px);padding-bottom:6px}
+.main-content-home .main-header{margin-bottom:5px}
+.home-dashboard{gap:clamp(7px,.9vh,10px)}
+.home-dashboard .welcome-card{padding:clamp(13px,1.8vh,21px) clamp(15px,1.5vw,23px)}
+.home-dashboard .area-grid{gap:clamp(9px,1.15vh,13px)}
+.home-dashboard .area-card{padding:clamp(14px,1.8vh,22px) clamp(14px,1.35vw,20px)}
+.main-content-home .app-footer{display:none}
+.app-shell>.sidebar{padding-top:8px;padding-bottom:12px}
+.sidebar .brand{margin-bottom:10px}
+.business-switcher{margin-bottom:12px}
+@media(max-height:760px) and (min-width:901px){
+  .main-content-home{padding-top:4px;padding-bottom:4px}
+  .main-content-home .main-header{margin-bottom:4px}
+  .home-dashboard{gap:6px}
+  .home-dashboard .welcome-card{padding:10px 14px}
+  .home-dashboard .area-grid{gap:7px}
+  .home-dashboard .area-card{padding:clamp(10px,1.35vh,14px) 12px}
+  .main-content-home .app-footer{display:none}
+}
+@media(max-width:900px){
+  .app-shell>.sidebar{padding-top:8px;padding-bottom:10px}
+  .sidebar .brand{margin-bottom:10px}
+  .business-switcher{margin-bottom:10px}
+}
+@media(max-width:600px){
+  .app-shell>.sidebar{padding-top:7px}
+  .sidebar .brand{margin-bottom:8px}
+}

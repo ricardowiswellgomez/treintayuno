@@ -834,8 +834,8 @@ export default function App() {
         const [salesResult, productsResult, customersResult] = await Promise.all([
           supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at")
             .eq("business_id", activeBusiness.id).order("created_at", { ascending: false }).limit(100),
-          supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable")
-            .eq("business_id", activeBusiness.id).eq("is_sellable", true).order("name").limit(500),
+          supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable,archived_at")
+            .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(500),
           supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp")
             .eq("business_id", activeBusiness.id).order("full_name").limit(500)
         ]);
@@ -1664,9 +1664,9 @@ export default function App() {
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
         ) : screen === "home" ? <>
-          <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Empieza por registrar los productos que realmente tienes; después conectaremos ventas, compras y rentabilidad.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
+          <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">7 áreas</span></div>
-          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
+          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>

@@ -2052,6 +2052,8 @@ export default function App() {
           <p className="nav-label">TU NEGOCIO</p>
           {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
         </div>
+        {!sidebarEditing && <p className="sidebar-touch-tip">En celular, mantén presionado un elemento para moverlo.</p>}
+        {sidebarEditing && <p className="sidebar-edit-hint">Mantén presionado ⠿ y arrastra. Guarda al terminar.</p>}
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio" onTouchMove={moveSidebarTouchDrag} onTouchEnd={finishSidebarTouchDrag} onTouchCancel={finishSidebarTouchDrag}>
           {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}

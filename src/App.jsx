@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase.js";
 
 const areas = [
@@ -297,6 +297,9 @@ export default function App() {
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarLayout, setSidebarLayout] = useState(defaultSidebarLayout);
   const [draggedSidebarItem, setDraggedSidebarItem] = useState(null);
+  const [sidebarTouchDragging, setSidebarTouchDragging] = useState(false);
+  const sidebarTouchRef = useRef(null);
+  const sidebarLongPressTimerRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -1889,6 +1892,80 @@ export default function App() {
     });
   }
 
+  function startSidebarTouchDrag(event, payload) {
+    if (!sidebarEditing || (event.target?.closest && event.target.closest("input, button"))) return;
+    if (!event.touches || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    sidebarTouchRef.current = {
+      ...payload,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      dragging: false,
+      lastTarget: null
+    };
+    if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
+    sidebarLongPressTimerRef.current = window.setTimeout(() => {
+      const active = sidebarTouchRef.current;
+      if (!active) return;
+      active.dragging = true;
+      setDraggedSidebarItem({ type: active.type, id: active.id });
+      setSidebarTouchDragging(true);
+    }, 320);
+  }
+
+  function moveSidebarTouchDrag(event) {
+    const active = sidebarTouchRef.current;
+    if (!active || !event.touches || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    if (!active.dragging) {
+      if (Math.hypot(touch.clientX - active.startX, touch.clientY - active.startY) > 12) {
+        if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
+        sidebarLongPressTimerRef.current = null;
+        sidebarTouchRef.current = null;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const targetItem = target?.closest?.("[data-sidebar-item-id]");
+    const targetGroup = target?.closest?.("[data-sidebar-group-id]");
+    if (active.type === "item" && targetItem) {
+      const targetId = targetItem.dataset.sidebarItemId;
+      const targetGroupId = targetItem.closest("[data-sidebar-group-id]")?.dataset.sidebarGroupId;
+      const targetKey = "item:" + targetGroupId + ":" + targetId;
+      if (targetId && targetGroupId && targetId !== active.id && targetKey !== active.lastTarget) {
+        moveSidebarItem(active.id, targetGroupId, targetId);
+        active.groupId = targetGroupId;
+        active.lastTarget = targetKey;
+      }
+    } else if (active.type === "item" && targetGroup && targetGroup.dataset.sidebarGroupId
+      && targetGroup.dataset.sidebarGroupId !== active.groupId) {
+      const targetKey = "end:" + targetGroup.dataset.sidebarGroupId;
+      if (targetKey !== active.lastTarget) {
+        moveSidebarItem(active.id, targetGroup.dataset.sidebarGroupId);
+        active.groupId = targetGroup.dataset.sidebarGroupId;
+        active.lastTarget = targetKey;
+      }
+    } else if (active.type === "group" && targetGroup) {
+      const targetGroupId = targetGroup.dataset.sidebarGroupId;
+      if (targetGroupId && targetGroupId !== active.id && active.lastTarget !== "group:" + targetGroupId) {
+        moveSidebarGroup(active.id, targetGroupId);
+        active.lastTarget = "group:" + targetGroupId;
+      }
+    }
+  }
+
+  function finishSidebarTouchDrag() {
+    if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
+    sidebarLongPressTimerRef.current = null;
+    if (sidebarTouchRef.current?.dragging) {
+      setSidebarTouchDragging(false);
+      setDraggedSidebarItem(null);
+    }
+    sidebarTouchRef.current = null;
+  }
+
   function navigateSidebarItem(item) {
     if (item.id === "suppliers") {
       navigate("purchases", "suppliers");
@@ -1971,17 +2048,19 @@ export default function App() {
           <p className="nav-label">TU NEGOCIO</p>
           {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
         </div>
-        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "")} aria-label="Navegación del negocio">
-          {sidebarLayout.map((group) => <section key={group.id} className="sidebar-nav-group"
+        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio" onTouchMove={moveSidebarTouchDrag} onTouchEnd={finishSidebarTouchDrag} onTouchCancel={finishSidebarTouchDrag}>
+          {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
             onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
             <div className="sidebar-group-heading" draggable={sidebarEditing}
+              onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })}
               onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
-              {sidebarEditing ? <input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /> : <p className="nav-label">{group.title}</p>}
+              {sidebarEditing ? <><span className="sidebar-drag-handle" title="Mantén presionado para mover el grupo">⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <p className="nav-label">{group.title}</p>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
-              <div key={item.id} className="sidebar-nav-row" draggable={sidebarEditing}
+              <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row" draggable={sidebarEditing}
+                onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })}
                 onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "item", id: item.id })}
                 onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
                 onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) moveSidebarItem(payload.id, group.id, item.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>

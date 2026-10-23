@@ -1909,7 +1909,6 @@ export default function App() {
       const active = sidebarTouchRef.current;
       if (!active) return;
       active.dragging = true;
-      if (!sidebarEditing) setSidebarEditing(true);
       sidebarSuppressClickRef.current = true;
       setDraggedSidebarItem({ type: active.type, id: active.id });
       setSidebarTouchDragging(true);
@@ -1963,6 +1962,7 @@ export default function App() {
     if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
     sidebarLongPressTimerRef.current = null;
     if (sidebarTouchRef.current?.dragging) {
+      if (!sidebarEditing) setSidebarEditing(true);
       setSidebarTouchDragging(false);
       setDraggedSidebarItem(null);
       window.setTimeout(() => { sidebarSuppressClickRef.current = false; }, 650);

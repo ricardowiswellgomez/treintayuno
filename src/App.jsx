@@ -1332,7 +1332,55 @@ export default function App() {
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
 </section>
-) : screen === "purchases" ? (
+ ) : screen === "profitability" ? (
+          <section className="profitability-page">
+            <div className="products-intro profitability-intro">
+              <div><h2>Costos y rentabilidad</h2><p>Mira cuánto vendiste, cuánto costó lo vendido y qué quedó después de los gastos.</p></div>
+              <label className="profitability-period-label">Periodo
+                <select value={profitabilityPeriod} onChange={(e) => setProfitabilityPeriod(e.target.value)}>
+                  <option value="month">Este mes</option><option value="30days">Últimos 30 días</option><option value="all">Todo el historial</option>
+                </select>
+              </label>
+            </div>
+            {profitabilityLoading ? <div className="empty-state">Calculando con tus registros reales…</div> : <>
+              <div className="profitability-metrics">
+                <article className="profit-metric panel"><span>Ventas registradas</span><strong>{money(profitSalesTotal, currencyCode)}</strong><small>{periodSales.length} {periodSales.length === 1 ? "venta" : "ventas"} · {money(profitPaidTotal, currencyCode)} abonados</small></article>
+                <article className="profit-metric panel"><span>Costo de lo vendido</span><strong>{money(profitCostOfSales, currencyCode)}</strong><small>Según el costo guardado en cada venta</small></article>
+                <article className="profit-metric panel"><span>Ganancia bruta estimada</span><strong className={profitGross < 0 ? "profit-negative" : "profit-positive"}>{money(profitGross, currencyCode)}</strong><small>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "% de margen bruto" : "Sin ventas con artículos en este periodo"}</small></article>
+                <article className="profit-metric panel"><span>Gastos registrados</span><strong>{money(profitExpenseTotal, currencyCode)}</strong><small>{periodExpenses.length} {periodExpenses.length === 1 ? "gasto" : "gastos"}</small></article>
+                <article className="profit-metric panel profit-metric-primary"><span>Resultado estimado</span><strong className={profitNet < 0 ? "profit-negative" : "profit-positive"}>{money(profitNet, currencyCode)}</strong><small>Ganancia bruta menos gastos registrados</small></article>
+              </div>
+              <div className="profitability-secondary-metrics">
+                <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
+                <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>
+              </div>
+              <div className="profitability-breakdowns">
+                <section className="profit-breakdown panel">
+                  <div className="profit-breakdown-heading"><div><h3>Costos por artículo vendido</h3><p>Lo que costaron los artículos que ya vendiste.</p></div></div>
+                  {periodSaleItems.length ? <div className="profit-data-list">{Object.values(periodSaleItems.reduce((groups, item) => {
+                    const name = item.item_name || "Artículo sin nombre";
+                    if (!groups[name]) groups[name] = { name, quantity: 0, revenue: 0, cost: 0 };
+                    groups[name].quantity += Number(item.quantity || 0);
+                    groups[name].revenue += Number(item.line_total_minor || 0);
+                    groups[name].cost += Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0));
+                    return groups;
+                  }, {})).sort((a, b) => (b.revenue - b.cost) - (a.revenue - a.cost)).slice(0, 12).map((item) => <div className="profit-data-row" key={item.name}>
+                    <div><strong>{item.name}</strong><span>{Number(item.quantity).toLocaleString("es-CO")} unidades · costo {money(item.cost, currencyCode)}</span></div>
+                    <strong className={(item.revenue - item.cost) < 0 ? "profit-negative" : "profit-positive"}>{money(item.revenue - item.cost, currencyCode)}</strong>
+                  </div>)}</div> : <p className="profit-empty-note">Todavía no hay ventas con artículos en este periodo.</p>}
+                </section>
+                <section className="profit-breakdown panel">
+                  <div className="profit-breakdown-heading"><div><h3>Gastos por categoría</h3><p>Las salidas de dinero que has anotado.</p></div></div>
+                  {expensesByCategory.length ? <div className="profit-data-list">{expensesByCategory.map((group) => <div className="profit-data-row" key={group.name}>
+                    <div><strong>{group.name}</strong><span>{group.count} {group.count === 1 ? "registro" : "registros"}</span></div><strong>{money(group.amount, currencyCode)}</strong>
+                  </div>)}</div> : <p className="profit-empty-note">Todavía no hay gastos registrados en este periodo.</p>}
+                </section>
+              </div>
+              <p className="profitability-disclaimer">Este cálculo es orientativo: usa el costo que quedó guardado en cada venta y los gastos que registraste. No incluye gastos que aún no hayas anotado ni calcula impuestos, depreciación o ajustes contables. Las compras de inventario no se restan otra vez porque su costo se reconoce al vender el artículo.</p>
+              {!periodSales.length && !periodExpenses.length && <div className="empty-state"><span className="empty-icon">◷</span><h3>No hay movimientos en este periodo</h3><p>Cuando registres ventas y gastos, los números aparecerán aquí sin datos de ejemplo.</p><button type="button" className="secondary-button" onClick={() => navigate("sales")}>Ir a ventas</button></div>}
+            </>}
+          </section>
+        ) : screen === "purchases" ? (
           <section className="purchases-page">
             <div className="products-intro">
               <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>

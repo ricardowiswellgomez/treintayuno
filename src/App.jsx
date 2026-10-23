@@ -308,6 +308,13 @@ export default function App() {
   const [purchaseCart, setPurchaseCart] = useState([]);
   const [purchaseTax, setPurchaseTax] = useState("0");
   const [purchasePayment, setPurchasePayment] = useState("0");
+  const [purchaseInitialPaymentMethod, setPurchaseInitialPaymentMethod] = useState("Efectivo");
+  const [purchasePaymentFormFor, setPurchasePaymentFormFor] = useState(null);
+  const [purchasePaymentAmount, setPurchasePaymentAmount] = useState("");
+  const [purchasePaymentMethod, setPurchasePaymentMethod] = useState("Efectivo");
+  const [purchasePaymentDate, setPurchasePaymentDate] = useState(todayInBogota());
+  const [purchasePaymentNotes, setPurchasePaymentNotes] = useState("");
+  const [purchasePaymentSaving, setPurchasePaymentSaving] = useState(false);
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [expenseRows, setExpenseRows] = useState([]);
   const [profitabilityLoading, setProfitabilityLoading] = useState(false);
@@ -1041,18 +1048,29 @@ export default function App() {
       if (productResult.error) throw productResult.error;
       const purchaseList = purchaseResult.data || [];
       const itemMap = {};
+      const paymentMap = {};
       if (purchaseList.length) {
-        const itemsResult = await supabase.from("purchase_items")
-          .select("id,purchase_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
-          .eq("business_id", activeBusiness.id).in("purchase_id", purchaseList.map((purchase) => purchase.id))
-          .order("created_at");
+        const purchaseIds = purchaseList.map((purchase) => purchase.id);
+        const [itemsResult, paymentsResult] = await Promise.all([
+          supabase.from("purchase_items")
+            .select("id,purchase_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("purchase_id", purchaseIds).order("created_at"),
+          supabase.from("purchase_payments")
+            .select("id,purchase_id,amount_minor,payment_method,paid_at,notes")
+            .eq("business_id", activeBusiness.id).in("purchase_id", purchaseIds).order("paid_at", { ascending: true })
+        ]);
         if (itemsResult.error) throw itemsResult.error;
+        if (paymentsResult.error) throw paymentsResult.error;
         for (const item of itemsResult.data || []) {
           if (!itemMap[item.purchase_id]) itemMap[item.purchase_id] = [];
           itemMap[item.purchase_id].push(item);
         }
+        for (const payment of paymentsResult.data || []) {
+          if (!paymentMap[payment.purchase_id]) paymentMap[payment.purchase_id] = [];
+          paymentMap[payment.purchase_id].push(payment);
+        }
       }
-      setPurchaseRows(purchaseList);
+      setPurchaseRows(purchaseList.map((purchase) => ({ ...purchase, payments: paymentMap[purchase.id] || [] })));
       setPurchaseItemsByPurchase(itemMap);
       setExpenseRows(expenseResult.data || []);
       setSuppliers(supplierResult.data || []);
@@ -1308,6 +1326,7 @@ export default function App() {
         p_purchased_at: new Date(purchaseDate + "T12:00:00-05:00").toISOString(),
         p_tax_minor: tax,
         p_amount_paid_minor: payment,
+        p_initial_payment_method: purchaseInitialPaymentMethod,
         p_items: purchaseCart.map((item) => ({
           product_id: item.product_id, item_name: item.name, quantity: Number(item.quantity),
           unit_cost_minor: toMinorUnits(item.unit_cost, currencyCode)
@@ -1315,11 +1334,49 @@ export default function App() {
       });
       if (purchaseError) throw purchaseError;
       setShowPurchaseForm(false); setPurchaseSupplierId(""); setPurchaseDate(todayInBogota());
-      setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseNotes("");
+      setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseInitialPaymentMethod("Efectivo"); setPurchaseNotes("");
       setNotice("Compra guardada. El ingreso a inventario y su historial se actualizaron juntos.");
       await loadPurchasesModuleData();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
+  }
+
+  function openPurchasePaymentForm(purchase) {
+    const outstanding = Math.max(0, Number(purchase.total_minor || 0) - Number(purchase.amount_paid_minor || 0));
+    setPurchasePaymentFormFor(purchase.id);
+    setPurchasePaymentAmount(String(outstanding / (10 ** currencyDigits(currencyCode))));
+    setPurchasePaymentMethod("Efectivo");
+    setPurchasePaymentDate(todayInBogota());
+    setPurchasePaymentNotes("");
+    setError(""); setNotice("");
+  }
+
+  async function recordPurchasePayment(event, purchase) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !purchase || !canManagePurchases) return;
+    const amount = toMinorUnits(purchasePaymentAmount, currencyCode);
+    const outstanding = Math.max(0, Number(purchase.total_minor || 0) - Number(purchase.amount_paid_minor || 0));
+    if (!Number.isFinite(amount) || amount <= 0) { setError("El pago debe ser mayor que cero."); return; }
+    if (amount > outstanding) { setError("El pago no puede superar el saldo pendiente de la compra."); return; }
+    setPurchasePaymentSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: paymentError } = await supabase.rpc("record_purchase_payment", {
+        p_business_id: activeBusiness.id,
+        p_purchase_id: purchase.id,
+        p_amount_minor: amount,
+        p_payment_method: purchasePaymentMethod,
+        p_paid_at: new Date((purchasePaymentDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
+        p_notes: purchasePaymentNotes.trim() || null
+      });
+      if (paymentError) throw paymentError;
+      setPurchasePaymentFormFor(null);
+      setPurchasePaymentAmount(""); setPurchasePaymentMethod("Efectivo");
+      setPurchasePaymentDate(todayInBogota()); setPurchasePaymentNotes("");
+      const result = Array.isArray(data) ? data[0] : data;
+      setNotice("Pago registrado. Saldo por pagar: " + money(result?.balance_minor ?? Math.max(0, outstanding - amount), currencyCode) + ".");
+      await loadPurchasesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setPurchasePaymentSaving(false); }
   }
 
   async function addSupplier(event) {
@@ -1917,6 +1974,7 @@ export default function App() {
                 <div className="purchase-form-grid purchase-money-fields">
                   <label>Impuestos u otros cargos<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchaseTax} onChange={(e) => setPurchaseTax(e.target.value)} /></label>
                   <label>Abono realizado<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePayment} onChange={(e) => setPurchasePayment(e.target.value)} /></label>
+                  <label>Forma de pago inicial<select value={purchaseInitialPaymentMethod} onChange={(e) => setPurchaseInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label>
                   <label className="purchase-span-two">Nota<input value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} maxLength={1500} placeholder="Factura, transporte, entrega…" /></label>
                 </div>
                 <div className="purchase-total-summary"><span>Total estimado</span><strong>{money(purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), 0) + toMinorUnits(purchaseTax || 0, currencyCode), currencyCode)}</strong></div>
@@ -1931,6 +1989,17 @@ export default function App() {
                   <div className="purchase-record-top"><div><strong>{purchase.purchase_number}</strong><span>{purchase.purchased_at ? new Date(purchase.purchased_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Fecha sin definir"}{supplier ? " · " + supplier.name : ""}</span></div><span className={"status-pill " + (purchase.status === "paid" ? "status-active" : purchase.status === "canceled" || purchase.status === "refunded" ? "status-inactive" : "status-unpublished")}>{purchaseStatusLabel(purchase.status)}</span></div>
                   {items.length > 0 && <div className="purchase-record-items">{items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, purchase.currency_code || currencyCode)}</strong></div>)}</div>}
                   <div className="purchase-record-totals"><div><span>Total</span><strong>{money(purchase.total_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(purchase.amount_paid_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(pending, purchase.currency_code || currencyCode)}</strong></div></div>
+                  <div className="purchase-payment-history"><div className="purchase-payment-history-heading"><strong>Historial de pagos</strong><span>{(purchase.payments || []).length} {(purchase.payments || []).length === 1 ? "pago" : "pagos"}</span></div>
+                    {(purchase.payments || []).length ? <div className="purchase-payment-list">{purchase.payments.map((payment) => <div className="purchase-payment-row" key={payment.id}><div><strong>{money(payment.amount_minor,purchase.currency_code||currencyCode)}</strong><span>{payment.payment_method} · {new Date(payment.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span>{payment.notes&&<small>{payment.notes}</small>}</div></div>)}</div> : <p className="purchase-payment-empty">No hay pagos registrados.</p>}
+                    {canManagePurchases && pending > 0 && !["canceled","refunded","draft"].includes(purchase.status) && <button type="button" className="secondary-button purchase-register-payment-button" onClick={() => purchasePaymentFormFor === purchase.id ? setPurchasePaymentFormFor(null) : openPurchasePaymentForm(purchase)}>{purchasePaymentFormFor === purchase.id ? "Cancelar" : "＋ Registrar pago"}</button>}
+                    {canManagePurchases && purchasePaymentFormFor === purchase.id && <form className="purchase-payment-form" onSubmit={(event) => recordPurchasePayment(event,purchase)}>
+                      <label>Valor del pago<input type="number" min="0.01" max={pending/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePaymentAmount} onChange={(e) => setPurchasePaymentAmount(e.target.value)} required /></label>
+                      <label>Forma de pago<select value={purchasePaymentMethod} onChange={(e) => setPurchasePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label>
+                      <label>Fecha del pago<input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={(e) => setPurchasePaymentDate(e.target.value)} required /></label>
+                      <label className="purchase-payment-notes">Nota<input value={purchasePaymentNotes} onChange={(e) => setPurchasePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago" /></label>
+                      <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setPurchasePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={purchasePaymentSaving}>{purchasePaymentSaving ? "Registrando…" : "Guardar pago"}</button></div>
+                    </form>}
+                  </div>
                   {purchase.notes && <p className="purchase-note">{purchase.notes}</p>}
                 </article>;
               })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p>{canManagePurchases && <button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button>}</div>}

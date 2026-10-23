@@ -107,6 +107,33 @@ const blankTeamPermissions = {
   customers_view: false, customers_manage: false, purchases_view: false, purchases_manage: false,
   suppliers_view: false, suppliers_manage: false, expenses_view: false, expenses_manage: false
 };
+const employeePermissionProfiles = {
+  vendedor: {
+    label: "Vendedor",
+    description: "Ventas, consulta de productos y gestión de clientes; sin inventario, compras, gastos ni administración.",
+    permissions: { products_view: true, sales_view: true, sales_manage: true, customers_view: true, customers_manage: true }
+  },
+  atencion: {
+    label: "Atención al cliente",
+    description: "Consulta productos y administra clientes, sin registrar ventas ni acceder a finanzas.",
+    permissions: { products_view: true, customers_view: true, customers_manage: true }
+  },
+  inventario: {
+    label: "Inventario",
+    description: "Consulta y administra productos y existencias, sin acceso a ventas, compras ni finanzas.",
+    permissions: { products_view: true, products_manage: true }
+  },
+  compras: {
+    label: "Compras y proveedores",
+    description: "Gestiona compras y proveedores; requiere administrar productos para registrar entradas de inventario.",
+    permissions: { products_view: true, products_manage: true, purchases_view: true, purchases_manage: true, suppliers_view: true, suppliers_manage: true }
+  },
+  personalizado: {
+    label: "Personalizado",
+    description: "Elige cada permiso manualmente.",
+    permissions: {}
+  }
+};
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f", sidebarBackground: "#fffefa", sidebarText: "#20251f", buttonHover: "#234635", buttonHoverText: "#ffffff" });
@@ -435,6 +462,7 @@ export default function App() {
   const [teamFormOpen, setTeamFormOpen] = useState(false);
   const [teamEmail, setTeamEmail] = useState("");
   const [teamPermissionDraft, setTeamPermissionDraft] = useState(blankTeamPermissions);
+  const [teamPermissionProfile, setTeamPermissionProfile] = useState("vendedor");
   const [teamEditingUserId, setTeamEditingUserId] = useState(null);
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
@@ -1447,6 +1475,7 @@ export default function App() {
     setTeamFormOpen(false);
     setTeamEmail("");
     setTeamPermissionDraft(blankTeamPermissions);
+    setTeamPermissionProfile("vendedor");
     setTeamEditingUserId(null);
   }
 
@@ -1461,6 +1490,7 @@ export default function App() {
     }
     setTeamEmail(member.email || "");
     setTeamPermissionDraft(draft);
+    setTeamPermissionProfile("personalizado");
     setTeamEditingUserId(member.user_id);
     setTeamFormOpen(true);
     setError(""); setNotice("");
@@ -2342,7 +2372,7 @@ export default function App() {
               <div><h2>Equipo y permisos</h2><p>Decide qué puede consultar o modificar cada colaborador.</p></div>
               <button type="button" className="primary-button compact-button" onClick={() => {
                 if (teamFormOpen && !teamEditingUserId) clearTeamForm();
-                else { setTeamEmail(""); setTeamPermissionDraft(blankTeamPermissions); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
+                else { setTeamEmail(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
               }}>{teamFormOpen && !teamEditingUserId ? "Cancelar" : "+ Añadir colaborador"}</button>
             </div>
             <div className="team-info-panel panel">
@@ -2351,6 +2381,7 @@ export default function App() {
             </div>
             {teamFormOpen && <form className="team-form panel" onSubmit={saveTeamMember}>
               <div className="team-form-heading"><div><p className="eyebrow">{teamEditingUserId ? "PERMISOS DEL COLABORADOR" : "NUEVO ACCESO"}</p><h3>{teamEditingUserId ? "Editar permisos" : "Añadir colaborador"}</h3><p>Marca solo lo que esa persona necesita para trabajar.</p></div></div>
+              {!teamEditingUserId && <label className="team-email-field"><span className="field-label-heading">Perfil inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona una función como punto de partida. Puedes ajustar los permisos manualmente antes de guardar." /></span><select value={teamPermissionProfile} onChange={(e) => { const profile = employeePermissionProfiles[e.target.value] || employeePermissionProfiles.personalizado; setTeamPermissionProfile(e.target.value); setTeamPermissionDraft({ ...blankTeamPermissions, ...profile.permissions }); }}><option value="vendedor">Vendedor</option><option value="atencion">Atención al cliente</option><option value="inventario">Inventario</option><option value="compras">Compras y proveedores</option><option value="personalizado">Personalizado</option></select><span className="helper-text">{employeePermissionProfiles[teamPermissionProfile]?.description}</span></label>}
               <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de Treintayuno *
                 <FieldHelp enabled={contextualHelpEnabled} text="Escribe el correo de la cuenta de Treintayuno de la persona que invitarás al equipo." /></span><input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
               </label>

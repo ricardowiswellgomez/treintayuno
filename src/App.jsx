@@ -11,6 +11,38 @@ const areas = [
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
+const defaultSidebarLayout = () => [{
+  id: "business",
+  type: "group",
+  title: "TU NEGOCIO",
+  items: [
+    { id: "home", screen: "home", label: "Resumen", icon: "⌂" },
+    ...areas.map((area) => ({ id: area.screen, screen: area.screen, label: area.title, icon: area.icon })),
+    { id: "suppliers", screen: "purchases", tab: "suppliers", label: "Proveedores", icon: "♧" },
+    { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }
+  ]
+}];
+const normalizeSidebarLayout = (layout) => {
+  const fallback = defaultSidebarLayout();
+  if (!Array.isArray(layout) || !layout.length) return fallback;
+  const known = new Map(fallback[0].items.map((item) => [item.id, item]));
+  const groups = layout.filter((group) => group && group.type === "group" && typeof group.id === "string")
+    .map((group) => ({
+      id: group.id,
+      type: "group",
+      title: String(group.title || "Sección").slice(0, 60),
+      items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map((item) => ({
+        ...known.get(item.id), label: String(item.label || known.get(item.id).label).slice(0, 60),
+        icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
+      })) : []
+    }));
+  if (!groups.length) return fallback;
+  const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
+  const missing = fallback[0].items.filter((item) => !placed.has(item.id));
+  groups[0].items.push(...missing);
+  return groups;
+};
+
 const currencyDigits = (code = "COP") => {
   try { return new Intl.NumberFormat("es-CO", { style: "currency", currency: code }).resolvedOptions().maximumFractionDigits; }
   catch { return 0; }
@@ -261,6 +293,10 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
+  const [sidebarEditing, setSidebarEditing] = useState(false);
+  const [sidebarSaving, setSidebarSaving] = useState(false);
+  const [sidebarLayout, setSidebarLayout] = useState(defaultSidebarLayout);
+  const [draggedSidebarItem, setDraggedSidebarItem] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -420,7 +456,7 @@ export default function App() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code)")
+      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
     const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} })).filter((b) => b?.id);
@@ -1788,6 +1824,76 @@ export default function App() {
     if (next !== "products") { setAdjustingId(null); }
   }
 
+  useEffect(() => {
+    setSidebarLayout(normalizeSidebarLayout(activeBusiness?.settings?.sidebar_layout));
+    setSidebarEditing(false);
+  }, [activeBusiness?.id]);
+
+  function updateSidebarDraft(updater) {
+    setSidebarLayout((current) => normalizeSidebarLayout(typeof updater === "function" ? updater(current) : updater));
+  }
+
+  async function saveSidebarLayout() {
+    if (!activeBusiness?.id || !isBusinessOwner) return;
+    setSidebarSaving(true); setError(""); setNotice("");
+    const nextLayout = normalizeSidebarLayout(sidebarLayout);
+    const nextSettings = { ...(activeBusiness.settings || {}), sidebar_layout: nextLayout };
+    try {
+      const { data, error: saveError } = await supabase.from("businesses")
+        .update({ settings: nextSettings }).eq("id", activeBusiness.id)
+        .select("id,settings").maybeSingle();
+      if (saveError) throw saveError;
+      if (!data) throw new Error("No se pudo guardar el menú. Comprueba que tu sesión siga activa.");
+      setActiveBusiness((current) => current ? { ...current, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, settings: data.settings || nextSettings } : business));
+      setSidebarLayout(normalizeSidebarLayout(data.settings?.sidebar_layout));
+      setSidebarEditing(false);
+      setNotice("Menú guardado. El orden y los nombres se conservaron.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setSidebarSaving(false);
+    }
+  }
+
+  function moveSidebarItem(itemId, targetGroupId, targetItemId = null) {
+    updateSidebarDraft((current) => {
+      const next = current.map((group) => ({ ...group, items: [...group.items] }));
+      let moving = null;
+      for (const group of next) {
+        const index = group.items.findIndex((item) => item.id === itemId);
+        if (index >= 0) { [moving] = group.items.splice(index, 1); break; }
+      }
+      if (!moving) return current;
+      const target = next.find((group) => group.id === targetGroupId);
+      if (!target) return current;
+      const targetIndex = targetItemId ? target.items.findIndex((item) => item.id === targetItemId) : -1;
+      target.items.splice(targetIndex < 0 ? target.items.length : targetIndex, 0, moving);
+      return next;
+    });
+  }
+
+  function moveSidebarGroup(groupId, targetGroupId) {
+    updateSidebarDraft((current) => {
+      const next = [...current];
+      const from = next.findIndex((group) => group.id === groupId);
+      const to = next.findIndex((group) => group.id === targetGroupId);
+      if (from < 0 || to < 0 || from === to) return current;
+      const [moving] = next.splice(from, 1);
+      next.splice(to, 0, moving);
+      return next;
+    });
+  }
+
+  function navigateSidebarItem(item) {
+    if (item.id === "suppliers") {
+      setPurchaseModuleTab("suppliers");
+      navigate("purchases");
+      return;
+    }
+    navigate(item.screen);
+  }
+
   function switchActiveBusiness(businessId) {
     const nextBusiness = businesses.find((business) => business.id === businessId);
     if (!nextBusiness || nextBusiness.id === activeBusiness?.id) return;
@@ -1858,11 +1964,33 @@ export default function App() {
             ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
             : <span className="business-name">{activeBusiness?.name}</span>}
         </div>
-        <p className="nav-label">TU NEGOCIO</p>
-        <nav className="nav-list">
-          <button className={screen === "home" ? "nav-item active" : "nav-item"} onClick={() => navigate("home")}><span>⌂</span> Resumen</button>
-          {visibleAreas.map((area) => <button key={area.title} className={screen === area.screen ? "nav-item active" : "nav-item"} onClick={() => navigate(area.screen)}><span>{area.icon}</span>{area.title}</button>)}
-          {isBusinessOwner && <button className={screen === "settings" ? "nav-item active" : "nav-item"} onClick={() => navigate("settings")}><span>⚙</span> Configuración</button>}
+        <div className="sidebar-nav-heading">
+          <p className="nav-label">TU NEGOCIO</p>
+          {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => setSidebarEditing((editing) => !editing)} title={sidebarEditing ? "Terminar de editar" : "Editar menú"}>{sidebarEditing ? "Listo" : "Editar"}</button>}
+        </div>
+        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "")} aria-label="Navegación del negocio">
+          {sidebarLayout.map((group) => <section key={group.id} className="sidebar-nav-group"
+            onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
+            onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
+            <div className="sidebar-group-heading" draggable={sidebarEditing}
+              onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
+              {sidebarEditing ? <input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /> : <p className="nav-label">{group.title}</p>}
+              {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
+            </div>
+            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
+              <div key={item.id} className="sidebar-nav-row" draggable={sidebarEditing}
+                onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "item", id: item.id })}
+                onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
+                onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) moveSidebarItem(payload.id, group.id, item.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
+                {sidebarEditing ? <>
+                  <span className="sidebar-drag-handle" title="Arrastra para mover">⠿</span>
+                  <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
+                  <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
+                </> : <button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => navigateSidebarItem(item)}><span>{item.icon}</span>{item.label}</button>}
+              </div>
+            ))}
+          </section>)}
+          {sidebarEditing && <div className="sidebar-editor-actions"><button type="button" className="secondary-button" onClick={() => updateSidebarDraft((current) => [...current, { id: "group-" + Date.now(), type: "group", title: "Nuevo grupo", items: [] }])}>+ Grupo</button><button type="button" className="primary-button compact-button" disabled={sidebarSaving} onClick={saveSidebarLayout}>{sidebarSaving ? "Guardando…" : "Guardar menú"}</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>

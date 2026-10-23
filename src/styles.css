@@ -1002,3 +1002,9 @@
  .nav-list-editing .sidebar-group-heading{min-height:46px}
  .nav-list-touch-dragging{overscroll-behavior:contain}
 }
+
+
+.sidebar-touch-tip,.sidebar-edit-hint{font-size:10px;line-height:1.45;color:#81877d;margin:-3px 6px 9px}
+.sidebar-edit-hint{color:var(--green);background:var(--soft-green);border-radius:7px;padding:8px 9px}
+.sidebar-touch-tip{display:none}
+@media(max-width:600px){.sidebar-touch-tip{display:block}}

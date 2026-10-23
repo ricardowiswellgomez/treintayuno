@@ -374,6 +374,18 @@ export default function App() {
         {screen === "products" ? (
           <section className="products-page">
             <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { setShowProductForm((v) => !v); setProductForm(blankProduct); setError(""); }}>{showProductForm ? "Cancelar" : "+ Nuevo producto"}</button></div>
+            <section className="category-panel panel">
+              <div className="category-panel-heading"><h3>Administrar categorías</h3><p>Crea, cambia o elimina las categorías de tus productos.</p></div>
+              <form className="category-create-form" onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Ej. Camisetas" required aria-label="Nombre de la nueva categoría" /><button className="secondary-button" disabled={busy}>{busy ? "Guardando…" : "Crear categoría"}</button></form>
+              {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
+                {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
+                  <span className="category-admin-name">{category.name}</span>
+                  <div className="category-admin-actions"><button type="button" className="text-button" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}>Editar</button>
+                    {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="text-button danger-text" onClick={() => setConfirmDeleteCategoryId(category.id)}>Eliminar</button>}
+                  </div>
+                </>}
+              </div>)}</div> : <p className="category-empty-note">Todavía no hay categorías. Crea la primera aquí; luego podrás elegirla al guardar un producto.</p>}
+            </section>
             {showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>Datos del producto</h3>
               <div className="form-grid">
@@ -383,8 +395,8 @@ export default function App() {
                 <label>Precio de venta ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Costo por unidad ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Unidad<input value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} maxLength={30} required placeholder="unidad, hora, caja…" /></label>
-                {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden (opcional)<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
-                <label className="full-span">Descripción (opcional)<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
+                {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
+                <label className="full-span">Descripción<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
               {!categories.length && <p className="helper-text full-span">Primero puedes crear una categoría en «Administrar categorías»; después aparecerá aquí para elegirla.</p>}
               <p className="helper-text">El código del producto se genera automáticamente para uso interno. En Rentabilidad vincularemos materiales, empaque y mano de obra para calcular el costo unitario real. El inventario inicial queda guardado en el historial.</p>
@@ -399,7 +411,23 @@ export default function App() {
               {p.track_inventory && <button className="secondary-button stock-button" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar" : "Ajustar"}</button>}
               {adjustingId === p.id && <form className="stock-adjust-form" onSubmit={adjustStock}><div><label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label><label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label></div><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button></form>}
             </article>)}</div> : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre o código." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
-            <section className="category-panel panel"><div><h3>Categorías</h3><p>Organiza tus productos con nombres fáciles de reconocer.</p></div><form onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Ej. Camisetas" required /><button className="secondary-button" disabled={busy}>Añadir categoría</button></form>{categories.length > 0 && <div className="category-chips">{categories.map((c) => <span key={c.id}>{c.name}</span>)}</div>}</section>
+            
+          </section>
+        ) : screen === "settings" ? (
+          <section className="settings-page">
+            <div className="settings-intro"><h2>Configura tu negocio</h2><p>Estas preferencias se guardan para que el sistema las use en las demás pantallas.</p></div>
+            <form className="settings-card panel" onSubmit={saveSettings}>
+              <div className="settings-icon">¤</div>
+              <h3>Moneda del negocio</h3>
+              <p>Los precios, costos y reportes usarán la moneda que elijas.</p>
+              {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
+                <label className="settings-field">Moneda principal<select value={settingsCurrency} disabled={settingsHasData || activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label>
+                {settingsHasData ? <p className="helper-text">Ya existen productos u operaciones con importes. Para evitar alterar tus registros, no permitimos cambiar la moneda sin una herramienta de conversión.</p> : <p className="helper-text">Elige la moneda antes de registrar productos o movimientos de dinero. Podrás definir otros ajustes aquí más adelante.</p>}
+                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar esta opción.</p>}
+                <div className="form-actions"><button className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner" || (settingsHasData && settingsCurrency === currencyCode)}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
+              </>}
+            </form>
+            <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
         ) : screen === "home" ? <>
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Empieza por registrar los productos que realmente tienes; después conectaremos ventas, compras y rentabilidad.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>

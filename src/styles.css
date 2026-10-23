@@ -133,3 +133,19 @@
  .product-list-cards{grid-template-columns:1fr}
  .product-list-cards .product-card .product-thumb{height:180px;min-height:180px}
 }
+
+/* Compacto y seguro para fotos guardadas directamente en PostgreSQL */
+.product-gallery{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.product-gallery-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e4e7df;background:#f8f9f5;color:#526451;border-radius:9px;padding:9px 11px;font-size:10px;font-weight:700;text-align:left}
+.product-gallery-toggle:hover{background:#eef3ec;border-color:#d4dfd3}
+.product-gallery-toggle span:last-child{border-radius:6px;background:#e8eee6;padding:4px 6px;color:var(--green);font-variant-numeric:tabular-nums}
+.product-gallery-content{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;padding-top:3px}
+.product-gallery-content .product-gallery-list{display:flex;flex-wrap:wrap;gap:9px}
+.product-gallery-content .no-product-photos{flex:1 0 100%}
+.product-gallery-content .helper-text{flex:1 0 100%;margin:0}
+.product-photo-picker .photo-help{margin-top:1px}
+@media(max-width:600px){
+ .product-gallery-content{gap:8px}
+ .product-gallery-content .product-gallery-list{gap:7px}
+ .product-gallery-content .product-gallery-item{width:68px}
+}

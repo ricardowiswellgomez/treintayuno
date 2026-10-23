@@ -909,3 +909,10 @@
  .sales-pagination .pagination-controls,.customer-pagination .pagination-controls{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px}
  .sales-pagination .pagination-controls>* , .customer-pagination .pagination-controls>*{min-width:0}
 }
+
+.purchase-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:3px}
+@media(max-width:550px){
+ .purchase-pagination{align-items:stretch;flex-direction:column}
+ .purchase-pagination .pagination-controls{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px}
+ .purchase-pagination .pagination-controls>*{min-width:0}
+}

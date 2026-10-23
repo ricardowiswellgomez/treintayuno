@@ -1704,6 +1704,24 @@ export default function App() {
     if (next !== "products") { setAdjustingId(null); }
   }
 
+  function switchActiveBusiness(businessId) {
+    const nextBusiness = businesses.find((business) => business.id === businessId);
+    if (!nextBusiness || nextBusiness.id === activeBusiness?.id) return;
+    cancelProductForm();
+    clearSaleDraft();
+    resetCustomerForm();
+    clearTeamForm();
+    setActiveBusiness(nextBusiness);
+    setScreen("home");
+    setShowPurchaseForm(false); setShowSupplierForm(false); setShowExpenseForm(false);
+    setShowArchivedProducts(false); setSearch(""); setCustomerSearch("");
+    setSalePaymentFormFor(null); setPurchasePaymentFormFor(null);
+    setViewingVariantsFor(null); setVariantDraft(blankVariantDraft); setEditingVariantId(null);
+    setProductPage(1); setSalesPage(1); setCustomersPage(1); setPurchasesPage(1); setExpensesPage(1);
+    setPurchaseModuleTab("purchases");
+    setError(""); setNotice("");
+  }
+
   const requestedPublicCatalog = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("catalog") : null;
   if (requestedPublicCatalog && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)) {
     return <PublicCatalog businessId={requestedPublicCatalog} />;
@@ -1750,7 +1768,12 @@ export default function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <a className="brand" href="/"><span className="brand-mark">31</span><span className="brand-name">treintayuno</span></a>
-        <div className="business-switcher"><span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span><span className="business-name">{activeBusiness?.name}</span><span className="switch-caret">⌄</span></div>
+        <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
+          <span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>
+          {businesses.length > 1
+            ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
+            : <span className="business-name">{activeBusiness?.name}</span>}
+        </div>
         <p className="nav-label">TU NEGOCIO</p>
         <nav className="nav-list">
           <button className={screen === "home" ? "nav-item active" : "nav-item"} onClick={() => navigate("home")}><span>⌂</span> Resumen</button>

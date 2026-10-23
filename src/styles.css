@@ -988,3 +988,17 @@
  .sidebar-editor-actions{display:grid;grid-template-columns:1fr 1fr}
  .supplier-directory-page .supplier-directory-row{grid-template-columns:1fr;gap:10px}
 }
+
+
+/* Drag táctil de uno o varios niveles del menú en celular */
+.sidebar-drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:36px;flex:0 0 32px;touch-action:none;user-select:none;-webkit-user-select:none}
+.nav-list-editing .sidebar-nav-row,.nav-list-editing .sidebar-group-heading{touch-action:none;user-select:none;-webkit-user-select:none}
+.nav-list-touch-dragging .sidebar-nav-row{opacity:.82}
+.nav-list-touch-dragging .sidebar-nav-row:active{outline:2px solid #aac2aa;outline-offset:1px;background:#eff4ec}
+@media(max-width:600px){
+ .nav-list-editing .sidebar-nav-row{min-height:48px;gap:6px;padding:3px 4px}
+ .nav-list-editing .sidebar-label-edit{min-height:40px;font-size:12px}
+ .nav-list-editing .sidebar-icon-edit{min-height:40px;font-size:15px}
+ .nav-list-editing .sidebar-group-heading{min-height:46px}
+ .nav-list-touch-dragging{overscroll-behavior:contain}
+}

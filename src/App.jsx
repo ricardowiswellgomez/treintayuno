@@ -1676,7 +1676,8 @@ export default function App() {
             {teamLoading ? <div className="empty-state">Cargando el equipo…</div>
               : teamRows.length ? <div className="team-member-list">{teamRows.map((member) => {
                 const isEmployee = member.role === "employee";
-                const granted = teamPermissionGroups.filter((group) => Boolean((member.permissions || {})[group.view] || (member.permissions || {})[group.manage])).map((group) => group.label);
+                const memberRequestedPermissions = (member.permissions || {})._modules_requested || member.permissions || {};
+                const granted = teamPermissionGroups.filter((group) => Boolean(memberRequestedPermissions[group.view] || memberRequestedPermissions[group.manage])).map((group) => group.label);
                 return <article className="team-member panel" key={member.member_id}>
                   <div className="team-member-avatar">{(member.display_name || member.email || "?").slice(0, 1).toLocaleUpperCase("es")}</div>
                   <div className="team-member-main"><div className="team-member-title"><strong>{member.display_name || member.email}</strong><span className={"team-role-pill " + (isEmployee ? "team-role-employee" : "team-role-admin")}>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</span></div>

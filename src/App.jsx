@@ -59,6 +59,8 @@ const unitOptions = [
 ];
 const blankProduct = { name: "", category_id: "", description: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 
+const MAX_PRODUCT_IMAGE_BYTES = 450000;
+
 async function prepareProductImage(file) {
   const allowed = ["image/jpeg", "image/png", "image/webp"];
   if (!allowed.includes(file.type)) throw new Error("Elige una imagen JPG, PNG o WebP.");
@@ -67,55 +69,68 @@ async function prepareProductImage(file) {
   try { bitmap = await createImageBitmap(file); }
   catch { throw new Error("No pudimos abrir esa imagen. Prueba con otro archivo JPG, PNG o WebP."); }
   try {
-    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const ctx = canvas.getContext("2d", { alpha: false });
-    if (!ctx) throw new Error("Este navegador no permite preparar la foto.");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const toBlob = (quality) => new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
-    let blob = await toBlob(0.82);
-    if (!blob || blob.type !== "image/webp") throw new Error("Este navegador no pudo convertir la imagen a WebP.");
-    if (blob.size > 5 * 1024 * 1024) blob = await toBlob(0.68);
-    if (!blob || blob.size > 5 * 1024 * 1024) throw new Error("La foto sigue pesando demasiado después de optimizarla. Prueba una imagen más pequeña.");
-    const baseName = (file.name || "foto").replace(/\.[^.]+$/, "").slice(0, 80) || "foto";
-    return new File([blob], baseName + ".webp", { type: "image/webp", lastModified: Date.now() });
+    const originalLongest = Math.max(bitmap.width, bitmap.height);
+    for (const dimension of [1400, 1200, 1000, 850, 700]) {
+      const scale = Math.min(1, dimension / originalLongest);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) throw new Error("Este navegador no permite preparar la foto.");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const toBlob = (quality) => new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+      for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42, 0.34]) {
+        const blob = await toBlob(quality);
+        if (!blob || blob.type !== "image/webp") throw new Error("Este navegador no pudo convertir la imagen a WebP.");
+        if (blob.size <= MAX_PRODUCT_IMAGE_BYTES) {
+          const baseName = (file.name || "foto").replace(/\.[^.]+$/, "").slice(0, 80) || "foto";
+          canvas.width = 0; canvas.height = 0;
+          return new File([blob], baseName + ".webp", { type: "image/webp", lastModified: Date.now() });
+        }
+      }
+      canvas.width = 0; canvas.height = 0;
+    }
+    throw new Error("La foto no pudo reducirse a 450 KB. Prueba con otra imagen más pequeña.");
   } finally { bitmap.close?.(); }
 }
 
-async function getProductImageToken() {
-  const { data: { session: currentSession } } = await supabase.auth.getSession();
-  if (!currentSession?.access_token) throw new Error("Tu sesión ha caducado. Inicia sesión de nuevo.");
-  return currentSession.access_token;
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  }
+  return btoa(binary);
 }
 
-async function uploadProductImage(productId, file) {
-  const token = await getProductImageToken();
-  const response = await fetch("/api/product-images?productId=" + encodeURIComponent(productId), {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token, "Content-Type": "image/webp" },
-    body: file
+async function uploadProductImage(productId, file, businessId) {
+  if (!businessId) throw new Error("No pudimos identificar el negocio de este producto.");
+  if (file.type !== "image/webp" || file.size > MAX_PRODUCT_IMAGE_BYTES) {
+    throw new Error("La foto debe estar optimizada en WebP y pesar 450 KB o menos.");
+  }
+  const imageData = await fileToBase64(file);
+  const { data, error } = await supabase.rpc("add_product_image_db", {
+    p_business_id: businessId,
+    p_product_id: productId,
+    p_image_data: imageData,
+    p_image_size_bytes: file.size
   });
-  let payload = {};
-  try { payload = await response.json(); } catch {}
-  if (!response.ok) throw new Error(payload.error || "No se pudo subir la foto.");
-  return payload;
+  if (error) throw error;
+  return data;
 }
 
-async function deleteProductImageRequest(productId, imageKey) {
-  const token = await getProductImageToken();
-  const response = await fetch("/api/product-images", {
-    method: "DELETE",
-    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, imageKey })
+async function deleteProductImageRequest(productId, imageKey, businessId) {
+  const { data, error } = await supabase.rpc("remove_product_image_db", {
+    p_business_id: businessId,
+    p_product_id: productId,
+    p_image_key: imageKey
   });
-  let payload = {};
-  try { payload = await response.json(); } catch {}
-  if (!response.ok) throw new Error(payload.error || "No se pudo eliminar la foto.");
-  return payload;
+  if (error) throw error;
+  if (!data) throw new Error("No se pudo quitar la foto.");
+  return data;
 }
 
 export default function App() {
@@ -135,6 +150,10 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [productsCount, setProductsCount] = useState(0);
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(12);
+  const [viewMode, setViewMode] = useState("rows");
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState(blankProduct);
   const [stagedImages, setStagedImages] = useState([]);
@@ -170,17 +189,24 @@ export default function App() {
     if (!activeBusiness?.id) return;
     setProductsLoading(true); setError("");
     try {
+      const from = (productPage - 1) * productPageSize;
+      const to = from + productPageSize - 1;
+      let productsQuery = supabase.from("products")
+        .select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,image_paths,created_at", { count: "exact" })
+        .eq("business_id", activeBusiness.id).order("name").range(from, to);
+      if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
       const [productResult, categoryResult] = await Promise.all([
-        supabase.from("products").select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,image_paths,created_at").eq("business_id", activeBusiness.id).order("name"),
+        productsQuery,
         supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name")
       ]);
       if (productResult.error) throw productResult.error;
       if (categoryResult.error) throw categoryResult.error;
       setProducts(productResult.data || []);
+      setProductsCount(productResult.count || 0);
       setCategories(categoryResult.data || []);
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
-  }, [activeBusiness?.id]);
+  }, [activeBusiness?.id, productPage, productPageSize, search]);
 
   useEffect(() => {
     let alive = true;
@@ -208,26 +234,28 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const urls = [];
     setProductImageUrls({});
     async function loadImages() {
-      if (screen !== "products" || !session?.access_token) return;
-      const references = products.flatMap((product) => (product.image_paths || []).map((imageKey) => ({ productId: product.id, imageKey })));
-      await Promise.all(references.map(async ({ productId, imageKey }) => {
-        try {
-          const response = await fetch("/api/product-images?productId=" + encodeURIComponent(productId) + "&key=" + encodeURIComponent(imageKey), {
-            headers: { Authorization: "Bearer " + session.access_token }
-          });
-          if (!response.ok) return;
-          const url = URL.createObjectURL(await response.blob());
-          urls.push(url);
-          if (!cancelled) setProductImageUrls((current) => ({ ...current, [productId + "|" + imageKey]: url }));
-        } catch { /* Sin URL no hay imagen que mostrar; nunca se sustituye por una imagen ficticia. */ }
-      }));
+      if (screen !== "products" || !activeBusiness?.id || !products.length) return;
+      const productIds = products.map((product) => product.id);
+      try {
+        const { data, error: imageError } = await supabase.from("product_images")
+          .select("product_id,image_key,image_data")
+          .eq("business_id", activeBusiness.id).in("product_id", productIds);
+        if (imageError) throw imageError;
+        if (cancelled) return;
+        const imageMap = {};
+        for (const image of data || []) {
+          imageMap[image.product_id + "|" + image.image_key] = "data:image/webp;base64," + image.image_data;
+        }
+        setProductImageUrls(imageMap);
+      } catch (e) {
+        if (!cancelled) setError(friendlyError(e));
+      }
     }
     loadImages();
-    return () => { cancelled = true; urls.forEach((url) => URL.revokeObjectURL(url)); };
-  }, [products, screen, session?.access_token]);
+    return () => { cancelled = true; };
+  }, [products, screen, activeBusiness?.id]);
 
   async function chooseNewProductImages(event) {
     const picked = Array.from(event.target.files || []);
@@ -262,7 +290,7 @@ export default function App() {
     try {
       for (const file of picked.slice(0, room)) {
         const converted = await prepareProductImage(file);
-        try { await uploadProductImage(product.id, converted); uploaded += 1; }
+        try { await uploadProductImage(product.id, converted, activeBusiness?.id); uploaded += 1; }
         finally { /* El navegador libera el archivo temporal al salir de este bloque. */ }
       }
       setNotice(uploaded ? (uploaded === 1 ? "Foto agregada al producto." : uploaded + " fotos agregadas al producto.") : "No se subió ninguna foto.");
@@ -275,7 +303,7 @@ export default function App() {
   async function removeExistingProductImage(productId, imageKey) {
     setUploadingImagesFor(productId); setError(""); setNotice("");
     try {
-      await deleteProductImageRequest(productId, imageKey);
+      await deleteProductImageRequest(productId, imageKey, activeBusiness?.id);
       setNotice("Foto eliminada."); await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setUploadingImagesFor(null); }
@@ -435,7 +463,7 @@ export default function App() {
       let uploaded = 0;
       let imageFailures = 0;
       for (const image of pendingImages) {
-        try { await uploadProductImage(newProductId, image.file); uploaded += 1; }
+        try { await uploadProductImage(newProductId, image.file, activeBusiness.id); uploaded += 1; }
         catch { imageFailures += 1; }
       }
       setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
@@ -463,10 +491,8 @@ export default function App() {
     finally { setBusy(false); }
   }
 
-  const filteredProducts = useMemo(() => products.filter((p) => {
-    const text = search.trim().toLocaleLowerCase("es");
-    return !text || p.name.toLocaleLowerCase("es").includes(text) || (p.sku || "").toLocaleLowerCase("es").includes(text);
-  }), [products, search]);
+  const filteredProducts = products;
+  const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
 
   function navigate(next) {
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);

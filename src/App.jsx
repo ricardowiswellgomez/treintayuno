@@ -1784,18 +1784,18 @@ export default function App() {
               <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>
             </div>
             <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
-              <button type="button" role="tab" aria-selected={purchaseModuleTab === "purchases"} className={purchaseModuleTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchaseRows.length}</span></button>
-              <button type="button" role="tab" aria-selected={purchaseModuleTab === "expenses"} className={purchaseModuleTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expenseRows.length}</span></button>
+              {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchaseRows.length}</span></button>}
+              {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expenseRows.length}</span></button>}
             </div>
-            {purchaseModuleTab === "purchases" ? <>
+            {effectivePurchaseTab === "purchases" ? <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Compras de inventario</h3><p>Al guardar una compra, las existencias se suman en un solo paso.</p></div>
                 <div className="purchase-toolbar-actions">
-                  <button type="button" className="secondary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar proveedor" : "+ Proveedor"}</button>
-                  <button type="button" className="primary-button compact-button" onClick={() => { setShowPurchaseForm((open) => !open); setError(""); setNotice(""); }}>{showPurchaseForm ? "Cancelar compra" : "+ Nueva compra"}</button>
+                  {canPermission("suppliers_manage") && <button type="button" className="secondary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar proveedor" : "+ Proveedor"}</button>}
+                  {canManagePurchases && <button type="button" className="primary-button compact-button" onClick={() => { setShowPurchaseForm((open) => !open); setError(""); setNotice(""); }}>{showPurchaseForm ? "Cancelar compra" : "+ Nueva compra"}</button>}
                 </div>
               </div>
-              {showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
+              {canPermission("suppliers_manage") && showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
                 <div className="purchase-form-heading"><div><p className="eyebrow">CONTACTOS</p><h3>Nuevo proveedor</h3></div></div>
                 <div className="purchase-form-grid">
                   <label>Nombre del proveedor *<input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required placeholder="Nombre o empresa" /></label>
@@ -1807,7 +1807,7 @@ export default function App() {
                 </div>
                 <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowSupplierForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar proveedor"}</button></div>
               </form>}
-              {showPurchaseForm && <form className="purchase-form panel" onSubmit={createPurchase}>
+              {canManagePurchases && showPurchaseForm && <form className="purchase-form panel" onSubmit={createPurchase}>
                 <div className="purchase-form-heading"><div><p className="eyebrow">ENTRADA DE INVENTARIO</p><h3>Nueva compra</h3></div><span className="purchase-form-hint">Se guarda con su historial</span></div>
                 <div className="purchase-form-grid">
                   <label>Fecha de compra *<input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} required /></label>
@@ -1847,14 +1847,14 @@ export default function App() {
                   <div className="purchase-record-totals"><div><span>Total</span><strong>{money(purchase.total_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(purchase.amount_paid_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(pending, purchase.currency_code || currencyCode)}</strong></div></div>
                   {purchase.notes && <p className="purchase-note">{purchase.notes}</p>}
                 </article>;
-              })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p><button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button></div>}
+              })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p>{canManagePurchases && <button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button>}</div>}
               {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
             </> : <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Gastos del negocio</h3><p>Registra servicios, arriendo, reparaciones, herramientas y otros pagos.</p></div>
-                <button type="button" className="primary-button compact-button" onClick={() => { setShowExpenseForm((open) => !open); setError(""); setNotice(""); }}>{showExpenseForm ? "Cancelar gasto" : "+ Nuevo gasto"}</button>
+                {canManageExpenses && <button type="button" className="primary-button compact-button" onClick={() => { setShowExpenseForm((open) => !open); setError(""); setNotice(""); }}>{showExpenseForm ? "Cancelar gasto" : "+ Nuevo gasto"}</button>}
               </div>
-              {showExpenseForm && <form className="purchase-form panel" onSubmit={addExpense}>
+              {canManageExpenses && showExpenseForm && <form className="purchase-form panel" onSubmit={addExpense}>
                 <div className="purchase-form-heading"><div><p className="eyebrow">SALIDA DE DINERO</p><h3>Nuevo gasto</h3></div></div>
                 <div className="purchase-form-grid">
                   <label>Descripción *<input value={expenseDraft.description} onChange={(e) => setExpenseDraft((d) => ({ ...d, description: e.target.value }))} maxLength={220} required placeholder="Ej. Reparación de una máquina" /></label>
@@ -1873,7 +1873,7 @@ export default function App() {
                   <div className="expense-record-main"><span className="expense-category">{expense.category}</span><strong>{expense.description}</strong><span>{new Date(expense.expense_date + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })}{supplier ? " · " + supplier.name : ""}{expense.payment_method ? " · " + expense.payment_method : ""}</span>{expense.notes && <small>{expense.notes}</small>}</div>
                   <strong className="expense-amount">{money(expense.amount_minor, expense.currency_code || currencyCode)}</strong>
                 </article>;
-              })}</div> : <div className="empty-state"><span className="empty-icon">↘</span><h3>Todavía no hay gastos</h3><p>Guarda tus gastos reales para incorporarlos a la rentabilidad. No hay datos de ejemplo.</p><button type="button" className="primary-button" onClick={() => setShowExpenseForm(true)}>+ Nuevo gasto</button></div>}
+              })}</div> : <div className="empty-state"><span className="empty-icon">↘</span><h3>Todavía no hay gastos</h3><p>Guarda tus gastos reales para incorporarlos a la rentabilidad. No hay datos de ejemplo.</p>{canManageExpenses && <button type="button" className="primary-button" onClick={() => setShowExpenseForm(true)}>+ Nuevo gasto</button>}</div>}
             </>}
           </section>
         ) : screen === "products" ? (

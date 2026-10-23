@@ -292,6 +292,12 @@ export default function App() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [purchaseModuleTab, setPurchaseModuleTab] = useState("purchases");
   const [purchaseRows, setPurchaseRows] = useState([]);
+  const [purchasesPage, setPurchasesPage] = useState(1);
+  const [purchasesPageSize, setPurchasesPageSize] = useState(20);
+  const [purchasesCount, setPurchasesCount] = useState(0);
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [expensesPageSize, setExpensesPageSize] = useState(20);
+  const [expensesCount, setExpensesCount] = useState(0);
   const [purchaseItemsByPurchase, setPurchaseItemsByPurchase] = useState({});
   const [purchaseProducts, setPurchaseProducts] = useState([]);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
@@ -1043,10 +1049,12 @@ export default function App() {
       const mayManagePurchases = privileged || Boolean(permissions.purchases_manage);
       const none = Promise.resolve({ data: [], error: null });
       const [purchaseResult, expenseResult, supplierResult, productResult] = await Promise.all([
-        mayReadPurchases ? supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at")
-          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false }).limit(100) : none,
-        mayReadExpenses ? supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at")
-          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(100) : none,
+        mayReadPurchases ? supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at", { count: "exact" })
+          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false })
+          .range((purchasesPage - 1) * purchasesPageSize, (purchasesPage - 1) * purchasesPageSize + purchasesPageSize - 1) : none,
+        mayReadExpenses ? supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at", { count: "exact" })
+          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false })
+          .range((expensesPage - 1) * expensesPageSize, (expensesPage - 1) * expensesPageSize + expensesPageSize - 1) : none,
         mayReadSuppliers ? supabase.from("suppliers").select("id,business_id,name,email,phone,tax_id,address,notes")
           .eq("business_id", activeBusiness.id).order("name").limit(500) : none,
         mayManagePurchases ? supabase.from("products").select("id,name,sku,cost_price_minor,unit_name,stock_on_hand,track_inventory,archived_at")
@@ -1081,20 +1089,22 @@ export default function App() {
         }
       }
       setPurchaseRows(purchaseList.map((purchase) => ({ ...purchase, payments: paymentMap[purchase.id] || [] })));
+      setPurchasesCount(purchaseResult.count || 0);
       setPurchaseItemsByPurchase(itemMap);
       setExpenseRows(expenseResult.data || []);
+      setExpensesCount(expenseResult.count || 0);
       setSuppliers(supplierResult.data || []);
       setPurchaseProducts(productResult.data || []);
     } catch (e) {
       setError(friendlyError(e));
-      setPurchaseRows([]); setPurchaseItemsByPurchase({});
-      setExpenseRows([]); setSuppliers([]); setPurchaseProducts([]);
+      setPurchaseRows([]); setPurchasesCount(0); setPurchaseItemsByPurchase({});
+      setExpenseRows([]); setExpensesCount(0); setSuppliers([]); setPurchaseProducts([]);
     } finally { setPurchaseLoading(false); }
   }
 
   useEffect(() => {
     if (screen === "purchases" && activeBusiness?.id) loadPurchasesModuleData();
-  }, [screen, activeBusiness?.id]);
+  }, [screen, activeBusiness?.id, purchaseModuleTab, purchasesPage, purchasesPageSize, expensesPage, expensesPageSize]);
 
   async function loadCatalogAdminData() {
     if (!activeBusiness?.id || screen !== "catalog") return;
@@ -1343,7 +1353,7 @@ export default function App() {
         }))
       });
       if (purchaseError) throw purchaseError;
-      setShowPurchaseForm(false); setPurchaseSupplierId(""); setPurchaseDate(todayInBogota());
+      setShowPurchaseForm(false); setPurchaseSupplierId(""); setPurchaseDate(todayInBogota()); setPurchasesPage(1);
       setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseInitialPaymentMethod("Efectivo"); setPurchaseNotes("");
       setNotice("Compra guardada. El ingreso a inventario y su historial se actualizaron juntos.");
       await loadPurchasesModuleData();
@@ -1426,7 +1436,7 @@ export default function App() {
         supplier_id: expenseDraft.supplier_id || null, notes: expenseDraft.notes.trim() || null
       });
       if (expenseError) throw expenseError;
-      setExpenseDraft({ ...blankExpense, expense_date: todayInBogota() });
+      setExpenseDraft({ ...blankExpense, expense_date: todayInBogota() }); setExpensesPage(1);
       setShowExpenseForm(false); setNotice("Gasto guardado.");
       await loadPurchasesModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -1939,8 +1949,8 @@ export default function App() {
               <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>
             </div>
             <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
-              {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchaseRows.length}</span></button>}
-              {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expenseRows.length}</span></button>}
+              {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchasesCount}</span></button>
+              {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expensesCount}</span></button>
             </div>
             {effectivePurchaseTab === "purchases" ? <>
               <div className="products-intro purchase-subintro">
@@ -2015,6 +2025,7 @@ export default function App() {
                   {purchase.notes && <p className="purchase-note">{purchase.notes}</p>}
                 </article>;
               })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p>{canManagePurchases && <button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button>}</div>}
+              {!purchaseLoading && purchasesCount > purchasesPageSize && <div className="pagination-bar purchase-pagination"><span className="count-label">Mostrando {(purchasesPage-1)*purchasesPageSize+1}–{Math.min(purchasesPage*purchasesPageSize,purchasesCount)} de {purchasesCount} compras</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={purchasesPage<=1} onClick={()=>setPurchasesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{purchasesPage} / {Math.ceil(purchasesCount/purchasesPageSize)}</span><button type="button" className="secondary-button" disabled={purchasesPage>=Math.ceil(purchasesCount/purchasesPageSize)} onClick={()=>setPurchasesPage((page)=>page+1)}>Siguiente</button></div></div>}
               {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
             </> : <>
               <div className="products-intro purchase-subintro">
@@ -2041,6 +2052,7 @@ export default function App() {
                   <strong className="expense-amount">{money(expense.amount_minor, expense.currency_code || currencyCode)}</strong>
                 </article>;
               })}</div> : <div className="empty-state"><span className="empty-icon">↘</span><h3>Todavía no hay gastos</h3><p>Guarda tus gastos reales para incorporarlos a la rentabilidad. No hay datos de ejemplo.</p>{canManageExpenses && <button type="button" className="primary-button" onClick={() => setShowExpenseForm(true)}>+ Nuevo gasto</button>}</div>}
+              {!purchaseLoading && expensesCount > expensesPageSize && <div className="pagination-bar purchase-pagination"><span className="count-label">Mostrando {(expensesPage-1)*expensesPageSize+1}–{Math.min(expensesPage*expensesPageSize,expensesCount)} de {expensesCount} gastos</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={expensesPage<=1} onClick={()=>setExpensesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{expensesPage} / {Math.ceil(expensesCount/expensesPageSize)}</span><button type="button" className="secondary-button" disabled={expensesPage>=Math.ceil(expensesCount/expensesPageSize)} onClick={()=>setExpensesPage((page)=>page+1)}>Siguiente</button></div></div>}
             </>}
           </section>
         ) : screen === "products" ? (

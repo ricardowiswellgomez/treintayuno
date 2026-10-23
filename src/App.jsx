@@ -1587,7 +1587,9 @@ export default function App() {
     try {
       let result;
       if (editingCustomerId) {
-        result = await supabase.from("customers").update(payload)
+        const updatePayload = { ...payload };
+        delete updatePayload.business_id;
+        result = await supabase.from("customers").update(updatePayload)
           .eq("business_id", activeBusiness.id).eq("id", editingCustomerId)
           .select(customerFields).single();
       } else {

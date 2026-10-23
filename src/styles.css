@@ -790,3 +790,58 @@
  .public-catalog-message{margin:32px auto;padding:19px}
  .public-catalog-pagination{gap:9px}
 }
+
+
+/* Equipo: permisos entendibles en filas sin convertirlo en un panel complejo. */
+.team-page{display:flex;flex-direction:column;gap:15px;min-width:0}
+.team-intro{align-items:flex-end}
+.team-info-panel{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:#f5f7f1}
+.team-info-icon{display:flex;align-items:center;justify-content:center;flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#e4ecdf;color:#45694b;font-size:20px}
+.team-info-panel>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.team-info-panel strong{font-size:11px}
+.team-info-panel p{font-size:10px;line-height:1.6;color:var(--muted);margin:0}
+.team-form{display:flex;flex-direction:column;gap:14px;padding:18px}
+.team-form-heading{border-bottom:1px solid var(--line);padding-bottom:12px}
+.team-form-heading .eyebrow{margin:0 0 5px}
+.team-form-heading h3{font:700 15px Manrope,sans-serif;margin:0 0 5px}
+.team-form-heading p{font-size:10px;line-height:1.5;color:var(--muted);margin:0}
+.team-email-field{display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700;color:#3b4039;max-width:560px}
+.team-email-field input{width:100%;border:1px solid #dedfd7;border-radius:9px;background:#fffefa;padding:11px 12px;outline:none;color:var(--ink);font:400 12px "DM Sans",sans-serif}
+.team-email-field input:focus{border-color:#648674;box-shadow:0 0 0 3px #2d59471a}
+.team-permission-header,.team-permission-row{display:grid;grid-template-columns:minmax(0,1fr) 104px 130px;gap:12px;align-items:center}
+.team-permission-header{padding:0 12px 7px;font-size:9px;color:var(--muted);font-weight:700}
+.team-permission-header span:not(:first-child){text-align:center}
+.team-permission-list{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.team-permission-row{padding:11px 12px;border-bottom:1px solid var(--line);background:#fffefa}
+.team-permission-row:last-child{border-bottom:0}
+.team-permission-row>strong{font-size:11px;line-height:1.4}
+.team-check{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px;color:#465347;cursor:pointer}
+.team-check input{width:15px;height:15px;accent-color:#315d43;cursor:pointer}
+.team-member-list{display:flex;flex-direction:column;gap:9px}
+.team-member{display:flex;align-items:center;gap:12px;padding:13px 14px;min-width:0}
+.team-member-avatar{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#edf1e9;color:#4e6b50;display:flex;align-items:center;justify-content:center;font:700 14px Manrope,sans-serif}
+.team-member-main{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.team-member-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.team-member-title>strong{font-size:12px;overflow-wrap:anywhere}
+.team-role-pill{display:inline-flex;align-items:center;padding:4px 7px;border-radius:99px;font-size:9px;font-weight:700}
+.team-role-employee{background:#f1f3ed;color:#64725e}
+.team-role-admin{background:#e5efe6;color:#315d43}
+.team-member-email{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.team-member-main p{font-size:9px;line-height:1.5;color:#687364;margin:1px 0 0;overflow-wrap:anywhere}
+.team-member-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.team-member-actions .text-button{font-size:10px;white-space:nowrap}
+@media(max-width:700px){
+ .team-intro{align-items:stretch;flex-direction:column}
+ .team-intro>.compact-button,.team-intro>button{align-self:stretch}
+ .team-form{padding:12px}
+ .team-permission-header,.team-permission-row{grid-template-columns:minmax(0,1fr) 65px 87px;gap:4px}
+ .team-permission-header{font-size:8px;padding:0 7px 7px}
+ .team-permission-row{padding:11px 7px}
+ .team-permission-row>strong{font-size:10px}
+ .team-check{gap:3px;font-size:9px}
+ .team-check input{width:14px;height:14px}
+ .team-member{flex-wrap:wrap;align-items:flex-start;padding:12px}
+ .team-member-avatar{width:36px;height:36px;flex-basis:36px}
+ .team-member-main{width:calc(100% - 52px);flex:none}
+ .team-member-actions{width:100%;justify-content:flex-end}
+}

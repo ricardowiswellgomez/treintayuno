@@ -2052,14 +2052,14 @@ export default function App() {
           {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
             onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
-            <div className="sidebar-group-heading" draggable={sidebarEditing}
+            <div className="sidebar-group-heading" draggable={sidebarEditing && !(typeof window !== "undefined" && "ontouchstart" in window)}
               onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })}
               onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
               {sidebarEditing ? <><span className="sidebar-drag-handle" title="Mantén presionado para mover el grupo">⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <p className="nav-label">{group.title}</p>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
-              <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row" draggable={sidebarEditing}
+              <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row" draggable={sidebarEditing && !(typeof window !== "undefined" && "ontouchstart" in window)}
                 onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })}
                 onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "item", id: item.id })}
                 onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}

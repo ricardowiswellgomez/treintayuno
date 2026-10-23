@@ -402,6 +402,7 @@ export default function App() {
   const [saleProductChoice, setSaleProductChoice] = useState("");
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleItems, setSaleItems] = useState([]);
+  const [saleSaving, setSaleSaving] = useState(false);
   const [salePayment, setSalePayment] = useState("");
   const [saleInitialPaymentMethod, setSaleInitialPaymentMethod] = useState("Efectivo");
   const [salePaymentFormFor, setSalePaymentFormFor] = useState(null);
@@ -1680,7 +1681,7 @@ export default function App() {
     const total = saleItems.reduce((sum, item) => sum + Math.round(item.unit_price_minor * Number(item.quantity)), 0);
     const payment = toMinorUnits(salePayment || 0, currencyCode);
     if (payment < 0 || payment > total) { setError("El abono debe estar entre cero y el total de la venta."); return; }
-    setBusy(true); setError(""); setNotice("");
+    setSaleSaving(true); setError(""); setNotice("");
     try {
       const { data, error: saleError } = await supabase.rpc("create_sale", {
         p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
@@ -1696,7 +1697,7 @@ export default function App() {
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó.");
       if (wasOnFirstSalesPage) await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
-    finally { setBusy(false); }
+    finally { setSaleSaving(false); }
   }
 
   async function registerSalePayment(event, sale) {
@@ -2131,7 +2132,8 @@ export default function App() {
 <div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum,item)=>sum+Math.round(item.unit_price_minor*Number(item.quantity||0)),0),currencyCode)}</strong></div></div>}
 <div className="sale-bottom-fields"><label>Abono recibido {currencyCode}<input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label>Forma de pago inicial<select value={saleInitialPaymentMethod} onChange={e=>setSaleInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label><label>Nota<input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
-<div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={busy||!saleItems.length}>{busy?"Guardando…":"Guardar venta"}</button></div>
+{!saleItems.length && <p className="helper-text sale-empty-cart-hint">Todavía no hay productos agregados. Elige un producto y pulsa «+ Agregar». Si intentas guardar antes, te indicaremos qué falta.</p>}
+<div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={saleSaving}>{saleSaving?"Guardando…":"Guardar venta"}</button></div>
 </form>}
 <div className="sales-toolbar"><span>{salesCount} {salesCount===1?"venta":"ventas"} · Página {salesPage} de {Math.max(1,Math.ceil(salesCount/salesPageSize))}</span><label className="sales-page-size">Mostrar<select value={salesPageSize} onChange={(e)=>{setSalesPageSize(Number(e.target.value));setSalesPage(1);}}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label></div>
 {salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel" key={sale.id}>

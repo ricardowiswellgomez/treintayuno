@@ -1335,6 +1335,12 @@ export default function App() {
 
   const filteredProducts = products;
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
+  const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
+  const filteredCatalogProducts = catalogProducts.filter((product) => {
+    const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "";
+    return [product.name, product.description, category].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedCatalogSearch);
+  });
+  const publishedCatalogCount = catalogProducts.filter((product) => product.is_published && product.is_sellable).length;
   const profitPeriodDateKey = (value) => {
     if (!value) return "";
     const date = String(value).includes("T") ? new Date(value) : new Date(String(value) + "T12:00:00-05:00");
@@ -1376,6 +1382,11 @@ export default function App() {
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
+  }
+
+  const requestedPublicCatalog = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("catalog") : null;
+  if (requestedPublicCatalog && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)) {
+    return <PublicCatalog businessId={requestedPublicCatalog} />;
   }
 
   if (!authReady) return <div className="loading-screen"><div className="brand-mark">31</div><p>Preparando tu espacio…</p></div>;
@@ -1489,7 +1500,38 @@ export default function App() {
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
 </section>
- ) : screen === "profitability" ? (
+ ) : screen === "catalog" ? (
+          <section className="catalog-admin-page">
+            <div className="products-intro catalog-admin-intro">
+              <div><h2>Catálogo para compartir</h2><p>Elige qué productos pueden ver tus clientes con un enlace público.</p></div>
+              <div className="catalog-admin-actions">
+                <button type="button" className="secondary-button compact-button" onClick={copyPublicCatalogLink}>Copiar enlace</button>
+                <a className="primary-button compact-button catalog-open-link" href={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} target="_blank" rel="noreferrer">Abrir catálogo</a>
+              </div>
+            </div>
+            <div className="catalog-share-panel panel">
+              <div><span className="eyebrow">ENLACE PÚBLICO</span><strong>{publishedCatalogCount} {publishedCatalogCount === 1 ? "producto publicado" : "productos publicados"}</strong><p>Solo se muestran productos publicados y activos. El enlace no revela costos ni existencias internas.</p></div>
+              <input aria-label="Enlace público del catálogo" readOnly value={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} onFocus={(e) => e.target.select()} />
+            </div>
+            <div className="catalog-filter-row">
+              <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Buscar producto o categoría…" />
+              <span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span>
+            </div>
+            {catalogLoading ? <div className="empty-state">Cargando productos reales…</div>
+              : filteredCatalogProducts.length ? <div className="catalog-admin-list">{filteredCatalogProducts.map((product) => {
+                const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "Sin categoría";
+                return <article className="catalog-admin-row panel" key={product.id}>
+                  <div className="catalog-admin-product"><span className="catalog-admin-symbol">▦</span><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>
+                  <div className="catalog-admin-price"><strong>{money(product.sale_price_minor, currencyCode)}</strong><span>por {product.unit_name || "unidad"}</span></div>
+                  <div className="catalog-admin-publish">
+                    <span className={product.is_published && product.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{product.is_published && product.is_sellable ? "Publicado" : product.is_published ? "Producto inactivo" : "Oculto"}</span>
+                    <button type="button" className={product.is_published ? "secondary-button action-small" : "primary-button action-small"} disabled={catalogPublishingId === product.id || (!product.is_sellable && !product.is_published)} onClick={() => toggleCatalogPublication(product)}>{catalogPublishingId === product.id ? "Guardando…" : product.is_published ? "Retirar" : "Publicar"}</button>
+                  </div>
+                </article>;
+              })}</div>
+              : <div className="empty-state"><span className="empty-icon">◉</span><h3>{catalogProducts.length ? "No hay resultados" : "Todavía no hay productos"}</h3><p>{catalogProducts.length ? "Prueba otra palabra o categoría." : "Crea tus productos primero; luego publícalos aquí para compartirlos."}</p><button type="button" className="secondary-button" onClick={() => navigate("products")}>Ir a productos</button></div>}
+          </section>
+        ) : screen === "profitability" ? (
           <section className="profitability-page">
             <div className="products-intro profitability-intro">
               <div><h2>Costos y rentabilidad</h2><p>Mira cuánto vendiste, cuánto costó lo vendido y qué quedó después de los gastos.</p></div>
@@ -1823,7 +1865,7 @@ export default function App() {
         ) : screen === "home" ? <>
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">7 áreas</span></div>
-          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
+          <section className="area-grid">{areas.map((area, index) => { const ready = area.screen === "products" || area.screen === "sales" || area.screen === "customers" || area.screen === "purchases" || area.screen === "profitability" || area.screen === "catalog"; return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p><span className={ready ? "coming-soon ready-label" : "coming-soon"}>{ready ? "Disponible" : "En preparación"}</span></button>; })}</section>
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Treintayuno · En construcción</span><span>Los datos se separan por negocio.</span></footer>
       </section>

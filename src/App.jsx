@@ -166,6 +166,7 @@ export default function App() {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
@@ -482,7 +483,9 @@ export default function App() {
     stagedImages.forEach((image) => URL.revokeObjectURL(image.preview));
     setStagedImages([]);
     setProductForm(blankProduct);
+    if (editingProductId) setOpenProductGalleries((current) => ({ ...current, [editingProductId]: false }));
     setEditingProductId(null);
+    setAdjustDelta(""); setAdjustNote("");
     setShowProductForm(false);
     setError("");
   }
@@ -493,6 +496,8 @@ export default function App() {
     const digits = currencyDigits(currencyCode);
     setStagedImages([]);
     setEditingProductId(product.id);
+    setAdjustDelta(""); setAdjustNote("");
+    setOpenProductGalleries((current) => ({ ...current, [product.id]: true }));
     setShowProductForm(true);
     setProductForm({
       name: product.name || "",
@@ -572,37 +577,43 @@ export default function App() {
     finally { setBusy(false); }
   }
 
-  async function adjustStock(event) {
-    event.preventDefault();
-    if (!adjustingId || !activeBusiness?.id) return;
+  async function saveInlineStock(productId) {
+    if (!productId || !activeBusiness?.id) return;
     const delta = Number(adjustDelta);
     if (!Number.isFinite(delta) || delta === 0) { setError("Escribe una cantidad distinta de cero."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
       const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
-        p_business_id: activeBusiness.id, p_product_id: adjustingId,
+        p_business_id: activeBusiness.id, p_product_id: productId,
         p_quantity_delta: delta, p_notes: adjustNote.trim() || null
       });
       if (rpcError) throw rpcError;
-      setAdjustingId(null); setAdjustDelta(""); setAdjustNote(""); setNotice("Existencias actualizadas y movimiento guardado.");
+      const { data: fresh, error: refreshError } = await supabase.from("products").select("stock_on_hand").eq("business_id", activeBusiness.id).eq("id", productId).single();
+      if (refreshError) throw refreshError;
+      setProductForm((current) => ({ ...current, stock: String(fresh.stock_on_hand) }));
+      setAdjustDelta(""); setAdjustNote("");
+      setNotice("Existencias actualizadas. El movimiento quedó guardado en el historial.");
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
 
   function renderStockAdjustment(product) {
-    if (adjustingId !== product.id) return null;
-    return <form className="stock-adjust-form" onSubmit={adjustStock}>
-      <div>
-        <label>Cambio de cantidad (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} required placeholder="Ej. 5 o -2" /></label>
-        <label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label>
+    if (!editingProductId || editingProductId !== product.id || !product.track_inventory) return null;
+    return <section className="edit-subpanel">
+      <div className="edit-subpanel-heading"><strong>Existencias</strong><span>Actuales: {Number(product.stock_on_hand).toLocaleString("es-CO")} {product.unit_name || "unidades"}</span></div>
+      <div className="stock-adjust-form">
+        <div>
+          <label>Cambio (+ entra, − sale)<input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} placeholder="Ej. 5 o -2" /></label>
+          <label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label>
+        </div>
+        <button type="button" className="primary-button" disabled={busy || !adjustDelta || Number(adjustDelta) === 0} onClick={() => saveInlineStock(product.id)}>{busy ? "Guardando…" : "Guardar ajuste"}</button>
       </div>
-      <button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cambio"}</button>
-    </form>;
+    </section>;
   }
 
   function renderPhotoManager(product) {
-    if (!openProductGalleries[product.id]) return null;
+    if (!editingProductId || editingProductId !== product.id || !openProductGalleries[product.id]) return null;
     return <div className="product-gallery-content">
       {(product.image_paths || []).length ? <div className="product-gallery-list">{product.image_paths.map((imageKey) => <figure className="product-gallery-item" key={imageKey}>
         {productImageUrls[product.id + "|" + imageKey]
@@ -682,18 +693,25 @@ export default function App() {
         {screen === "products" ? (
           <section className="products-page">
             <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button></div>
-            <section className="category-panel panel">
-              <div className="category-panel-heading"><h3>Administrar categorías</h3><p>Crea, cambia o elimina las categorías de tus productos.</p></div>
-              <form className="category-create-form" onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Ej. Camisetas" required aria-label="Nombre de la nueva categoría" /><button className="secondary-button" disabled={busy}>{busy ? "Guardando…" : "Crear categoría"}</button></form>
-              {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
-                {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
-                  <span className="category-admin-name">{category.name}</span>
-                  <div className="category-admin-actions"><button type="button" className="text-button" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}>Editar</button>
-                    {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="text-button danger-text" onClick={() => setConfirmDeleteCategoryId(category.id)}>Eliminar</button>}
-                  </div>
-                </>}
-              </div>)}</div> : <p className="category-empty-note">Todavía no hay categorías. Crea la primera aquí; luego podrás elegirla al guardar un producto.</p>}
-            </section>
+            <div className="category-manager">
+              <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
+                <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
+              </button>
+              {showCategoryManager && <section className="category-panel panel">
+                <form className="category-create-form" onSubmit={addCategory}>
+                  <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Nombre de la categoría" required aria-label="Nombre de la nueva categoría" />
+                  <button className="secondary-button" disabled={busy}>{busy ? "Guardando…" : "Añadir"}</button>
+                </form>
+                {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
+                  {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
+                    <span className="category-admin-name">{category.name}</span>
+                    <div className="category-admin-actions"><button type="button" className="text-button" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}>Editar</button>
+                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="text-button danger-text" onClick={() => setConfirmDeleteCategoryId(category.id)}>Eliminar</button>}
+                    </div>
+                  </>}
+                </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
+              </section>}
+            </div>
             {showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               <div className="form-grid">
@@ -713,8 +731,12 @@ export default function App() {
                 {stagedImages.length > 0 && <div className="staged-image-grid full-span">{stagedImages.map((image, index) => <figure className="staged-image" key={image.preview}><img src={image.preview} alt={image.name} /><figcaption>{image.name}</figcaption><button type="button" className="text-button danger-text" onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>Quitar foto</button></figure>)}</div>}
                 <label className="full-span">Descripción<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
-              {!categories.length && <p className="helper-text full-span">Primero puedes crear una categoría en «Administrar categorías»; después aparecerá aquí para elegirla.</p>}
-              <p className="helper-text">{editingProductId ? "El SKU y el slug se conservan. Las existencias no se editan aquí para no alterar el historial; usa «Ajustar stock». Las fotos se administran desde la acción «Fotos» del producto." : "El SKU y el slug se generan automáticamente. La presentación comercial es opcional. El inventario inicial queda guardado en el historial; el catálogo público sigue en preparación."}</p>
+              {editingProductId && products.find((item) => item.id === editingProductId) && <div className="product-edit-tools full-span">
+                {renderStockAdjustment(products.find((item) => item.id === editingProductId))}
+                <section className="edit-subpanel"><div className="edit-subpanel-heading"><strong>Fotografías</strong><span>Hasta 3 fotos</span></div>{renderPhotoManager(products.find((item) => item.id === editingProductId))}</section>
+              </div>}
+              {!categories.length && <p className="helper-text full-span">Puedes añadir categorías desde el botón «Categorías».</p>}
+              <p className="helper-text">{editingProductId ? "Las existencias se ajustan aquí y las fotos se administran dentro de esta ficha." : "El SKU y el slug se generan automáticamente. La presentación comercial es opcional. El inventario inicial queda guardado en el historial; el catálogo público sigue en preparación."}</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={cancelProductForm}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : editingProductId ? "Guardar cambios" : "Guardar producto"}</button></div>
             </form>}
             <div className="product-tools">
@@ -732,7 +754,7 @@ export default function App() {
                 <div className="product-table-wrap panel">
                   <table className="product-table">
                     <thead><tr>
-                      <th>Producto</th><th>SKU</th><th>Slug</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación comercial</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
+                      <th>Producto</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
                     </tr></thead>
                     <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
                       <tr className="product-table-row">
@@ -740,25 +762,17 @@ export default function App() {
                           <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
                           <div className="product-cell-copy"><strong>{p.name}</strong><span>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</span></div>
                         </div></td>
-                        <td><code className="product-code">{p.sku || "—"}</code></td>
-                        <td><code className="product-slug" title={p.slug || ""}>{p.slug || "—"}</code></td>
                         <td>{p.unit_name || "unidad"}</td>
                         <td className="product-table-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></td>
                         <td><span className="muted-value">—</span></td>
                         <td>{p.commercial_presentation || <span className="muted-value">—</span>}</td>
                         <td><div className="product-table-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong>{p.track_inventory && <small>{p.unit_name || "unidades"}</small>}{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <span className="stock-alert">Pocas existencias</span>}</div></td>
                         <td><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></td>
-                        <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span><button type="button" className="publish-soon" disabled title="El catálogo público todavía está en preparación">Publicar</button></div></td>
+                        <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
                           <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
-                          {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
-                          <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
                         </div></td>
                       </tr>
-                      {(adjustingId === p.id || openProductGalleries[p.id]) && <tr className="product-extra-row"><td colSpan={11}>
-                        {renderStockAdjustment(p)}
-                        {renderPhotoManager(p)}
-                      </td></tr>}
                     </React.Fragment>)}</tbody>
                   </table>
                 </div>
@@ -768,7 +782,6 @@ export default function App() {
                     <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
                     <div className="product-main"><h3>{p.name}</h3><p>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</p></div>
                   </div>
-                  <div className="product-card-identifiers"><div><span>SKU</span><code>{p.sku || "—"}</code></div><div><span>Slug</span><code title={p.slug || ""}>{p.slug || "—"}</code></div></div>
                   <div className="product-card-data">
                     <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
                     <div><span>Precio {currencyCode}</span><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></div>
@@ -780,13 +793,7 @@ export default function App() {
                   </div>
                   <div className="product-row-actions product-card-actions">
                     <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
-                    {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
-                    <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
                   </div>
-                  {(adjustingId === p.id || openProductGalleries[p.id]) && <div className="product-card-extra">
-                    {renderStockAdjustment(p)}
-                    {renderPhotoManager(p)}
-                  </div>}
                 </article>)}</div>
               )
             ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}

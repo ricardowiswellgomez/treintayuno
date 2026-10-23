@@ -1061,6 +1061,7 @@ export default function App() {
   </div>
   <div className="product-row-actions product-card-actions"><button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button></div>
 </article>)}</div>
+              )
             ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
 
             {!productsLoading && productsCount > 0 && <div className="pagination-bar">

@@ -191,6 +191,7 @@ export default function App() {
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(todayInBogota());
   const [purchaseProductChoice, setPurchaseProductChoice] = useState("");
+  const [purchaseItemName, setPurchaseItemName] = useState("");
   const [purchaseQuantity, setPurchaseQuantity] = useState("1");
   const [purchaseUnitCost, setPurchaseUnitCost] = useState("");
   const [purchaseCart, setPurchaseCart] = useState([]);
@@ -917,17 +918,18 @@ export default function App() {
     const product = purchaseProducts.find((item) => item.id === purchaseProductChoice);
     const quantity = Number(purchaseQuantity);
     const unitCost = Number(purchaseUnitCost);
-    if (!product) { setError("Elige el artículo que compraste."); return; }
+    const name = product?.name || purchaseItemName.trim();
+    if (!name) { setError("Escribe el nombre del artículo comprado o elige un producto registrado."); return; }
     if (!Number.isFinite(quantity) || quantity <= 0) { setError("La cantidad debe ser mayor que cero."); return; }
     if (!Number.isFinite(unitCost) || unitCost < 0) { setError("Escribe un costo por unidad válido."); return; }
     setPurchaseCart((current) => {
-      const exists = current.find((item) => item.product_id === product.id);
+      const exists = product ? current.find((item) => item.product_id === product.id) : null;
       if (exists) return current.map((item) => item.product_id === product.id
         ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)), unit_cost: String(unitCost) }
         : item);
-      return [...current, { product_id: product.id, name: product.name, quantity, unit_cost: String(unitCost), unit_name: product.unit_name || "unidad" }];
+      return [...current, { line_id: crypto.randomUUID(), product_id: product?.id || null, name, quantity, unit_cost: String(unitCost), unit_name: product?.unit_name || "unidad" }];
     });
-    setPurchaseProductChoice(""); setPurchaseQuantity("1"); setPurchaseUnitCost(""); setError("");
+    setPurchaseProductChoice(""); setPurchaseItemName(""); setPurchaseQuantity("1"); setPurchaseUnitCost(""); setError("");
   }
 
   async function createPurchase(event) {
@@ -1254,7 +1256,105 @@ export default function App() {
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
 </section>
-) : screen === "products" ? (
+) : screen === "purchases" ? (
+          <section className="purchases-page">
+            <div className="products-intro">
+              <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>
+            </div>
+            <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
+              <button type="button" role="tab" aria-selected={purchaseModuleTab === "purchases"} className={purchaseModuleTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchaseRows.length}</span></button>
+              <button type="button" role="tab" aria-selected={purchaseModuleTab === "expenses"} className={purchaseModuleTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expenseRows.length}</span></button>
+            </div>
+            {purchaseModuleTab === "purchases" ? <>
+              <div className="products-intro purchase-subintro">
+                <div><h3>Compras de inventario</h3><p>Al guardar una compra, las existencias se suman en un solo paso.</p></div>
+                <div className="purchase-toolbar-actions">
+                  <button type="button" className="secondary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar proveedor" : "+ Proveedor"}</button>
+                  <button type="button" className="primary-button compact-button" onClick={() => { setShowPurchaseForm((open) => !open); setError(""); setNotice(""); }}>{showPurchaseForm ? "Cancelar compra" : "+ Nueva compra"}</button>
+                </div>
+              </div>
+              {showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
+                <div className="purchase-form-heading"><div><p className="eyebrow">CONTACTOS</p><h3>Nuevo proveedor</h3></div></div>
+                <div className="purchase-form-grid">
+                  <label>Nombre del proveedor *<input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required placeholder="Nombre o empresa" /></label>
+                  <label>NIT o documento<input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} placeholder="Opcional" /></label>
+                  <label>Teléfono<input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} placeholder="Número de contacto" /></label>
+                  <label>Correo<input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} placeholder="proveedor@correo.com" /></label>
+                  <label className="purchase-span-two">Dirección<input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} placeholder="Dirección del proveedor" /></label>
+                  <label className="purchase-span-two">Notas<input value={supplierDraft.notes} onChange={(e) => setSupplierDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1000} placeholder="Información útil" /></label>
+                </div>
+                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowSupplierForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar proveedor"}</button></div>
+              </form>}
+              {showPurchaseForm && <form className="purchase-form panel" onSubmit={createPurchase}>
+                <div className="purchase-form-heading"><div><p className="eyebrow">ENTRADA DE INVENTARIO</p><h3>Nueva compra</h3></div><span className="purchase-form-hint">Se guarda con su historial</span></div>
+                <div className="purchase-form-grid">
+                  <label>Fecha de compra *<input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} required /></label>
+                  <label>Proveedor<select value={purchaseSupplierId} onChange={(e) => setPurchaseSupplierId(e.target.value)}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.name}</option>)}</select></label>
+                  <label>Producto registrado<select value={purchaseProductChoice} onChange={(e) => { const id = e.target.value; const product = purchaseProducts.find((p) => p.id === id); setPurchaseProductChoice(id); setPurchaseItemName(product?.name || ""); setPurchaseUnitCost(product ? String(Number(product.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode))) : ""); }}><option value="">Otro artículo / no vincular</option>{purchaseProducts.map((product) => <option value={product.id} key={product.id}>{product.name}{product.sku ? " · " + product.sku : ""}</option>)}</select></label>
+                  <label>Artículo comprado *<input value={purchaseItemName} onChange={(e) => { setPurchaseItemName(e.target.value); if (purchaseProductChoice) setPurchaseProductChoice(""); }} maxLength={180} required placeholder="Nombre del material o producto" /></label>
+                  <label>Cantidad *<input type="number" min="0.001" step="0.001" value={purchaseQuantity} onChange={(e) => setPurchaseQuantity(e.target.value)} required /></label>
+                  <label>Costo por unidad *<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchaseUnitCost} onChange={(e) => setPurchaseUnitCost(e.target.value)} required placeholder="0" /></label>
+                </div>
+                <button type="button" className="secondary-button purchase-add-item" onClick={addPurchaseLine}>＋ Añadir artículo</button>
+                {purchaseCart.length > 0 && <div className="purchase-cart">
+                  <div className="purchase-cart-heading"><strong>Artículos de la compra</strong><span>{purchaseCart.length}</span></div>
+                  {purchaseCart.map((item) => <div className="purchase-cart-row" key={item.line_id}>
+                    <div><strong>{item.name}</strong><span>{item.product_id ? "Vinculado a tu inventario" : "Sin vínculo a inventario"} · {money(toMinorUnits(item.unit_cost, currencyCode), currencyCode)} por {item.unit_name}</span></div>
+                    <label>Cantidad<input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(e) => setPurchaseCart((current) => current.map((line) => line.line_id === item.line_id ? { ...line, quantity: e.target.value } : line))} /></label>
+                    <strong>{money(Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), currencyCode)}</strong>
+                    <button type="button" className="text-button danger-text" onClick={() => setPurchaseCart((current) => current.filter((line) => line.line_id !== item.line_id))}>Quitar</button>
+                  </div>)}
+                  <div className="purchase-cart-subtotal"><span>Subtotal</span><strong>{money(purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), 0), currencyCode)}</strong></div>
+                </div>}
+                <div className="purchase-form-grid purchase-money-fields">
+                  <label>Impuestos u otros cargos<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchaseTax} onChange={(e) => setPurchaseTax(e.target.value)} /></label>
+                  <label>Abono realizado<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePayment} onChange={(e) => setPurchasePayment(e.target.value)} /></label>
+                  <label className="purchase-span-two">Nota<input value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} maxLength={1500} placeholder="Factura, transporte, entrega…" /></label>
+                </div>
+                <div className="purchase-total-summary"><span>Total estimado</span><strong>{money(purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), 0) + toMinorUnits(purchaseTax || 0, currencyCode), currencyCode)}</strong></div>
+                <p className="helper-text">Solo los artículos vinculados a un producto suman existencias. Los artículos libres quedan registrados en la compra, sin cambiar tu inventario.</p>
+                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => { setShowPurchaseForm(false); setPurchaseCart([]); }}>Cancelar</button><button type="submit" className="primary-button" disabled={busy || !purchaseCart.length}>{busy ? "Guardando…" : "Guardar compra"}</button></div>
+              </form>}
+              {purchaseLoading ? <div className="empty-state">Cargando compras…</div> : purchaseRows.length ? <div className="purchase-record-list">{purchaseRows.map((purchase) => {
+                const supplier = suppliers.find((item) => item.id === purchase.supplier_id);
+                const items = purchaseItemsByPurchase[purchase.id] || [];
+                const pending = Math.max(0, Number(purchase.total_minor) - Number(purchase.amount_paid_minor));
+                return <article className="purchase-record panel" key={purchase.id}>
+                  <div className="purchase-record-top"><div><strong>{purchase.purchase_number}</strong><span>{purchase.purchased_at ? new Date(purchase.purchased_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Fecha sin definir"}{supplier ? " · " + supplier.name : ""}</span></div><span className={"status-pill " + (purchase.status === "paid" ? "status-active" : purchase.status === "canceled" || purchase.status === "refunded" ? "status-inactive" : "status-unpublished")}>{purchaseStatusLabel(purchase.status)}</span></div>
+                  {items.length > 0 && <div className="purchase-record-items">{items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, purchase.currency_code || currencyCode)}</strong></div>)}</div>}
+                  <div className="purchase-record-totals"><div><span>Total</span><strong>{money(purchase.total_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(purchase.amount_paid_minor, purchase.currency_code || currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(pending, purchase.currency_code || currencyCode)}</strong></div></div>
+                  {purchase.notes && <p className="purchase-note">{purchase.notes}</p>}
+                </article>;
+              })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p><button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button></div>}
+              {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
+            </> : <>
+              <div className="products-intro purchase-subintro">
+                <div><h3>Gastos del negocio</h3><p>Registra servicios, arriendo, reparaciones, herramientas y otros pagos.</p></div>
+                <button type="button" className="primary-button compact-button" onClick={() => { setShowExpenseForm((open) => !open); setError(""); setNotice(""); }}>{showExpenseForm ? "Cancelar gasto" : "+ Nuevo gasto"}</button>
+              </div>
+              {showExpenseForm && <form className="purchase-form panel" onSubmit={addExpense}>
+                <div className="purchase-form-heading"><div><p className="eyebrow">SALIDA DE DINERO</p><h3>Nuevo gasto</h3></div></div>
+                <div className="purchase-form-grid">
+                  <label>Descripción *<input value={expenseDraft.description} onChange={(e) => setExpenseDraft((d) => ({ ...d, description: e.target.value }))} maxLength={220} required placeholder="Ej. Reparación de una máquina" /></label>
+                  <label>Categoría<select value={expenseDraft.category} onChange={(e) => setExpenseDraft((d) => ({ ...d, category: e.target.value }))}><option>Operativo</option><option>Arriendo</option><option>Servicios públicos</option><option>Transporte</option><option>Publicidad</option><option>Reparaciones y mantenimiento</option><option>Muebles y equipos</option><option>Honorarios y servicios</option><option>Comisiones bancarias</option><option>Otro</option></select></label>
+                  <label>Valor *<input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={expenseDraft.amount} onChange={(e) => setExpenseDraft((d) => ({ ...d, amount: e.target.value }))} required placeholder="0" /></label>
+                  <label>Fecha *<input type="date" value={expenseDraft.expense_date} onChange={(e) => setExpenseDraft((d) => ({ ...d, expense_date: e.target.value }))} required /></label>
+                  <label>Forma de pago<select value={expenseDraft.payment_method} onChange={(e) => setExpenseDraft((d) => ({ ...d, payment_method: e.target.value }))}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label>
+                  <label>Proveedor<select value={expenseDraft.supplier_id} onChange={(e) => setExpenseDraft((d) => ({ ...d, supplier_id: e.target.value }))}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
+                  <label className="purchase-span-two">Nota<input value={expenseDraft.notes} onChange={(e) => setExpenseDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1500} placeholder="Factura, referencia o detalle" /></label>
+                </div>
+                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowExpenseForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar gasto"}</button></div>
+              </form>}
+              {purchaseLoading ? <div className="empty-state">Cargando gastos…</div> : expenseRows.length ? <div className="expense-record-list">{expenseRows.map((expense) => {
+                const supplier = suppliers.find((item) => item.id === expense.supplier_id);
+                return <article className="expense-record panel" key={expense.id}>
+                  <div className="expense-record-main"><span className="expense-category">{expense.category}</span><strong>{expense.description}</strong><span>{new Date(expense.expense_date + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })}{supplier ? " · " + supplier.name : ""}{expense.payment_method ? " · " + expense.payment_method : ""}</span>{expense.notes && <small>{expense.notes}</small>}</div>
+                  <strong className="expense-amount">{money(expense.amount_minor, expense.currency_code || currencyCode)}</strong>
+                </article>;
+              })}</div> : <div className="empty-state"><span className="empty-icon">↘</span><h3>Todavía no hay gastos</h3><p>Guarda tus gastos reales para incorporarlos a la rentabilidad. No hay datos de ejemplo.</p><button type="button" className="primary-button" onClick={() => setShowExpenseForm(true)}>+ Nuevo gasto</button></div>}
+            </>}
+          </section>
+        ) : screen === "products" ? (
 
           <section className="products-page">
             <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button></div>

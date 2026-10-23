@@ -18,7 +18,7 @@ const defaultSidebarLayout = () => [{
   items: [
     { id: "home", screen: "home", label: "Inicio", icon: "⌂" },
     ...areas.map((area) => ({ id: area.screen, screen: area.screen, label: area.title, icon: area.icon })),
-    { id: "suppliers", screen: "purchases", tab: "suppliers", label: "Proveedores", icon: "♧" },
+    { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" },
     { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }
   ]
 }];
@@ -1457,15 +1457,16 @@ export default function App() {
   }, [screen, activeBusiness?.id, customerSearch, salesPage, salesPageSize, customersPage, customersPageSize]);
 
   async function loadPurchasesModuleData() {
-    if (!activeBusiness?.id || screen !== "purchases") return;
+    if (!activeBusiness?.id || (screen !== "purchases" && screen !== "suppliers")) return;
     setPurchaseLoading(true); setError("");
     try {
       const privileged = ["owner", "admin"].includes(activeBusiness.role);
       const permissions = activeBusiness.permissions || {};
-      const mayReadPurchases = privileged || Boolean(permissions.purchases_view);
-      const mayReadExpenses = privileged || Boolean(permissions.expenses_view);
-      const mayReadSuppliers = privileged || Boolean(permissions.suppliers_view);
-      const mayManagePurchases = privileged || Boolean(permissions.purchases_manage);
+      const suppliersOnly = screen === "suppliers";
+      const mayReadPurchases = !suppliersOnly && (privileged || Boolean(permissions.purchases_view));
+      const mayReadExpenses = !suppliersOnly && (privileged || Boolean(permissions.expenses_view));
+      const mayReadSuppliers = privileged || Boolean(permissions.suppliers_view) || Boolean(permissions.purchases_view);
+      const mayManagePurchases = !suppliersOnly && (privileged || Boolean(permissions.purchases_manage));
       const none = Promise.resolve({ data: [], error: null });
       const [purchaseResult, expenseResult, supplierResult, productResult] = await Promise.all([
         mayReadPurchases ? supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at", { count: "exact" })
@@ -1522,7 +1523,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen === "purchases" && activeBusiness?.id) loadPurchasesModuleData();
+    if ((screen === "purchases" || screen === "suppliers") && activeBusiness?.id) loadPurchasesModuleData();
   }, [screen, activeBusiness?.id, purchaseModuleTab, purchasesPage, purchasesPageSize, expensesPage, expensesPageSize]);
 
   async function loadCatalogAdminData() {
@@ -2118,11 +2119,12 @@ export default function App() {
   const canViewPurchases = canPermission("purchases_view");
   const canViewExpenses = canPermission("expenses_view");
   const canViewSuppliers = canPermission("suppliers_view") || canViewPurchases;
-  const effectivePurchaseTab = purchaseModuleTab === "suppliers" && canViewSuppliers
-    ? "suppliers"
-    : canViewPurchases
-      ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
-      : "expenses";
+  const effectivePurchaseTab = screen === "suppliers" ? "suppliers"
+    : purchaseModuleTab === "suppliers" && canViewSuppliers
+      ? "suppliers"
+      : canViewPurchases
+        ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
+        : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "settings") return isBusinessOwner;
@@ -2130,7 +2132,8 @@ export default function App() {
     if (next === "products") return canPermission("products_view");
     if (next === "sales") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
-    if (next === "purchases") return canViewPurchases || canViewExpenses || canPermission("suppliers_view");
+    if (next === "purchases") return canViewPurchases || canViewExpenses;
+    if (next === "suppliers") return canViewSuppliers;
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
     if (next === "catalog") return canManageProducts;
     return false;
@@ -2316,10 +2319,6 @@ export default function App() {
   }, []);
 
   function navigateSidebarItem(item) {
-    if (item.id === "suppliers") {
-      navigate("purchases", "suppliers");
-      return;
-    }
     navigate(item.screen);
   }
 
@@ -2350,6 +2349,7 @@ export default function App() {
     : screen === "sales" && showSaleForm ? "saleForm"
     : screen === "customers" && showCustomerForm ? "customerForm"
     : screen === "purchases" && purchasePaymentFormFor ? "purchasePaymentForm"
+    : screen === "suppliers" ? (showSupplierForm ? "supplierForm" : "suppliers")
     : screen === "purchases" && effectivePurchaseTab === "suppliers" ? (showSupplierForm ? "supplierForm" : "suppliers")
     : screen === "purchases" && effectivePurchaseTab === "expenses" ? (showExpenseForm ? "expenseForm" : "expenses")
     : screen === "purchases" && showPurchaseForm ? "purchaseForm"
@@ -2438,7 +2438,7 @@ export default function App() {
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "sales" ? (
@@ -2644,15 +2644,15 @@ export default function App() {
               {!periodSales.length && !periodExpenses.length && <div className="empty-state"><span className="empty-icon">◷</span><h3>No hay movimientos en este periodo</h3><p>Cuando registres ventas y gastos, los números aparecerán aquí sin datos de ejemplo.</p><button type="button" className="secondary-button" onClick={() => navigate("sales")}>Ir a ventas</button></div>}
             </>}
           </section>
-        ) : screen === "purchases" ? (
+        ) : (screen === "purchases" || screen === "suppliers") ? (
           <section className="purchases-page">
             <div className="products-intro">
-              <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>
+              <div><h2>{screen === "suppliers" ? "Proveedores" : "Compras y gastos"}</h2><p>{screen === "suppliers" ? "Administra los contactos de las empresas y personas a quienes compras." : "Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes."}</p></div>
             </div>
-            <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
+            {screen === "purchases" && <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("purchases"); setShowSupplierForm(false); }}>Compras <span>{purchasesCount}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("expenses"); setShowSupplierForm(false); }}>Gastos <span>{expensesCount}</span></button>}
-            </div>
+            </div>}
             {effectivePurchaseTab === "purchases" ? <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Compras de inventario</h3><p>Al guardar una compra, las existencias se suman en un solo paso.</p></div>

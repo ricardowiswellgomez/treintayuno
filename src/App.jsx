@@ -286,7 +286,7 @@ export default function App() {
         setProductImageUrls(imageMap);
         const missingKeys = imageKeys.filter((key) => !foundKeys.has(key));
         if (missingKeys.length) {
-          setError("Hay fotos registradas que no se pudieron leer. Usa la acción «Fotos» del producto para revisarlas y volver a cargarlas.");
+          setError("Hay fotos registradas que no se pudieron leer. Entra en Editar para revisarlas y volver a cargarlas.");
         }
       } catch (e) {
         if (!cancelled) setError(friendlyError(e));
@@ -359,7 +359,7 @@ export default function App() {
       delete next[key];
       return next;
     });
-    setError("Una foto registrada no se pudo mostrar. Usa la acción «Fotos» del producto para revisarla y volver a cargarla.");
+    setError("Una foto registrada no se pudo mostrar. Entra en Editar para revisarla y volver a cargarla.");
   }
 
   function toggleProductGallery(product) {
@@ -557,7 +557,7 @@ export default function App() {
         setStagedImages([]);
         pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
         await loadProducts();
-        setNotice("Producto actualizado. El historial de existencias se conservó; usa «Ajustar stock» para cambiar cantidades.");
+        setNotice("Producto actualizado. El historial de existencias se conservó.");
         return;
       }
       const { data: newProductId, error: rpcError } = await supabase.rpc("create_product_with_opening_stock", {

@@ -167,6 +167,21 @@ export default function App() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [salesTab, setSalesTab] = useState("sales");
+  const [salesData, setSalesData] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [saleProducts, setSaleProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [customerDraft, setCustomerDraft] = useState({ full_name: "", email: "", phone: "" });
+  const [showSaleForm, setShowSaleForm] = useState(false);
+  const [saleCustomerId, setSaleCustomerId] = useState("");
+  const [saleProductChoice, setSaleProductChoice] = useState("");
+  const [saleQuantity, setSaleQuantity] = useState("1");
+  const [saleItems, setSaleItems] = useState([]);
+  const [salePayment, setSalePayment] = useState("");
+  const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
@@ -626,6 +641,130 @@ export default function App() {
       </label>}
       {uploadingImagesFor === product.id && <span className="helper-text">Optimizando y guardando fotos…</span>}
     </div>;
+  }
+
+  async function loadSalesModuleData() {
+    if (!activeBusiness?.id || screen !== "sales") return;
+    setSalesLoading(true);
+    setError("");
+    try {
+      if (salesTab === "customers") {
+        let query = supabase.from("customers").select("id,full_name,email,phone,created_at", { count: "exact" })
+          .eq("business_id", activeBusiness.id).order("full_name").limit(200);
+        if (customerSearch.trim()) query = query.ilike("full_name", "%" + customerSearch.trim() + "%");
+        const result = await query;
+        if (result.error) throw result.error;
+        setCustomers(result.data || []);
+      } else {
+        const [salesResult, productsResult, customersResult] = await Promise.all([
+          supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at")
+            .eq("business_id", activeBusiness.id).order("created_at", { ascending: false }).limit(100),
+          supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable")
+            .eq("business_id", activeBusiness.id).eq("is_sellable", true).order("name").limit(500),
+          supabase.from("customers").select("id,full_name,email,phone").eq("business_id", activeBusiness.id).order("full_name").limit(500)
+        ]);
+        if (salesResult.error) throw salesResult.error;
+        if (productsResult.error) throw productsResult.error;
+        setSaleProducts(productsResult.data || []);
+        const salesRows = salesResult.data || [];
+        const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
+        const itemsBySale = {};
+        if (salesRows.length) {
+          const itemsResult = await supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("sale_id", salesRows.map((sale) => sale.id)).order("created_at");
+          if (itemsResult.error) throw itemsResult.error;
+          for (const item of itemsResult.data || []) {
+            if (!itemsBySale[item.sale_id]) itemsBySale[item.sale_id] = [];
+            itemsBySale[item.sale_id].push(item);
+          }
+        }
+        setCustomers(customersResult.data || []);
+        setSalesData(salesRows.map((sale) => ({ ...sale,
+          customer_name: customersById[sale.customer_id]?.full_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
+          items: itemsBySale[sale.id] || []
+        })));
+      }
+    } catch (e) {
+      setError(friendlyError(e));
+      if (salesTab === "customers") setCustomers([]);
+      else { setSalesData([]); setSaleProducts([]); }
+    } finally { setSalesLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "sales" && activeBusiness?.id) loadSalesModuleData();
+  }, [screen, activeBusiness?.id, salesTab, customerSearch]);
+
+  async function addCustomer(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !customerDraft.full_name.trim()) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: insertError } = await supabase.from("customers").insert({
+        business_id: activeBusiness.id,
+        full_name: customerDraft.full_name.trim(),
+        email: customerDraft.email.trim() || null,
+        phone: customerDraft.phone.trim() || null
+      }).select("id,full_name,email,phone,created_at").single();
+      if (insertError) throw insertError;
+      setCustomerDraft({ full_name: "", email: "", phone: "" });
+      setShowCustomerForm(false);
+      setNotice("Cliente guardado: " + data.full_name + ".");
+      await loadSalesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  function addSaleLine() {
+    const product = saleProducts.find((item) => item.id === saleProductChoice);
+    const quantity = Number(saleQuantity);
+    if (!product) { setError("Elige un producto."); return; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { setError("La cantidad debe ser mayor que cero."); return; }
+    if (product.track_inventory && quantity > Number(product.stock_on_hand)) {
+      setError("No hay existencias suficientes de " + product.name + ". Disponibles: " + Number(product.stock_on_hand).toLocaleString("es-CO") + ".");
+      return;
+    }
+    setSaleItems((current) => {
+      const exists = current.find((item) => item.product_id === product.id);
+      if (exists) return current.map((item) => item.product_id === product.id ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)) } : item);
+      return [...current, { product_id: product.id, name: product.name, quantity,
+        unit_price_minor: Number(product.sale_price_minor || 0), unit_cost_minor: Number(product.cost_price_minor || 0),
+        unit_name: product.unit_name || "unidad", track_inventory: product.track_inventory, stock_on_hand: Number(product.stock_on_hand || 0) }];
+    });
+    setSaleProductChoice(""); setSaleQuantity("1"); setError("");
+  }
+
+  async function createSale(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id) return;
+    if (!saleItems.length) { setError("Añade al menos un producto a la venta."); return; }
+    const total = saleItems.reduce((sum, item) => sum + Math.round(item.unit_price_minor * Number(item.quantity)), 0);
+    const payment = toMinorUnits(salePayment || 0, currencyCode);
+    if (payment < 0 || payment > total) { setError("El abono debe estar entre cero y el total de la venta."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: saleError } = await supabase.rpc("create_sale", {
+        p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
+        p_items: saleItems.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })),
+        p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null
+      });
+      if (saleError) throw saleError;
+      const sale = Array.isArray(data) ? data[0] : data;
+      setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
+      setSaleItems([]); setSalePayment(""); setSaleNotes("");
+      setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó.");
+      await loadSalesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
+  function clearSaleDraft() {
+    setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
+    setSaleItems([]); setSalePayment(""); setSaleNotes(""); setError("");
+  }
+
+  function saleStatusLabel(status) {
+    return ({ paid: "Pagada", partially_paid: "Con abono", pending: "Por cobrar", draft: "Borrador", canceled: "Anulada", refunded: "Devuelta" })[status] || status || "—";
   }
 
   const filteredProducts = products;

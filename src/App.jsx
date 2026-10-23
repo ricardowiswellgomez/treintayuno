@@ -338,6 +338,12 @@ export default function App() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [salesPage, setSalesPage] = useState(1);
+  const [salesPageSize, setSalesPageSize] = useState(20);
+  const [salesCount, setSalesCount] = useState(0);
+  const [customersPage, setCustomersPage] = useState(1);
+  const [customersPageSize, setCustomersPageSize] = useState(20);
+  const [customersCount, setCustomersCount] = useState(0);
   const [saleProducts, setSaleProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -957,20 +963,23 @@ export default function App() {
       if (screen === "customers") {
         let query = supabase.from("customers")
           .select(customerFields, { count: "exact" })
-          .eq("business_id", activeBusiness.id).order("full_name").limit(500);
+          .eq("business_id", activeBusiness.id).order("full_name");
         const safeTerm = customerSearch.trim().replace(/[^\p{L}\p{N}@.+\-_\s]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
         if (safeTerm) {
           const filter = ["full_name", "company_name", "email", "phone", "whatsapp", "document_number", "city"]
             .map((field) => field + ".ilike.%" + safeTerm + "%").join(",");
           query = query.or(filter);
         }
-        const result = await query;
+        const customerFrom = (customersPage - 1) * customersPageSize;
+        const result = await query.range(customerFrom, customerFrom + customersPageSize - 1);
         if (result.error) throw result.error;
         setCustomers(result.data || []);
+        setCustomersCount(result.count || 0);
       } else {
         const [salesResult, productsResult, customersResult] = await Promise.all([
-          supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at")
-            .eq("business_id", activeBusiness.id).order("created_at", { ascending: false }).limit(100),
+          supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" })
+            .eq("business_id", activeBusiness.id).order("created_at", { ascending: false })
+            .range((salesPage - 1) * salesPageSize, (salesPage - 1) * salesPageSize + salesPageSize - 1),
           supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable,archived_at")
             .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(500),
           supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp")
@@ -981,6 +990,7 @@ export default function App() {
         if (customersResult.error) throw customersResult.error;
         setSaleProducts(productsResult.data || []);
         const salesRows = salesResult.data || [];
+        setSalesCount(salesResult.count || 0);
         const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
         const itemsBySale = {};
         const paymentsBySale = {};
@@ -1012,14 +1022,14 @@ export default function App() {
       }
     } catch (e) {
       setError(friendlyError(e));
-      if (screen === "customers") setCustomers([]);
-      else { setSalesData([]); setSaleProducts([]); }
+      if (screen === "customers") { setCustomers([]); setCustomersCount(0); }
+      else { setSalesData([]); setSalesCount(0); setSaleProducts([]); }
     } finally { setSalesLoading(false); }
   }
 
   useEffect(() => {
     if ((screen === "sales" || screen === "customers") && activeBusiness?.id) loadSalesModuleData();
-  }, [screen, activeBusiness?.id, customerSearch]);
+  }, [screen, activeBusiness?.id, customerSearch, salesPage, salesPageSize, customersPage, customersPageSize]);
 
   async function loadPurchasesModuleData() {
     if (!activeBusiness?.id || screen !== "purchases") return;
@@ -1749,7 +1759,7 @@ export default function App() {
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
 <div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={busy||!saleItems.length}>{busy?"Guardando…":"Guardar venta"}</button></div>
 </form>}
-<div className="sales-toolbar"><span>{salesData.length} ventas recientes</span></div>
+<div className="sales-toolbar"><span>{salesCount} {salesCount===1?"venta":"ventas"} · Página {salesPage} de {Math.max(1,Math.ceil(salesCount/salesPageSize))}</span><label className="sales-page-size">Mostrar<select value={salesPageSize} onChange={(e)=>{setSalesPageSize(Number(e.target.value));setSalesPage(1);}}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label></div>
 {salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel" key={sale.id}>
 <div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
 <div className="sale-record-customer">{sale.customer_name}</div>
@@ -1767,11 +1777,12 @@ export default function App() {
 </form>}
 </div>
 {sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p>{canManageSales && <button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button>}</div>}
+{!salesLoading && salesCount > salesPageSize && <div className="pagination-bar sales-pagination"><span className="count-label">Mostrando {(salesPage-1)*salesPageSize+1}–{Math.min(salesPage*salesPageSize,salesCount)} de {salesCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={salesPage<=1} onClick={()=>setSalesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{salesPage} / {Math.ceil(salesCount/salesPageSize)}</span><button type="button" className="secondary-button" disabled={salesPage>=Math.ceil(salesCount/salesPageSize)} onClick={()=>setSalesPage((page)=>page+1)}>Siguiente</button></div></div>}
 </section>
 ) : screen === "customers" ? (
 <section className="customers-page">
 <div className="products-intro"><div><h2>Clientes</h2><p>Personas y empresas relacionadas con tus ventas.</p></div>{canManageCustomers && <button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button>}</div>
-<div className="customer-toolbar"><label className="search-box"><span>⌕</span><input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Buscar por nombre, empresa, documento o contacto…"/></label><span className="count-label">{customers.length} {customers.length===1?"cliente":"clientes"}</span></div>
+<div className="customer-toolbar"><label className="search-box"><span>⌕</span><input value={customerSearch} onChange={e=>{setCustomerSearch(e.target.value);setCustomersPage(1);}} placeholder="Buscar por nombre, empresa, documento o contacto…"/></label><span className="count-label">{customersCount} {customersCount===1?"cliente":"clientes"}</span></div>
 {canManageCustomers && showCustomerForm&&<form className="customer-form panel" onSubmit={addCustomer}>
 <div className="customer-form-heading"><div><p className="eyebrow">{editingCustomerId?"DATOS DEL CLIENTE":"NUEVO REGISTRO"}</p><h3>{editingCustomerId?"Editar cliente":"Nuevo cliente"}</h3></div><span className="customer-form-hint">Persona o empresa</span></div>
 <div className="customer-form-grid">
@@ -1798,6 +1809,7 @@ export default function App() {
 {canManageCustomers && <button type="button" className="text-button" onClick={()=>startEditCustomer(customer)}>Editar</button>}
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
+{!salesLoading && customersCount > customersPageSize && <div className="pagination-bar customer-pagination"><span className="count-label">Mostrando {(customersPage-1)*customersPageSize+1}–{Math.min(customersPage*customersPageSize,customersCount)} de {customersCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={customersPage<=1} onClick={()=>setCustomersPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{customersPage} / {Math.ceil(customersCount/customersPageSize)}</span><button type="button" className="secondary-button" disabled={customersPage>=Math.ceil(customersCount/customersPageSize)} onClick={()=>setCustomersPage((page)=>page+1)}>Siguiente</button></div></div>}
 </section>
  ) : screen === "team" ? (
           <section className="team-page">

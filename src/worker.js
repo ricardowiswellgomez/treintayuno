@@ -218,9 +218,14 @@ function buildFacts(intent, period, currency, sales, items, customers, products,
 }
 function deterministicAnswer(intent, facts, currency) {
   const money = n => canFormatCurrency(n, currency);
+  const businessLabel = facts.businessName ? " en " + facts.businessName : "";
   if (intent.customerRank) {
     const rows = facts.topCustomers || [];
-    if (!rows.length) return "No encuentro ventas con cliente asociado en " + facts.period + ". No puedo identificar quién compró más con los registros visibles de este periodo.";
+    if (!rows.length) {
+      const salesCount = Number(facts.sales?.count || 0);
+      if (!salesCount) return "No encuentro ventas registradas" + businessLabel + " para " + facts.period + ". Confirma que estás consultando el negocio correcto desde el selector de la barra lateral.";
+      return "Hay " + salesCount + " venta(s) registrada(s)" + businessLabel + " para " + facts.period + ", pero ninguna tiene un cliente asociado en los registros consultados. Por eso no puedo calcular quién compró más.";
+    }
     const first = rows[0];
     return "En " + facts.period + ", tu cliente con mayor compra registrada es " + first.name + ", con " + money(first.totalMinor) + " en " + first.purchases + (first.purchases === 1 ? " venta" : " ventas") + ".\n\n" + rows.map((row, i) => (i + 1) + ". " + row.name + " — " + money(row.totalMinor) + " (" + row.purchases + (row.purchases === 1 ? " venta)" : " ventas)")).join("\n") + (facts.sales && facts.sales.sampleLimited ? "\n\nNota: el informe llegó al límite de filas consultadas y puede estar incompleto." : "");
   }
@@ -331,7 +336,17 @@ export default {
             order: "created_at.desc", limit: "20"
           }, token, publishableKey) : Promise.resolve([])
         ];
-        const [salesRaw, products, expenses, purchases, customersList] = await Promise.all(dataPromises);
+        let [salesRaw, products, expenses, purchases, customersList] = await Promise.all(dataPromises);
+        // En consultas vacías, reintenta una vez por negocio sin filtro temporal SQL.
+        // La fecha se valida a continuación en la zona horaria del negocio.
+        if (salesNeeded && salesRaw.length === 0) {
+          salesRaw = await restRows("sales", {
+            select: "id,customer_id,sale_number,status,currency_code,subtotal_minor,discount_minor,total_minor,amount_paid_minor,sold_at,created_at",
+            business_id: "eq." + businessId,
+            order: "created_at.desc",
+            limit: String(MAX_ROWS)
+          }, token, publishableKey);
+        }
         const periodStart = Date.parse(period.startISO);
         const periodEnd = Date.parse(period.endISO);
         const sales = salesRaw.filter(row => {
@@ -367,6 +382,7 @@ export default {
           } else customers = [];
         }
         const facts = buildFacts(intent, period, business.currency_code || "COP", sales, items, customers, products, expenses, purchases);
+        facts.businessName = business.name || "";
         const direct = intent.dataQuestion && !intent.directAnalysis ? deterministicAnswer(intent, facts, business.currency_code || "COP") : null;
         if (direct) return json({ answer: direct, dataBacked: true, elapsedMs: Date.now() - began });
         const history = Array.isArray(body.history) ? body.history.slice(-4).map(item => ({

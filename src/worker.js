@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://maogebecfottfvlrjbho.supabase.co";
-const FAST_MODEL = "@cf/zai-org/glm-4.7-flash";
+const FAST_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_ROWS = 1000;
 
 function json(data, status = 200) {
@@ -10,11 +10,15 @@ function normalise(value) {
 }
 function localParts(date, timezone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit"
+    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
   }).formatToParts(date);
   const out = {};
   for (const part of parts) if (part.type !== "literal") out[part.type] = part.value;
-  return { year: Number(out.year), month: Number(out.month), day: Number(out.day) };
+  return {
+    year: Number(out.year), month: Number(out.month), day: Number(out.day),
+    hour: Number(out.hour), minute: Number(out.minute), second: Number(out.second)
+  };
 }
 function dateKey(p) {
   return String(p.year).padStart(4, "0") + "-" + String(p.month).padStart(2, "0") + "-" + String(p.day).padStart(2, "0");
@@ -31,8 +35,11 @@ function shiftMonth(year, month, offset) {
 function localMidnightUtc(key, timezone) {
   const naive = Date.parse(key + "T00:00:00.000Z");
   const observed = localParts(new Date(naive), timezone);
-  const representedAsUtc = Date.UTC(observed.year, observed.month - 1, observed.day);
-  return new Date(naive + naive - representedAsUtc);
+  const observedWallTimeAsUtc = Date.UTC(
+    observed.year, observed.month - 1, observed.day,
+    observed.hour, observed.minute, observed.second
+  );
+  return new Date(naive + (naive - observedWallTimeAsUtc));
 }
 function periodFor(question, timezone, now) {
   const p = localParts(now, timezone);
@@ -232,7 +239,7 @@ function deterministicAnswer(intent, facts, currency) {
     if (!inv) return "No tengo datos de inventario autorizados para mostrar.";
     if (!inv.trackedProducts) return "No hay productos con seguimiento de inventario en la consulta disponible.";
     if (!inv.lowOrOutOfStock.length) return "Revisé " + inv.trackedProducts + " productos con seguimiento de inventario. No aparecen existencias iguales o inferiores a sus umbrales de reposición.";
-    return "Revisé el inventario en " + facts.period + ". Estos productos están en el umbral de reposición o por debajo:\n" + inv.lowOrOutOfStock.map((row, i) => (i + 1) + ". " + row.name + ": " + row.stock + " en existencia (umbral " + row.threshold + ")").join("\n") + (inv.productsSampleLimited ? "\n\nNota: el listado alcanzó el límite de registros consultados." : "");
+    return "Revisé el inventario actual. Estos productos están en el umbral de reposición o por debajo:\n" + inv.lowOrOutOfStock.map((row, i) => (i + 1) + ". " + row.name + ": " + row.stock + " en existencia (umbral " + row.threshold + ")").join("\n") + (inv.productsSampleLimited ? "\n\nNota: el listado alcanzó el límite de registros consultados." : "");
   }
   if (intent.profitability) {
     const estimate = facts.profitabilityEstimate;
@@ -373,7 +380,7 @@ export default {
           ...history,
           { role: "user", content: question }
         ];
-        const result = await env.AI.run(FAST_MODEL, { messages, max_tokens: 480, temperature: 0.2 });
+        const result = await env.AI.run(FAST_MODEL, { messages, max_tokens: 360, temperature: 0.2 });
         const answer = typeof result?.response === "string" ? result.response.trim() : "";
         return answer ? json({ answer, dataBacked: intent.dataQuestion, elapsedMs: Date.now() - began }) : json({ error: "La IA no devolvió una respuesta. Inténtalo de nuevo." }, 502);
       } catch (error) {

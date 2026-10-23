@@ -1008,3 +1008,10 @@
 .sidebar-edit-hint{color:var(--green);background:var(--soft-green);border-radius:7px;padding:8px 9px}
 .sidebar-touch-tip{display:none}
 @media(max-width:600px){.sidebar-touch-tip{display:block}}
+
+
+.sidebar-mobile-grip{display:none}
+@media(max-width:600px){
+ .sidebar-mobile-grip{display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;min-height:42px;color:#8a998a;font-size:18px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+ .nav-list:not(.nav-list-editing) .sidebar-mobile-grip{border-radius:8px;background:#f4f6f1}
+}

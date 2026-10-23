@@ -441,3 +441,10 @@
  .customer-form-heading{align-items:flex-start}
  .customer-form-hint{font-size:9px}
 }
+
+/* La miniatura compacta de las nuevas tarjetas tiene prioridad sobre los estilos antiguos. */
+.product-list-cards .product-card-wa .product-card-wa-top .product-thumb{width:78px;min-width:78px;height:78px;min-height:78px;max-height:78px;flex:0 0 78px}
+.product-list-cards .product-card-wa .product-card-wa-top .product-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+@media(max-width:600px){
+ .product-list-cards .product-card-wa .product-card-wa-top .product-thumb{width:82px;min-width:82px;height:82px;min-height:82px;max-height:82px;flex-basis:82px}
+}

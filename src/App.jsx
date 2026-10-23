@@ -593,10 +593,19 @@ export default function App() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings)")
+      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings, created_at)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
-    const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} })).filter((b) => b?.id);
+    // Orden estable: el negocio creado primero es el predeterminado en una sesión nueva.
+    const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} }))
+      .filter((b) => b?.id)
+      .sort((left, right) => {
+        const leftCreated = Date.parse(left.created_at || "");
+        const rightCreated = Date.parse(right.created_at || "");
+        const leftTime = Number.isFinite(leftCreated) ? leftCreated : Number.MAX_SAFE_INTEGER;
+        const rightTime = Number.isFinite(rightCreated) ? rightCreated : Number.MAX_SAFE_INTEGER;
+        return leftTime - rightTime || String(left.name || "").localeCompare(String(right.name || ""), "es");
+      });
     setBusinesses(list);
     setActiveBusiness((current) => list.find((b) => b.id === current?.id) || list[0] || null);
     setScreen((current) => list.length ? (current === "setup" ? "home" : current) : "setup");

@@ -378,7 +378,44 @@ export default function App() {
   const [adjustingId, setAdjustingId] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
+  const [stockMovementRows, setStockMovementRows] = useState([]);
+  const [stockMovementsLoading, setStockMovementsLoading] = useState(false);
+  const [stockMovementsCount, setStockMovementsCount] = useState(0);
+  const [stockMovementPage, setStockMovementPage] = useState(1);
+  const [stockMovementRefresh, setStockMovementRefresh] = useState(0);
   const currencyCode = activeBusiness?.currency_code || "COP";
+
+  useEffect(() => {
+    if (!activeBusiness?.id || !editingProductId) {
+      setStockMovementRows([]);
+      setStockMovementsCount(0);
+      setStockMovementsLoading(false);
+      return;
+    }
+    let active = true;
+    setStockMovementsLoading(true);
+    const from = (stockMovementPage - 1) * 10;
+    supabase.from("stock_movements")
+      .select("id,product_id,movement_type,quantity_delta,reference_type,notes,created_at", { count: "exact" })
+      .eq("business_id", activeBusiness.id)
+      .eq("product_id", editingProductId)
+      .order("created_at", { ascending: false })
+      .range(from, from + 9)
+      .then(({ data, error: movementError, count }) => {
+        if (!active) return;
+        if (movementError) throw movementError;
+        setStockMovementRows(data || []);
+        setStockMovementsCount(count || 0);
+      })
+      .catch((e) => {
+        if (!active) return;
+        setStockMovementRows([]);
+        setStockMovementsCount(0);
+        setError(friendlyError(e));
+      })
+      .finally(() => { if (active) setStockMovementsLoading(false); });
+    return () => { active = false; };
+  }, [activeBusiness?.id, editingProductId, stockMovementPage, stockMovementRefresh]);
 
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
@@ -717,6 +754,7 @@ export default function App() {
     if (editingProductId) setOpenProductGalleries((current) => ({ ...current, [editingProductId]: false }));
     setEditingProductId(null);
     setAdjustDelta(""); setAdjustNote("");
+    setStockMovementRows([]); setStockMovementsCount(0); setStockMovementPage(1);
     setShowProductForm(false);
     setError("");
   }
@@ -727,6 +765,7 @@ export default function App() {
     const digits = currencyDigits(currencyCode);
     setStagedImages([]);
     setEditingProductId(product.id);
+    setStockMovementPage(1);
     setAdjustDelta(""); setAdjustNote("");
     setOpenProductGalleries((current) => ({ ...current, [product.id]: true }));
     setShowProductForm(true);
@@ -934,6 +973,7 @@ export default function App() {
       setProductForm((current) => ({ ...current, stock: String(fresh.stock_on_hand) }));
       setAdjustDelta(""); setAdjustNote("");
       setNotice("Existencias actualizadas. El movimiento quedó guardado en el historial.");
+      setStockMovementPage(1); setStockMovementRefresh((value) => value + 1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -941,6 +981,16 @@ export default function App() {
 
   function renderStockAdjustment(product) {
     if (!editingProductId || editingProductId !== product.id || !product.track_inventory) return null;
+    const movementName = (type) => ({
+      opening: "Existencias iniciales",
+      sale: "Venta",
+      purchase: "Compra",
+      adjustment_in: "Ajuste de entrada",
+      adjustment_out: "Ajuste de salida",
+      return: "Devolución",
+      return_in: "Devolución",
+      damage: "Daño o pérdida"
+    })[type] || (type ? type.replaceAll("_", " ") : "Movimiento");
     return <section className="edit-subpanel">
       <div className="edit-subpanel-heading"><strong>Existencias</strong><span>Actuales: {Number(product.stock_on_hand).toLocaleString("es-CO")} {product.unit_name || "unidades"}</span></div>
       <div className="stock-adjust-form">
@@ -949,6 +999,30 @@ export default function App() {
           <label>Motivo<input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label>
         </div>
         <button type="button" className="primary-button" disabled={busy || !adjustDelta || Number(adjustDelta) === 0} onClick={() => saveInlineStock(product.id)}>{busy ? "Guardando…" : "Guardar ajuste"}</button>
+      </div>
+      <div className="stock-history">
+        <div className="stock-history-heading">
+          <div><strong>Historial de movimientos</strong><span>{stockMovementsCount} {stockMovementsCount === 1 ? "movimiento" : "movimientos"}</span></div>
+          {stockMovementsCount > 10 && <span className="stock-history-page-label">Página {stockMovementPage} de {Math.ceil(stockMovementsCount / 10)}</span>}
+        </div>
+        {stockMovementsLoading ? <p className="stock-history-empty">Cargando historial…</p>
+          : stockMovementRows.length ? <div className="stock-history-list">{stockMovementRows.map((movement) => {
+            const quantity = Number(movement.quantity_delta || 0);
+            return <article className="stock-history-row" key={movement.id}>
+              <span className={"stock-history-sign" + (quantity > 0 ? " stock-in" : quantity < 0 ? " stock-out" : "")}>{quantity > 0 ? "+" : ""}{quantity.toLocaleString("es-CO")}</span>
+              <div className="stock-history-main">
+                <strong>{movementName(movement.movement_type)}</strong>
+                <span>{new Date(movement.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" })}</span>
+                {movement.notes && <small>{movement.notes}</small>}
+              </div>
+            </article>;
+          })}</div>
+          : <p className="stock-history-empty">Todavía no hay movimientos registrados.</p>}
+        {stockMovementsCount > 10 && <div className="stock-history-pagination">
+          <button type="button" className="secondary-button" disabled={stockMovementPage <= 1 || stockMovementsLoading} onClick={() => setStockMovementPage((page) => Math.max(1, page - 1))}>Anterior</button>
+          <span>{stockMovementPage} / {Math.ceil(stockMovementsCount / 10)}</span>
+          <button type="button" className="secondary-button" disabled={stockMovementPage >= Math.ceil(stockMovementsCount / 10) || stockMovementsLoading} onClick={() => setStockMovementPage((page) => page + 1)}>Siguiente</button>
+        </div>}
       </div>
     </section>;
   }

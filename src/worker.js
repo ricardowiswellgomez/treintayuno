@@ -32,7 +32,29 @@ async function getProductForUser(env, token, productId) {
   return Array.isArray(products) ? products[0] || null : null;
 }
 
+async function readLimitedBody(request, maxBytes) {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new RangeError("La foto optimizada debe pesar 5 MB o menos.");
+    }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return merged.buffer;
+}
+
 async function callImageRpc(env, token, functionName, data) {
+
   const response = await fetch(env.SUPABASE_URL + "/rest/v1/rpc/" + functionName, {
     method: "POST",
     headers: supabaseHeaders(env, token, { "Content-Type": "application/json" }),
@@ -88,8 +110,10 @@ async function handleProductImages(request, env, url) {
     const images = product.image_paths || [];
     if (images.length >= 3) return json({ error: "Cada producto admite un máximo de tres fotos." }, 409);
 
-    const bytes = await request.arrayBuffer();
-    if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_LIMIT) return json({ error: "La foto está vacía o supera los 5 MB." }, 413);
+    let bytes;
+    try { bytes = await readLimitedBody(request, IMAGE_LIMIT); }
+    catch (error) { return json({ error: error?.message || "La foto supera los 5 MB permitidos." }, 413); }
+    if (bytes.byteLength === 0) return json({ error: "La foto está vacía." }, 400);
     const view = new Uint8Array(bytes);
     const isWebp = view.length >= 12 &&
       String.fromCharCode(...view.slice(0, 4)) === "RIFF" &&

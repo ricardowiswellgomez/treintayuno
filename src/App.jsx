@@ -1894,6 +1894,18 @@ export default function App() {
     });
   }
 
+  function startSidebarMouseDrag(event, payload) {
+    if (!isBusinessOwner) {
+      event.preventDefault();
+      return;
+    }
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", payload.id);
+    }
+    setDraggedSidebarItem(payload);
+  }
+
   function startSidebarTouchDrag(event, payload) {
     if (!isBusinessOwner) return;
     if (sidebarEditing && event.target?.closest && event.target.closest("input, button")) return;
@@ -2073,29 +2085,25 @@ export default function App() {
           <p className="nav-label">TU NEGOCIO</p>
           {isBusinessOwner && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
         </div>
-        {!sidebarEditing && <p className="sidebar-touch-tip">En celular, mantén presionado ⠿ y arrastra para mover.</p>}
-        {sidebarEditing && <p className="sidebar-edit-hint">Mantén presionado ⠿ y arrastra. Guarda al terminar.</p>}
+        {!sidebarEditing && isBusinessOwner && <p className="sidebar-touch-tip">Mueve con ⠿: arrastra con el ratón o mantén presionado en celular.</p>}
+        {sidebarEditing && <p className="sidebar-edit-hint">Arrastra ⠿ con el ratón o mantenlo presionado en celular. Guarda al terminar.</p>}
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
           {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
-            onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
-            onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
-            <div className="sidebar-group-heading" draggable={sidebarEditing && !(typeof window !== "undefined" && "ontouchstart" in window)}
-              onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })}
-              onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
-              {sidebarEditing ? <><span className="sidebar-drag-handle" title="Mantén presionado para mover el grupo">⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-mobile-grip" title="Mantén presionado para mover el grupo">⠿</span>}<p className="nav-label">{group.title}</p></>}
+            onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
+            onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") { moveSidebarItem(payload.id, group.id); setSidebarEditing(true); } else if (payload?.type === "group") { moveSidebarGroup(payload.id, group.id); setSidebarEditing(true); } setDraggedSidebarItem(null); }}>
+            <div className="sidebar-group-heading">
+              {sidebarEditing ? <><span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span>}<p className="nav-label">{group.title}</p></>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
-              <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row" draggable={sidebarEditing && !(typeof window !== "undefined" && "ontouchstart" in window)}
-                onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })}
-                onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "item", id: item.id })}
-                onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
-                onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) moveSidebarItem(payload.id, group.id, item.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>
+              <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row"
+                onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
+                onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) { moveSidebarItem(payload.id, group.id, item.id); setSidebarEditing(true); } else if (payload?.type === "group") { moveSidebarGroup(payload.id, group.id); setSidebarEditing(true); } setDraggedSidebarItem(null); }}>
                 {sidebarEditing ? <>
-                  <span className="sidebar-drag-handle" title="Arrastra para mover">⠿</span>
+                  <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-mobile-grip" title="Mantén presionado para mover">⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button></>}
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button></>}
               </div>
             ))}
           </section>)}

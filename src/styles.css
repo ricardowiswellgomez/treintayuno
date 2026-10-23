@@ -231,3 +231,9 @@
  .product-list-cards .product-card .product-card-heading{flex-direction:row;align-items:center}
  .product-list-cards .product-card .product-card-heading .product-thumb{width:65px;min-width:65px;height:65px;min-height:65px}
 }
+
+@media(max-width:600px){
+ .product-card-actions{flex-wrap:wrap}
+ .product-card-actions .action-small{flex:1 1 42%;min-width:0}
+}
+.product-table .muted-value[title]{cursor:help}

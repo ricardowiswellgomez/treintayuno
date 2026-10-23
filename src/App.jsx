@@ -371,6 +371,7 @@ export default function App() {
   const [salePaymentSaving, setSalePaymentSaving] = useState(false);
   const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
+  const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [search, setSearch] = useState("");
@@ -576,6 +577,7 @@ export default function App() {
     if (screen !== "settings" || !activeBusiness?.id) return;
     let alive = true;
     setSettingsCurrency(activeBusiness.currency_code || "COP");
+    setSettingsBusinessName(activeBusiness.name || "");
     setSettingsChecking(true);
     setError("");
     businessHasFinancialData(activeBusiness.id)
@@ -678,6 +680,8 @@ export default function App() {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     if (activeBusiness.role !== "owner") { setError("Solo el propietario puede cambiar la configuración del negocio."); return; }
+    const businessName = settingsBusinessName.trim();
+    if (!businessName) { setError("Escribe el nombre del negocio."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
       const hasData = await businessHasFinancialData(activeBusiness.id);
@@ -685,17 +689,23 @@ export default function App() {
       if (hasData && settingsCurrency !== currencyCode) {
         throw new Error("Para cambiar la moneda después de registrar productos u operaciones, primero se necesita una conversión de importes.");
       }
-      if (settingsCurrency === currencyCode) {
-        setNotice("La moneda ya está configurada."); return;
+      const nameChanged = businessName !== activeBusiness.name;
+      const currencyChanged = settingsCurrency !== currencyCode;
+      if (!nameChanged && !currencyChanged) {
+        setNotice("No hay cambios pendientes.");
+        return;
       }
       const { data, error: updateError } = await supabase.from("businesses")
-        .update({ currency_code: settingsCurrency })
-        .eq("id", activeBusiness.id).select("id,currency_code").maybeSingle();
+        .update({ name: businessName, currency_code: settingsCurrency })
+        .eq("id", activeBusiness.id).select("id,name,currency_code").maybeSingle();
       if (updateError) throw updateError;
-      if (!data) throw new Error("No se pudo guardar la moneda. Comprueba que hayas iniciado sesión como propietario.");
-      setActiveBusiness((current) => current ? { ...current, currency_code: data.currency_code } : current);
-      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, currency_code: data.currency_code } : business));
-      setNotice("Moneda guardada. Los nuevos importes usarán esta moneda.");
+      if (!data) throw new Error("No se pudo guardar la configuración. Comprueba que hayas iniciado sesión como propietario.");
+      setActiveBusiness((current) => current ? { ...current, name: data.name, currency_code: data.currency_code } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code } : business));
+      setSettingsBusinessName(data.name);
+      setNotice(nameChanged && currencyChanged
+        ? "Nombre y moneda del negocio actualizados."
+        : nameChanged ? "Nombre del negocio actualizado." : "Moneda guardada. Los nuevos importes usarán esta moneda.");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
@@ -2231,13 +2241,14 @@ export default function App() {
             <div className="settings-intro"><h2>Configura tu negocio</h2><p>Estas preferencias se guardan para que el sistema las use en las demás pantallas.</p></div>
             <form className="settings-card panel" onSubmit={saveSettings}>
               <div className="settings-icon">¤</div>
-              <h3>Moneda del negocio</h3>
-              <p>Los precios, costos y reportes usarán la moneda que elijas.</p>
+              <h3>Datos del negocio</h3>
+              <p>Actualiza el nombre y configura la moneda de las operaciones.</p>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
+                <label className="settings-field">Nombre del negocio<input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
                 <label className="settings-field">Moneda principal<select value={settingsCurrency} disabled={settingsHasData || activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label>
                 {settingsHasData ? <p className="helper-text">Ya existen productos u operaciones con importes. Para evitar alterar tus registros, no permitimos cambiar la moneda sin una herramienta de conversión.</p> : <p className="helper-text">Elige la moneda antes de registrar productos o movimientos de dinero. Podrás definir otros ajustes aquí más adelante.</p>}
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar esta opción.</p>}
-                <div className="form-actions"><button className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner" || (settingsHasData && settingsCurrency === currencyCode)}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
+                <div className="form-actions"><button className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner" || (settingsBusinessName.trim() === (activeBusiness?.name || "") && settingsCurrency === currencyCode)}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
               </>}
             </form>
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>

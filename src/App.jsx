@@ -301,6 +301,7 @@ export default function App() {
   const sidebarTouchRef = useRef(null);
   const sidebarLongPressTimerRef = useRef(null);
   const sidebarSuppressClickRef = useRef(false);
+  const sidebarTouchHandlersRef = useRef({ move: null, end: null });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -1971,6 +1972,25 @@ export default function App() {
     sidebarTouchRef.current = null;
   }
 
+  sidebarTouchHandlersRef.current = {
+    move: moveSidebarTouchDrag,
+    end: finishSidebarTouchDrag
+  };
+
+  useEffect(() => {
+    const handleDocumentTouchMove = (event) => sidebarTouchHandlersRef.current.move?.(event);
+    const handleDocumentTouchEnd = () => sidebarTouchHandlersRef.current.end?.();
+    document.addEventListener("touchmove", handleDocumentTouchMove, { passive: false });
+    document.addEventListener("touchend", handleDocumentTouchEnd);
+    document.addEventListener("touchcancel", handleDocumentTouchEnd);
+    return () => {
+      document.removeEventListener("touchmove", handleDocumentTouchMove);
+      document.removeEventListener("touchend", handleDocumentTouchEnd);
+      document.removeEventListener("touchcancel", handleDocumentTouchEnd);
+      if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
+    };
+  }, []);
+
   function navigateSidebarItem(item) {
     if (item.id === "suppliers") {
       navigate("purchases", "suppliers");
@@ -2055,7 +2075,7 @@ export default function App() {
         </div>
         {!sidebarEditing && <p className="sidebar-touch-tip">En celular, mantén presionado ⠿ y arrastra para mover.</p>}
         {sidebarEditing && <p className="sidebar-edit-hint">Mantén presionado ⠿ y arrastra. Guarda al terminar.</p>}
-        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio" onTouchMove={moveSidebarTouchDrag} onTouchEnd={finishSidebarTouchDrag} onTouchCancel={finishSidebarTouchDrag}>
+        <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
           {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (sidebarEditing) event.preventDefault(); }}
             onDrop={(event) => { if (!sidebarEditing) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") moveSidebarItem(payload.id, group.id); else if (payload?.type === "group") moveSidebarGroup(payload.id, group.id); setDraggedSidebarItem(null); }}>

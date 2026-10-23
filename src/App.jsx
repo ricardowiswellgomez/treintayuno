@@ -491,6 +491,7 @@ export default function App() {
       }
       setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
       if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
+      setSearch(""); setProductPage(1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }

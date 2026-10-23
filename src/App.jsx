@@ -261,10 +261,16 @@ export default function App() {
         if (imageError) throw imageError;
         if (cancelled) return;
         const imageMap = {};
+        const foundKeys = new Set();
         for (const image of data || []) {
+          foundKeys.add(image.image_key);
           imageMap[image.product_id + "|" + image.image_key] = "data:image/webp;base64," + image.image_data;
         }
         setProductImageUrls(imageMap);
+        const missingKeys = imageKeys.filter((key) => !foundKeys.has(key));
+        if (missingKeys.length) {
+          setError("Hay fotos registradas en la ficha del producto que no se pudieron leer. Abre «Ver fotos» y vuelve a cargarlas.");
+        }
       } catch (e) {
         if (!cancelled) setError(friendlyError(e));
       } finally {

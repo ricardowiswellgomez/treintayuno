@@ -2437,12 +2437,12 @@ export default function App() {
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><div><p className="eyebrow">TU ESPACIO DE TRABAJO</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "sales" ? (
 <section className="sales-page">
-<div className="products-intro"><div><h2>Ventas</h2><p>Registra ventas, abonos y saldos.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+<div className="products-intro"><div><h2>El registro de tus ventas</h2><p>Consulta cada operación, revisa los abonos y mantén a la vista los saldos pendientes.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>
 <div className="sale-builder">
@@ -2490,7 +2490,7 @@ export default function App() {
 </section>
 ) : screen === "customers" ? (
 <section className="customers-page">
-<div className="products-intro"><div><h2>Clientes</h2><p>Personas y empresas relacionadas con tus ventas.</p></div>{canManageCustomers && <button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button>}</div>
+<div className="products-intro"><div><h2>Tu cartera de clientes</h2><p>Guarda los datos de las personas y empresas que te compran para encontrarlas y asociarlas fácilmente a una venta.</p></div>{canManageCustomers && <button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button>}</div>
 <div className="customer-toolbar"><label className="search-box"><span className="field-label-heading"><span>⌕</span><FieldHelp enabled={contextualHelpEnabled} text="Busca clientes por nombre, empresa, documento o datos de contacto." /></span><input value={customerSearch} onChange={e=>{setCustomerSearch(e.target.value);setCustomersPage(1);}} placeholder="Buscar por nombre, empresa, documento o contacto…"/></label><span className="count-label">{customersCount} {customersCount===1?"cliente":"clientes"}</span></div>
 {canManageCustomers && showCustomerForm&&<form className="customer-form panel" onSubmit={addCustomer}>
 <div className="customer-form-heading"><div><p className="eyebrow">{editingCustomerId?"DATOS DEL CLIENTE":"NUEVO REGISTRO"}</p><h3>{editingCustomerId?"Editar cliente":"Nuevo cliente"}</h3></div><span className="customer-form-hint">Persona o empresa</span></div>
@@ -2523,7 +2523,7 @@ export default function App() {
  ) : screen === "team" ? (
           <section className="team-page">
             <div className="products-intro team-intro">
-              <div><h2>Equipo y permisos</h2><p>Decide qué puede consultar o modificar cada colaborador.</p></div>
+              <div><h2>Personas y accesos</h2><p>Invita a tu equipo y asigna a cada persona únicamente los módulos y acciones que necesita.</p></div>
               <button type="button" className="primary-button compact-button" onClick={() => {
                 if (teamFormOpen && !teamEditingUserId) clearTeamForm();
                 else { setTeamEmail(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
@@ -2567,7 +2567,7 @@ export default function App() {
  ) : screen === "catalog" ? (
           <section className="catalog-admin-page">
             <div className="products-intro catalog-admin-intro">
-              <div><h2>Catálogo para compartir</h2><p>Elige qué productos pueden ver tus clientes con un enlace público.</p></div>
+              <div><h2>Tu escaparate digital</h2><p>Publica los productos que quieras mostrar y comparte un único enlace con tus clientes.</p></div>
               <div className="catalog-admin-actions">
                 <button type="button" className="secondary-button compact-button" onClick={copyPublicCatalogLink}>Copiar enlace</button>
                 <a className="primary-button compact-button catalog-open-link" href={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} target="_blank" rel="noreferrer">Abrir catálogo</a>
@@ -2598,7 +2598,7 @@ export default function App() {
         ) : screen === "profitability" ? (
           <section className="profitability-page">
             <div className="products-intro profitability-intro">
-              <div><h2>Costos y rentabilidad</h2><p>Mira cuánto vendiste, cuánto costó lo vendido y qué quedó después de los gastos.</p></div>
+              <div><h2>Ingresos, costos y resultado</h2><p>Compara lo vendido con el costo de los artículos y los gastos que registraste durante el periodo elegido.</p></div>
               <label className="profitability-period-label"><span className="field-label-heading">Periodo
                 <FieldHelp enabled={contextualHelpEnabled} text="Elige el periodo para consultar ingresos, costos y utilidad." /></span><select value={profitabilityPeriod} onChange={(e) => setProfitabilityPeriod(e.target.value)}>
                   <option value="month">Este mes</option><option value="30days">Últimos 30 días</option><option value="all">Todo el historial</option>
@@ -2646,7 +2646,7 @@ export default function App() {
         ) : (screen === "purchases" || screen === "suppliers") ? (
           <section className="purchases-page">
             {screen === "purchases" && <div className="products-intro">
-              <div><h2>Compras y gastos</h2><p>Registra lo que entra y lo que sale. Los importes reales alimentan tus reportes.</p></div>
+              <div><h2>Movimientos del negocio</h2><p>Registra las compras de inventario, los pagos a proveedores y los gastos de funcionamiento sin duplicar operaciones.</p></div>
             </div>}
             {screen === "purchases" && <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("purchases"); setShowSupplierForm(false); }}>Compras <span>{purchasesCount}</span></button>}
@@ -2728,7 +2728,7 @@ export default function App() {
               {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
             </> : effectivePurchaseTab === "suppliers" ? <>
               <div className="products-intro purchase-subintro">
-                <div>{screen === "purchases" && <h3>Proveedores</h3>}<p>Administra los contactos de las empresas y personas a quienes compras.</p></div>
+                <div><h3>{screen === "suppliers" ? "Tus contactos de compra" : "Directorio de proveedores"}</h3><p>Organiza los datos de las personas y empresas que te suministran materiales y productos.</p></div>
                 {canPermission("suppliers_manage") && <button type="button" className="primary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar" : "+ Nuevo proveedor"}</button>}
               </div>
               {canPermission("suppliers_manage") && showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
@@ -2746,7 +2746,7 @@ export default function App() {
               {purchaseLoading ? <div className="empty-state">Cargando proveedores…</div> : suppliers.length ? <div className="supplier-directory-list supplier-directory-page">{suppliers.map((supplier) => <article className="supplier-directory-row panel" key={supplier.id}><div><strong>{supplier.name}</strong><span>{supplier.tax_id || "Sin NIT/documento"}</span></div><div><span>{supplier.phone || "Sin teléfono"}</span><span>{supplier.email || "Sin correo"}</span></div><div><span>{supplier.address || "Sin dirección"}</span>{supplier.notes && <small>{supplier.notes}</small>}</div></article>)}</div> : <div className="empty-state"><span className="empty-icon">♧</span><h3>Aún no hay proveedores</h3><p>Agrega tus proveedores para asociarlos a las compras y gastos. No hay datos de ejemplo.</p>{canPermission("suppliers_manage") && <button type="button" className="primary-button" onClick={() => setShowSupplierForm(true)}>+ Nuevo proveedor</button>}</div>}
             </> : <>
               <div className="products-intro purchase-subintro">
-                <div><h3>Gastos del negocio</h3><p>Registra servicios, arriendo, reparaciones, herramientas y otros pagos.</p></div>
+                <div><h3>Salidas de dinero</h3><p>Anota arriendo, servicios, reparaciones, herramientas y otros pagos para tener el costo real de funcionamiento.</p></div>
                 {canManageExpenses && <button type="button" className="primary-button compact-button" onClick={() => { setShowExpenseForm((open) => !open); setError(""); setNotice(""); }}>{showExpenseForm ? "Cancelar gasto" : "+ Nuevo gasto"}</button>}
               </div>
               {canManageExpenses && showExpenseForm && <form className="purchase-form panel" onSubmit={addExpense}>
@@ -2943,7 +2943,7 @@ export default function App() {
           </section>
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Configura tu negocio</h2><p>Personalización permanente, preferencias de ayuda y datos comerciales en un solo sitio.</p></div>
+            <div className="settings-intro"><h2>Ajusta tu espacio de trabajo</h2><p>Actualiza los datos comerciales, el logo, los colores y las ayudas que aparecen mientras usas Treintayuno.</p></div>
             <form className="settings-card panel" onSubmit={saveSettings}>
               <div className="settings-icon">⚙</div>
               <h3>Datos del negocio</h3>

@@ -1459,3 +1459,101 @@ button{line-height:1.35}
   .app-shell>.sidebar{padding-top:7px}
   .sidebar .brand{margin-bottom:8px}
 }
+
+
+/* Ajuste de altura final: Inicio llena el área visible y el logo necesita menos margen. */
+.app-shell > .sidebar {
+  padding-top: 4px;
+  padding-bottom: 8px;
+}
+.sidebar .brand {
+  margin-bottom: 7px;
+}
+.business-switcher {
+  margin-bottom: 8px;
+}
+.main-content-home {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.main-content-home .main-header {
+  margin-bottom: 4px;
+}
+.home-dashboard {
+  gap: clamp(8px, 1vh, 12px);
+}
+.home-dashboard .welcome-card {
+  padding: clamp(14px, 1.8vh, 22px) clamp(16px, 1.5vw, 24px);
+}
+.home-dashboard .area-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  align-content: stretch;
+  gap: clamp(10px, 1.2vh, 14px);
+}
+.home-dashboard .area-card {
+  height: 100%;
+  padding: clamp(15px, 1.8vh, 22px) clamp(15px, 1.35vw, 21px);
+}
+@media (max-height: 760px) and (min-width: 901px) {
+  .app-shell > .sidebar { padding-top: 2px; padding-bottom: 5px; }
+  .sidebar .brand { margin-bottom: 5px; }
+  .business-switcher { margin-bottom: 6px; }
+  .main-content-home { padding-top: 2px; padding-bottom: 2px; }
+  .main-content-home .main-header { margin-bottom: 3px; }
+  .home-dashboard { gap: 6px; }
+  .home-dashboard .welcome-card { padding: 9px 13px; }
+  .home-dashboard .welcome-card h2 { font-size: 21px; margin-bottom: 4px; }
+  .home-dashboard .welcome-card p:not(.eyebrow) { font-size: 13px; line-height: 1.35; }
+  .home-dashboard .welcome-card .primary-button { margin-top: 6px; padding: 7px 10px; }
+  .home-dashboard .section-title-row h2 { font-size: 16px; }
+  .home-dashboard .section-title-row p { font-size: 12.5px; }
+  .home-dashboard .area-grid { gap: 7px; }
+  .home-dashboard .area-card { padding: 9px 11px; }
+  .home-dashboard .area-card-top { margin-bottom: 5px; }
+  .home-dashboard .area-icon { width: 27px; height: 27px; font-size: 15px; }
+  .home-dashboard .area-card h3 { font-size: 13.5px; margin-bottom: 3px; }
+  .home-dashboard .area-card p { font-size: 12px; line-height: 1.25; }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .main-content-home {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding: 4px 12px;
+  }
+  .main-content-home .main-header { margin-bottom: 5px; }
+  .home-dashboard { flex: 1 1 auto; min-height: 0; overflow: hidden; gap: 7px; }
+  .home-dashboard .welcome-card { padding: 10px 13px; gap: 10px; }
+  .home-dashboard .welcome-card h2 { font-size: 20px; margin-bottom: 4px; }
+  .home-dashboard .welcome-card p:not(.eyebrow) { font-size: 12.5px; line-height: 1.35; }
+  .home-dashboard .welcome-card .primary-button { padding: 7px 10px; margin-top: 6px; }
+  .home-dashboard .welcome-symbol { width: 48px; height: 48px; font-size: 18px; border-radius: 12px; }
+  .home-dashboard .section-title-row h2 { font-size: 16px; }
+  .home-dashboard .section-title-row p { font-size: 12px; }
+  .home-dashboard .area-grid {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .home-dashboard .area-card { height: 100%; padding: 9px 11px; }
+  .home-dashboard .area-card-top { margin-bottom: 5px; }
+  .home-dashboard .area-icon { width: 27px; height: 27px; font-size: 15px; }
+  .home-dashboard .area-card h3 { font-size: 13.5px; margin-bottom: 3px; }
+  .home-dashboard .area-card p { font-size: 12px; line-height: 1.25; }
+}
+@media (max-width: 600px) {
+  /* En móvil se conserva el desplazamiento natural para que los accesos sigan legibles. */
+  .app-shell > .sidebar { padding-top: 5px; }
+  .sidebar .brand { margin-bottom: 7px; }
+}

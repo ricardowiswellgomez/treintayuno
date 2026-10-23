@@ -670,7 +670,13 @@ export default function App() {
       }
       if (alive) setAuthReady(true);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("update-password");
+        setPassword("");
+        setError("");
+        setNotice("Ya casi está: elige una contraseña nueva.");
+      }
       setSession(currentSession);
       if (!currentSession) {
         setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("home");
@@ -855,7 +861,22 @@ export default function App() {
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      if (mode === "signup") {
+      if (mode === "forgot") {
+        const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: window.location.origin
+        });
+        if (authError) throw authError;
+        setNotice("Si ese correo tiene una cuenta, te enviaremos un enlace para recuperar el acceso. Revisa tu bandeja de entrada y spam.");
+      } else if (mode === "update-password") {
+        if (!session?.user) throw new Error("Abre el enlace de recuperación que recibiste por correo e inténtalo de nuevo.");
+        const { error: authError } = await supabase.auth.updateUser({ password });
+        if (authError) throw authError;
+        await supabase.auth.signOut();
+        setSession(null);
+        setMode("login");
+        setPassword("");
+        setNotice("Tu contraseña se actualizó. Ya puedes iniciar sesión.");
+      } else if (mode === "signup") {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(), password,
           options: { data: { display_name: fullName.trim() }, emailRedirectTo: window.location.origin }
@@ -2298,7 +2319,7 @@ export default function App() {
 
   if (!authReady) return <div className="loading-screen"><div className="brand-mark">31</div><p>Preparando tu espacio…</p></div>;
 
-  if (!session) return (
+  if (!session || mode === "update-password") return (
     <main className="auth-shell">
       <section className="auth-brand-panel">
         <a className="brand" href="/"><span className="brand-mark">31</span><span className="brand-name">treintayuno</span></a>
@@ -2306,17 +2327,18 @@ export default function App() {
         <span className="panel-footnote">Un espacio independiente para cada negocio.</span>
       </section>
       <section className="auth-form-panel"><div className="auth-form-wrap">
-        <p className="eyebrow">{mode === "signup" ? "EMPIEZA GRATIS" : "QUÉ BUENO VERTE"}</p>
-        <h2>{mode === "signup" ? "Crea tu cuenta" : "Inicia sesión"}</h2>
-        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : "Entra para continuar con tu negocio."}</p>
+        <p className="eyebrow">{mode === "signup" ? "EMPIEZA GRATIS" : mode === "forgot" || mode === "update-password" ? "RECUPERA TU ACCESO" : "QUÉ BUENO VERTE"}</p>
+        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
+        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra y sigue con tu negocio."}</p>
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
-          <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>
-          <label><span className="field-label-heading">Contraseña<FieldHelp text="Protege tu cuenta con una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>
+          {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
+          {mode !== "forgot" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
+          {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
           {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
-          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : "Entrar"}</button>
+          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
         </form>
-        <p className="switch-mode">{mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button className="text-button" onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); setNotice(""); }}>{mode === "signup" ? "Inicia sesión" : "Crear cuenta"}</button></p>
+        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : "Crear cuenta"}</button></p>}
         <p className="privacy-note">Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.</p>
       </div></section>
     </main>

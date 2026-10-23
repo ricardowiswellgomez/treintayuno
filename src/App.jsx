@@ -297,6 +297,51 @@ function PublicCatalogImage({ businessId, product }) {
   </div>;
 }
 
+function CatalogAdminImage({ businessId, product }) {
+  const imageKey = Array.isArray(product.image_paths) ? product.image_paths[0] : "";
+  const [element, setElement] = useState(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [source, setSource] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!element || !imageKey) return;
+    if (typeof IntersectionObserver === "undefined") { setShouldLoad(true); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setShouldLoad(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "180px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element, imageKey]);
+
+  useEffect(() => {
+    if (!shouldLoad || !imageKey || !businessId || !product.id) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data, error: imageError } = await supabase.from("product_images")
+          .select("content_type,image_data")
+          .eq("business_id", businessId)
+          .eq("product_id", product.id)
+          .eq("image_key", imageKey)
+          .maybeSingle();
+        if (imageError) throw imageError;
+        if (active && data?.image_data) setSource("data:" + (data.content_type || "image/webp") + ";base64," + data.image_data);
+      } catch {
+        if (active) setFailed(true);
+      }
+    })();
+    return () => { active = false; };
+  }, [businessId, product.id, imageKey, shouldLoad]);
+
+  return <span className="catalog-admin-symbol" ref={setElement} title={product.name}>
+    {source && !failed ? <img src={source} alt="" loading="lazy" onError={() => setFailed(true)} /> : "▦"}
+  </span>;
+}
+
 function PublicCatalog({ businessId }) {
   const [page, setPage] = useState(0);
   const [payload, setPayload] = useState(null);
@@ -2541,7 +2586,7 @@ export default function App() {
               : filteredCatalogProducts.length ? <div className="catalog-admin-list">{filteredCatalogProducts.map((product) => {
                 const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "Sin categoría";
                 return <article className="catalog-admin-row panel" key={product.id}>
-                  <div className="catalog-admin-product"><span className="catalog-admin-symbol">▦</span><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>
+                  <div className="catalog-admin-product"><CatalogAdminImage businessId={activeBusiness.id} product={product} /><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>
                   <div className="catalog-admin-price"><strong>{money(product.sale_price_minor, currencyCode)}</strong><span>por {product.unit_name || "unidad"}</span></div>
                   <div className="catalog-admin-publish">
                     <span className={product.is_published && product.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{product.is_published && product.is_sellable ? "Publicado" : product.is_published ? "Producto inactivo" : "Oculto"}</span>
@@ -2606,14 +2651,12 @@ export default function App() {
             </div>
             <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchasesCount}</span></button>}
-              {canViewSuppliers && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "suppliers"} className={effectivePurchaseTab === "suppliers" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("suppliers")}>Proveedores <span>{suppliers.length}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expensesCount}</span></button>}
             </div>
             {effectivePurchaseTab === "purchases" ? <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Compras de inventario</h3><p>Al guardar una compra, las existencias se suman en un solo paso.</p></div>
                 <div className="purchase-toolbar-actions">
-                  {canPermission("suppliers_manage") && <button type="button" className="secondary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar proveedor" : "+ Proveedor"}</button>}
                   {canManagePurchases && <button type="button" className="primary-button compact-button" onClick={() => { setShowPurchaseForm((open) => !open); setError(""); setNotice(""); }}>{showPurchaseForm ? "Cancelar compra" : "+ Nueva compra"}</button>}
                 </div>
               </div>

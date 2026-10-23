@@ -1800,9 +1800,12 @@ export default function App() {
   const canManageExpenses = canPermission("expenses_manage");
   const canViewPurchases = canPermission("purchases_view");
   const canViewExpenses = canPermission("expenses_view");
-  const effectivePurchaseTab = canViewPurchases
-    ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
-    : "expenses";
+  const canViewSuppliers = canPermission("suppliers_view") || canViewPurchases;
+  const effectivePurchaseTab = purchaseModuleTab === "suppliers" && canViewSuppliers
+    ? "suppliers"
+    : canViewPurchases
+      ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
+      : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "settings") return isBusinessOwner;
@@ -2197,6 +2200,7 @@ export default function App() {
             </div>
             <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("purchases")}>Compras <span>{purchasesCount}</span></button>}
+              {canViewSuppliers && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "suppliers"} className={effectivePurchaseTab === "suppliers" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("suppliers")}>Proveedores <span>{suppliers.length}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => setPurchaseModuleTab("expenses")}>Gastos <span>{expensesCount}</span></button>}
             </div>
             {effectivePurchaseTab === "purchases" ? <>
@@ -2274,6 +2278,24 @@ export default function App() {
               })}</div> : <div className="empty-state"><span className="empty-icon">▤</span><h3>Todavía no hay compras</h3><p>Registra tu primera compra. No cargamos operaciones de ejemplo.</p>{canManagePurchases && <button type="button" className="primary-button" onClick={() => setShowPurchaseForm(true)}>+ Nueva compra</button>}</div>}
               {!purchaseLoading && purchasesCount > purchasesPageSize && <div className="pagination-bar purchase-pagination"><span className="count-label">Mostrando {(purchasesPage-1)*purchasesPageSize+1}–{Math.min(purchasesPage*purchasesPageSize,purchasesCount)} de {purchasesCount} compras</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={purchasesPage<=1} onClick={()=>setPurchasesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{purchasesPage} / {Math.ceil(purchasesCount/purchasesPageSize)}</span><button type="button" className="secondary-button" disabled={purchasesPage>=Math.ceil(purchasesCount/purchasesPageSize)} onClick={()=>setPurchasesPage((page)=>page+1)}>Siguiente</button></div></div>}
               {suppliers.length > 0 && <details className="supplier-directory panel"><summary>Proveedores guardados ({suppliers.length})</summary><div className="supplier-directory-list">{suppliers.map((supplier) => <div className="supplier-directory-row" key={supplier.id}><strong>{supplier.name}</strong><span>{supplier.phone || supplier.email || supplier.tax_id || "Sin contacto registrado"}</span></div>)}</div></details>}
+            </> : effectivePurchaseTab === "suppliers" ? <>
+              <div className="products-intro purchase-subintro">
+                <div><h3>Proveedores</h3><p>Administra los contactos de las empresas y personas a quienes compras.</p></div>
+                {canPermission("suppliers_manage") && <button type="button" className="primary-button compact-button" onClick={() => { setShowSupplierForm((open) => !open); setSupplierDraft(blankSupplier); setError(""); }}>{showSupplierForm ? "Cancelar" : "+ Nuevo proveedor"}</button>}
+              </div>
+              {canPermission("suppliers_manage") && showSupplierForm && <form className="purchase-form panel" onSubmit={addSupplier}>
+                <div className="purchase-form-heading"><div><p className="eyebrow">CONTACTOS</p><h3>Nuevo proveedor</h3></div></div>
+                <div className="purchase-form-grid">
+                  <label>Nombre del proveedor *<input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required placeholder="Nombre o empresa" /></label>
+                  <label>NIT o documento<input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} placeholder="Opcional" /></label>
+                  <label>Teléfono<input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} placeholder="Número de contacto" /></label>
+                  <label>Correo<input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} placeholder="proveedor@correo.com" /></label>
+                  <label className="purchase-span-two">Dirección<input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} placeholder="Dirección del proveedor" /></label>
+                  <label className="purchase-span-two">Notas<input value={supplierDraft.notes} onChange={(e) => setSupplierDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1000} placeholder="Información útil" /></label>
+                </div>
+                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowSupplierForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar proveedor"}</button></div>
+              </form>}
+              {purchaseLoading ? <div className="empty-state">Cargando proveedores…</div> : suppliers.length ? <div className="supplier-directory-list supplier-directory-page">{suppliers.map((supplier) => <article className="supplier-directory-row panel" key={supplier.id}><div><strong>{supplier.name}</strong><span>{supplier.tax_id || "Sin NIT/documento"}</span></div><div><span>{supplier.phone || "Sin teléfono"}</span><span>{supplier.email || "Sin correo"}</span></div><div><span>{supplier.address || "Sin dirección"}</span>{supplier.notes && <small>{supplier.notes}</small>}</div></article>)}</div> : <div className="empty-state"><span className="empty-icon">♧</span><h3>Aún no hay proveedores</h3><p>Agrega tus proveedores para asociarlos a las compras y gastos. No hay datos de ejemplo.</p>{canPermission("suppliers_manage") && <button type="button" className="primary-button" onClick={() => setShowSupplierForm(true)}>+ Nuevo proveedor</button>}</div>}
             </> : <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Gastos del negocio</h3><p>Registra servicios, arriendo, reparaciones, herramientas y otros pagos.</p></div>

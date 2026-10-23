@@ -916,3 +916,7 @@
  .purchase-pagination .pagination-controls{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px}
  .purchase-pagination .pagination-controls>*{min-width:0}
 }
+
+.settings-field input{width:100%;border:1px solid #dedfd7;background:#fff;border-radius:9px;padding:12px;outline:none;color:var(--ink);font:400 13px "DM Sans",sans-serif}
+.settings-field input:focus{border-color:#648674;box-shadow:0 0 0 3px #2d59471a}
+.settings-field input:disabled{background:#f4f4ef;color:#6f746c;cursor:not-allowed}

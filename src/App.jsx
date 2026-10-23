@@ -199,6 +199,11 @@ export default function App() {
   const [purchasePayment, setPurchasePayment] = useState("0");
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [expenseRows, setExpenseRows] = useState([]);
+  const [profitabilityLoading, setProfitabilityLoading] = useState(false);
+  const [profitabilitySales, setProfitabilitySales] = useState([]);
+  const [profitabilitySaleItems, setProfitabilitySaleItems] = useState([]);
+  const [profitabilityExpenses, setProfitabilityExpenses] = useState([]);
+  const [profitabilityPeriod, setProfitabilityPeriod] = useState("month");
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenseDraft, setExpenseDraft] = useState(blankExpense);
   const [salesData, setSalesData] = useState([]);
@@ -914,6 +919,41 @@ export default function App() {
     if (screen === "purchases" && activeBusiness?.id) loadPurchasesModuleData();
   }, [screen, activeBusiness?.id]);
 
+  async function loadProfitabilityData() {
+    if (!activeBusiness?.id || screen !== "profitability") return;
+    setProfitabilityLoading(true); setError("");
+    try {
+      const [salesResult, expensesResult] = await Promise.all([
+        supabase.from("sales").select("id,business_id,status,currency_code,total_minor,amount_paid_minor,sold_at,created_at")
+          .eq("business_id", activeBusiness.id).order("sold_at", { ascending: false }).limit(2000),
+        supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date")
+          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(2000)
+      ]);
+      if (salesResult.error) throw salesResult.error;
+      if (expensesResult.error) throw expensesResult.error;
+      const sales = salesResult.data || [];
+      let items = [];
+      if (sales.length) {
+        const itemsResult = await supabase.from("sale_items")
+          .select("id,sale_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
+          .eq("business_id", activeBusiness.id).in("sale_id", sales.map((sale) => sale.id))
+          .limit(10000);
+        if (itemsResult.error) throw itemsResult.error;
+        items = itemsResult.data || [];
+      }
+      setProfitabilitySales(sales);
+      setProfitabilitySaleItems(items);
+      setProfitabilityExpenses(expensesResult.data || []);
+    } catch (e) {
+      setError(friendlyError(e));
+      setProfitabilitySales([]); setProfitabilitySaleItems([]); setProfitabilityExpenses([]);
+    } finally { setProfitabilityLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "profitability" && activeBusiness?.id) loadProfitabilityData();
+  }, [screen, activeBusiness?.id]);
+
   function addPurchaseLine() {
     const product = purchaseProducts.find((item) => item.id === purchaseProductChoice);
     const quantity = Number(purchaseQuantity);
@@ -1138,6 +1178,42 @@ export default function App() {
 
   const filteredProducts = products;
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
+  const profitPeriodDateKey = (value) => {
+    if (!value) return "";
+    const date = String(value).includes("T") ? new Date(value) : new Date(String(value) + "T12:00:00-05:00");
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return values.year + "-" + values.month + "-" + values.day;
+  };
+  const todayBogotaKey = profitPeriodDateKey(new Date().toISOString());
+  const currentMonthKey = todayBogotaKey.slice(0, 7);
+  const profitInPeriod = (value) => {
+    if (profitabilityPeriod === "all") return true;
+    const key = profitPeriodDateKey(value);
+    if (!key) return false;
+    if (profitabilityPeriod === "month") return key.slice(0, 7) === currentMonthKey;
+    const day = new Date(key + "T12:00:00-05:00").getTime();
+    const now = new Date(todayBogotaKey + "T12:00:00-05:00").getTime();
+    return day >= now - 30 * 24 * 60 * 60 * 1000 && day <= now + 24 * 60 * 60 * 1000;
+  };
+  const periodSales = profitabilitySales.filter((sale) => !["canceled", "refunded"].includes(sale.status) && profitInPeriod(sale.sold_at || sale.created_at));
+  const periodSaleIds = new Set(periodSales.map((sale) => sale.id));
+  const periodSaleItems = profitabilitySaleItems.filter((item) => periodSaleIds.has(item.sale_id));
+  const periodExpenses = profitabilityExpenses.filter((expense) => profitInPeriod(expense.expense_date));
+  const profitSalesTotal = periodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
+  const profitPaidTotal = periodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
+  const profitCostOfSales = periodSaleItems.reduce((sum, item) => sum + Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0)), 0);
+  const profitLineRevenue = periodSaleItems.reduce((sum, item) => sum + Number(item.line_total_minor || 0), 0);
+  const profitGross = profitLineRevenue - profitCostOfSales;
+  const profitExpenseTotal = periodExpenses.reduce((sum, expense) => sum + Number(expense.amount_minor || 0), 0);
+  const profitNet = profitGross - profitExpenseTotal;
+  const expensesByCategory = Object.values(periodExpenses.reduce((groups, expense) => {
+    const category = expense.category || "Otro";
+    if (!groups[category]) groups[category] = { name: category, amount: 0, count: 0 };
+    groups[category].amount += Number(expense.amount_minor || 0);
+    groups[category].count += 1;
+    return groups;
+  }, {})).sort((a, b) => b.amount - a.amount);
 
   function navigate(next) {
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);

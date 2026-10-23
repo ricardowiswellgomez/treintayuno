@@ -346,3 +346,7 @@
  .customer-row{padding:11px}
  .sale-record-bottom{gap:5px}
 }
+
+/* Solo una acción por producto: no reservar ancho para botones que ya no aparecen. */
+.product-table .product-row-actions{min-width:0}
+.product-table .product-row-actions .action-small{white-space:nowrap;padding:7px 10px}

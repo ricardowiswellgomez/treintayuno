@@ -1602,8 +1602,8 @@ export default function App() {
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "sales" ? (
 <section className="sales-page">
-<div className="products-intro"><div><h2>Ventas</h2><p>Registra ventas, abonos y saldos.</p></div><button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button></div>
-{showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
+<div className="products-intro"><div><h2>Ventas</h2><p>Registra ventas, abonos y saldos.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+{canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>
 <div className="sale-builder">
 <label>Cliente<select value={saleCustomerId} onChange={e=>setSaleCustomerId(e.target.value)}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}</select></label>
@@ -1624,13 +1624,13 @@ export default function App() {
 <div className="sale-record-customer">{sale.customer_name}</div>
 {sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
-{sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p><button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button></div>}
+{sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p>{canManageSales && <button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button>}</div>}
 </section>
 ) : screen === "customers" ? (
 <section className="customers-page">
-<div className="products-intro"><div><h2>Clientes</h2><p>Personas y empresas relacionadas con tus ventas.</p></div><button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button></div>
+<div className="products-intro"><div><h2>Clientes</h2><p>Personas y empresas relacionadas con tus ventas.</p></div>{canManageCustomers && <button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button>}</div>
 <div className="customer-toolbar"><label className="search-box"><span>⌕</span><input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Buscar por nombre, empresa, documento o contacto…"/></label><span className="count-label">{customers.length} {customers.length===1?"cliente":"clientes"}</span></div>
-{showCustomerForm&&<form className="customer-form panel" onSubmit={addCustomer}>
+{canManageCustomers && showCustomerForm&&<form className="customer-form panel" onSubmit={addCustomer}>
 <div className="customer-form-heading"><div><p className="eyebrow">{editingCustomerId?"DATOS DEL CLIENTE":"NUEVO REGISTRO"}</p><h3>{editingCustomerId?"Editar cliente":"Nuevo cliente"}</h3></div><span className="customer-form-hint">Persona o empresa</span></div>
 <div className="customer-form-grid">
 <label>Nombre{!customerDraft.company_name.trim()?" *":""}<input autoComplete="given-name" value={customerDraft.first_name} onChange={e=>setCustomerDraft(current=>({...current,first_name:e.target.value}))} maxLength={100} required={!customerDraft.company_name.trim()} placeholder="Nombre"/></label>
@@ -1653,9 +1653,9 @@ export default function App() {
 <div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
 <div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
-<button type="button" className="text-button" onClick={()=>startEditCustomer(customer)}>Editar</button>
+{canManageCustomers && <button type="button" className="text-button" onClick={()=>startEditCustomer(customer)}>Editar</button>}
 </article>)}
-</div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
+</div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
 </section>
  ) : screen === "team" ? (
           <section className="team-page">
@@ -1879,8 +1879,8 @@ export default function App() {
         ) : screen === "products" ? (
 
           <section className="products-page">
-            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button></div>
-            <div className="category-manager">
+            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div>{canManageProducts && <button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button>}</div>
+            {canManageProducts && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
                 <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
               </button>
@@ -1898,8 +1898,8 @@ export default function App() {
                   </>}
                 </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
               </section>}
-            </div>
-            {showProductForm && <form className="product-form panel" onSubmit={addProduct}>
+            </div>}
+            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               {!editingProductId && <div className="product-photo-uploader full-span">
                 <span className="photo-section-label">Fotos del producto (máximo 3)</span>
@@ -1938,7 +1938,7 @@ export default function App() {
             <div className="product-tools">
               <label className="search-box"><span>⌕</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
               <div className="product-tools-actions">
-                <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>
+                {canManageProducts && <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>}
                 <div className="view-switch" role="group" aria-label="Vista de productos">
                   <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>
                   <button type="button" className={viewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setViewMode("cards")} aria-pressed={viewMode === "cards"}><span>▦</span> Tarjetas</button>
@@ -1955,7 +1955,7 @@ export default function App() {
                   <div className="variant-manager-heading"><div><p className="eyebrow">PRODUCTO</p><h3>Variantes de {variantProduct.name}</h3><p>Ejemplos: talla M, color azul o presentación de 500 ml.</p></div><button type="button" className="icon-action-button" title="Cerrar" aria-label="Cerrar variantes" onClick={() => { setViewingVariantsFor(null); resetVariantDraft(); }}>×</button></div>
                   {rows.length ? <div className="variant-list">{rows.map((variant) => <article className={"variant-row" + (!variant.is_active ? " variant-inactive" : "")} key={variant.id}>
                     <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}</div>
-                    <div className="variant-row-actions"><button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button><button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button></div>
+                    <div className="variant-row-actions">{canManageProducts && <button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button>}{canManageProducts && <button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button>}</div>
                   </article>)}</div> : <div className="variant-empty"><strong>Este producto todavía no tiene variantes</strong><span>Añade talla, color, tamaño u otra opción que necesites distinguir.</span></div>}
                   <form className="variant-form" onSubmit={saveProductVariant}>
                     <h4>{editingVariantId ? "Editar variante" : "Añadir variante"}</h4>
@@ -1994,7 +1994,7 @@ export default function App() {
                         <td><span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
-                          <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>
+                          {canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}
                         </div></td>
                       </tr>
                     </React.Fragment>)}</tbody>
@@ -2023,7 +2023,7 @@ export default function App() {
     </div>
     <div className="product-card-actions">
       <div className="product-card-variants"><div><span>Variantes</span><strong>{productVariants.length} {productVariants.length === 1 ? "variante" : "variantes"}</strong></div><button type="button" className="text-button" onClick={() => openProductVariants(p)}>Ver variantes</button></div>
-      <div className="product-card-action-buttons"><button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button><button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button></div>
+      <div className="product-card-action-buttons">{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}{canManageProducts && <button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button>}</div>
     </div>
   </article>;
 })}</div>

@@ -680,7 +680,7 @@ export default function App() {
       setSession(currentSession);
       if (!currentSession) {
         setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("home");
-      } else {
+      } else if (event !== "PASSWORD_RECOVERY") {
         queueMicrotask(() => loadBusinesses(currentSession.user.id).catch((e) => setError(friendlyError(e))));
       }
     });

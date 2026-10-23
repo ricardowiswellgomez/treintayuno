@@ -293,7 +293,7 @@ export default {
         }
         const timezone = business.timezone || "America/Bogota";
         const period = periodFor(question, timezone, new Date());
-        const salesNeeded = permissionsNeeded.includes("sales_view");
+        const salesNeeded = intent.dataQuestion && permissionsNeeded.includes("sales_view");
         const paramsForSales = {
           select: "id,customer_id,sale_number,status,currency_code,subtotal_minor,discount_minor,total_minor,amount_paid_minor,sold_at,created_at",
           business_id: "eq." + businessId,
@@ -307,22 +307,22 @@ export default {
         salesParams.and = "(sold_at.lt." + period.endISO + ")";
         const dataPromises = [
           salesNeeded ? restRows("sales", salesParams, token, publishableKey) : Promise.resolve([]),
-          intent.inventory ? restRows("products", {
+          (intent.dataQuestion && intent.inventory) ? restRows("products", {
             select: "name,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,archived_at",
             business_id: "eq." + businessId, track_inventory: "eq.true", archived_at: "is.null",
             order: "stock_on_hand.asc", limit: String(MAX_ROWS)
           }, token, publishableKey) : Promise.resolve([]),
-          (intent.expenses || intent.profitability) ? restRows("expenses", {
+          (intent.dataQuestion && (intent.expenses || intent.profitability)) ? restRows("expenses", {
             select: "amount_minor,currency_code,expense_date,category",
             business_id: "eq." + businessId, expense_date: "gte." + period.startDate,
             and: "(expense_date.lt." + period.endDate + ")", order: "expense_date.desc", limit: String(MAX_ROWS)
           }, token, publishableKey) : Promise.resolve([]),
-          intent.supplierPurchases ? restRows("purchases", {
+          (intent.dataQuestion && intent.supplierPurchases) ? restRows("purchases", {
             select: "total_minor,amount_paid_minor,currency_code,status,purchased_at,created_at",
             business_id: "eq." + businessId, created_at: "gte." + period.startISO,
             and: "(created_at.lt." + period.endISO + ")", order: "created_at.desc", limit: String(MAX_ROWS)
           }, token, publishableKey) : Promise.resolve([]),
-          intent.customerList && !intent.customerRank ? restRows("customers", {
+          (intent.dataQuestion && intent.customerList && !intent.customerRank) ? restRows("customers", {
             select: "id,full_name,company_name,created_at", business_id: "eq." + businessId,
             order: "created_at.desc", limit: "20"
           }, token, publishableKey) : Promise.resolve([])
@@ -330,7 +330,7 @@ export default {
         const [salesRaw, products, expenses, purchases, customersList] = await Promise.all(dataPromises);
         const sales = salesRaw.filter(row => !isCancelledSale(row));
         let items = [];
-        if ((intent.productRanking || intent.profitability) && sales.length) {
+        if (intent.dataQuestion && (intent.productRanking || intent.profitability) && sales.length) {
           const ids = sales.map(row => row.id).filter(Boolean);
           if (ids.length) {
             items = await restRows("sale_items", {
@@ -341,7 +341,7 @@ export default {
           }
         }
         let customers = customersList;
-        if (intent.customerRank && sales.length) {
+        if (intent.dataQuestion && intent.customerRank && sales.length) {
           const idsByTotal = new Map();
           for (const row of sales) {
             if (!row.customer_id) continue;

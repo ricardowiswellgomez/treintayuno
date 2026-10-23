@@ -350,3 +350,10 @@
 /* Solo una acción por producto: no reservar ancho para botones que ya no aparecen. */
 .product-table .product-row-actions{min-width:0}
 .product-table .product-row-actions .action-small{white-space:nowrap;padding:7px 10px}
+
+/* Tabla más densa: aprovechar el ancho y evitar aire innecesario entre columnas. */
+.product-table{min-width:990px}
+.product-table thead th{padding:8px 7px}
+.product-table tbody td{padding:8px 7px}
+.product-cell{min-width:170px;max-width:220px}
+@media(max-width:600px){.product-table{min-width:950px}}

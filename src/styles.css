@@ -1319,3 +1319,110 @@ button{line-height:1.35}
   .home-dashboard .area-grid{gap:8px}
   .home-dashboard .area-card{padding:12px}
 }
+
+
+/* Ajustes de espacio: todas las vistas aprovechan el ancho disponible. */
+.main-content {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px) 18px;
+}
+.main-content > section,
+.main-content > .home-dashboard,
+.main-content > .empty-state,
+.settings-page,
+.settings-page > *,
+.settings-card,
+.settings-card.panel,
+.products-page,
+.sales-page,
+.customers-page,
+.purchases-page,
+.expenses-page,
+.profitability-page,
+.team-page,
+.catalog-page {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+.settings-page {
+  gap: clamp(14px, 1.3vw, 22px);
+}
+.settings-card {
+  padding: clamp(20px, 2.2vw, 32px);
+}
+.sidebar {
+  padding-top: 8px;
+}
+.sidebar .brand {
+  margin-bottom: 12px;
+}
+
+/* Inicio: tarjetas un poco más amplias sin provocar desplazamiento en escritorio. */
+.main-content-home {
+  padding-top: clamp(6px, .8vh, 10px);
+  padding-bottom: 8px;
+  padding-inline: clamp(14px, 1.8vw, 26px);
+}
+.main-content-home .main-header {
+  margin-bottom: clamp(6px, .8vh, 10px);
+}
+.main-content-home .main-header .eyebrow {
+  margin-bottom: 5px;
+}
+.home-dashboard {
+  gap: clamp(7px, 1vh, 11px);
+}
+.home-dashboard .welcome-card {
+  padding: clamp(13px, 1.7vh, 20px) clamp(18px, 1.8vw, 28px);
+}
+.home-dashboard .welcome-card h2 {
+  font-size: clamp(22px, 2.4vw, 29px);
+}
+.home-dashboard .area-grid {
+  gap: clamp(8px, 1vh, 12px);
+}
+.home-dashboard .area-card {
+  padding: clamp(12px, 1.7vh, 20px) clamp(14px, 1.4vw, 21px);
+}
+.home-dashboard .area-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+}
+.home-dashboard .area-card h3 {
+  font-size: clamp(15px, 1.15vw, 16px);
+  line-height: 1.28;
+}
+.home-dashboard .area-card p {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .main-content {
+    padding: 24px 18px 18px;
+  }
+  .settings-page,
+  .settings-card {
+    width: 100%;
+    max-width: none;
+  }
+  .main-content-home {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    padding-top: 8px;
+  }
+  .main-content {
+    padding: 20px 14px 16px;
+  }
+  .settings-card {
+    padding: 18px;
+  }
+}

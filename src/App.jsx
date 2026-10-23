@@ -532,7 +532,7 @@ export default function App() {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token, apikey: supabasePublishableKey },
         body: JSON.stringify({
           message,
-          history: nextHistory.slice(-6),
+          history: nextHistory.slice(0, -1).slice(-6),
           context: "Negocio activo: " + (activeBusiness?.name || "sin seleccionar") + ". Módulo abierto: " + (areas.find((area) => area.screen === screen)?.title || screen) + ". Moneda: " + (currencyCode || "COP") + ". No se ha enviado información de ventas, clientes ni inventario."
         })
       });

@@ -1894,6 +1894,7 @@ export default function App() {
   }
 
   function startSidebarTouchDrag(event, payload) {
+    if (!isBusinessOwner) return;
     if (sidebarEditing && event.target?.closest && event.target.closest("input, button")) return;
     if (!event.touches || event.touches.length !== 1) return;
     const touch = event.touches[0];
@@ -2061,7 +2062,7 @@ export default function App() {
             <div className="sidebar-group-heading" draggable={sidebarEditing && !(typeof window !== "undefined" && "ontouchstart" in window)}
               onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })}
               onDragStart={() => sidebarEditing && setDraggedSidebarItem({ type: "group", id: group.id })}>
-              {sidebarEditing ? <><span className="sidebar-drag-handle" title="Mantén presionado para mover el grupo">⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <p className="nav-label">{group.title}</p>}
+              {sidebarEditing ? <><span className="sidebar-drag-handle" title="Mantén presionado para mover el grupo">⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <><span className="sidebar-mobile-grip" title="Mantén presionado para mover el grupo">⠿</span><p className="nav-label">{group.title}</p></>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
@@ -2074,7 +2075,7 @@ export default function App() {
                   <span className="sidebar-drag-handle" title="Arrastra para mover">⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button>}
+                </> : <><span className="sidebar-mobile-grip" title="Mantén presionado para mover">⠿</span><button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button></>}
               </div>
             ))}
           </section>)}

@@ -896,67 +896,63 @@ export default function App() {
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "sales" ? (
-          <section className="sales-page">
-            <div className="products-intro"><div><h2>Ventas y clientes</h2><p>Registra lo que vendes y quién te compra.</p></div></div>
-            <div className="sales-tabs" role="tablist" aria-label="Ventas y clientes">
-              <button type="button" role="tab" aria-selected={salesTab === "sales"} className={salesTab === "sales" ? "sales-tab active" : "sales-tab"} onClick={() => { setSalesTab("sales"); setError(""); setNotice(""); }}>Ventas</button>
-              <button type="button" role="tab" aria-selected={salesTab === "customers"} className={salesTab === "customers" ? "sales-tab active" : "sales-tab"} onClick={() => { setSalesTab("customers"); setCustomerSearch(""); setError(""); setNotice(""); }}>Clientes</button>
-            </div>
-            {salesTab === "sales" ? <>
-              <div className="sales-toolbar"><span>{salesData.length} ventas recientes</span><button type="button" className="primary-button compact-button" onClick={() => { if (showSaleForm) clearSaleDraft(); else { setShowSaleForm(true); setError(""); setNotice(""); } }}>{showSaleForm ? "Cancelar venta" : "+ Nueva venta"}</button></div>
-              {showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
-                <h3>Nueva venta</h3>
-                <div className="sale-builder">
-                  <label>Cliente (opcional)<select value={saleCustomerId} onChange={(e) => setSaleCustomerId(e.target.value)}><option value="">Venta sin cliente</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.full_name}{customer.phone ? " · " + customer.phone : ""}</option>)}</select></label>
-                  <label>Producto<select value={saleProductChoice} onChange={(e) => setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor, currencyCode)}{product.track_inventory ? " · Stock " + Number(product.stock_on_hand).toLocaleString("es-CO") : ""}</option>)}</select></label>
-                  <label>Cantidad<input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={(e) => setSaleQuantity(e.target.value)} /></label>
-                  <button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
-                </div>
-                {!saleProducts.length && <p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
-                {saleItems.length > 0 && <div className="sale-cart">
-                  <div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
-                  {saleItems.map((item) => <div className="sale-cart-row" key={item.product_id}>
-                    <div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor, currencyCode)} por {item.unit_name}</span></div>
-                    <label>Cantidad<input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(e) => setSaleItems((current) => current.map((line) => line.product_id === item.product_id ? { ...line, quantity: e.target.value } : line))} /></label>
-                    <strong className="sale-line-total">{money(Math.round(item.unit_price_minor * Number(item.quantity || 0)), currencyCode)}</strong>
-                    <button type="button" className="text-button danger-text" aria-label={"Quitar " + item.name} onClick={() => setSaleItems((current) => current.filter((line) => line.product_id !== item.product_id))}>Quitar</button>
-                  </div>)}
-                  <div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum, item) => sum + Math.round(item.unit_price_minor * Number(item.quantity || 0)), 0), currencyCode)}</strong></div>
-                </div>}
-                <div className="sale-bottom-fields">
-                  <label>Abono recibido ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={salePayment} onChange={(e) => setSalePayment(e.target.value)} placeholder="0" /></label>
-                  <label>Nota (opcional)<input value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes" /></label>
-                </div>
-                <p className="helper-text">Se usará el precio actual del producto. La venta y la salida de inventario se guardan juntas. Si no hay unidades suficientes, no se guardará.</p>
-                <div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={busy || !saleItems.length}>{busy ? "Guardando…" : "Guardar venta"}</button></div>
-              </form>}
-              {salesLoading ? <div className="empty-state">Cargando ventas…</div> : salesData.length ? <div className="sales-list">
-                {salesData.map((sale) => <article className="sale-record panel" key={sale.id}>
-                  <div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at || sale.created_at).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}</span></div><span className={"status-pill " + (sale.status === "paid" ? "status-active" : sale.status === "canceled" || sale.status === "refunded" ? "status-inactive" : "status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
-                  <div className="sale-record-customer">{sale.customer_name}</div>
-                  {sale.items.length > 0 && <div className="sale-record-items">{sale.items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, sale.currency_code || currencyCode)}</strong></div>)}</div>}
-                  <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor, sale.currency_code || currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor, sale.currency_code || currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0, Number(sale.total_minor) - Number(sale.amount_paid_minor)), sale.currency_code || currencyCode)}</strong></div></div>
-                  {sale.notes && <p className="sale-record-note">{sale.notes}</p>}
-                </article>)}
-              </div> : <div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p><button className="primary-button" onClick={() => { setShowSaleForm(true); setError(""); }}>+ Registrar primera venta</button></div>}
-            </> : <>
-              <div className="customer-toolbar"><label className="search-box"><span>⌕</span><input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Buscar cliente por nombre…" /></label><button type="button" className="primary-button compact-button" onClick={() => { setShowCustomerForm((open) => !open); setError(""); setNotice(""); }}>{showCustomerForm ? "Cancelar" : "+ Nuevo cliente"}</button></div>
-              {showCustomerForm && <form className="customer-form panel" onSubmit={addCustomer}>
-                <h3>Nuevo cliente</h3>
-                <div className="customer-form-grid">
-                  <label>Nombre completo *<input value={customerDraft.full_name} onChange={(e) => setCustomerDraft((current) => ({ ...current, full_name: e.target.value }))} maxLength={160} required placeholder="Nombre del cliente" /></label>
-                  <label>Teléfono<input value={customerDraft.phone} onChange={(e) => setCustomerDraft((current) => ({ ...current, phone: e.target.value }))} maxLength={60} placeholder="Número de contacto" /></label>
-                  <label>Correo electrónico<input type="email" value={customerDraft.email} onChange={(e) => setCustomerDraft((current) => ({ ...current, email: e.target.value }))} maxLength={254} placeholder="cliente@correo.com" /></label>
-                </div>
-                <div className="form-actions"><button type="button" className="secondary-button" onClick={() => { setShowCustomerForm(false); setCustomerDraft({ full_name: "", email: "", phone: "" }); }}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar cliente"}</button></div>
-              </form>}
-              {salesLoading ? <div className="empty-state">Cargando clientes…</div> : customers.length ? <div className="customer-list panel">
-                <div className="customer-list-heading"><span>Cliente</span><span>Contacto</span></div>
-                {customers.map((customer) => <article className="customer-row" key={customer.id}><div><strong>{customer.full_name}</strong><span>{customer.email || "Sin correo"}</span></div><span>{customer.phone || "Sin teléfono"}</span></article>)}
-              </div> : <div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Guarda los datos básicos de tus clientes para usarlos al registrar una venta.</p><button className="primary-button" onClick={() => setShowCustomerForm(true)}>+ Añadir cliente</button></div>}
-            </>}
-          </section>
-        ) : screen === "products" ? (
+<section className="sales-page">
+<div className="products-intro"><div><h2>Ventas</h2><p>Registra ventas, abonos y saldos.</p></div><button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button></div>
+{showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
+<h3>Nueva venta</h3>
+<div className="sale-builder">
+<label>Cliente<select value={saleCustomerId} onChange={e=>setSaleCustomerId(e.target.value)}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}</select></label>
+<label>Producto<select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select></label>
+<label>Cantidad<input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
+</div>
+{!saleProducts.length&&<p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
+{saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
+{saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label>Cantidad<input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
+<div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum,item)=>sum+Math.round(item.unit_price_minor*Number(item.quantity||0)),0),currencyCode)}</strong></div></div>}
+<div className="sale-bottom-fields"><label>Abono recibido {currencyCode}<input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label>Nota<input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
+<p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
+<div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={busy||!saleItems.length}>{busy?"Guardando…":"Guardar venta"}</button></div>
+</form>}
+<div className="sales-toolbar"><span>{salesData.length} ventas recientes</span></div>
+{salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel" key={sale.id}>
+<div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
+<div className="sale-record-customer">{sale.customer_name}</div>
+{sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
+<div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
+{sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>Todavía no hay ventas</h3><p>Cuando registres la primera, aparecerá aquí. No mostramos ventas de ejemplo.</p><button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button></div>}
+</section>
+) : screen === "customers" ? (
+<section className="customers-page">
+<div className="products-intro"><div><h2>Clientes</h2><p>Personas y empresas relacionadas con tus ventas.</p></div><button type="button" className="primary-button compact-button" onClick={()=>{if(showCustomerForm)resetCustomerForm();else{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);setError("");setNotice("");}}}>{showCustomerForm?"Cancelar":"+ Nuevo cliente"}</button></div>
+<div className="customer-toolbar"><label className="search-box"><span>⌕</span><input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Buscar por nombre, empresa, documento o contacto…"/></label><span className="count-label">{customers.length} {customers.length===1?"cliente":"clientes"}</span></div>
+{showCustomerForm&&<form className="customer-form panel" onSubmit={addCustomer}>
+<div className="customer-form-heading"><div><p className="eyebrow">{editingCustomerId?"DATOS DEL CLIENTE":"NUEVO REGISTRO"}</p><h3>{editingCustomerId?"Editar cliente":"Nuevo cliente"}</h3></div><span className="customer-form-hint">Persona o empresa</span></div>
+<div className="customer-form-grid">
+<label>Nombre{!customerDraft.company_name.trim()?" *":""}<input autoComplete="given-name" value={customerDraft.first_name} onChange={e=>setCustomerDraft(current=>({...current,first_name:e.target.value}))} maxLength={100} required={!customerDraft.company_name.trim()} placeholder="Nombre"/></label>
+<label>Apellidos<input autoComplete="family-name" value={customerDraft.last_name} onChange={e=>setCustomerDraft(current=>({...current,last_name:e.target.value}))} maxLength={120} placeholder="Apellidos"/></label>
+<label>Empresa{!customerDraft.first_name.trim()&&!customerDraft.last_name.trim()?" *":""}<input autoComplete="organization" value={customerDraft.company_name} onChange={e=>setCustomerDraft(current=>({...current,company_name:e.target.value}))} maxLength={180} required={!customerDraft.first_name.trim()&&!customerDraft.last_name.trim()} placeholder="Nombre de la empresa"/></label>
+<label>Tipo de documento<select value={customerDraft.document_type} onChange={e=>setCustomerDraft(current=>({...current,document_type:e.target.value}))}><option value="">Selecciona el tipo…</option><option value="CC">Cédula de ciudadanía (CC)</option><option value="CE">Cédula de extranjería (CE)</option><option value="NIT">NIT</option><option value="TI">Tarjeta de identidad (TI)</option><option value="PP">Pasaporte</option><option value="PPT">Permiso por protección temporal (PPT)</option><option value="OTHER">Otro</option></select></label>
+<label>Documento<input value={customerDraft.document_number} onChange={e=>setCustomerDraft(current=>({...current,document_number:e.target.value}))} maxLength={60} autoComplete="off" placeholder="Número de documento"/></label>
+<label>Correo<input type="email" autoComplete="email" value={customerDraft.email} onChange={e=>setCustomerDraft(current=>({...current,email:e.target.value}))} maxLength={254} placeholder="cliente@correo.com"/></label>
+<label>Teléfono<input type="tel" autoComplete="tel" value={customerDraft.phone} onChange={e=>setCustomerDraft(current=>({...current,phone:e.target.value}))} maxLength={60} placeholder="Número de contacto"/></label>
+<label>WhatsApp<input type="tel" value={customerDraft.whatsapp} onChange={e=>setCustomerDraft(current=>({...current,whatsapp:e.target.value}))} maxLength={60} placeholder="Número de WhatsApp"/></label>
+<label>Ciudad<input autoComplete="address-level2" value={customerDraft.city} onChange={e=>setCustomerDraft(current=>({...current,city:e.target.value}))} maxLength={100} placeholder="Ciudad"/></label>
+<label className="customer-span-two">Dirección<input autoComplete="street-address" value={customerDraft.address} onChange={e=>setCustomerDraft(current=>({...current,address:e.target.value}))} maxLength={300} placeholder="Dirección de residencia o entrega"/></label>
+<label className="customer-span-two">Notas<textarea rows="3" value={customerDraft.notes} onChange={e=>setCustomerDraft(current=>({...current,notes:e.target.value}))} maxLength={1500} placeholder="Información útil para atender a este cliente"/></label>
+</div>
+<div className="form-actions"><button type="button" className="secondary-button" onClick={resetCustomerForm}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy?"Guardando…":editingCustomerId?"Guardar cambios":"Guardar cliente"}</button></div>
+</form>}
+{salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
+<div className="customer-list-heading"><span>Cliente / empresa</span><span>Contacto</span><span>Documento</span><span>Ciudad</span><span></span></div>
+{customers.map(customer=><article className="customer-row" key={customer.id}>
+<div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
+<div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
+<span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
+<button type="button" className="text-button" onClick={()=>startEditCustomer(customer)}>Editar</button>
+</article>)}
+</div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p><button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button></div>}
+</section>
+) : screen === "products" ? (
 
           <section className="products-page">
             <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button></div>

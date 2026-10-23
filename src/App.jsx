@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "./lib/supabase.js";
+import { supabase, supabasePublishableKey } from "./lib/supabase.js";
 
 const areas = [
   { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
@@ -509,7 +509,41 @@ export default function App() {
   const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
   const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+  const [aiHistory, setAiHistory] = useState([]);
+  const [aiBusy, setAiBusy] = useState(false);
   const [search, setSearch] = useState("");
+  async function sendAiMessage(event) {
+    event.preventDefault();
+    const message = aiMessage.trim();
+    if (!message || aiBusy) return;
+    setAiMessage("");
+    const nextHistory = [...aiHistory, { role: "user", content: message }];
+    setAiHistory(nextHistory);
+    setAiBusy(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Inicia sesión para usar el asistente.");
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token, apikey: supabasePublishableKey },
+        body: JSON.stringify({
+          message,
+          history: nextHistory.slice(-6),
+          context: "Negocio activo: " + (activeBusiness?.name || "sin seleccionar") + ". Módulo abierto: " + (areas.find((area) => area.screen === screen)?.title || screen) + ". Moneda: " + (currencyCode || "COP") + ". No se ha enviado información de ventas, clientes ni inventario."
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "No pudimos consultar la IA.");
+      setAiHistory((current) => [...current, { role: "assistant", content: payload.answer }]);
+    } catch (error) {
+      setAiHistory((current) => [...current, { role: "assistant", content: "No pude responder: " + (error?.message || "inténtalo de nuevo.") }]);
+    } finally { setAiBusy(false); }
+  }
+
   const [adjustingId, setAdjustingId] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
@@ -2890,6 +2924,19 @@ export default function App() {
         </> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver al resumen</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
+      <div className="ai-assistant-layer">
+        {aiOpen && <section className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
+          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>Asistente IA</strong><small>Treintayuno · Vista previa inicial</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
+          <div className="ai-assistant-messages" aria-live="polite">
+            {!aiHistory.length && <div className="ai-assistant-welcome"><strong>¿En qué te ayudo?</strong><p>Puedo orientarte sobre cómo usar Treintayuno y organizar tu negocio. En esta primera versión no tengo acceso automático a tus cifras.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Cómo puedo organizar mejor las ventas de mi negocio?")}>Mejorar mis ventas</button><button type="button" onClick={() => setAiMessage("¿Qué debería revisar para mantener un inventario confiable?")}>Ordenar inventario</button></div></div>}
+            {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p></div>)}
+            {aiBusy && <div className="ai-assistant-thinking">Pensando…</div>}
+          </div>
+          <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder="Escribe tu pregunta…" rows={2} maxLength={1500} disabled={aiBusy} /><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
+          <p className="ai-assistant-disclaimer">No inventa cifras ni ejecuta cambios. Verifica siempre los datos del negocio.</p>
+        </section>}
+        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} onClick={() => setAiOpen((open) => !open)}><span>✦</span> IA</button>
+      </div>
       {contextualHelpEnabled && <div className="context-help-layer">
         <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => setHelpOpen((open) => !open)}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
         {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>

@@ -845,3 +845,28 @@
  .team-member-main{width:calc(100% - 52px);flex:none}
  .team-member-actions{width:100%;justify-content:flex-end}
 }
+
+
+/* Historial claro de abonos por venta. */
+.sale-payment-history{display:flex;flex-direction:column;gap:9px;padding-top:11px;border-top:1px solid var(--line);min-width:0}
+.sale-payment-history-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sale-payment-history-heading>strong{font-size:10px}
+.sale-payment-history-heading>span{font-size:9px;color:var(--muted);background:#f0f3eb;border-radius:99px;padding:4px 7px}
+.sale-payment-list{display:flex;flex-direction:column;gap:7px}
+.sale-payment-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:#f8f9f4;border-radius:8px;padding:9px 10px}
+.sale-payment-row>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sale-payment-row>div strong{font-size:11px;color:#315d43}
+.sale-payment-row>div span,.sale-payment-row>div small{font-size:9px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.sale-payment-empty{font-size:10px;color:var(--muted);margin:0}
+.sale-register-payment-button{align-self:flex-start;font-size:10px;padding:8px 11px}
+.sale-payment-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:13px;border:1px solid var(--line);border-radius:10px;background:#fcfcf8}
+.sale-payment-form label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:700;color:#465347;min-width:0}
+.sale-payment-form input,.sale-payment-form select{width:100%;min-width:0;border:1px solid #dedfd7;border-radius:8px;background:#fffefa;padding:9px 10px;outline:none;color:var(--ink);font:400 11px "DM Sans",sans-serif}
+.sale-payment-form input:focus,.sale-payment-form select:focus{border-color:#648674;box-shadow:0 0 0 3px #2d59471a}
+.sale-payment-notes{grid-column:1/-1}
+.sale-payment-form .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
+@media(max-width:550px){
+ .sale-payment-form{grid-template-columns:1fr;padding:10px}
+ .sale-payment-notes,.sale-payment-form .form-actions{grid-column:auto}
+ .sale-payment-form .form-actions>*{flex:1}
+}

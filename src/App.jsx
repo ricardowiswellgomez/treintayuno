@@ -278,11 +278,18 @@ function PublicCatalog({ businessId }) {
   }, [businessId, page, retryKey]);
 
   const business = payload?.business;
+  const catalogTheme = normalizeBusinessTheme(business?.theme);
+  const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
+  const catalogThemeStyle = {
+    "--green": catalogTheme.primary, "--paper": catalogTheme.surface, "--ink": catalogTheme.text,
+    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogTheme.primary + " 12%,white)",
+    background: catalogTheme.background, color: catalogTheme.text
+  };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);
-  return <main className="public-catalog-shell">
+  return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
-      <a href={window.location.origin} className="public-catalog-brand" aria-label="Treintayuno">31</a>
+      <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "Treintayuno"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : "31"}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.name || "Catálogo"}</h1></div>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>

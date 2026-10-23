@@ -1199,7 +1199,12 @@ export default function App() {
       allRows.push(...batch);
       if (batch.length < pageSize) return allRows;
       if (allRows.length >= maxRows) {
-        throw new Error("El informe supera " + maxRows.toLocaleString("es-CO") + " registros de " + description + ". No mostraremos un total parcial; filtra un periodo más corto o divide la revisión.");
+        const { data: extraRows, error: extraError } = await makeQuery().range(maxRows, maxRows);
+        if (extraError) throw extraError;
+        if ((extraRows || []).length) {
+          throw new Error("El informe supera " + maxRows.toLocaleString("es-CO") + " registros de " + description + ". No mostraremos un total parcial; filtra un periodo más corto o divide la revisión.");
+        }
+        return allRows;
       }
     }
     throw new Error("No fue posible completar la lectura de " + description + ".");

@@ -155,6 +155,7 @@ export default function App() {
   const [productPageSize, setProductPageSize] = useState(12);
   const [viewMode, setViewMode] = useState("rows");
   const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
   const [stagedImages, setStagedImages] = useState([]);
   const [productImageUrls, setProductImageUrls] = useState({});
@@ -477,12 +478,68 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  function cancelProductForm() {
+    stagedImages.forEach((image) => URL.revokeObjectURL(image.preview));
+    setStagedImages([]);
+    setProductForm(blankProduct);
+    setEditingProductId(null);
+    setShowProductForm(false);
+    setError("");
+  }
+
+  function startEditProduct(product) {
+    stagedImages.forEach((image) => URL.revokeObjectURL(image.preview));
+    const knownUnit = unitOptions.some(([value]) => value === product.unit_name);
+    const digits = currencyDigits(currencyCode);
+    setStagedImages([]);
+    setEditingProductId(product.id);
+    setShowProductForm(true);
+    setProductForm({
+      name: product.name || "",
+      category_id: product.category_id || "",
+      description: product.description || "",
+      commercial_presentation: product.commercial_presentation || "",
+      product_type: product.product_type || "physical",
+      unit_name: knownUnit ? product.unit_name : "personalizada",
+      unit_custom: knownUnit ? "" : (product.unit_name || ""),
+      sale_price: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
+      cost_price: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
+      stock: String(product.stock_on_hand ?? 0),
+      low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold)
+    });
+    setError("");
+    setNotice("");
+  }
+
   async function addProduct(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     setBusy(true); setError(""); setNotice("");
     try {
       const pendingImages = [...stagedImages];
+      if (editingProductId) {
+        const { data: updated, error: updateError } = await supabase.from("products")
+          .update({
+            name: productForm.name.trim(),
+            category_id: productForm.category_id || null,
+            description: productForm.description.trim() || null,
+            commercial_presentation: productForm.commercial_presentation.trim() || null,
+            unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
+            sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
+            cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
+            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null
+          })
+          .eq("business_id", activeBusiness.id).eq("id", editingProductId)
+          .select("id").maybeSingle();
+        if (updateError) throw updateError;
+        if (!updated) throw new Error("No se pudo actualizar el producto. Comprueba tus permisos.");
+        setProductForm(blankProduct); setShowProductForm(false); setEditingProductId(null);
+        setStagedImages([]);
+        pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
+        await loadProducts();
+        setNotice("Producto actualizado. El historial de existencias se conservó; usa «Ajustar stock» para cambiar cantidades.");
+        return;
+      }
       const { data: newProductId, error: rpcError } = await supabase.rpc("create_product_with_opening_stock", {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
@@ -624,7 +681,7 @@ export default function App() {
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "products" ? (
           <section className="products-page">
-            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { setShowProductForm((v) => !v); setProductForm(blankProduct); setError(""); }}>{showProductForm ? "Cancelar" : "+ Nuevo producto"}</button></div>
+            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div><button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button></div>
             <section className="category-panel panel">
               <div className="category-panel-heading"><h3>Administrar categorías</h3><p>Crea, cambia o elimina las categorías de tus productos.</p></div>
               <form className="category-create-form" onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Ej. Camisetas" required aria-label="Nombre de la nueva categoría" /><button className="secondary-button" disabled={busy}>{busy ? "Guardando…" : "Crear categoría"}</button></form>
@@ -638,27 +695,27 @@ export default function App() {
               </div>)}</div> : <p className="category-empty-note">Todavía no hay categorías. Crea la primera aquí; luego podrás elegirla al guardar un producto.</p>}
             </section>
             {showProductForm && <form className="product-form panel" onSubmit={addProduct}>
-              <h3>Datos del producto</h3>
+              <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               <div className="form-grid">
                 <label>Nombre *<input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label>Categoría<select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-                <label>Tipo<select value={productForm.product_type} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
+                <label>Tipo<select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label>Precio de venta ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Costo por unidad ({currencyCode})<input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label>Unidad<select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 <label>Presentación comercial<input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label>Nombre de la unidad<input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
-                {productForm.product_type === "physical" && <><label>Existencias iniciales<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
-                <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
+                {productForm.product_type === "physical" && <><label>{editingProductId ? "Existencias actuales" : "Existencias iniciales"}<input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} readOnly={!!editingProductId} required /></label><label>Avisarme cuando queden<input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
+                {!editingProductId && <label className="product-photo-picker full-span">Fotos del producto (máximo 3)
                   <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
                   <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || stagedImages.length >= 3} onChange={chooseNewProductImages} />
-                </label>
+                </label>}
                 {stagedImages.length > 0 && <div className="staged-image-grid full-span">{stagedImages.map((image, index) => <figure className="staged-image" key={image.preview}><img src={image.preview} alt={image.name} /><figcaption>{image.name}</figcaption><button type="button" className="text-button danger-text" onClick={() => { URL.revokeObjectURL(image.preview); setStagedImages((current) => current.filter((_, i) => i !== index)); }}>Quitar foto</button></figure>)}</div>}
                 <label className="full-span">Descripción<textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
               </div>
               {!categories.length && <p className="helper-text full-span">Primero puedes crear una categoría en «Administrar categorías»; después aparecerá aquí para elegirla.</p>}
-              <p className="helper-text">El SKU y el slug se generan automáticamente. La presentación comercial es opcional. El inventario inicial queda guardado en el historial; el catálogo público sigue en preparación.</p>
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowProductForm(false)}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</button></div>
+              <p className="helper-text">{editingProductId ? "El SKU y el slug se conservan. Las existencias no se editan aquí para no alterar el historial; usa «Ajustar stock». Las fotos se administran desde la acción «Fotos» del producto." : "El SKU y el slug se generan automáticamente. La presentación comercial es opcional. El inventario inicial queda guardado en el historial; el catálogo público sigue en preparación."}</p>
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={cancelProductForm}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : editingProductId ? "Guardar cambios" : "Guardar producto"}</button></div>
             </form>}
             <div className="product-tools">
               <label className="search-box"><span>⌕</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
@@ -693,6 +750,7 @@ export default function App() {
                         <td><span className={p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span><button type="button" className="publish-soon" disabled title="El catálogo público todavía está en preparación">Publicar</button></div></td>
                         <td><div className="product-row-actions">
+                          <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
                           {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
                           <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
                         </div></td>
@@ -721,6 +779,7 @@ export default function App() {
                     <div><span>Catálogo</span><strong><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></strong><small>Publicación disponible cuando se active el catálogo público.</small></div>
                   </div>
                   <div className="product-row-actions product-card-actions">
+                    <button type="button" className="secondary-button action-small" onClick={() => startEditProduct(p)}>Editar</button>
                     {p.track_inventory && <button type="button" className="secondary-button action-small" onClick={() => { setAdjustingId(adjustingId === p.id ? null : p.id); setAdjustDelta(""); setAdjustNote(""); setError(""); }}>{adjustingId === p.id ? "Cancelar ajuste" : "Ajustar stock"}</button>}
                     <button type="button" className="secondary-button action-small" aria-expanded={!!openProductGalleries[p.id]} onClick={() => toggleProductGallery(p)}>{openProductGalleries[p.id] ? "Ocultar fotos" : "Fotos"} <span className="photo-count">{(p.image_paths || []).length}/3</span></button>
                   </div>

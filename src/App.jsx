@@ -1190,31 +1190,55 @@ export default function App() {
     finally { setTeamSaving(false); }
   }
 
+  async function fetchAllProfitabilityRows(makeQuery, description, maxRows = 50000) {
+    const pageSize = 500;
+    const allRows = [];
+    for (let offset = 0; offset <= maxRows; offset += pageSize) {
+      const { data, error: queryError } = await makeQuery().range(offset, Math.min(offset + pageSize - 1, maxRows));
+      if (queryError) throw queryError;
+      const batch = data || [];
+      allRows.push(...batch);
+      if (batch.length < pageSize) return allRows;
+      if (allRows.length >= maxRows) {
+        throw new Error("El informe supera " + maxRows.toLocaleString("es-CO") + " registros de " + description + ". No mostraremos un total parcial; filtra un periodo más corto o divide la revisión.");
+      }
+    }
+    throw new Error("No fue posible completar la lectura de " + description + ".");
+  }
+
   async function loadProfitabilityData() {
     if (!activeBusiness?.id || screen !== "profitability") return;
     setProfitabilityLoading(true); setError("");
     try {
-      const [salesResult, expensesResult] = await Promise.all([
-        supabase.from("sales").select("id,business_id,status,currency_code,total_minor,amount_paid_minor,sold_at,created_at")
-          .eq("business_id", activeBusiness.id).order("sold_at", { ascending: false }).limit(2000),
-        supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date")
-          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).limit(2000)
+      const [sales, expenses] = await Promise.all([
+        fetchAllProfitabilityRows(
+          () => supabase.from("sales").select("id,business_id,status,currency_code,total_minor,amount_paid_minor,sold_at,created_at")
+            .eq("business_id", activeBusiness.id).order("sold_at", { ascending: false }).order("id", { ascending: true }),
+          "ventas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date")
+            .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).order("id", { ascending: true }),
+          "gastos"
+        )
       ]);
-      if (salesResult.error) throw salesResult.error;
-      if (expensesResult.error) throw expensesResult.error;
-      const sales = salesResult.data || [];
       let items = [];
       if (sales.length) {
-        const itemsResult = await supabase.from("sale_items")
-          .select("id,sale_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
-          .eq("business_id", activeBusiness.id).in("sale_id", sales.map((sale) => sale.id))
-          .limit(10000);
-        if (itemsResult.error) throw itemsResult.error;
-        items = itemsResult.data || [];
+        const batchSize = 100;
+        for (let index = 0; index < sales.length; index += batchSize) {
+          const ids = sales.slice(index, index + batchSize).map((sale) => sale.id);
+          const rows = await fetchAllProfitabilityRows(
+            () => supabase.from("sale_items")
+              .select("id,sale_id,product_id,item_name,quantity,unit_cost_minor,line_total_minor")
+              .eq("business_id", activeBusiness.id).in("sale_id", ids).order("created_at").order("id", { ascending: true }),
+            "líneas de venta"
+          );
+          items.push(...rows);
+        }
       }
       setProfitabilitySales(sales);
       setProfitabilitySaleItems(items);
-      setProfitabilityExpenses(expensesResult.data || []);
+      setProfitabilityExpenses(expenses);
     } catch (e) {
       setError(friendlyError(e));
       setProfitabilitySales([]); setProfitabilitySaleItems([]); setProfitabilityExpenses([]);

@@ -38,7 +38,8 @@ const areas = [
   { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
   { icon: "₱", title: "Pagos verificados", description: "Conecta la cuenta de cobro de este negocio.", screen: "payments" },
-  { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
+  { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" },
+  { icon: "◷", title: "Auditorías", description: "Consulta quién hizo cada cambio y cuándo.", screen: "audit" }
 ];
 
 const defaultSidebarLayout = () => [{
@@ -931,6 +932,18 @@ export default function App() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [salesPeriod, setSalesPeriod] = useState("day");
+  const [salesDateFrom, setSalesDateFrom] = useState(() => todayInBogota());
+  const [salesDateTo, setSalesDateTo] = useState(() => todayInBogota());
+  const [auditRows, setAuditRows] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPeriod, setAuditPeriod] = useState("day");
+  const [auditDateFrom, setAuditDateFrom] = useState(() => todayInBogota());
+  const [auditDateTo, setAuditDateTo] = useState(() => todayInBogota());
+  const [auditOffset, setAuditOffset] = useState(0);
+  const [auditHasMore, setAuditHasMore] = useState(false);
+  const [allocationSettings, setAllocationSettings] = useState({ diezmo: { enabled: false, percent: 0 }, ahorro: { enabled: false, percent: 0 }, otra: { enabled: false, name: "Otra asignación", percent: 0 } });
+  const [targetProfitPercent, setTargetProfitPercent] = useState("15");
   const [statsSales, setStatsSales] = useState([]);
   const [statsPayments, setStatsPayments] = useState([]);
   const [statsExpenses, setStatsExpenses] = useState([]);
@@ -1877,9 +1890,16 @@ export default function App() {
         setCustomers(result.data || []);
         setCustomersCount(result.count || 0);
       } else {
+        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+        const salesToday = todayInBogota();
+        const shiftSalesDate = (key, offset) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0,10); };
+        const salesWeekStart = shiftSalesDate(salesToday, -((new Date(salesToday + "T12:00:00Z").getUTCDay() + 6) % 7));
+        const salesFrom = salesPeriod === "day" ? salesToday : salesPeriod === "week" ? salesWeekStart : salesPeriod === "month" ? salesToday.slice(0,7) + "-01" : salesPeriod === "year" ? salesToday.slice(0,4) + "-01-01" : salesPeriod === "custom" ? (salesDateFrom || salesToday) : null;
+        const salesTo = salesPeriod === "custom" ? (salesDateTo || salesToday) : salesPeriod === "all" ? null : salesToday;
+        if (salesFrom) salesQuery = salesQuery.gte("sold_at", salesFrom + "T00:00:00-05:00");
+        if (salesTo) salesQuery = salesQuery.lt("sold_at", shiftSalesDate(salesTo, 1) + "T00:00:00-05:00");
         const [salesResult, productsResult, customersResult] = await Promise.all([
-          supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" })
-            .eq("business_id", activeBusiness.id).order("created_at", { ascending: false })
+          salesQuery.order("sold_at", { ascending: false }).order("created_at", { ascending: false })
             .range((salesPage - 1) * salesPageSize, (salesPage - 1) * salesPageSize + salesPageSize - 1),
           supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable,archived_at")
             .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(500),
@@ -1930,7 +1950,28 @@ export default function App() {
 
   useEffect(() => {
     if ((screen === "sales" || screen === "customers") && activeBusiness?.id) loadSalesModuleData();
-  }, [screen, activeBusiness?.id, customerSearch, salesPage, salesPageSize, customersPage, customersPageSize]);
+  }, [screen, activeBusiness?.id, customerSearch, salesPage, salesPageSize, customersPage, customersPageSize, salesPeriod, salesDateFrom, salesDateTo]);
+
+  async function loadAuditEntries(reset = true) {
+    if (!activeBusiness?.id || screen !== "audit") return;
+    setAuditLoading(true); setError("");
+    const offset = reset ? 0 : auditOffset;
+    try {
+      const today = todayInBogota();
+      const shift = (key, amount) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + amount); return date.toISOString().slice(0,10); };
+      const weekStart = shift(today, -((new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7));
+      const from = auditPeriod === "day" ? today : auditPeriod === "week" ? weekStart : auditPeriod === "month" ? today.slice(0,7) + "-01" : auditPeriod === "year" ? today.slice(0,4) + "-01-01" : auditPeriod === "custom" ? (auditDateFrom || today) : null;
+      const to = auditPeriod === "all" ? null : auditPeriod === "custom" ? (auditDateTo || today) : today;
+      const { data, error: auditError } = await supabase.rpc("get_business_audit_entries", { p_business_id: activeBusiness.id, p_from: from, p_to: to, p_limit: 200, p_offset: offset });
+      if (auditError) throw auditError;
+      const rows = data || [];
+      setAuditRows((current) => reset ? rows : [...current, ...rows]);
+      setAuditOffset(offset + rows.length);
+      setAuditHasMore(rows.length === 200);
+    } catch (e) { setError(friendlyError(e)); if (reset) setAuditRows([]); }
+    finally { setAuditLoading(false); }
+  }
+  useEffect(() => { if (screen === "audit" && activeBusiness?.id) { setAuditOffset(0); loadAuditEntries(true); } }, [screen, activeBusiness?.id, auditPeriod, auditDateFrom, auditDateTo]);
 
   async function loadPurchasesModuleData() {
     if (!activeBusiness?.id || (screen !== "purchases" && screen !== "suppliers")) return;
@@ -3168,6 +3209,7 @@ export default function App() {
     if (next === "purchases") return canViewPurchases || canViewExpenses;
     if (next === "suppliers") return canViewSuppliers;
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
+    if (next === "audit") return canPermission("reports_view") || isBusinessManager;
     if (next === "catalog") return canManageProducts;
     return false;
   }

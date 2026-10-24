@@ -1,6 +1,30 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabasePublishableKey } from "./lib/supabase.js";
 
+function AppIcon({ name, size = 20 }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, focusable: "false" };
+  const glyphs = {
+    home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
+    products: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z" /><path d="m3.4 7.6 8.6 4.7 8.6-4.7M12 12.3V21" /></>,
+    sales: <><path d="M4 4.5h16v15H4z" /><path d="M8 9h8M8 13h4M8 16h8" /></>,
+    stats: <><path d="M4 20V11h4v9M10 20V4h4v16M16 20v-7h4v7" /></>,
+    quotes: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h4M10 12h6M10 16h6" /></>,
+    customers: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 2.5 3.7V20" /></>,
+    profitability: <><path d="M4 19V5M4 19h17" /><path d="m7 15 4-4 3 2 5-6" /><path d="M16 7h3v3" /></>,
+    purchases: <><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></>,
+    catalog: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
+    team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
+    suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>
+  };
+  return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 const areas = [
   { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
@@ -423,9 +447,11 @@ export default function App() {
   const [screen, setScreen] = useState("home");
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
+  const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
   const [sidebarLayout, setSidebarLayout] = useState(defaultSidebarLayout);
   const [draggedSidebarItem, setDraggedSidebarItem] = useState(null);
   const [sidebarTouchDragging, setSidebarTouchDragging] = useState(false);
+  const sidebarPreDragRef = useRef(null);
   const sidebarTouchRef = useRef(null);
   const sidebarLongPressTimerRef = useRef(null);
   const sidebarSuppressClickRef = useRef(false);
@@ -520,8 +546,12 @@ export default function App() {
   const [statsSales, setStatsSales] = useState([]);
   const [statsPayments, setStatsPayments] = useState([]);
   const [statsExpenses, setStatsExpenses] = useState([]);
+  const [statsPurchases, setStatsPurchases] = useState([]);
+  const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsPeriod, setStatsPeriod] = useState("month");
+  const [statsDateFrom, setStatsDateFrom] = useState(() => todayInBogota().slice(0, 7) + "-01");
+  const [statsDateTo, setStatsDateTo] = useState(() => todayInBogota());
   const [quotesRows, setQuotesRows] = useState([]);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [quotesPage, setQuotesPage] = useState(1);
@@ -532,6 +562,8 @@ export default function App() {
   const [quoteProducts, setQuoteProducts] = useState([]);
   const [quoteCustomers, setQuoteCustomers] = useState([]);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [editingQuoteId, setEditingQuoteId] = useState(null);
+  const [editingQuoteOriginalItems, setEditingQuoteOriginalItems] = useState([]);
   const [quoteCustomerId, setQuoteCustomerId] = useState("");
   const [quoteCustomerName, setQuoteCustomerName] = useState("");
   const [quoteCustomerEmail, setQuoteCustomerEmail] = useState("");
@@ -582,6 +614,8 @@ export default function App() {
   const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
+  const [settingsTab, setSettingsTab] = useState("general");
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "" });
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
@@ -890,6 +924,9 @@ export default function App() {
     let alive = true;
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
+    const savedCommercial = activeBusiness.settings?.commercial_profile || {};
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "" });
+    setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
     setSettingsLogoFile(null);
@@ -1589,7 +1626,7 @@ export default function App() {
     setStatsLoading(true);
     setError("");
     try {
-      const [sales, payments, expenses] = await Promise.all([
+      const [sales, payments, expenses, purchases, purchasePayments] = await Promise.all([
         fetchAllProfitabilityRows(
           () => supabase.from("sales")
             .select("id,business_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
@@ -1610,16 +1647,34 @@ export default function App() {
             .eq("business_id", activeBusiness.id)
             .order("expense_date", { ascending: false }).order("id", { ascending: true }),
           "gastos para las estadísticas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("purchases")
+            .select("id,business_id,purchase_number,status,total_minor,amount_paid_minor,purchased_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
+          "compras para las estadísticas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("purchase_payments")
+            .select("id,business_id,purchase_id,amount_minor,paid_at")
+            .eq("business_id", activeBusiness.id)
+            .order("paid_at", { ascending: false }).order("id", { ascending: true }),
+          "pagos de compras para las estadísticas"
         )
       ]);
       setStatsSales(sales);
       setStatsPayments(payments);
       setStatsExpenses(expenses);
+      setStatsPurchases(purchases);
+      setStatsPurchasePayments(purchasePayments);
     } catch (e) {
       setError(friendlyError(e));
       setStatsSales([]);
       setStatsPayments([]);
       setStatsExpenses([]);
+      setStatsPurchases([]);
+      setStatsPurchasePayments([]);
     } finally { setStatsLoading(false); }
   }
 
@@ -2351,25 +2406,78 @@ export default function App() {
   const periodSaleIds = new Set(periodSales.map((sale) => sale.id));
   const periodSaleItems = profitabilitySaleItems.filter((item) => periodSaleIds.has(item.sale_id));
   const periodExpenses = profitabilityExpenses.filter((expense) => profitInPeriod(expense.expense_date));
+  const shiftDateKey = (key, offset) => {
+    const date = new Date(key + "T12:00:00Z");
+    date.setUTCDate(date.getUTCDate() + offset);
+    return date.toISOString().slice(0, 10);
+  };
+  const weekOffset = (new Date(todayBogotaKey + "T12:00:00Z").getUTCDay() + 6) % 7;
+  const yearStart = todayBogotaKey.slice(0, 4) + "-01-01";
+  const monthStart = todayBogotaKey.slice(0, 7) + "-01";
+  const statsRangeStart = statsPeriod === "day" ? todayBogotaKey
+    : statsPeriod === "week" ? shiftDateKey(todayBogotaKey, -weekOffset)
+    : statsPeriod === "month" ? monthStart
+    : statsPeriod === "year" ? yearStart
+    : statsPeriod === "all" ? "0001-01-01"
+    : (statsDateFrom || monthStart);
+  const statsRangeEnd = statsPeriod === "custom" ? (statsDateTo || todayBogotaKey) : todayBogotaKey;
+  const statsRangeLabel = statsRangeStart === statsRangeEnd
+    ? new Date(statsRangeStart + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })
+    : "Desde " + new Date(statsRangeStart + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota" }) + " hasta " + new Date(statsRangeEnd + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota" });
   const statsInPeriod = (value) => {
-    if (statsPeriod === "all") return true;
     const key = profitPeriodDateKey(value);
-    if (!key) return false;
-    if (statsPeriod === "month") return key.slice(0, 7) === currentMonthKey;
-    const day = new Date(key + "T12:00:00-05:00").getTime();
-    const now = new Date(todayBogotaKey + "T12:00:00-05:00").getTime();
-    return day >= now - 30 * 24 * 60 * 60 * 1000 && day <= now + 24 * 60 * 60 * 1000;
+    return Boolean(key && key >= statsRangeStart && key <= statsRangeEnd);
   };
   const statsPeriodSales = statsSales.filter((sale) => !["canceled", "refunded", "draft"].includes(sale.status) && statsInPeriod(sale.sold_at || sale.created_at));
   const statsPeriodPayments = statsPayments.filter((payment) => statsInPeriod(payment.paid_at));
   const statsPeriodExpenses = statsExpenses.filter((expense) => statsInPeriod(expense.expense_date));
+  const statsPeriodPurchases = statsPurchases.filter((purchase) => !["cancelled", "canceled", "draft"].includes(String(purchase.status || "").toLowerCase()) && statsInPeriod(purchase.purchased_at || purchase.created_at));
+  const statsPeriodPurchasePayments = statsPurchasePayments.filter((payment) => statsInPeriod(payment.paid_at));
   const statsSalesTotal = statsPeriodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
   const statsCollected = statsPayments.length
     ? statsPeriodPayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
     : statsPeriodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
   const statsOutstanding = statsPeriodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0);
   const statsExpensesTotal = statsPeriodExpenses.reduce((sum, expense) => sum + Number(expense.amount_minor || 0), 0);
-  const statsCashBalance = statsCollected - statsExpensesTotal;
+  const statsPaidPurchases = statsPurchasePayments.length
+    ? statsPeriodPurchasePayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
+    : statsPeriodPurchases.reduce((sum, purchase) => sum + Number(purchase.amount_paid_minor || 0), 0);
+  const statsCashBalance = statsCollected - statsExpensesTotal - statsPaidPurchases;
+
+  function downloadStatsExcel() {
+    const unit = 10 ** currencyDigits(currencyCode);
+    const rows = [
+      ["Treintayuno - Estadísticas"],
+      ["Negocio", activeBusiness?.name || ""],
+      ["Periodo", statsRangeLabel],
+      [],
+      ["Indicador", "Importe"],
+      ["Ingresos", statsCollected / unit],
+      ["Gastos", statsExpensesTotal / unit],
+      ["Compras pagadas", statsPaidPurchases / unit],
+      ["Balance", statsCashBalance / unit],
+      ["Ventas registradas", statsSalesTotal / unit],
+      ["Pendiente por cobrar", statsOutstanding / unit],
+      [],
+      ["Movimiento", "Fecha", "Referencia", "Importe"]
+    ];
+    statsPeriodPayments.forEach((payment) => rows.push(["Ingreso", profitPeriodDateKey(payment.paid_at), payment.sale_id || "Abono", Number(payment.amount_minor || 0) / unit]));
+    statsPeriodExpenses.forEach((expense) => rows.push(["Gasto", profitPeriodDateKey(expense.expense_date), expense.description || expense.category || "Gasto", Number(expense.amount_minor || 0) / unit]));
+    statsPeriodPurchasePayments.forEach((payment) => rows.push(["Compra pagada", profitPeriodDateKey(payment.paid_at), payment.purchase_id || "Pago de compra", Number(payment.amount_minor || 0) / unit]));
+    const csv = "\uFEFF" + rows.map((row) => row.map((value) => {
+      const cell = String(value ?? "");
+      return /[;\r\n"]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
+    }).join(";")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "treintayuno-estadisticas-" + statsRangeStart + "-a-" + statsRangeEnd + ".csv";
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  }
+
+  function printStatsReport() { window.print(); }
+
   const profitSalesTotal = periodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
   const profitPaidTotal = periodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
   const profitCostOfSales = periodSaleItems.reduce((sum, item) => sum + Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0)), 0);

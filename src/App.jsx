@@ -501,6 +501,9 @@ export default function App() {
   const [catalogCategories, setCatalogCategories] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogViewMode, setCatalogViewMode] = useState("cards");
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPageSize, setCatalogPageSize] = useState(12);
   const [catalogPublishingId, setCatalogPublishingId] = useState(null);
   const [teamRows, setTeamRows] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
@@ -1548,6 +1551,10 @@ export default function App() {
     if (screen === "catalog" && activeBusiness?.id) loadCatalogAdminData();
   }, [screen, activeBusiness?.id]);
 
+  useEffect(() => {
+    if (catalogPage > catalogTotalPages) setCatalogPage(catalogTotalPages);
+  }, [catalogPage, catalogTotalPages]);
+
   async function toggleCatalogPublication(product) {
     if (!activeBusiness?.id) return;
     const publish = !product.is_published;
@@ -2066,6 +2073,8 @@ export default function App() {
     const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "";
     return [product.name, product.description, category].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedCatalogSearch);
   });
+  const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalogProducts.length / catalogPageSize));
+  const catalogPageProducts = filteredCatalogProducts.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
   const publishedCatalogCount = catalogProducts.filter((product) => product.is_published && product.is_sellable).length;
   const profitPeriodDateKey = (value) => {
     if (!value) return "";
@@ -2578,11 +2587,11 @@ export default function App() {
               <input aria-label="Enlace público del catálogo" readOnly value={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} onFocus={(e) => e.target.select()} />
             </div>
             <div className="catalog-filter-row">
-              <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Buscar producto o categoría…" />
-              <span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span>
+              <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => { setCatalogSearch(e.target.value); setCatalogPage(1); }} placeholder="Buscar producto o categoría…" />
+              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><span>▦</span> Tarjetas</button><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><span>☷</span> Lista</button></div></div>
             </div>
             {catalogLoading ? <div className="empty-state">Cargando productos reales…</div>
-              : filteredCatalogProducts.length ? <div className="catalog-admin-list">{filteredCatalogProducts.map((product) => {
+              : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {
                 const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "Sin categoría";
                 return <article className="catalog-admin-row panel" key={product.id}>
                   <div className="catalog-admin-product"><CatalogAdminImage businessId={activeBusiness.id} product={product} /><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>
@@ -2594,6 +2603,7 @@ export default function App() {
                 </article>;
               })}</div>
               : <div className="empty-state"><span className="empty-icon">◉</span><h3>{catalogProducts.length ? "No hay resultados" : "Todavía no hay productos"}</h3><p>{catalogProducts.length ? "Prueba otra palabra o categoría." : "Crea tus productos primero; luego publícalos aquí para compartirlos."}</p><button type="button" className="secondary-button" onClick={() => navigate("products")}>Ir a productos</button></div>}
+            {!catalogLoading && filteredCatalogProducts.length > 0 && <div className="pagination-bar catalog-pagination"><label className="page-size-control"><span className="field-label-heading">Mostrar</span><select value={catalogPageSize} onChange={(e) => { setCatalogPageSize(Number(e.target.value)); setCatalogPage(1); }}><option value={8}>8</option><option value={12}>12</option><option value={24}>24</option><option value={48}>48</option></select> por página</label><div className="pagination-controls"><button type="button" className="secondary-button" disabled={catalogPage <= 1} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))}>Anterior</button><span className="pagination-status">Página {Math.min(catalogPage, catalogTotalPages)} de {catalogTotalPages}</span><button type="button" className="secondary-button" disabled={catalogPage >= catalogTotalPages} onClick={() => setCatalogPage((page) => Math.min(catalogTotalPages, page + 1))}>Siguiente</button></div></div>}
           </section>
         ) : screen === "profitability" ? (
           <section className="profitability-page">

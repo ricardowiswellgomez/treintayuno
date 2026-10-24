@@ -416,8 +416,8 @@ function CouponsAdmin({ business }) {
     setForm({
       code: coupon.code || "", description: coupon.description || "",
       discount_type: coupon.discount_type, discount_value: String(coupon.discount_value),
-      minimum_subtotal: String(Number(coupon.minimum_subtotal_minor || 0) / 100),
-      maximum_discount: coupon.maximum_discount_minor == null ? "" : String(Number(coupon.maximum_discount_minor) / 100),
+      minimum_subtotal: String(Number(coupon.minimum_subtotal_minor || 0) / (10 ** currencyDigits(currency))),
+      maximum_discount: coupon.maximum_discount_minor == null ? "" : String(Number(coupon.maximum_discount_minor) / (10 ** currencyDigits(currency))),
       usage_limit: coupon.usage_limit == null ? "" : String(coupon.usage_limit),
       starts_at: coupon.starts_at ? new Date(coupon.starts_at).toISOString().slice(0,16) : "",
       ends_at: coupon.ends_at ? new Date(coupon.ends_at).toISOString().slice(0,16) : "",
@@ -433,11 +433,11 @@ function CouponsAdmin({ business }) {
     try {
       const code = form.code.trim().toUpperCase().replace(/\s+/g, "");
       const value = Number(form.discount_value);
-      const minimum = Math.round(Number(form.minimum_subtotal || 0) * 100);
-      const maxDiscount = form.maximum_discount.trim() === "" ? null : Math.round(Number(form.maximum_discount) * 100);
+      const minimum = toMinorUnits(Number(form.minimum_subtotal || 0), currency);
+      const maxDiscount = form.maximum_discount.trim() === "" ? null : toMinorUnits(Number(form.maximum_discount), currency);
       const limit = form.usage_limit.trim() === "" ? null : Number(form.usage_limit);
       if (!/^[A-Z0-9_-]{3,32}$/.test(code)) throw new Error("El código debe tener entre 3 y 32 caracteres: letras, números, guion o guion bajo.");
-      if (!Number.isFinite(value) || value <= 0 || (form.discount_type === "percentage" && (!Number.isInteger(value) || value > 100)) || (form.discount_type === "fixed" && !Number.isInteger(value * 100))) throw new Error(form.discount_type === "percentage" ? "El porcentaje debe ser un número entero entre 1 y 100." : "Ingresa un valor fijo válido.");
+      if (!Number.isFinite(value) || value <= 0 || (form.discount_type === "percentage" && (!Number.isInteger(value) || value > 100)) || (form.discount_type === "fixed" && !Number.isInteger(value * (10 ** currencyDigits(currency))))) throw new Error(form.discount_type === "percentage" ? "El porcentaje debe ser un número entero entre 1 y 100." : "Ingresa un valor fijo válido.");
       if (!Number.isFinite(minimum) || minimum < 0 || (maxDiscount != null && (!Number.isFinite(maxDiscount) || maxDiscount <= 0))) throw new Error("Revisa el mínimo de compra y el descuento máximo.");
       if (limit != null && (!Number.isInteger(limit) || limit < 1)) throw new Error("El límite de usos debe ser un entero positivo.");
       if (form.starts_at && form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) throw new Error("La fecha final debe ser posterior a la inicial.");

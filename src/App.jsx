@@ -3683,9 +3683,18 @@ export default function App() {
       const label = entry.details?.label || typeLabel;
       const when = new Date(entry.created_at).toLocaleString("es-CO", {timeZone:"America/Bogota", dateStyle:"medium", timeStyle:"short"});
       const changes = Object.entries(entry.details?.changes || {}).filter(([key]) => key !== "registro");
+      const formatAuditValue = (value, key) => {
+        if (value === null || value === undefined || value === "") return "vacío";
+        if (typeof value === "boolean") return value ? "Sí" : "No";
+        if (key === "status") return ({draft:"Borrador",open:"Pendiente",paid:"Pagado",partially_paid:"Abono parcial",cancelled:"Cancelado",canceled:"Cancelado",active:"Activo",inactive:"Inactivo"})[String(value)] || String(value).replaceAll("_"," ");
+        if (key.endsWith("_minor") && Number.isFinite(Number(value))) return money(Number(value), currencyCode);
+        if (["quantity","stock_on_hand"].includes(key) && Number.isFinite(Number(value))) return Number(value).toLocaleString("es-CO");
+        if (typeof value === "object") return JSON.stringify(value);
+        return String(value);
+      };
       return <article className="audit-row" key={entry.id}>
         <div className="audit-actor"><div className="audit-actor-heading"><strong>{entry.actor_name || "Usuario desconocido"}</strong><span className={"audit-role " + (entry.actor_role === "owner" ? "owner" : entry.actor_role === "employee" ? "employee" : "")}>{roleLabel}</span></div><span>{entry.actor_email || "Correo no disponible"}</span></div>
-        <div className="audit-action"><strong>{entry.action} {typeLabel}: {label}</strong>{entry.action === "Actualizó" && changes.length > 0 && <details><summary>Ver {changes.length} {changes.length === 1 ? "cambio" : "cambios"}</summary><ul>{changes.map(([key, values]) => <li key={key}><span>{({status:"Estado",total_minor:"Total",amount_paid_minor:"Abonado",sale_price_minor:"Precio de venta",cost_price_minor:"Costo",stock_on_hand:"Existencias",name:"Nombre",description:"Descripción",quantity:"Cantidad",notes:"Notas",is_sellable:"Se puede vender",archived_at:"Archivado"})[key] || key.replaceAll("_"," ")}</span>: <code>{JSON.stringify(values?.antes ?? null)} → {JSON.stringify(values?.despues ?? null)}</code></li>)}</ul></details>}</div>
+        <div className="audit-action"><strong>{entry.action} {typeLabel}: {label}</strong>{entry.action === "Actualizó" && changes.length > 0 && <details><summary>Ver {changes.length} {changes.length === 1 ? "cambio" : "cambios"}</summary><ul>{changes.map(([key, values]) => <li key={key}><span>{({status:"Estado",total_minor:"Total",amount_paid_minor:"Abonado",sale_price_minor:"Precio de venta",cost_price_minor:"Costo",stock_on_hand:"Existencias",name:"Nombre",description:"Descripción",quantity:"Cantidad",notes:"Notas",is_sellable:"Se puede vender",archived_at:"Archivado"})[key] || key.replaceAll("_"," ")}</span>: <code>{formatAuditValue(values?.antes, key)} → {formatAuditValue(values?.despues, key)}</code></li>)}</ul></details>}</div>
         <time dateTime={entry.created_at}>{when}</time>
       </article>;
     })}

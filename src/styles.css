@@ -2207,3 +2207,8 @@ button{line-height:1.35}
  .sales-single-date label{grid-column:1/-1;grid-row:1}
  .sales-single-date button{width:100%;padding:9px 8px;font-size:12px}
 }
+
+
+.settings-card-visibility{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 16px}
+.settings-card-visibility label{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:12px}
+.settings-card-visibility input{width:17px;height:17px;accent-color:var(--green)}

@@ -1058,6 +1058,7 @@ export default function App() {
   const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", cardEnabled: false, cardName: "", cardEmail: "", cardPhone: "", cardShowEmail: true, cardShowPhone: true, cardText: "", hoursSchedule: {} });
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
+  useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);

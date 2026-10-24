@@ -3222,6 +3222,14 @@ export default function App() {
     groups[category].count += 1;
     return groups;
   }, {})).sort((a, b) => b.amount - a.amount);
+  const profitByItem = Object.values(periodSaleItems.reduce((groups, item) => {
+    const name = item.item_name || "Artículo sin nombre";
+    if (!groups[name]) groups[name] = { name, quantity: 0, revenue: 0, cost: 0 };
+    groups[name].quantity += Number(item.quantity || 0);
+    groups[name].revenue += Number(item.line_total_minor || 0);
+    groups[name].cost += Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0));
+    return groups;
+  }, {})).sort((a, b) => (b.revenue - b.cost) - (a.revenue - a.cost));
 
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
@@ -3884,6 +3892,7 @@ export default function App() {
                   <div><span>Te falta generar</span><strong>{money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode)}</strong></div>
                   <p>{profitLineRevenue > 0 && profitGross > 0 ? "Para alcanzar esa diferencia, podrías generar aproximadamente " + money(Math.ceil((profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100) / (profitGross / profitLineRevenue)), currencyCode) + " en ventas adicionales si mantienes el margen bruto actual, o reducir gastos por " + money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode) + " en el periodo." : "No hay un margen bruto positivo suficiente para estimar ventas adicionales con fiabilidad. Revisa los precios y costos, o plantea una reducción de gastos de " + money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode) + "."} Es una guía, no una garantía.</p>
                 </div> : <p className="profit-empty-note">El resultado del periodo no es positivo todavía. Primero identifica los gastos que puedes reducir y revisa el margen de tus productos; cuando tengas una base positiva, el simulador calculará la meta porcentual.</p>}
+                {profitNet > 0 && (profitByItem.length > 0 || expensesByCategory.length > 0) && <div className="profit-goal-actions"><strong>Por dónde empezar</strong>{profitByItem[0] && <p>Prioriza vender <b>{profitByItem[0].name}</b>: fue el artículo con mayor contribución bruta en este periodo ({money(profitByItem[0].revenue - profitByItem[0].cost, currencyCode)} en total). Mantén controlado su costo y evita descuentos que se coman el margen.</p>}{expensesByCategory[0] && <p>Revisa los gastos de <b>{expensesByCategory[0].name}</b>, la categoría con mayor valor registrado ({money(expensesByCategory[0].amount, currencyCode)}). Identifica qué parte se puede reducir sin afectar las ventas.</p>}</div>}
               </section>
               <section className="profit-allocations-panel panel">
                 <div className="profit-breakdown-heading"><div><h3>Distribución opcional de la ganancia</h3><p>Activa solo los porcentajes que uses. Se calculan sobre un resultado positivo y no se restan de la rentabilidad contable.</p></div></div>

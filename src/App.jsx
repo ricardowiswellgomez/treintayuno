@@ -2135,8 +2135,9 @@ export default function App() {
       <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total: ${escapeHtml(money(quote.total_minor, quote.currency_code || currencyCode))}</div>
       ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
       <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
-    const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=900");
+    const win = window.open("", "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }
+    try { win.opener = null; } catch { /* La impresión no depende de window.opener. */ }
     win.document.open(); win.document.write(html); win.document.close();
   }
 
@@ -2190,11 +2191,17 @@ export default function App() {
       const file = new File([blob], filename, { type: "image/png" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try { await navigator.share({ files: [file], title: "Cotización " + quote.quote_number, text: "Propuesta comercial de " + brand }); }
-        catch (e) { if (e?.name !== "AbortError") throw e; }
+        catch (e) {
+          if (e?.name === "AbortError") return;
+          const url = URL.createObjectURL(blob); const downloadLink = document.createElement("a");
+          downloadLink.href = url; downloadLink.download = filename; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+          setNotice("La imagen quedó descargada para compartirla por WhatsApp o correo.");
+        }
       } else {
-        const url = URL.createObjectURL(blob); const link = document.createElement("a");
-        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1200);
+        const url = URL.createObjectURL(blob); const downloadLink = document.createElement("a");
+        downloadLink.href = url; downloadLink.download = filename; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1200);
         setNotice("Imagen descargada. Ya puedes compartirla por WhatsApp o correo.");
       }
     } catch (e) { setError("No se pudo generar la imagen en este navegador. Usa PDF / imprimir para compartir la cotización."); }
@@ -2598,9 +2605,12 @@ export default function App() {
     : statsPeriod === "all" ? "0001-01-01"
     : (statsDateFrom || monthStart);
   const statsRangeEnd = statsPeriod === "custom" ? (statsDateTo || todayBogotaKey) : todayBogotaKey;
-  const statsRangeLabel = statsRangeStart === statsRangeEnd
-    ? new Date(statsRangeStart + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })
-    : "Desde " + new Date(statsRangeStart + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota" }) + " hasta " + new Date(statsRangeEnd + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota" });
+  const formatStatsDate = (key) => new Date(key + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "2-digit", month: "2-digit", year: "numeric" });
+  const statsRangeLabel = statsPeriod === "all"
+    ? "Todo el historial hasta " + formatStatsDate(todayBogotaKey)
+    : statsRangeStart === statsRangeEnd
+      ? formatStatsDate(statsRangeStart)
+      : "Desde " + formatStatsDate(statsRangeStart) + " hasta " + formatStatsDate(statsRangeEnd);
   const statsInPeriod = (value) => {
     const key = profitPeriodDateKey(value);
     return Boolean(key && key >= statsRangeStart && key <= statsRangeEnd);
@@ -2647,10 +2657,11 @@ export default function App() {
     }).join(";")).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "treintayuno-estadisticas-" + statsRangeStart + "-a-" + statsRangeEnd + ".csv";
-    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    downloadLink.download = "treintayuno-estadisticas-" + statsRangeStart + "-a-" + statsRangeEnd + ".csv";
+    document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
   }
 
   function printStatsReport() { window.print(); }

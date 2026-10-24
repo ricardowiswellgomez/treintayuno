@@ -106,10 +106,162 @@ const money = (minorUnits, code = "COP") => {
 };
 const toMinorUnits = (amount, code = "COP") => Math.round(Number(amount || 0) * (10 ** currencyDigits(code)));
 const currencyOptions = [
-  ["COP", "Peso colombiano"], ["USD", "Dólar estadounidense"], ["EUR", "Euro"],
-  ["MXN", "Peso mexicano"], ["PEN", "Sol peruano"], ["CLP", "Peso chileno"],
-  ["ARS", "Peso argentino"], ["BRL", "Real brasileño"], ["CAD", "Dólar canadiense"],
-  ["GBP", "Libra esterlina"], ["JPY", "Yen japonés"], ["AUD", "Dólar australiano"]
+  ["AED", "Dírham de Emiratos Árabes Unidos"],
+  ["AFN", "AFN"],
+  ["ALL", "ALL"],
+  ["AMD", "AMD"],
+  ["ANG", "ANG"],
+  ["AOA", "AOA"],
+  ["ARS", "Peso argentino"],
+  ["AUD", "Dólar australiano"],
+  ["AWG", "AWG"],
+  ["AZN", "AZN"],
+  ["BAM", "BAM"],
+  ["BBD", "BBD"],
+  ["BDT", "Taka bangladesí"],
+  ["BGN", "BGN"],
+  ["BHD", "Dinar bareiní"],
+  ["BIF", "BIF"],
+  ["BMD", "BMD"],
+  ["BND", "BND"],
+  ["BOB", "Boliviano"],
+  ["BRL", "Real brasileño"],
+  ["BSD", "BSD"],
+  ["BTN", "BTN"],
+  ["BWP", "BWP"],
+  ["BYN", "BYN"],
+  ["BZD", "BZD"],
+  ["CAD", "Dólar canadiense"],
+  ["CDF", "CDF"],
+  ["CHF", "Franco suizo"],
+  ["CLP", "Peso chileno"],
+  ["CNY", "Yuan chino"],
+  ["COP", "Peso colombiano"],
+  ["CRC", "Colón costarricense"],
+  ["CUP", "CUP"],
+  ["CVE", "CVE"],
+  ["CZK", "Corona checa"],
+  ["DJF", "DJF"],
+  ["DKK", "Corona danesa"],
+  ["DOP", "Peso dominicano"],
+  ["DZD", "DZD"],
+  ["EGP", "Libra egipcia"],
+  ["ERN", "ERN"],
+  ["ETB", "ETB"],
+  ["EUR", "Euro"],
+  ["FJD", "FJD"],
+  ["FKP", "FKP"],
+  ["GBP", "Libra esterlina"],
+  ["GEL", "GEL"],
+  ["GHS", "GHS"],
+  ["GIP", "GIP"],
+  ["GMD", "GMD"],
+  ["GNF", "GNF"],
+  ["GTQ", "Quetzal guatemalteco"],
+  ["GYD", "GYD"],
+  ["HKD", "Dólar de Hong Kong"],
+  ["HNL", "HNL"],
+  ["HTG", "HTG"],
+  ["HUF", "Forinto húngaro"],
+  ["IDR", "Rupia indonesia"],
+  ["ILS", "Nuevo séquel israelí"],
+  ["INR", "Rupia india"],
+  ["IQD", "Dinar iraquí"],
+  ["IRR", "IRR"],
+  ["ISK", "Corona islandesa"],
+  ["JMD", "Dólar jamaiquino"],
+  ["JOD", "Dinar jordano"],
+  ["JPY", "Yen japonés"],
+  ["KES", "Chelín keniano"],
+  ["KGS", "KGS"],
+  ["KHR", "KHR"],
+  ["KMF", "KMF"],
+  ["KPW", "KPW"],
+  ["KRW", "Won surcoreano"],
+  ["KWD", "Dinar kuwaití"],
+  ["KYD", "KYD"],
+  ["KZT", "KZT"],
+  ["LAK", "LAK"],
+  ["LBP", "LBP"],
+  ["LKR", "LKR"],
+  ["LRD", "LRD"],
+  ["LSL", "LSL"],
+  ["LYD", "LYD"],
+  ["MAD", "MAD"],
+  ["MDL", "MDL"],
+  ["MGA", "MGA"],
+  ["MKD", "MKD"],
+  ["MMK", "MMK"],
+  ["MNT", "MNT"],
+  ["MOP", "MOP"],
+  ["MRU", "MRU"],
+  ["MUR", "MUR"],
+  ["MVR", "MVR"],
+  ["MWK", "MWK"],
+  ["MXN", "Peso mexicano"],
+  ["MYR", "Ringgit malasio"],
+  ["MZN", "MZN"],
+  ["NAD", "NAD"],
+  ["NGN", "Naira nigeriana"],
+  ["NIO", "NIO"],
+  ["NOK", "Corona noruega"],
+  ["NPR", "NPR"],
+  ["NZD", "Dólar neozelandés"],
+  ["OMR", "Rial omaní"],
+  ["PAB", "PAB"],
+  ["PEN", "Sol peruano"],
+  ["PGK", "PGK"],
+  ["PHP", "Peso filipino"],
+  ["PKR", "Rupia pakistaní"],
+  ["PLN", "Zloty polaco"],
+  ["PYG", "Guaraní paraguayo"],
+  ["QAR", "Riyal catarí"],
+  ["RON", "RON"],
+  ["RSD", "RSD"],
+  ["RUB", "RUB"],
+  ["RWF", "RWF"],
+  ["SAR", "Riyal saudí"],
+  ["SBD", "SBD"],
+  ["SCR", "SCR"],
+  ["SDG", "SDG"],
+  ["SEK", "Corona sueca"],
+  ["SGD", "Dólar de Singapur"],
+  ["SHP", "SHP"],
+  ["SLE", "SLE"],
+  ["SLL", "SLL"],
+  ["SOS", "SOS"],
+  ["SRD", "SRD"],
+  ["SSP", "SSP"],
+  ["STN", "STN"],
+  ["SVC", "SVC"],
+  ["SYP", "SYP"],
+  ["SZL", "SZL"],
+  ["THB", "Baht tailandés"],
+  ["TJS", "TJS"],
+  ["TMT", "TMT"],
+  ["TND", "TND"],
+  ["TOP", "TOP"],
+  ["TRY", "Lira turca"],
+  ["TTD", "Dólar de Trinidad y Tobago"],
+  ["TWD", "TWD"],
+  ["TZS", "TZS"],
+  ["UAH", "Grivna ucraniana"],
+  ["UGX", "UGX"],
+  ["USD", "Dólar estadounidense"],
+  ["UYU", "Peso uruguayo"],
+  ["UZS", "UZS"],
+  ["VES", "VES"],
+  ["VND", "Dong vietnamita"],
+  ["VUV", "VUV"],
+  ["WST", "WST"],
+  ["XAF", "Franco CFA de África Central"],
+  ["XCD", "Dólar del Caribe Oriental"],
+  ["XOF", "Franco CFA de África Occidental"],
+  ["XPF", "Franco CFP"],
+  ["YER", "YER"],
+  ["ZAR", "Rand sudafricano"],
+  ["ZMW", "ZMW"],
+  ["ZWG", "ZWG"]
 ];
 async function businessHasFinancialData(businessId) {
   const results = await Promise.all([
@@ -1061,6 +1213,7 @@ export default function App() {
   useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
+  const [settingsConversionRate, setSettingsConversionRate] = useState("");
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
   const [settingsHelpEnabled, setSettingsHelpEnabled] = useState(true);
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
@@ -1070,12 +1223,30 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
   const [aiHistory, setAiHistory] = useState([]);
+  const aiMessagesRef = useRef(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [search, setSearch] = useState("");
   useEffect(() => {
     setAiHistory([]);
     setAiMessage("");
   }, [activeBusiness?.id]);
+  useEffect(() => {
+    if (!aiOpen || !aiMessagesRef.current) return;
+    const container = aiMessagesRef.current;
+    let frame = requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+      container.lastElementChild?.scrollIntoView({ block: "end", behavior: "auto" });
+    });
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        container.lastElementChild?.scrollIntoView({ block: "end", behavior: "auto" });
+      });
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [aiHistory, aiBusy, aiOpen]);
   function toggleAiVoice() {
     if (aiVoiceListening) { aiRecognitionRef.current?.stop?.(); setAiVoiceListening(false); return; }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1581,6 +1752,8 @@ export default function App() {
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };
     const nameChanged = businessName !== activeBusiness.name;
     const currencyChanged = settingsCurrency !== currencyCode;
+    const conversionRate = Number(String(settingsConversionRate).replace(",", "."));
+    if (currencyChanged && settingsHasData && (!Number.isFinite(conversionRate) || conversionRate <= 0)) { setError("Indica una tasa válida: cuántas unidades de la nueva moneda equivalen a 1 unidad de la moneda actual."); return; }
     const themeChanged = JSON.stringify(nextTheme) !== JSON.stringify(normalizeBusinessTheme(activeBusiness.theme));
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
@@ -1594,8 +1767,8 @@ export default function App() {
     try {
       const hasData = await businessHasFinancialData(activeBusiness.id);
       setSettingsHasData(hasData);
-      if (hasData && currencyChanged) {
-        throw new Error("Para cambiar la moneda después de registrar productos u operaciones, primero se necesita una conversión de importes.");
+      if (hasData && currencyChanged && (!Number.isFinite(conversionRate) || conversionRate <= 0)) {
+        throw new Error("Indica una tasa de conversión válida antes de cambiar la moneda.");
       }
       let nextLogoPath = settingsRemoveLogo ? null : activeBusiness.logo_path || null;
       if (settingsLogoFile) {
@@ -1606,6 +1779,14 @@ export default function App() {
         );
         if (uploadError) throw uploadError;
         nextLogoPath = uploadedLogoPath;
+      }
+      if (currencyChanged && hasData) {
+        const { error: conversionError } = await supabase.rpc("convert_business_catalog_currency", {
+          p_business_id: activeBusiness.id,
+          p_target_currency: settingsCurrency,
+          p_rate: conversionRate
+        });
+        if (conversionError) throw conversionError;
       }
       const { data, error: updateError } = await supabase.from("businesses")
         .update({ name: businessName, currency_code: settingsCurrency, theme: nextTheme, logo_path: nextLogoPath, settings: nextSettings })
@@ -1619,13 +1800,14 @@ export default function App() {
       setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
       setSettingsBusinessName(data.name);
       setSettingsCurrency(data.currency_code);
+      setSettingsConversionRate("");
       setSettingsTheme(normalizeBusinessTheme(data.theme));
       setSettingsHelpEnabled(data.settings?.contextual_help_enabled !== false);
       setSettingsCommercialProfile(commercialProfile);
       setSettingsLogoFile(null);
       setSettingsLogoPreview("");
       setSettingsRemoveLogo(false);
-      setNotice("Configuración guardada. Conservamos los datos de tu empresa, el logo y la apariencia.");
+      setNotice(currencyChanged && hasData ? "Configuración guardada. Convertimos los precios del catálogo con la tasa indicada y conservamos las operaciones históricas en su moneda original." : "Configuración guardada. Conservamos los datos de tu empresa, el logo y la apariencia.");
       const previousLogoPath = activeBusiness.logo_path;
       if (previousLogoPath && previousLogoPath !== data.logo_path) {
         try { await supabase.storage.from("business-logos").remove([previousLogoPath]); }
@@ -4337,8 +4519,8 @@ export default function App() {
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
                 <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en Treintayuno." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
-                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={settingsHasData || activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label>
-                {settingsHasData ? <p className="helper-text">Ya existen productos u operaciones con importes. Para evitar alterar tus registros, no permitimos cambiar la moneda sin una herramienta de conversión.</p> : <p className="helper-text">Elige la moneda antes de registrar productos o movimientos de dinero.</p>}
+                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label>
+                {settingsHasData && settingsCurrency !== currencyCode ? <div className="settings-conversion-box"><p className="helper-text">Se convertirán los precios de venta y costo del catálogo y sus variantes. Las ventas, compras, gastos y cotizaciones existentes conservarán sus importes y moneda históricos.</p><label className="settings-field"><span>Tasa de conversión</span><span className="helper-text">¿Cuántas unidades de {settingsCurrency} equivalen a 1 {currencyCode}?</span><input type="number" min="0.00000001" step="any" inputMode="decimal" value={settingsConversionRate} onChange={(e) => setSettingsConversionRate(e.target.value)} placeholder="Ej. 0,00024" required /></label><p className="helper-text">Confirma la tasa antes de guardar. La conversión se ejecuta en una sola transacción en la base de datos.</p></div> : settingsHasData ? <p className="helper-text">Puedes cambiar la moneda principal. Si eliges otra, te pediremos una tasa para convertir los precios actuales del catálogo sin modificar los movimientos históricos.</p> : <p className="helper-text">Elige la moneda para los precios del catálogo y los próximos movimientos de dinero.</p>}
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos ajustes.</p>}
               </>}
 
@@ -4423,7 +4605,7 @@ export default function App() {
       <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>
         {aiOpen && <section id="treintayuno-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
           <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
-          <div className="ai-assistant-messages" aria-live="polite">
+          <div ref={aiMessagesRef} className="ai-assistant-messages" aria-live="polite">
             {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
             {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && item.elapsedMs != null && <small className="ai-assistant-meta">{item.dataBacked ? "Información del negocio" : "Respuesta del asistente"}</small>}</div>)}
             {aiBusy && <div className="ai-assistant-thinking">Estoy revisando la información…</div>}

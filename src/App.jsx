@@ -698,7 +698,7 @@ function PublicCatalog({ businessId }) {
     event.preventDefault();
     if (!cart.length || checkoutBusy) return;
     if (business?.commercial_profile?.orderChannel === "whatsapp") {
-      let rawPhone = String(business?.commercial_profile?.phone || business?.commercial_profile?.cardPhone || "").replace(/\\D/g, "");
+      let rawPhone = String(business?.commercial_profile?.phone || business?.commercial_profile?.cardPhone || "").replace(/\D/g, "");
       if (rawPhone.length === 10 && rawPhone.startsWith("3")) rawPhone = "57" + rawPhone;
       if (rawPhone.length < 8) { setCheckoutError("Este negocio debe configurar un número de WhatsApp válido antes de recibir pedidos."); return; }
       setCheckoutBusy(true); setCheckoutError("");
@@ -778,7 +778,7 @@ function PublicCatalog({ businessId }) {
         </section>}
         {business.commercial_profile?.cardEnabled && <section className="public-business-card" id="tarjeta-presentacion" style={{"--card-primary":catalogTheme.primary,"--card-surface":catalogTheme.surface,"--card-text":catalogTheme.text}}>
           {catalogLogoUrl && <img className="public-business-card-logo" src={catalogLogoUrl} alt="Logo del negocio" />}
-          <div className="public-business-card-copy"><span>TARJETA DE PRESENTACIÓN</span><h2>{business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name}</h2>{business.commercial_profile.cardEmail && <a href={"mailto:"+business.commercial_profile.cardEmail}>{business.commercial_profile.cardEmail}</a>}{business.commercial_profile.cardPhone && <a href={"https://wa.me/"+String(business.commercial_profile.cardPhone).replace(/\\D/g,"")}>{business.commercial_profile.cardPhone}</a>}{business.commercial_profile.cardText && <p>{business.commercial_profile.cardText}</p>}</div>
+          <div className="public-business-card-copy"><span>TARJETA DE PRESENTACIÓN</span><h2>{business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name}</h2>{business.commercial_profile.cardEmail && <a href={"mailto:"+business.commercial_profile.cardEmail}>{business.commercial_profile.cardEmail}</a>}{business.commercial_profile.cardPhone && <a href={"https://wa.me/"+String(business.commercial_profile.cardPhone).replace(/\D/g,"")}>{business.commercial_profile.cardPhone}</a>}{business.commercial_profile.cardText && <p>{business.commercial_profile.cardText}</p>}</div>
           <button type="button" className="public-business-card-share" onClick={async () => { const url=window.location.origin+"/?catalog="+encodeURIComponent(businessId)+"#tarjeta-presentacion"; const text=[business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name,business.commercial_profile.cardEmail,business.commercial_profile.cardPhone,business.commercial_profile.cardText,url].filter(Boolean).join("\\n"); try { if(navigator.share) await navigator.share({title:"Tarjeta de presentación",text,url}); else { await navigator.clipboard.writeText(text); } } catch(e) { if(e?.name!=="AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } } }}><span aria-hidden="true">↗</span> Compartir tarjeta</button>
         </section>}
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
@@ -1555,7 +1555,7 @@ export default function App() {
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
     const hoursText = days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n");
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:schedule, hours:hoursText});
-    if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
+    if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };

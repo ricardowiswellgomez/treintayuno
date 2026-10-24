@@ -1182,7 +1182,7 @@ export default function App() {
       const to = from + productPageSize - 1;
       let productsQuery = supabase.from("products")
         .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at", { count: "exact" })
-        .eq("business_id", activeBusiness.id).order("name").range(from, to);
+        .eq("business_id", activeBusiness.id).order(productSort === "code" ? "sku" : productSort === "price" ? "sale_price_minor" : "name").order("name").range(from, to);
       productsQuery = showArchivedProducts ? productsQuery.not("archived_at", "is", null) : productsQuery.is("archived_at", null);
       if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
       const [productResult, categoryResult] = await Promise.all([
@@ -1213,7 +1213,7 @@ export default function App() {
       setCategories(categoryResult.data || []);
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
-  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts]);
+  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort]);
 
   useEffect(() => {
     let alive = true;

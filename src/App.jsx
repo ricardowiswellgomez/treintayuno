@@ -596,6 +596,7 @@ function PublicCatalog({ businessId }) {
   };
   const updateCartQuantity = (productId, quantity) => {
     const next = Number(quantity);
+    setCouponApplied(null); setCouponMessage("");
     if (!Number.isFinite(next) || next <= 0) {
       setCart((current) => current.filter((line) => line.product.id !== productId));
       return;

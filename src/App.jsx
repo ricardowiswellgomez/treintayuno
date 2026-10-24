@@ -2256,7 +2256,10 @@ export default function App() {
     try {
       const blob = await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png")}catch(e){reject(e)}});
       const filename=String(sale.sale_number||"venta").replace(/[^a-z0-9_-]/gi,"-")+".png";const file=new File([blob],filename,{type:"image/png"});
-      if(navigator.share&&navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:"Venta "+sale.sale_number,text:"Comprobante de venta de "+brand})}catch(e){if(e?.name==="AbortError")return;}}
+      if(navigator.share&&navigator.canShare?.({files:[file]})){
+        try { await navigator.share({files:[file],title:"Venta "+sale.sale_number,text:"Comprobante de venta de "+brand}); return; }
+        catch(e) { if(e?.name==="AbortError") return; }
+      }
       const url=URL.createObjectURL(blob);const downloadLink=document.createElement("a");downloadLink.href=url;downloadLink.download=filename;document.body.appendChild(downloadLink);downloadLink.click();downloadLink.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1200);setNotice("Imagen del comprobante descargada para compartir.");
     } catch { setError("No se pudo generar la imagen. Usa PDF / Imprimir para compartir el comprobante."); }
   }

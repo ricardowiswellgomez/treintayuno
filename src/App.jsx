@@ -915,6 +915,8 @@ export default function App() {
   const [profitabilitySaleItems, setProfitabilitySaleItems] = useState([]);
   const [profitabilityExpenses, setProfitabilityExpenses] = useState([]);
   const [profitabilityPeriod, setProfitabilityPeriod] = useState("month");
+  const [profitabilityDateFrom, setProfitabilityDateFrom] = useState(() => todayInBogota().slice(0,7) + "-01");
+  const [profitabilityDateTo, setProfitabilityDateTo] = useState(() => todayInBogota());
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenseDraft, setExpenseDraft] = useState(blankExpense);
   const [catalogProducts, setCatalogProducts] = useState([]);
@@ -3105,7 +3107,13 @@ export default function App() {
     if (profitabilityPeriod === "all") return true;
     const key = profitPeriodDateKey(value);
     if (!key) return false;
+    if (profitabilityPeriod === "day") return key === todayBogotaKey;
     if (profitabilityPeriod === "month") return key.slice(0, 7) === currentMonthKey;
+    if (profitabilityPeriod === "year") return key.slice(0, 4) === todayBogotaKey.slice(0, 4);
+    if (profitabilityPeriod === "custom") return key >= (profitabilityDateFrom || todayBogotaKey) && key <= (profitabilityDateTo || todayBogotaKey);
+    const nowDate = new Date(todayBogotaKey + "T12:00:00Z");
+    const weekStart = new Date(nowDate); weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
+    if (profitabilityPeriod === "week") return key >= weekStart.toISOString().slice(0,10) && key <= todayBogotaKey;
     const day = new Date(key + "T12:00:00-05:00").getTime();
     const now = new Date(todayBogotaKey + "T12:00:00-05:00").getTime();
     return day >= now - 30 * 24 * 60 * 60 * 1000 && day <= now + 24 * 60 * 60 * 1000;
@@ -3851,10 +3859,11 @@ export default function App() {
               <div><h2>Ingresos, costos y resultado</h2><p>Compara lo vendido con el costo de los artículos y los gastos que registraste durante el periodo elegido.</p></div>
               <label className="profitability-period-label"><span className="field-label-heading">Periodo
                 <FieldHelp enabled={contextualHelpEnabled} text="Elige el periodo para consultar ingresos, costos y utilidad." /></span><select value={profitabilityPeriod} onChange={(e) => setProfitabilityPeriod(e.target.value)}>
-                  <option value="month">Este mes</option><option value="30days">Últimos 30 días</option><option value="all">Todo el historial</option>
+                  <option value="day">Hoy</option><option value="week">Esta semana</option><option value="month">Este mes</option><option value="year">Este año</option><option value="30days">Últimos 30 días</option><option value="custom">Rango de fechas</option><option value="all">Todo el historial</option>
                 </select>
               </label>
             </div>
+            {profitabilityPeriod === "custom" && <div className="sales-date-toolbar panel"><div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={profitabilityDateFrom} max={profitabilityDateTo || todayBogotaKey} onChange={(e) => setProfitabilityDateFrom(e.target.value)} /></label><label><span>Hasta</span><input type="date" value={profitabilityDateTo} min={profitabilityDateFrom || undefined} max={todayBogotaKey} onChange={(e) => setProfitabilityDateTo(e.target.value)} /></label></div></div>}
             {profitabilityLoading ? <div className="empty-state">Calculando con tus registros reales…</div> : <>
               <div className="profitability-metrics">
                 <article className="profit-metric panel"><span>Ventas registradas</span><strong>{money(profitSalesTotal, currencyCode)}</strong><small>{periodSales.length} {periodSales.length === 1 ? "venta" : "ventas"} · {money(profitPaidTotal, currencyCode)} abonados</small></article>

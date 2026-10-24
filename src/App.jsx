@@ -1061,6 +1061,18 @@ export default function App() {
     setAiHistory([]);
     setAiMessage("");
   }, [activeBusiness?.id]);
+  function toggleAiVoice() {
+    if (aiVoiceListening) { aiRecognitionRef.current?.stop?.(); setAiVoiceListening(false); return; }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { setError("Este navegador no ofrece dictado por voz. Prueba Chrome actualizado en Android o usa el teclado con micrófono."); return; }
+    try {
+      const recognition = new SpeechRecognition(); aiRecognitionRef.current = recognition; recognition.lang = "es-CO"; recognition.interimResults = true; recognition.continuous = false;
+      recognition.onstart = () => setAiVoiceListening(true);
+      recognition.onresult = (event) => { const transcript = Array.from(event.results).map((result) => result[0]?.transcript || "").join(" ").trim(); if (transcript) setAiMessage((current) => (current ? current.trim() + " " : "") + transcript); };
+      recognition.onerror = () => { setAiVoiceListening(false); setError("No pude escuchar con claridad. Revisa el permiso del micrófono e inténtalo de nuevo."); };
+      recognition.onend = () => setAiVoiceListening(false); recognition.start();
+    } catch { setAiVoiceListening(false); setError("No se pudo iniciar el micrófono. Revisa los permisos del navegador."); }
+  }
   async function sendAiMessage(event) {
     event.preventDefault();
     const message = aiMessage.trim();
@@ -1345,6 +1357,13 @@ export default function App() {
 
   function toggleProductGallery(product) {
     setOpenProductGalleries((current) => ({ ...current, [product.id]: !current[product.id] }));
+  }
+
+  async function shareProduct(product) {
+    const url = window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "") + "#producto-" + encodeURIComponent(product.id);
+    const message = [product.name, product.sku ? "Código: " + product.sku : "", "Precio: " + money(product.sale_price_minor, currencyCode), product.description || "", url].filter(Boolean).join("\\n");
+    try { if (navigator.share) await navigator.share({ title: product.name, text: message, url }); else { await navigator.clipboard.writeText(message); setNotice("Enlace y datos de " + product.name + " copiados para compartir."); } }
+    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(message); setNotice("Datos de " + product.name + " copiados para compartir."); } catch { setError("No se pudo abrir la opción para compartir. Copia el enlace del catálogo."); } } }
   }
 
   useEffect(() => {
@@ -3568,7 +3587,8 @@ export default function App() {
           {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
           {mode !== "forgot" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
           {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
-          {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
+          {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}</nav>}
+        {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
           <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
         </form>
         {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : "Crear cuenta"}</button></p>}
@@ -3623,7 +3643,7 @@ export default function App() {
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -4104,6 +4124,7 @@ export default function App() {
 
           <section className="products-page">
             <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div>{canManageProducts && <button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button>}</div>
+            <div className="product-sort-toolbar panel"><label><span>Ordenar por</span><select value={productSort} onChange={(e)=>setProductSort(e.target.value)}><option value="name">Nombre (A–Z)</option><option value="code">Código</option><option value="price">Precio (menor a mayor)</option></select></label><span>{filteredProducts.length} productos en esta página</span></div>
             {canManageProducts && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
                 <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
@@ -4201,7 +4222,7 @@ export default function App() {
                 <div className="product-table-wrap panel">
                   <table className="product-table">
                     <thead><tr>
-                      <th>Producto</th><th>Código</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Acciones</th>
+                      <th>Producto</th><th>Código</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Compartir / acciones</th>
                     </tr></thead>
                     <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
                       <tr className="product-table-row">
@@ -4218,7 +4239,7 @@ export default function App() {
                         <td><span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
-                          {canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}
+                          <button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}
                         </div></td>
                       </tr>
                     </React.Fragment>)}</tbody>
@@ -4247,7 +4268,7 @@ export default function App() {
     </div>
     <div className="product-card-actions">
       <div className="product-card-variants"><div><span>Variantes</span><strong>{productVariants.length} {productVariants.length === 1 ? "variante" : "variantes"}</strong></div><button type="button" className="text-button" onClick={() => openProductVariants(p)}>Ver variantes</button></div>
-      <div className="product-card-action-buttons">{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}{canManageProducts && <button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button>}</div>
+      <div className="product-card-action-buttons"><button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}{canManageProducts && <button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button>}</div>
     </div>
   </article>;
 })}</div>
@@ -4375,7 +4396,7 @@ export default function App() {
             {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && item.elapsedMs != null && <small className="ai-assistant-meta">{item.dataBacked ? "Información del negocio" : "Respuesta del asistente"}</small>}</div>)}
             {aiBusy && <div className="ai-assistant-thinking">Estoy revisando la información…</div>}
           </div>
-          <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder="Escribe tu pregunta…" rows={2} maxLength={1500} disabled={aiBusy} /><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
+          <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Uso la información registrada en este negocio y no invento cifras. Si algún dato no está disponible, te lo diré con claridad.</p>
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treintayuno-ai-panel" onClick={() => { setHelpOpen(false); setAiOpen((open) => !open); }}><span>✦</span> IA</button>

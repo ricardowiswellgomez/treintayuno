@@ -2028,7 +2028,7 @@ button{line-height:1.35}
 .profit-allocation-name{min-width:0;width:100%;height:36px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--paper);color:var(--ink);font:inherit;font-size:12px}
 .profit-allocation-row>strong{font-size:13px;white-space:nowrap}
 .profit-allocation-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;font-weight:700}
-@media(max-width:760px){
+@media(max-width:600px){
   .audit-list-heading{display:none}
   .audit-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:13px}
   .audit-actor{grid-column:1/-1}
@@ -2103,7 +2103,7 @@ button{line-height:1.35}
 .share-product-button{display:inline-flex;align-items:center;justify-content:center;font-size:16px}
 .ai-assistant-form .ai-voice-button{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px}
 .ai-assistant-form .ai-voice-button.listening{background:#fff0f0;border-color:#dc7a7a;color:#a52d2d}
-@media(max-width:760px){
+@media(max-width:600px){
   .settings-hours-day{grid-template-columns:minmax(0,1fr);gap:8px;padding:11px}
   .settings-hours-period{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
   .settings-hours-period>span{grid-column:1/-1}
@@ -2194,7 +2194,7 @@ button{line-height:1.35}
 .public-business-card-download{grid-column:1/-1;justify-self:start;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:transparent;color:var(--card-primary);font-size:12px;font-weight:750}
 .icon-action-danger{color:#b44343!important;border-color:#f0d4d4!important}
 .icon-action-danger:hover{background:#fff0f0!important}
-@media(max-width:760px){.public-business-card-download{width:100%;justify-self:stretch;min-height:42px}}
+@media(max-width:600px){.public-business-card-download{width:100%;justify-self:stretch;min-height:42px}}
 
 
 .sales-single-date{display:grid;grid-template-columns:auto minmax(150px,1fr) auto;gap:10px;align-items:end;margin:12px 0}

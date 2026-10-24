@@ -66,8 +66,25 @@ const normalizeSidebarLayout = (layout) => {
     }));
   if (!groups.length) return fallback;
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
-  const missing = fallback[0].items.filter((item) => !placed.has(item.id));
-  groups[0].items.push(...missing);
+  const orderedItems = fallback[0].items;
+  const missing = orderedItems.filter((item) => !placed.has(item.id));
+  for (const item of missing) {
+    const orderIndex = orderedItems.findIndex((candidate) => candidate.id === item.id);
+    let insertAt = -1;
+    for (let index = orderIndex - 1; index >= 0; index -= 1) {
+      const previousIndex = groups[0].items.findIndex((candidate) => candidate.id === orderedItems[index].id);
+      if (previousIndex >= 0) { insertAt = previousIndex + 1; break; }
+    }
+    if (insertAt < 0) {
+      for (let index = orderIndex + 1; index < orderedItems.length; index += 1) {
+        const nextIndex = groups[0].items.findIndex((candidate) => candidate.id === orderedItems[index].id);
+        if (nextIndex >= 0) { insertAt = nextIndex; break; }
+      }
+    }
+    if (insertAt < 0) insertAt = groups[0].items.length;
+    groups[0].items.splice(insertAt, 0, item);
+    placed.add(item.id);
+  }
   return groups;
 };
 

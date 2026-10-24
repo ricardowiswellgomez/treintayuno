@@ -2375,6 +2375,30 @@ export default function App() {
     if (screen === "profitability" && activeBusiness?.id) loadProfitabilityData();
   }, [screen, activeBusiness?.id]);
 
+  useEffect(() => {
+    const saved = activeBusiness?.settings?.profit_allocations || {};
+    setAllocationSettings({
+      diezmo: { enabled: Boolean(saved.diezmo?.enabled), percent: Number(saved.diezmo?.percent || 0) },
+      ahorro: { enabled: Boolean(saved.ahorro?.enabled), percent: Number(saved.ahorro?.percent || 0) },
+      otra: { enabled: Boolean(saved.otra?.enabled), name: String(saved.otra?.name || "Otra asignación"), percent: Number(saved.otra?.percent || 0) }
+    });
+  }, [activeBusiness?.id]);
+
+  async function saveAllocationSettings() {
+    if (!activeBusiness?.id || !isBusinessOwner) return;
+    const nextSettings = { ...(activeBusiness.settings || {}), profit_allocations: allocationSettings };
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error: saveError } = await supabase.from("businesses").update({ settings: nextSettings }).eq("id", activeBusiness.id).select("id,settings").maybeSingle();
+      if (saveError) throw saveError;
+      if (!data) throw new Error("No se pudieron guardar los porcentajes. Comprueba tus permisos.");
+      setActiveBusiness((current) => current ? { ...current, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, settings: data.settings || nextSettings } : business));
+      setNotice("Porcentajes guardados. Solo se usan como distribución orientativa, no como gasto contable.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+
   function addQuoteItem() {
     const product = quoteProducts.find((item) => item.id === quoteProductChoice);
     const name = String(product?.name || quoteItemName).trim();
@@ -3831,6 +3855,33 @@ export default function App() {
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>
               </div>
+              <section className="profit-goal-panel panel">
+                <div className="profit-breakdown-heading"><div><h3>Plan para ganar más el próximo mes</h3><p>Una simulación clara basada en el resultado del periodo seleccionado; no cambia tus registros.</p></div><label className="profit-goal-percent"><span>Meta de crecimiento</span><span><input type="number" min="1" max="500" step="1" value={targetProfitPercent} onChange={(e) => setTargetProfitPercent(e.target.value)} /> %</span></label></div>
+                {profitNet > 0 ? <div className="profit-goal-grid">
+                  <div><span>Resultado actual</span><strong>{money(profitNet, currencyCode)}</strong></div>
+                  <div><span>Resultado objetivo</span><strong>{money(Math.round(profitNet * (1 + Math.max(0, Number(targetProfitPercent || 0)) / 100)), currencyCode)}</strong></div>
+                  <div><span>Te falta generar</span><strong>{money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode)}</strong></div>
+                  <p>Para alcanzar esa diferencia, podrías generar aproximadamente {money(profitLineRevenue > 0 && profitGross > 0 ? Math.ceil((profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100) / (profitGross / profitLineRevenue)) : 0, currencyCode)} en ventas adicionales si mantienes el margen bruto actual, o reducir gastos por {money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode).replace(currencyCode,"").trim()} en el periodo. Es una guía, no una garantía.</p>
+                </div> : <p className="profit-empty-note">El resultado del periodo no es positivo todavía. Primero identifica los gastos que puedes reducir y revisa el margen de tus productos; cuando tengas una base positiva, el simulador calculará la meta porcentual.</p>}
+              </section>
+              <section className="profit-allocations-panel panel">
+                <div className="profit-breakdown-heading"><div><h3>Distribución opcional de la ganancia</h3><p>Activa solo los porcentajes que uses. Se calculan sobre un resultado positivo y no se restan de la rentabilidad contable.</p></div></div>
+                <div className="profit-allocation-list">
+                  {["diezmo","ahorro","otra"].map((key) => {
+                    const allocation = allocationSettings[key];
+                    const label = key === "diezmo" ? "Diezmo" : key === "ahorro" ? "Ahorro" : allocation.name || "Otra asignación";
+                    const amount = Math.round(Math.max(0, profitNet) * Math.min(100, Math.max(0, Number(allocation.percent || 0))) / 100);
+                    return <div className="profit-allocation-row" key={key}>
+                      <label className="profit-allocation-toggle"><input type="checkbox" checked={Boolean(allocation.enabled)} disabled={!isBusinessOwner} onChange={(e) => setAllocationSettings((current) => ({ ...current, [key]: { ...current[key], enabled: e.target.checked } }))} /><span>{label}</span></label>
+                      {key === "otra" && <input className="profit-allocation-name" aria-label="Nombre de la otra asignación" value={allocation.name || ""} maxLength={50} disabled={!isBusinessOwner} onChange={(e) => setAllocationSettings((current) => ({ ...current, otra: { ...current.otra, name: e.target.value } }))} placeholder="Nombre de la asignación" />}
+                      <label className="profit-allocation-rate"><span>Porcentaje</span><span><input type="number" min="0" max="100" step="0.5" value={allocation.percent} disabled={!isBusinessOwner} onChange={(e) => setAllocationSettings((current) => ({ ...current, [key]: { ...current[key], percent: Math.min(100, Math.max(0, Number(e.target.value || 0))) } }))} /> %</span></label>
+                      <strong>{allocation.enabled ? money(amount, currencyCode) : "Desactivado"}</strong>
+                    </div>;
+                  })}
+                </div>
+                <div className="profit-allocation-footer"><span>Distribución activa: {Object.values(allocationSettings).filter((item) => item.enabled).reduce((sum, item) => sum + Math.max(0, Number(item.percent || 0)), 0).toLocaleString("es-CO")}%</span>{isBusinessOwner && <button type="button" className="primary-button compact-button" onClick={saveAllocationSettings} disabled={busy}>{busy ? "Guardando…" : "Guardar porcentajes"}</button>}</div>
+                {!isBusinessOwner && <p className="helper-text">Solo el propietario puede cambiar estos porcentajes.</p>}
+              </section>
               <div className="profitability-breakdowns">
                 <section className="profit-breakdown panel">
                   <div className="profit-breakdown-heading"><div><h3>Costos por artículo vendido</h3><p>Lo que costaron los artículos que ya vendiste.</p></div></div>

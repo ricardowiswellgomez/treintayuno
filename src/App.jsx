@@ -641,7 +641,7 @@ export default function App() {
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsTab, setSettingsTab] = useState("general");
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "" });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "" });
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);

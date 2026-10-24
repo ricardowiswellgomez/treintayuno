@@ -833,7 +833,7 @@ export default function App() {
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState("sales");
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -955,7 +955,7 @@ export default function App() {
   const [statsPurchases, setStatsPurchases] = useState([]);
   const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
-  const [statsPeriod, setStatsPeriod] = useState("month");
+  const [statsPeriod, setStatsPeriod] = useState("day");
   const [statsDateFrom, setStatsDateFrom] = useState(() => todayInBogota().slice(0, 7) + "-01");
   const [statsDateTo, setStatsDateTo] = useState(() => todayInBogota());
   const [quotesRows, setQuotesRows] = useState([]);
@@ -3480,7 +3480,7 @@ export default function App() {
     resetCustomerForm();
     clearTeamForm();
     setActiveBusiness(nextBusiness);
-    setScreen("home");
+    setScreen("sales");
     setShowPurchaseForm(false); setShowSupplierForm(false); setShowExpenseForm(false);
     setShowArchivedProducts(false); setSearch(""); setCustomerSearch("");
     setSalePaymentFormFor(null); setPurchasePaymentFormFor(null);

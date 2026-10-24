@@ -2167,3 +2167,19 @@ button{line-height:1.35}
   .audit-row{grid-template-columns:minmax(0,1fr) auto}
   .app-footer{display:none}
 }
+
+
+@media(max-width:600px){
+  .main-content .sales-form-grid,.main-content .purchase-form-grid,.main-content .quote-form-grid,.main-content .customer-form-grid,.main-content .settings-color-grid,.main-content .coupon-form-grid,.main-content .team-form-grid,.main-content .form-grid,.main-content .company-profile-grid{grid-template-columns:minmax(0,1fr)!important}
+  .main-content .purchase-span-two,.main-content .coupon-description-field{grid-column:auto!important}
+  .main-content input:not([type=checkbox]):not([type=radio]):not([type=color]),.main-content select,.main-content textarea{max-width:100%;min-width:0;font-size:16px}
+  .main-content .pagination-bar{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+  .main-content .pagination-controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+  .main-content .pagination-controls>*{min-width:0}
+  .main-content .section-title-row h2,.main-content .products-intro h2{overflow-wrap:anywhere}
+  .main-content .stats-metrics,.main-content .stats-metric-grid,.main-content .profitability-breakdowns,.main-content .area-grid{grid-template-columns:minmax(0,1fr)!important}
+  .main-content .sale-record,.main-content .quote-record,.main-content .customer-record,.main-content .purchase-record{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .main-content .audit-list,.main-content .product-table-wrap,.main-content .table-wrap,.main-content .data-table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .main-content .panel{border-radius:14px}
+  .main-content .message{overflow-wrap:anywhere}
+}

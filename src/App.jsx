@@ -36,6 +36,7 @@ const areas = [
   { icon: "◷", title: "Costos y rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
   { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
+  { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
@@ -385,6 +386,120 @@ function CatalogAdminImage({ businessId, product }) {
   return <span className="catalog-admin-symbol" ref={setElement} title={product.name}>
     {source && !failed ? <img src={source} alt="" loading="lazy" onError={() => setFailed(true)} /> : "▦"}
   </span>;
+}
+
+function CouponsAdmin({ business }) {
+  const [coupons, setCoupons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const blank = { code: "", description: "", discount_type: "percentage", discount_value: "10", minimum_subtotal: "0", maximum_discount: "", usage_limit: "", starts_at: "", ends_at: "", is_active: true };
+  const [form, setForm] = useState(blank);
+  const canManage = ["owner", "admin"].includes(business?.role) || Boolean(business?.permissions?.sales_manage);
+  const currency = business?.currency_code || "COP";
+  const load = async () => {
+    if (!business?.id || !canManage) { setLoading(false); return; }
+    setLoading(true); setError("");
+    const { data, error: queryError } = await supabase.from("business_coupons")
+      .select("id,business_id,code,description,discount_type,discount_value,minimum_subtotal_minor,maximum_discount_minor,usage_limit,usage_count,starts_at,ends_at,is_active,created_at")
+      .eq("business_id", business.id).order("created_at", { ascending: false });
+    if (queryError) setError(friendlyError(queryError)); else setCoupons(data || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [business?.id, business?.role]);
+  const change = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const reset = () => { setEditingId(null); setForm(blank); setError(""); setNotice(""); };
+  const edit = (coupon) => {
+    setEditingId(coupon.id);
+    setForm({
+      code: coupon.code || "", description: coupon.description || "",
+      discount_type: coupon.discount_type, discount_value: String(coupon.discount_value),
+      minimum_subtotal: String(Number(coupon.minimum_subtotal_minor || 0) / 100),
+      maximum_discount: coupon.maximum_discount_minor == null ? "" : String(Number(coupon.maximum_discount_minor) / 100),
+      usage_limit: coupon.usage_limit == null ? "" : String(coupon.usage_limit),
+      starts_at: coupon.starts_at ? new Date(coupon.starts_at).toISOString().slice(0,16) : "",
+      ends_at: coupon.ends_at ? new Date(coupon.ends_at).toISOString().slice(0,16) : "",
+      is_active: coupon.is_active
+    });
+    setError(""); setNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!canManage || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const code = form.code.trim().toUpperCase().replace(/\s+/g, "");
+      const value = Number(form.discount_value);
+      const minimum = Math.round(Number(form.minimum_subtotal || 0) * 100);
+      const maxDiscount = form.maximum_discount.trim() === "" ? null : Math.round(Number(form.maximum_discount) * 100);
+      const limit = form.usage_limit.trim() === "" ? null : Number(form.usage_limit);
+      if (!/^[A-Z0-9_-]{3,32}$/.test(code)) throw new Error("El código debe tener entre 3 y 32 caracteres: letras, números, guion o guion bajo.");
+      if (!Number.isFinite(value) || value <= 0 || (form.discount_type === "percentage" && (!Number.isInteger(value) || value > 100)) || (form.discount_type === "fixed" && !Number.isInteger(value * 100))) throw new Error(form.discount_type === "percentage" ? "El porcentaje debe ser un número entero entre 1 y 100." : "Ingresa un valor fijo válido.");
+      if (!Number.isFinite(minimum) || minimum < 0 || (maxDiscount != null && (!Number.isFinite(maxDiscount) || maxDiscount <= 0))) throw new Error("Revisa el mínimo de compra y el descuento máximo.");
+      if (limit != null && (!Number.isInteger(limit) || limit < 1)) throw new Error("El límite de usos debe ser un entero positivo.");
+      if (form.starts_at && form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) throw new Error("La fecha final debe ser posterior a la inicial.");
+      const row = {
+        business_id: business.id, code, description: form.description.trim() || null,
+        discount_type: form.discount_type,
+        discount_value: form.discount_type === "percentage" ? Math.round(value) : Math.round(value * 100),
+        minimum_subtotal_minor: minimum, maximum_discount_minor: maxDiscount,
+        usage_limit: limit, starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
+        ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+        is_active: Boolean(form.is_active), updated_at: new Date().toISOString()
+      };
+      const result = editingId
+        ? await supabase.from("business_coupons").update(row).eq("id", editingId).eq("business_id", business.id)
+        : await supabase.from("business_coupons").insert(row);
+      if (result.error) throw result.error;
+      setNotice(editingId ? "Cupón actualizado." : "Cupón creado.");
+      setEditingId(null); setForm(blank);
+      await load();
+    } catch (e) { setError(e?.message || friendlyError(e)); }
+    finally { setSaving(false); }
+  };
+  const toggleActive = async (coupon) => {
+    setError(""); setNotice("");
+    const { error: updateError } = await supabase.from("business_coupons").update({ is_active: !coupon.is_active, updated_at: new Date().toISOString() }).eq("id", coupon.id).eq("business_id", business.id);
+    if (updateError) setError(friendlyError(updateError)); else { setNotice(coupon.is_active ? "Cupón desactivado." : "Cupón activado."); await load(); }
+  };
+  const remove = async (coupon) => {
+    if (!window.confirm("¿Eliminar el cupón " + coupon.code + "? Los pedidos históricos conservarán el código registrado.")) return;
+    const { error: deleteError } = await supabase.from("business_coupons").delete().eq("id", coupon.id).eq("business_id", business.id);
+    if (deleteError) setError(friendlyError(deleteError)); else { setNotice("Cupón eliminado."); if (editingId === coupon.id) reset(); await load(); }
+  };
+  const moneyInput = (value) => value === "" || value == null ? "—" : money(Number(value), currency);
+  if (!canManage) return <section className="coupons-page"><div className="panel"><h2>Acceso restringido</h2><p>Solo el propietario o administradores autorizados pueden gestionar cupones.</p></div></section>;
+  return <section className="coupons-page">
+    <div className="products-intro"><div><h2>Promociones para tu catálogo</h2><p>Crea códigos de descuento que tus clientes podrán aplicar al comprar. El descuento se valida en el servidor y solo cuenta como usado cuando el pago queda verificado.</p></div><button type="button" className="secondary-button" onClick={load} disabled={loading}>Actualizar</button></div>
+    <form className="panel coupon-editor" onSubmit={submit}>
+      <div className="coupon-editor-heading"><div><h3>{editingId ? "Editar cupón" : "Crear cupón"}</h3><p>Los códigos no distinguen entre mayúsculas y minúsculas.</p></div>{editingId && <button type="button" className="secondary-button" onClick={reset}>Cancelar edición</button>}</div>
+      <div className="coupon-form-grid">
+        <label><span>Código *</span><input required maxLength={32} value={form.code} onChange={e => change("code",e.target.value.toUpperCase().replace(/\s+/g,""))} placeholder="BIENVENIDA10" /></label>
+        <label><span>Tipo de descuento *</span><select value={form.discount_type} onChange={e => change("discount_type",e.target.value)}><option value="percentage">Porcentaje (%)</option><option value="fixed">Valor fijo ({currency})</option></select></label>
+        <label><span>{form.discount_type === "percentage" ? "Porcentaje de descuento *" : "Descuento en " + currency + " *"}</span><input required type="number" min="1" max={form.discount_type === "percentage" ? "100" : undefined} step={form.discount_type === "percentage" ? "1" : "0.01"} value={form.discount_value} onChange={e => change("discount_value",e.target.value)} /></label>
+        <label><span>Mínimo de compra ({currency})</span><input type="number" min="0" step="0.01" value={form.minimum_subtotal} onChange={e => change("minimum_subtotal",e.target.value)} /></label>
+        <label><span>Descuento máximo ({currency}, opcional)</span><input type="number" min="0.01" step="0.01" value={form.maximum_discount} onChange={e => change("maximum_discount",e.target.value)} placeholder="Sin límite" /></label>
+        <label><span>Límite total de usos</span><input type="number" min="1" step="1" value={form.usage_limit} onChange={e => change("usage_limit",e.target.value)} placeholder="Ilimitado" /></label>
+        <label><span>Válido desde</span><input type="datetime-local" value={form.starts_at} onChange={e => change("starts_at",e.target.value)} /></label>
+        <label><span>Válido hasta</span><input type="datetime-local" value={form.ends_at} onChange={e => change("ends_at",e.target.value)} /></label>
+        <label className="coupon-description-field"><span>Descripción interna (opcional)</span><input maxLength={180} value={form.description} onChange={e => change("description",e.target.value)} placeholder="Ej. Campaña de lanzamiento" /></label>
+      </div>
+      <label className="coupon-active-toggle"><input type="checkbox" checked={form.is_active} onChange={e => change("is_active",e.target.checked)} /> Cupón activo y disponible en el catálogo</label>
+      <div className="coupon-editor-actions"><button className="primary-button" type="submit" disabled={saving}>{saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear cupón"}</button>{!editingId && <button type="button" className="secondary-button" onClick={reset}>Limpiar</button>}</div>
+    </form>
+    {error && <p className="message error" role="alert">{error}</p>}
+    {notice && <p className="message success" role="status">{notice}</p>}
+    <div className="coupon-list-heading"><h3>Cupones de este negocio</h3><span>{coupons.length} en total</span></div>
+    {loading ? <div className="panel">Cargando cupones…</div> : coupons.length === 0 ? <div className="panel coupon-empty"><h3>Aún no hay cupones</h3><p>Crea el primero para ofrecer descuentos en tu catálogo público.</p></div> :
+      <div className="coupon-list">{coupons.map(coupon => <article className="panel coupon-card" key={coupon.id}>
+        <div className="coupon-card-top"><div><span className={"coupon-status " + (coupon.is_active ? "active" : "inactive")}>{coupon.is_active ? "Activo" : "Inactivo"}</span><h4>{coupon.code}</h4>{coupon.description && <p>{coupon.description}</p>}</div><strong>{coupon.discount_type === "percentage" ? coupon.discount_value + "%" : moneyInput(coupon.discount_value)}</strong></div>
+        <div className="coupon-meta"><span>Mínimo: {moneyInput(coupon.minimum_subtotal_minor)}</span><span>Usos: {coupon.usage_count}{coupon.usage_limit == null ? " / ∞" : " / " + coupon.usage_limit}</span>{coupon.maximum_discount_minor != null && <span>Tope: {moneyInput(coupon.maximum_discount_minor)}</span>}{coupon.ends_at && <span>Hasta: {new Date(coupon.ends_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span>}</div>
+        <div className="coupon-card-actions"><button type="button" className="secondary-button" onClick={() => edit(coupon)}>Editar</button><button type="button" className="secondary-button" onClick={() => toggleActive(coupon)}>{coupon.is_active ? "Desactivar" : "Activar"}</button><button type="button" className="text-danger-button" onClick={() => remove(coupon)}>Eliminar</button></div>
+      </article>)}</div>}
+  </section>;
 }
 
 function PublicCatalog({ businessId }) {

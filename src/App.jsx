@@ -4555,7 +4555,7 @@ export default function App() {
                 <div className="settings-theme-preview-sidebar"><strong>31&nbsp; treintayuno</strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
-              {activeBusiness?.role === "owner" && <button type="button" className="text-button settings-reset-theme" onClick={() => setSettingsTheme(defaultBusinessTheme)}>Restablecer paleta original</button>}
+              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
 
               <div className="settings-section-divider" />
               <h3>Ayudas contextuales</h3>

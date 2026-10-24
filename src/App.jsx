@@ -4,6 +4,8 @@ import { supabase, supabasePublishableKey } from "./lib/supabase.js";
 const areas = [
   { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
+  { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
+  { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
   { icon: "◷", title: "Costos y rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
@@ -515,6 +517,35 @@ export default function App() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [statsSales, setStatsSales] = useState([]);
+  const [statsPayments, setStatsPayments] = useState([]);
+  const [statsExpenses, setStatsExpenses] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsPeriod, setStatsPeriod] = useState("month");
+  const [quotesRows, setQuotesRows] = useState([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [quotesPage, setQuotesPage] = useState(1);
+  const [quotesPageSize, setQuotesPageSize] = useState(20);
+  const [quotesCount, setQuotesCount] = useState(0);
+  const [quotesSearch, setQuotesSearch] = useState("");
+  const [quotesStatusFilter, setQuotesStatusFilter] = useState("all");
+  const [quoteProducts, setQuoteProducts] = useState([]);
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [quoteCustomerName, setQuoteCustomerName] = useState("");
+  const [quoteCustomerEmail, setQuoteCustomerEmail] = useState("");
+  const [quoteCustomerPhone, setQuoteCustomerPhone] = useState("");
+  const [quoteValidUntil, setQuoteValidUntil] = useState(() => {
+    const date = new Date(todayInBogota() + "T12:00:00-05:00");
+    date.setDate(date.getDate() + 15);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  });
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [quoteProductChoice, setQuoteProductChoice] = useState("");
+  const [quoteItemName, setQuoteItemName] = useState("");
+  const [quoteQuantity, setQuoteQuantity] = useState("1");
+  const [quoteUnitPrice, setQuoteUnitPrice] = useState("");
+  const [quoteItems, setQuoteItems] = useState([]);
+  const [quoteSaving, setQuoteSaving] = useState(false);
   const [salesPage, setSalesPage] = useState(1);
   const [salesPageSize, setSalesPageSize] = useState(20);
   const [salesCount, setSalesCount] = useState(0);
@@ -1555,6 +1586,107 @@ export default function App() {
     if (catalogPage > catalogTotalPages) setCatalogPage(catalogTotalPages);
   }, [catalogPage, catalogTotalPages]);
 
+  async function loadStatsData() {
+    if (!activeBusiness?.id || screen !== "stats") return;
+    setStatsLoading(true);
+    setError("");
+    try {
+      const [sales, payments, expenses] = await Promise.all([
+        fetchAllProfitabilityRows(
+          () => supabase.from("sales")
+            .select("id,business_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .order("sold_at", { ascending: false }).order("id", { ascending: true }),
+          "ventas para las estadísticas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("sale_payments")
+            .select("id,business_id,sale_id,amount_minor,paid_at")
+            .eq("business_id", activeBusiness.id)
+            .order("paid_at", { ascending: false }).order("id", { ascending: true }),
+          "abonos para las estadísticas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("expenses")
+            .select("id,business_id,amount_minor,expense_date,description,category")
+            .eq("business_id", activeBusiness.id)
+            .order("expense_date", { ascending: false }).order("id", { ascending: true }),
+          "gastos para las estadísticas"
+        )
+      ]);
+      setStatsSales(sales);
+      setStatsPayments(payments);
+      setStatsExpenses(expenses);
+    } catch (e) {
+      setError(friendlyError(e));
+      setStatsSales([]);
+      setStatsPayments([]);
+      setStatsExpenses([]);
+    } finally { setStatsLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "stats" && activeBusiness?.id) loadStatsData();
+  }, [screen, activeBusiness?.id]);
+
+  async function loadQuotesModuleData() {
+    if (!activeBusiness?.id || screen !== "quotes") return;
+    setQuotesLoading(true);
+    setError("");
+    try {
+      let query = supabase.from("quotes")
+        .select("id,business_id,quote_number,customer_name,customer_email,customer_phone,status,currency_code,subtotal_minor,total_minor,valid_until,notes,created_at,updated_at", { count: "exact" })
+        .eq("business_id", activeBusiness.id)
+        .order("created_at", { ascending: false });
+      if (quotesStatusFilter !== "all") query = query.eq("status", quotesStatusFilter);
+      const safeTerm = quotesSearch.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
+      if (safeTerm) query = query.or("quote_number.ilike.%" + safeTerm + "%,customer_name.ilike.%" + safeTerm + "%");
+      const from = (quotesPage - 1) * quotesPageSize;
+      const [quotesResult, productResult] = await Promise.all([
+        query.range(from, from + quotesPageSize - 1),
+        canPermission("products_view")
+          ? supabase.from("products").select("id,name,sku,sale_price_minor,unit_name")
+            .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(1000)
+          : Promise.resolve({ data: [], error: null })
+      ]);
+      if (quotesResult.error) throw quotesResult.error;
+      if (productResult.error) throw productResult.error;
+      const quoteRows = quotesResult.data || [];
+      const quoteIds = quoteRows.map((quote) => quote.id);
+      let items = [];
+      if (quoteIds.length) {
+        const itemsResult = await supabase.from("quote_items")
+          .select("id,business_id,quote_id,item_name,quantity,unit_price_minor,line_total_minor,created_at")
+          .eq("business_id", activeBusiness.id).in("quote_id", quoteIds).order("created_at");
+        if (itemsResult.error) throw itemsResult.error;
+        items = itemsResult.data || [];
+      }
+      const itemsByQuote = {};
+      for (const item of items) {
+        if (!itemsByQuote[item.quote_id]) itemsByQuote[item.quote_id] = [];
+        itemsByQuote[item.quote_id].push(item);
+      }
+      setQuotesRows(quoteRows.map((quote) => ({ ...quote, items: itemsByQuote[quote.id] || [] })));
+      setQuotesCount(quotesResult.count || 0);
+      setQuoteProducts(productResult.data || []);
+    } catch (e) {
+      setError(friendlyError(e));
+      setQuotesRows([]);
+      setQuotesCount(0);
+      setQuoteProducts([]);
+    } finally { setQuotesLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "quotes" && activeBusiness?.id) loadQuotesModuleData();
+  }, [screen, activeBusiness?.id, quotesPage, quotesPageSize, quotesSearch, quotesStatusFilter]);
+
+  useEffect(() => {
+    if (quotesPage > Math.max(1, Math.ceil(quotesCount / quotesPageSize))) {
+      setQuotesPage(Math.max(1, Math.ceil(quotesCount / quotesPageSize)));
+    }
+  }, [quotesPage, quotesCount, quotesPageSize]);
+
   async function toggleCatalogPublication(product) {
     if (!activeBusiness?.id) return;
     const publish = !product.is_published;
@@ -2098,6 +2230,25 @@ export default function App() {
   const periodSaleIds = new Set(periodSales.map((sale) => sale.id));
   const periodSaleItems = profitabilitySaleItems.filter((item) => periodSaleIds.has(item.sale_id));
   const periodExpenses = profitabilityExpenses.filter((expense) => profitInPeriod(expense.expense_date));
+  const statsInPeriod = (value) => {
+    if (statsPeriod === "all") return true;
+    const key = profitPeriodDateKey(value);
+    if (!key) return false;
+    if (statsPeriod === "month") return key.slice(0, 7) === currentMonthKey;
+    const day = new Date(key + "T12:00:00-05:00").getTime();
+    const now = new Date(todayBogotaKey + "T12:00:00-05:00").getTime();
+    return day >= now - 30 * 24 * 60 * 60 * 1000 && day <= now + 24 * 60 * 60 * 1000;
+  };
+  const statsPeriodSales = statsSales.filter((sale) => !["canceled", "refunded", "draft"].includes(sale.status) && statsInPeriod(sale.sold_at || sale.created_at));
+  const statsPeriodPayments = statsPayments.filter((payment) => statsInPeriod(payment.paid_at));
+  const statsPeriodExpenses = statsExpenses.filter((expense) => statsInPeriod(expense.expense_date));
+  const statsSalesTotal = statsPeriodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
+  const statsCollected = statsPeriodPayments.length
+    ? statsPeriodPayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
+    : statsPeriodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
+  const statsOutstanding = statsPeriodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0);
+  const statsExpensesTotal = statsPeriodExpenses.reduce((sum, expense) => sum + Number(expense.amount_minor || 0), 0);
+  const statsCashBalance = statsCollected - statsExpensesTotal;
   const profitSalesTotal = periodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
   const profitPaidTotal = periodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
   const profitCostOfSales = periodSaleItems.reduce((sum, item) => sum + Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0)), 0);
@@ -2138,7 +2289,7 @@ export default function App() {
     if (next === "settings") return isBusinessOwner;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
-    if (next === "sales") return canPermission("sales_view");
+    if (next === "sales" || next === "stats" || next === "quotes") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
     if (next === "purchases") return canViewPurchases || canViewExpenses;
     if (next === "suppliers") return canViewSuppliers;
@@ -2151,6 +2302,7 @@ export default function App() {
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
+    if (next !== "quotes") clearQuoteDraft();
     if (next === "purchases") { setPurchaseModuleTab(purchaseTab); if (purchaseTab !== "suppliers") setShowSupplierForm(false); }
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }

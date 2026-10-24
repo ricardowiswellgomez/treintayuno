@@ -950,6 +950,7 @@ export default function App() {
   const [auditHasMore, setAuditHasMore] = useState(false);
   const [allocationSettings, setAllocationSettings] = useState({ diezmo: { enabled: false, percent: 0 }, ahorro: { enabled: false, percent: 0 }, otra: { enabled: false, name: "Otra asignación", percent: 0 } });
   const [targetProfitPercent, setTargetProfitPercent] = useState("15");
+  const [simulateAllocations, setSimulateAllocations] = useState(false);
   const [statsSales, setStatsSales] = useState([]);
   const [statsPayments, setStatsPayments] = useState([]);
   const [statsExpenses, setStatsExpenses] = useState([]);
@@ -3911,6 +3912,8 @@ export default function App() {
                   })}
                 </div>
                 <div className="profit-allocation-footer"><span>Distribución activa: {Object.values(allocationSettings).filter((item) => item.enabled).reduce((sum, item) => sum + Math.max(0, Number(item.percent || 0)), 0).toLocaleString("es-CO")}%</span>{isBusinessOwner && <button type="button" className="primary-button compact-button" onClick={saveAllocationSettings} disabled={busy}>{busy ? "Guardando…" : "Guardar porcentajes"}</button>}</div>
+                <label className="profit-simulation-toggle"><input type="checkbox" checked={simulateAllocations} onChange={(e) => setSimulateAllocations(e.target.checked)} /><span>Restar asignaciones del resultado disponible <small>(solo simulación; no modifica la rentabilidad contable)</small></span></label>
+                {simulateAllocations && <div className="profit-simulation-result"><span>Disponible después de asignaciones activas</span><strong>{money(Math.max(0, Math.max(0, profitNet) - Object.values(allocationSettings).filter((item) => item.enabled).reduce((sum, item) => sum + Math.round(Math.max(0, profitNet) * Math.min(100, Math.max(0, Number(item.percent || 0))) / 100), 0)), currencyCode)}</strong></div>}
                 {!isBusinessOwner && <p className="helper-text">Solo el propietario puede cambiar estos porcentajes.</p>}
               </section>
               <div className="profitability-breakdowns">

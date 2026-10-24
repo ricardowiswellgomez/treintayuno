@@ -1233,7 +1233,19 @@ export default function App() {
   useEffect(() => {
     if (!aiOpen || !aiMessagesRef.current) return;
     const container = aiMessagesRef.current;
-    container.scrollTop = container.scrollHeight;
+    let frame = requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+      container.lastElementChild?.scrollIntoView({ block: "end", behavior: "auto" });
+    });
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        container.lastElementChild?.scrollIntoView({ block: "end", behavior: "auto" });
+      });
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, [aiHistory, aiBusy, aiOpen]);
   function toggleAiVoice() {
     if (aiVoiceListening) { aiRecognitionRef.current?.stop?.(); setAiVoiceListening(false); return; }

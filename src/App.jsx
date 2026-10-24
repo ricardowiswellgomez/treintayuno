@@ -1566,8 +1566,9 @@ export default function App() {
       const periods = schedule[day.key].periods;
       if (!periods.length || periods.some((period) => !period.open || !period.close || period.open >= period.close)) { setError("Revisa el horario de " + day.label + ": cada turno debe tener apertura y cierre, y el cierre debe ser posterior a la apertura."); return; }
     }
-    const hoursText = days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n");
-    const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:schedule, hours:hoursText});
+    const hasConfiguredSchedule = Object.keys(settingsCommercialProfile.hoursSchedule || {}).length > 0;
+    const hoursText = hasConfiguredSchedule ? days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n") : String(settingsCommercialProfile.hours || "").trim();
+    const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:hasConfiguredSchedule ? schedule : (settingsCommercialProfile.hoursSchedule || {}), hours:hoursText});
     if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);

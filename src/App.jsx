@@ -3984,6 +3984,8 @@ export default function App() {
             </div>}
             
           </section>
+        ) : screen === "coupons" ? (
+          <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
             <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>

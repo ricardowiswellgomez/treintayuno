@@ -530,7 +530,9 @@ export default function App() {
   const [quotesSearch, setQuotesSearch] = useState("");
   const [quotesStatusFilter, setQuotesStatusFilter] = useState("all");
   const [quoteProducts, setQuoteProducts] = useState([]);
+  const [quoteCustomers, setQuoteCustomers] = useState([]);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [quoteCustomerId, setQuoteCustomerId] = useState("");
   const [quoteCustomerName, setQuoteCustomerName] = useState("");
   const [quoteCustomerEmail, setQuoteCustomerEmail] = useState("");
   const [quoteCustomerPhone, setQuoteCustomerPhone] = useState("");
@@ -1642,15 +1644,20 @@ export default function App() {
       const safeTerm = quotesSearch.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
       if (safeTerm) query = query.or("quote_number.ilike.%" + safeTerm + "%,customer_name.ilike.%" + safeTerm + "%");
       const from = (quotesPage - 1) * quotesPageSize;
-      const [quotesResult, productResult] = await Promise.all([
+      const [quotesResult, productResult, customerResult] = await Promise.all([
         query.range(from, from + quotesPageSize - 1),
         canPermission("products_view")
           ? supabase.from("products").select("id,name,sku,sale_price_minor,unit_name")
             .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(1000)
+          : Promise.resolve({ data: [], error: null }),
+        canPermission("customers_view")
+          ? supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp")
+            .eq("business_id", activeBusiness.id).order("full_name").limit(1000)
           : Promise.resolve({ data: [], error: null })
       ]);
       if (quotesResult.error) throw quotesResult.error;
       if (productResult.error) throw productResult.error;
+      if (customerResult.error) throw customerResult.error;
       const quoteRows = quotesResult.data || [];
       const quoteIds = quoteRows.map((quote) => quote.id);
       let items = [];
@@ -1669,11 +1676,13 @@ export default function App() {
       setQuotesRows(quoteRows.map((quote) => ({ ...quote, items: itemsByQuote[quote.id] || [] })));
       setQuotesCount(quotesResult.count || 0);
       setQuoteProducts(productResult.data || []);
+      setQuoteCustomers(customerResult.data || []);
     } catch (e) {
       setError(friendlyError(e));
       setQuotesRows([]);
       setQuotesCount(0);
       setQuoteProducts([]);
+      setQuoteCustomers([]);
     } finally { setQuotesLoading(false); }
   }
 
@@ -1896,6 +1905,7 @@ export default function App() {
 
   function clearQuoteDraft() {
     setShowQuoteForm(false);
+    setQuoteCustomerId("");
     setQuoteCustomerName("");
     setQuoteCustomerEmail("");
     setQuoteCustomerPhone("");
@@ -1924,6 +1934,7 @@ export default function App() {
       const { data: quote, error: quoteError } = await supabase.from("quotes").insert({
         business_id: activeBusiness.id,
         quote_number: quoteNumber,
+        customer_id: quoteCustomerId || null,
         customer_name: quoteCustomerName.trim(),
         customer_email: quoteCustomerEmail.trim() || null,
         customer_phone: quoteCustomerPhone.trim() || null,
@@ -1949,7 +1960,7 @@ export default function App() {
       const { error: itemsError } = await supabase.from("quote_items").insert(itemRows);
       if (itemsError) {
         const cleanup = await supabase.from("quotes").delete().eq("id", quote.id).eq("business_id", activeBusiness.id);
-        if (cleanup.error) setError("La cotización quedó creada, pero no se guardaron sus artículos. Abre Cotizaciones y comprueba el registro antes de volver a intentarlo.");
+        if (cleanup.error) throw new Error("La cotización quedó creada, pero no se guardaron sus artículos. Abre Cotizaciones y comprueba el registro antes de volver a intentarlo.");
         throw itemsError;
       }
       setNotice("Cotización " + quoteNumber + " guardada.");
@@ -2353,7 +2364,7 @@ export default function App() {
   const statsPeriodPayments = statsPayments.filter((payment) => statsInPeriod(payment.paid_at));
   const statsPeriodExpenses = statsExpenses.filter((expense) => statsInPeriod(expense.expense_date));
   const statsSalesTotal = statsPeriodSales.reduce((sum, sale) => sum + Number(sale.total_minor || 0), 0);
-  const statsCollected = statsPeriodPayments.length
+  const statsCollected = statsPayments.length
     ? statsPeriodPayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
     : statsPeriodSales.reduce((sum, sale) => sum + Number(sale.amount_paid_minor || 0), 0);
   const statsOutstanding = statsPeriodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0);
@@ -2876,7 +2887,8 @@ export default function App() {
             {showQuoteForm && canManageSales && <form className="quote-form panel" onSubmit={createQuote}>
               <h3>Nueva cotización</h3>
               <div className="quote-customer-fields">
-                <label><span className="field-label-heading">Cliente o empresa *</span><input value={quoteCustomerName} onChange={(e) => setQuoteCustomerName(e.target.value)} maxLength={200} required placeholder="Nombre del cliente" /></label>
+                {quoteCustomers.length > 0 && <label><span className="field-label-heading">Seleccionar cliente registrado</span><select value={quoteCustomerId} onChange={(e) => { const id = e.target.value; setQuoteCustomerId(id); const customer = quoteCustomers.find((item) => item.id === id); if (customer) { setQuoteCustomerName(customer.company_name || customer.full_name || ""); setQuoteCustomerEmail(customer.email || ""); setQuoteCustomerPhone(customer.phone || customer.whatsapp || ""); } }}><option value="">Cliente nuevo / escribir manualmente</option>{quoteCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name && customer.company_name !== customer.full_name ? customer.company_name + " · " + customer.full_name : customer.full_name || customer.company_name}</option>)}</select></label>}
+                <label><span className="field-label-heading">Cliente o empresa *</span><input value={quoteCustomerName} onChange={(e) => { setQuoteCustomerName(e.target.value); if (quoteCustomerId) setQuoteCustomerId(""); }} maxLength={200} required placeholder="Nombre del cliente" /></label>
                 <label><span className="field-label-heading">Correo</span><input type="email" value={quoteCustomerEmail} onChange={(e) => setQuoteCustomerEmail(e.target.value)} maxLength={254} placeholder="cliente@correo.com" /></label>
                 <label><span className="field-label-heading">Teléfono / WhatsApp</span><input value={quoteCustomerPhone} onChange={(e) => setQuoteCustomerPhone(e.target.value)} maxLength={60} placeholder="Número de contacto" /></label>
                 <label><span className="field-label-heading">Válida hasta</span><input type="date" min={todayInBogota()} value={quoteValidUntil} onChange={(e) => setQuoteValidUntil(e.target.value)} /></label>

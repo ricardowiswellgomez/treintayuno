@@ -749,6 +749,10 @@
 .public-catalog-header h1{font:700 clamp(20px,3vw,28px) Manrope,sans-serif;letter-spacing:-.6px;margin:0;overflow-wrap:anywhere}
 .public-catalog-content{width:min(1200px,100%);margin:0 auto;padding:22px 24px 50px}
 .public-catalog-intro{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:4px 0 18px}
+.public-catalog-business-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px 18px;margin:0 0 24px;padding:16px 18px;border:1px solid #e3e4db;border-radius:14px;background:color-mix(in srgb,var(--paper) 86%,white)}
+.public-catalog-business-info>div{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.public-catalog-business-info strong{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#788575}
+.public-catalog-business-info span{font-size:14px;line-height:1.5}
 .public-catalog-intro>div{display:flex;flex-direction:column;gap:5px}
 .public-catalog-intro>div>p{margin:0;font-size:clamp(14.5px, calc(14.5px + 0.12vw), 15.5px);color:#4f5b4e;line-height:1.6}
 .public-catalog-intro>div>span{font-size:clamp(14px, calc(14px + 0.12vw), 15px);color:#81897d}

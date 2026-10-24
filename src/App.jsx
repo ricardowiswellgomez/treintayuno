@@ -1986,56 +1986,218 @@ export default function App() {
     setQuoteValidUntil(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
   }
 
+  function editQuote(quote) {
+    if (!quote || !canManageSales) return;
+    setEditingQuoteId(quote.id);
+    setEditingQuoteOriginalItems((quote.items || []).map((item) => item.id));
+    setQuoteCustomerId(quote.customer_id || "");
+    setQuoteCustomerName(quote.customer_name || "");
+    setQuoteCustomerEmail(quote.customer_email || "");
+    setQuoteCustomerPhone(quote.customer_phone || "");
+    setQuoteValidUntil(quote.valid_until || "");
+    setQuoteNotes(quote.notes || "");
+    setQuoteProductChoice("");
+    setQuoteItemName("");
+    setQuoteQuantity("1");
+    setQuoteUnitPrice("");
+    setQuoteItems((quote.items || []).map((item) => ({
+      id: item.id || crypto.randomUUID(),
+      name: item.item_name || item.name || "",
+      quantity: Number(item.quantity || 0),
+      unit_price_minor: Number(item.unit_price_minor || 0),
+      line_total_minor: Number(item.line_total_minor ?? Math.round(Number(item.unit_price_minor || 0) * Number(item.quantity || 0)))
+    })));
+    setShowQuoteForm(true);
+    setError("");
+    setNotice("Ajusta los artículos, las cantidades o los precios. Al guardar, la propuesta quedará como borrador para revisarla con el cliente.");
+  }
+
   async function createQuote(event) {
     event.preventDefault();
     if (!activeBusiness?.id || !canManageSales || quoteSaving) return;
     if (!quoteCustomerName.trim()) { setError("Escribe el nombre del cliente o de la empresa."); return; }
     if (!quoteItems.length) { setError("Agrega al menos un artículo a la cotización."); return; }
+    if (quoteItems.some((item) => !String(item.name || "").trim() || !Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0 || !Number.isFinite(Number(item.unit_price_minor)) || Number(item.unit_price_minor) < 0)) {
+      setError("Revisa los artículos, las cantidades y los precios antes de guardar.");
+      return;
+    }
     setQuoteSaving(true);
     setError("");
     setNotice("");
     try {
-      const subtotal = quoteItems.reduce((sum, item) => sum + item.line_total_minor, 0);
-      const quoteNumber = "COT-" + todayInBogota().replace(/-/g, "") + "-" + crypto.randomUUID().slice(0, 6).toUpperCase();
-      const { data: quote, error: quoteError } = await supabase.from("quotes").insert({
-        business_id: activeBusiness.id,
-        quote_number: quoteNumber,
-        customer_id: quoteCustomerId || null,
-        customer_name: quoteCustomerName.trim(),
-        customer_email: quoteCustomerEmail.trim() || null,
-        customer_phone: quoteCustomerPhone.trim() || null,
-        status: "draft",
-        currency_code: currencyCode,
-        subtotal_minor: subtotal,
-        discount_minor: 0,
-        tax_minor: 0,
-        total_minor: subtotal,
-        valid_until: quoteValidUntil || null,
-        notes: quoteNotes.trim() || null,
-        created_by: session?.user?.id || null
-      }).select("id").single();
-      if (quoteError) throw quoteError;
-      const itemRows = quoteItems.map((item) => ({
-        business_id: activeBusiness.id,
-        quote_id: quote.id,
-        item_name: item.name,
-        quantity: item.quantity,
-        unit_price_minor: item.unit_price_minor,
-        line_total_minor: item.line_total_minor
-      }));
-      const { error: itemsError } = await supabase.from("quote_items").insert(itemRows);
-      if (itemsError) {
-        const cleanup = await supabase.from("quotes").delete().eq("id", quote.id).eq("business_id", activeBusiness.id);
-        if (cleanup.error) throw new Error("La cotización quedó creada, pero no se guardaron sus artículos. Abre Cotizaciones y comprueba el registro antes de volver a intentarlo.");
-        throw itemsError;
+      const subtotal = quoteItems.reduce((sum, item) => sum + Math.round(Number(item.unit_price_minor || 0) * Number(item.quantity || 0)), 0);
+      if (editingQuoteId) {
+        const { data: updatedQuote, error: quoteError } = await supabase.from("quotes").update({
+          customer_id: quoteCustomerId || null,
+          customer_name: quoteCustomerName.trim(),
+          customer_email: quoteCustomerEmail.trim() || null,
+          customer_phone: quoteCustomerPhone.trim() || null,
+          status: "draft",
+          currency_code: currencyCode,
+          subtotal_minor: subtotal,
+          discount_minor: 0,
+          tax_minor: 0,
+          total_minor: subtotal,
+          valid_until: quoteValidUntil || null,
+          notes: quoteNotes.trim() || null,
+          updated_at: new Date().toISOString()
+        }).eq("id", editingQuoteId).eq("business_id", activeBusiness.id).select("id,quote_number").maybeSingle();
+        if (quoteError) throw quoteError;
+        if (!updatedQuote) throw new Error("No se pudo actualizar la cotización. Comprueba tus permisos e inténtalo de nuevo.");
+
+        const oldIds = new Set(editingQuoteOriginalItems);
+        const currentIds = new Set(quoteItems.map((item) => item.id));
+        const existingItems = quoteItems.filter((item) => oldIds.has(item.id));
+        for (const item of existingItems) {
+          const { data, error: itemError } = await supabase.from("quote_items").update({
+            item_name: String(item.name).trim(),
+            quantity: Number(item.quantity),
+            unit_price_minor: Number(item.unit_price_minor),
+            line_total_minor: Math.round(Number(item.unit_price_minor) * Number(item.quantity))
+          }).eq("id", item.id).eq("quote_id", editingQuoteId).eq("business_id", activeBusiness.id).select("id").maybeSingle();
+          if (itemError) throw itemError;
+          if (!data) throw new Error("No se pudo actualizar uno de los artículos de la cotización. Revisa el registro antes de volver a intentarlo.");
+        }
+        const addedItems = quoteItems.filter((item) => !oldIds.has(item.id)).map((item) => ({
+          business_id: activeBusiness.id,
+          quote_id: editingQuoteId,
+          item_name: String(item.name).trim(),
+          quantity: Number(item.quantity),
+          unit_price_minor: Number(item.unit_price_minor),
+          line_total_minor: Math.round(Number(item.unit_price_minor) * Number(item.quantity))
+        }));
+        if (addedItems.length) {
+          const { error: insertItemsError } = await supabase.from("quote_items").insert(addedItems);
+          if (insertItemsError) throw insertItemsError;
+        }
+        const removedIds = editingQuoteOriginalItems.filter((id) => !currentIds.has(id));
+        if (removedIds.length) {
+          const { error: deleteItemsError } = await supabase.from("quote_items").delete().eq("business_id", activeBusiness.id).eq("quote_id", editingQuoteId).in("id", removedIds);
+          if (deleteItemsError) throw deleteItemsError;
+        }
+        setNotice("Cotización " + updatedQuote.quote_number + " actualizada. Ya puedes compartir la propuesta revisada con tu cliente.");
+      } else {
+        const quoteNumber = "COT-" + todayInBogota().replace(/-/g, "") + "-" + crypto.randomUUID().slice(0, 6).toUpperCase();
+        const { data: quote, error: quoteError } = await supabase.from("quotes").insert({
+          business_id: activeBusiness.id,
+          quote_number: quoteNumber,
+          customer_id: quoteCustomerId || null,
+          customer_name: quoteCustomerName.trim(),
+          customer_email: quoteCustomerEmail.trim() || null,
+          customer_phone: quoteCustomerPhone.trim() || null,
+          status: "draft",
+          currency_code: currencyCode,
+          subtotal_minor: subtotal,
+          discount_minor: 0,
+          tax_minor: 0,
+          total_minor: subtotal,
+          valid_until: quoteValidUntil || null,
+          notes: quoteNotes.trim() || null,
+          created_by: session?.user?.id || null
+        }).select("id").single();
+        if (quoteError) throw quoteError;
+        const itemRows = quoteItems.map((item) => ({
+          business_id: activeBusiness.id,
+          quote_id: quote.id,
+          item_name: String(item.name).trim(),
+          quantity: Number(item.quantity),
+          unit_price_minor: Number(item.unit_price_minor),
+          line_total_minor: Math.round(Number(item.unit_price_minor) * Number(item.quantity))
+        }));
+        const { error: itemsError } = await supabase.from("quote_items").insert(itemRows);
+        if (itemsError) {
+          const cleanup = await supabase.from("quotes").delete().eq("id", quote.id).eq("business_id", activeBusiness.id);
+          if (cleanup.error) throw new Error("La cotización quedó creada, pero no se guardaron sus artículos. Abre Cotizaciones y comprueba el registro antes de volver a intentarlo.");
+          throw itemsError;
+        }
+        setNotice("Cotización " + quoteNumber + " guardada.");
       }
-      setNotice("Cotización " + quoteNumber + " guardada.");
       clearQuoteDraft();
       setQuotesPage(1);
       await loadQuotesModuleData();
     } catch (e) {
       setError(friendlyError(e));
     } finally { setQuoteSaving(false); }
+  }
+
+  function printQuoteDocument(quote) {
+    if (!quote) return;
+    const profile = activeBusiness?.settings?.commercial_profile || {};
+    const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
+    const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, quote.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, quote.currency_code || currencyCode)) + "</td></tr>").join("");
+    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(quote.quote_number)} - ${escapeHtml(brand)}</title><style>
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #2d5947;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#2d5947}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#697369}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #dde4dc;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #dde4dc;padding-top:12px;color:#697369;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+    </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
+      <h2>Cotización ${escapeHtml(quote.quote_number)}</h2><small>Fecha: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</small>
+      <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name)}</p><p>${escapeHtml(quote.customer_email || "")}</p><p>${escapeHtml(quote.customer_phone || "")}</p></div><div><strong>Válida hasta</strong><p>${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
+      <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total: ${escapeHtml(money(quote.total_minor, quote.currency_code || currencyCode))}</div>
+      ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
+      <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
+    const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=900");
+    if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }
+    win.document.open(); win.document.write(html); win.document.close();
+  }
+
+  async function shareQuoteImage(quote) {
+    if (!quote) return;
+    const profile = activeBusiness?.settings?.commercial_profile || {};
+    const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
+    const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const width = 1200;
+    const height = 620 + Math.max(1, (quote.items || []).length) * 74 + (quote.notes ? 120 : 0);
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / imprimir para compartir la cotización."); return; }
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height);
+    ctx.strokeStyle = "#d9e2d7"; ctx.lineWidth = 2; ctx.strokeRect(26,26,width-52,height-52);
+    ctx.fillStyle = "#2d5947"; ctx.fillRect(27,27,width-54,12);
+    let y = 86;
+    if (logoUrl) {
+      try {
+        const image = new Image(); image.crossOrigin = "anonymous"; image.src = logoUrl;
+        await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
+        ctx.drawImage(image, 60, 60, 128, 96);
+      } catch { /* Se conserva el documento aunque el navegador no permita incrustar el logo. */ }
+    }
+    ctx.fillStyle = "#2d5947"; ctx.font = "bold 32px Arial"; ctx.fillText(brand, 220, y);
+    ctx.fillStyle = "#4f5b51"; ctx.font = "18px Arial";
+    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
+    companyLines.slice(0,3).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
+    y = 208;
+    ctx.strokeStyle = "#d9e2d7"; ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(width-60,y); ctx.stroke();
+    y += 54; ctx.fillStyle = "#202820"; ctx.font = "bold 30px Arial"; ctx.fillText("COTIZACIÓN " + quote.quote_number,60,y);
+    y += 38; ctx.font = "19px Arial"; ctx.fillText("Cliente: " + String(quote.customer_name || "").slice(0,70),60,y);
+    y += 32; ctx.fillText("Válida hasta: " + (quote.valid_until || "Sin fecha límite"),60,y);
+    y += 42; ctx.fillStyle = "#f0f4ed"; ctx.fillRect(60,y,width-120,44);
+    ctx.fillStyle = "#314236"; ctx.font = "bold 17px Arial"; ctx.fillText("ARTÍCULO / SERVICIO",72,y+28); ctx.fillText("CANT.",700,y+28); ctx.fillText("VALOR",830,y+28); ctx.fillText("TOTAL",1010,y+28);
+    y += 54; ctx.font = "17px Arial";
+    for (const item of (quote.items || [])) {
+      const itemName = String(item.item_name || "").slice(0,54);
+      ctx.fillStyle = "#202820"; ctx.fillText(itemName,72,y);
+      ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);
+      ctx.fillText(money(item.unit_price_minor, quote.currency_code || currencyCode),830,y);
+      ctx.fillText(money(item.line_total_minor, quote.currency_code || currencyCode),1010,y);
+      y += 60; ctx.strokeStyle = "#e5e9e2"; ctx.beginPath(); ctx.moveTo(60,y-23); ctx.lineTo(width-60,y-23); ctx.stroke();
+    }
+    y += 12; ctx.fillStyle = "#2d5947"; ctx.font = "bold 30px Arial"; ctx.textAlign = "right"; ctx.fillText("TOTAL: " + money(quote.total_minor, quote.currency_code || currencyCode),width-60,y); ctx.textAlign = "left";
+    if (quote.notes) { y += 48; ctx.fillStyle = "#4f5b51"; ctx.font = "17px Arial"; ctx.fillText("Notas: " + String(quote.notes).replace(/\s+/g," ").slice(0,130),60,y); }
+    try {
+      const blob = await new Promise((resolve, reject) => { try { canvas.toBlob((value) => value ? resolve(value) : reject(new Error("No se pudo crear la imagen.")), "image/png"); } catch (e) { reject(e); } });
+      const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi,"-") + ".png";
+      const file = new File([blob], filename, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "Cotización " + quote.quote_number, text: "Propuesta comercial de " + brand }); }
+        catch (e) { if (e?.name !== "AbortError") throw e; }
+      } else {
+        const url = URL.createObjectURL(blob); const link = document.createElement("a");
+        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
+        setNotice("Imagen descargada. Ya puedes compartirla por WhatsApp o correo.");
+      }
+    } catch (e) { setError("No se pudo generar la imagen en este navegador. Usa PDF / imprimir para compartir la cotización."); }
   }
 
   async function updateQuoteStatus(quote, nextStatus) {
@@ -3443,9 +3605,11 @@ export default function App() {
           </section>
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Ajusta tu espacio de trabajo</h2><p>Actualiza los datos comerciales, el logo, los colores y las ayudas que aparecen mientras usas Treintayuno.</p></div>
+            <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>
+            <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración"><button type="button" role="tab" aria-selected={settingsTab === "general"} className={settingsTab === "general" ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab("general")}>General</button><button type="button" role="tab" aria-selected={settingsTab === "company"} className={settingsTab === "company" ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab("company")}>Mi empresa</button></div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div className="settings-icon">⚙</div>
+              <div hidden={settingsTab !== "general"} className="settings-tab-panel">
+              <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
@@ -3493,6 +3657,24 @@ export default function App() {
               <p>Una guía clara que cambia según la sección en la que estés, con instrucciones y consejos prácticos.</p>
               <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar ayudas contextuales<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva tanto las ayudas breves de los campos como el panel explicativo general." /></strong><small>El botón «Ayuda» abre el mismo panel explicativo sobre formularios y ventanas.</small></span></label>
               {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar esta preferencia.</p>}
+              </div>
+              <div hidden={settingsTab !== "company"} className="settings-tab-panel company-profile-panel">
+                <div className="settings-icon"><AppIcon name="team" size={23} /></div>
+                <h3>Mi empresa</h3>
+                <p>Estos datos acompañarán el logo en las cotizaciones y documentos que compartas con tus clientes.</p>
+                <label className="settings-field"><span className="field-label-heading">Nombre comercial</span><input value={settingsCommercialProfile.tradeName} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, tradeName: e.target.value }))} maxLength={160} disabled={activeBusiness?.role !== "owner"} placeholder={settingsBusinessName || "Nombre que verá tu cliente"} /></label>
+                <label className="settings-field"><span className="field-label-heading">NIT o documento</span><input value={settingsCommercialProfile.documentNumber} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, documentNumber: e.target.value }))} maxLength={80} disabled={activeBusiness?.role !== "owner"} placeholder="Identificación tributaria (opcional)" /></label>
+                <div className="company-profile-grid">
+                  <label className="settings-field"><span className="field-label-heading">Correo comercial</span><input type="email" value={settingsCommercialProfile.email} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, email: e.target.value }))} maxLength={254} disabled={activeBusiness?.role !== "owner"} placeholder="ventas@tuempresa.com" /></label>
+                  <label className="settings-field"><span className="field-label-heading">Teléfono / WhatsApp</span><input value={settingsCommercialProfile.phone} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, phone: e.target.value }))} maxLength={60} disabled={activeBusiness?.role !== "owner"} placeholder="Número de contacto" /></label>
+                </div>
+                <label className="settings-field"><span className="field-label-heading">Dirección</span><input value={settingsCommercialProfile.address} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, address: e.target.value }))} maxLength={220} disabled={activeBusiness?.role !== "owner"} placeholder="Dirección comercial" /></label>
+                <div className="company-profile-grid">
+                  <label className="settings-field"><span className="field-label-heading">Ciudad</span><input value={settingsCommercialProfile.city} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, city: e.target.value }))} maxLength={100} disabled={activeBusiness?.role !== "owner"} placeholder="Ciudad, departamento" /></label>
+                  <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
+                </div>
+                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos datos.</p>}
+              </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>

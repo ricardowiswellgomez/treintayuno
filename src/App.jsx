@@ -18,6 +18,8 @@ function AppIcon({ name, size = 20 }) {
     audit: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
     team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
+    payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
+    coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>
   };
@@ -1560,6 +1562,10 @@ export default function App() {
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
+    for (const day of days.filter((item) => schedule[item.key].enabled)) {
+      const periods = schedule[day.key].periods;
+      if (!periods.length || periods.some((period) => !period.open || !period.close || period.open >= period.close)) { setError("Revisa el horario de " + day.label + ": cada turno debe tener apertura y cierre, y el cierre debe ser posterior a la apertura."); return; }
+    }
     const hoursText = days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n");
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:schedule, hours:hoursText});
     if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }

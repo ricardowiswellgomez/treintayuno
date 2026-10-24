@@ -2189,3 +2189,9 @@ button{line-height:1.35}
 .public-catalog-product-heading h2{flex:1;min-width:0}
 .public-product-share{display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px;width:34px;height:34px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--green);font-size:17px}
 .public-product-share:hover{background:var(--soft-green)}
+
+
+.public-business-card-download{grid-column:1/-1;justify-self:start;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:transparent;color:var(--card-primary);font-size:12px;font-weight:750}
+.icon-action-danger{color:#b44343!important;border-color:#f0d4d4!important}
+.icon-action-danger:hover{background:#fff0f0!important}
+@media(max-width:760px){.public-business-card-download{width:100%;justify-self:stretch;min-height:42px}}

@@ -425,13 +425,20 @@ function PublicCatalog({ businessId }) {
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "Treintayuno"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : "31"}</a>
-      <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.name || "Catálogo"}</h1></div>
+      <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div><p>Una selección de productos de {business.name}.</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        {(business.commercial_profile?.phone || business.commercial_profile?.email || business.commercial_profile?.address || business.commercial_profile?.city || business.commercial_profile?.website || business.commercial_profile?.hours) && <section className="public-catalog-business-info" aria-label="Información del negocio">
+          {business.commercial_profile?.phone && <div><strong>Teléfono / WhatsApp</strong><span>{business.commercial_profile.phone}</span></div>}
+          {business.commercial_profile?.email && <div><strong>Correo</strong><span>{business.commercial_profile.email}</span></div>}
+          {(business.commercial_profile?.address || business.commercial_profile?.city) && <div><strong>Dirección</strong><span>{[business.commercial_profile.address, business.commercial_profile.city].filter(Boolean).join(", ")}</span></div>}
+          {business.commercial_profile?.website && <div><strong>Sitio web</strong><span>{business.commercial_profile.website}</span></div>}
+          {business.commercial_profile?.hours && <div><strong>Horario de atención</strong><span>{business.commercial_profile.hours}</span></div>}
+        </section>
         {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id}>
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
@@ -944,7 +951,7 @@ export default function App() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "" });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "" });
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
@@ -1113,7 +1120,9 @@ export default function App() {
       phone: String(profile?.phone || "").trim(),
       address: String(profile?.address || "").trim(),
       city: String(profile?.city || "").trim(),
-      website: String(profile?.website || "").trim()
+      website: String(profile?.website || "").trim(),
+      publicDescription: String(profile?.publicDescription || "").trim(),
+      hours: String(profile?.hours || "").trim()
     });
     const commercialProfile = normalizeCommercialProfile(settingsCommercialProfile);
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
@@ -2154,7 +2163,7 @@ export default function App() {
       <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total: ${escapeHtml(money(quote.total_minor, quote.currency_code || currencyCode))}</div>
       ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
       <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
-    const win = window.open("", "_blank", "width=900,height=900");
+    const win = window.open(window.location.href, "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }
     try { win.opener = null; } catch { /* La impresión no depende de window.opener. */ }
     win.document.open(); win.document.write(html); win.document.close();
@@ -3786,6 +3795,9 @@ export default function App() {
                   <label className="settings-field"><span className="field-label-heading">Ciudad</span><input value={settingsCommercialProfile.city} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, city: e.target.value }))} maxLength={100} disabled={activeBusiness?.role !== "owner"} placeholder="Ciudad, departamento" /></label>
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
+                <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
+                <label className="settings-field"><span className="field-label-heading">Horario de atención</span><textarea value={settingsCommercialProfile.hours} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, hours: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder={"Lun–Vie: 9:00 a. m. – 6:00 p. m.\nSábados: 9:00 a. m. – 1:00 p. m."} /></label>
+                <p className="helper-text">Los datos comerciales, el horario y la descripción se publican en el catálogo de este negocio. No incluyas información privada.</p>
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos datos.</p>}
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>

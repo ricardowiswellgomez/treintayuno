@@ -511,6 +511,10 @@ function PublicCatalog({ businessId }) {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState(null);
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [couponMessage, setCouponMessage] = useState("");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [paymentEnabled, setPaymentEnabled] = useState(false);
@@ -579,6 +583,7 @@ function PublicCatalog({ businessId }) {
   const total = Number(payload?.total || 0);
   const cartCount = cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0);
   const cartTotal = cart.reduce((sum, line) => sum + Number(line.product.sale_price_minor || 0) * Number(line.quantity || 0), 0);
+  const checkoutTotal = Math.max(0, cartTotal - Number(couponApplied?.discount_minor || 0));
   const addToCart = (product) => {
     setCart((current) => {
       const found = current.find((line) => line.product.id === product.id);
@@ -586,6 +591,7 @@ function PublicCatalog({ businessId }) {
       return [...current, { product, quantity: 1 }];
     });
     setCheckoutError("");
+    setCouponApplied(null); setCouponMessage("");
     setCartOpen(true);
   };
   const updateCartQuantity = (productId, quantity) => {
@@ -595,6 +601,24 @@ function PublicCatalog({ businessId }) {
       return;
     }
     setCart((current) => current.map((line) => line.product.id === productId ? { ...line, quantity: Math.min(1000, Math.round(next * 1000) / 1000) } : line));
+    setCouponApplied(null); setCouponMessage("");
+  };
+  const applyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code || !cart.length || couponChecking) return;
+    setCouponChecking(true); setCouponMessage(""); setCouponApplied(null); setCheckoutError("");
+    try {
+      const { data, error: validationError } = await supabase.rpc("get_public_coupon_quote", {
+        p_business_id: businessId, p_coupon_code: code, p_subtotal_minor: cartTotal
+      });
+      if (validationError) throw validationError;
+      if (!data?.valid) throw new Error(data?.message || "No se pudo validar el cupón.");
+      setCouponApplied(data);
+      setCouponCode(data.code || code);
+      setCouponMessage(data.message || "Cupón aplicado.");
+    } catch (e) {
+      setCouponMessage(e?.message || friendlyError(e));
+    } finally { setCouponChecking(false); }
   };
   const submitCheckout = async (event) => {
     event.preventDefault();
@@ -613,7 +637,8 @@ function PublicCatalog({ businessId }) {
         p_customer_email: checkoutForm.email.trim() || null,
         p_customer_address: checkoutForm.address.trim() || null,
         p_customer_notes: checkoutForm.notes.trim() || null,
-        p_items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity }))
+        p_items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+        p_coupon_code: couponApplied?.code || null
       });
       if (orderError) throw orderError;
       if (!order?.order_id || !order?.checkout_token) throw new Error("No se pudo preparar el pedido para el pago.");
@@ -700,8 +725,14 @@ function PublicCatalog({ businessId }) {
               <div className="public-cart-line-copy"><strong>{line.product.name}</strong><span>{money(line.product.sale_price_minor, business?.currency_code || "COP")} por {line.product.unit_name || "unidad"}</span><b>{money(Number(line.product.sale_price_minor || 0) * Number(line.quantity), business?.currency_code || "COP")}</b></div>
               <div className="public-cart-quantity"><button type="button" onClick={() => updateCartQuantity(line.product.id, Number(line.quantity) - 1)} aria-label={`Quitar una unidad de ${line.product.name}`}>−</button><span>{line.quantity}</span><button type="button" onClick={() => updateCartQuantity(line.product.id, Number(line.quantity) + 1)} aria-label={`Añadir una unidad de ${line.product.name}`}>＋</button><button type="button" className="public-cart-remove" onClick={() => updateCartQuantity(line.product.id, 0)}>Eliminar</button></div>
             </article>)}</div>
-            <div className="public-cart-total"><span>Total del pedido</span><strong>{money(cartTotal, business?.currency_code || "COP")}</strong></div>
+            {couponApplied && <div className="public-cart-discount"><span>Cupón {couponApplied.code}</span><strong>−{money(couponApplied.discount_minor, business?.currency_code || "COP")}</strong></div>}
+            <div className="public-cart-total"><span>Total del pedido</span><strong>{money(checkoutTotal, business?.currency_code || "COP")}</strong></div>
             <form className="public-checkout-form" onSubmit={submitCheckout}>
+              <div className="public-coupon-entry">
+                <label><span>Código de descuento</span><input maxLength={32} value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase().replace(/\s+/g,"")); setCouponApplied(null); setCouponMessage(""); }} placeholder="¿Tienes un cupón?" /></label>
+                <button type="button" className="secondary-button" onClick={applyCoupon} disabled={couponChecking || !couponCode.trim() || !cart.length}>{couponChecking ? "Validando…" : couponApplied ? "Aplicado" : "Aplicar"}</button>
+                {couponMessage && <p className={couponApplied ? "coupon-feedback success" : "coupon-feedback"} role="status">{couponMessage}</p>}
+              </div>
               <h3>Datos para el pedido</h3>
               <label><span>Nombre completo *</span><input required minLength={2} maxLength={160} autoComplete="name" value={checkoutForm.name} onChange={(e) => setCheckoutForm((current) => ({ ...current, name: e.target.value }))} placeholder="¿A nombre de quién?" /></label>
               <label><span>Celular / WhatsApp *</span><input required minLength={5} maxLength={40} autoComplete="tel" inputMode="tel" value={checkoutForm.phone} onChange={(e) => setCheckoutForm((current) => ({ ...current, phone: e.target.value }))} placeholder="Tu número de contacto" /></label>

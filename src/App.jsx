@@ -698,7 +698,8 @@ function PublicCatalog({ businessId }) {
     event.preventDefault();
     if (!cart.length || checkoutBusy) return;
     if (business?.commercial_profile?.orderChannel === "whatsapp") {
-      const rawPhone = String(business?.commercial_profile?.phone || business?.commercial_profile?.cardPhone || "").replace(/\\D/g, "");
+      let rawPhone = String(business?.commercial_profile?.phone || business?.commercial_profile?.cardPhone || "").replace(/\\D/g, "");
+      if (rawPhone.length === 10 && rawPhone.startsWith("3")) rawPhone = "57" + rawPhone;
       if (rawPhone.length < 8) { setCheckoutError("Este negocio debe configurar un número de WhatsApp válido antes de recibir pedidos."); return; }
       setCheckoutBusy(true); setCheckoutError("");
       const lines = cart.map((line) => "• " + line.product.name + " × " + line.quantity + " = " + money(Number(line.product.sale_price_minor || 0) * Number(line.quantity), business?.currency_code || "COP"));
@@ -786,7 +787,7 @@ function PublicCatalog({ businessId }) {
           </div>
           <button type="button" className="secondary-button" onClick={refreshReturnedOrder} disabled={orderStatusLoading}>{orderStatusLoading ? "Consultando…" : "Actualizar estado"}</button>
         </div>}
-        {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id}>
+        {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id} id={"producto-" + product.id}>
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
@@ -1554,6 +1555,7 @@ export default function App() {
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
     const hoursText = days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n");
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:schedule, hours:hoursText});
+    if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };

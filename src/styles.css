@@ -1230,7 +1230,7 @@ button{line-height:1.35}
 .ai-assistant-layer{position:fixed;right:22px;bottom:22px;z-index:2147483645;display:flex;align-items:flex-end;flex-direction:column;gap:12px;max-width:calc(100vw - 24px)}
 .ai-assistant-trigger{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:13px 19px;background:var(--green,#2d5947);color:white;box-shadow:0 8px 28px #18281e35;font-weight:800}
 .ai-assistant-trigger span{font-size:18px}
-.ai-assistant-panel{width:min(390px,calc(100vw - 28px));height:min(570px,calc(100dvh - 175px));max-height:calc(100dvh - 175px);min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line,#e6e5dd);border-radius:18px;background:var(--paper,#fffefa);box-shadow:0 18px 55px #17271d35}
+.ai-assistant-panel{position:relative;width:min(390px,calc(100vw - 28px));height:min(570px,calc(100dvh - 175px));max-height:calc(100dvh - 175px);min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line,#e6e5dd);border-radius:18px;background:var(--paper,#fffefa);box-shadow:0 18px 55px #17271d35}
 .ai-assistant-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--green,#2d5947);color:white}
 .ai-assistant-header>div{display:flex;align-items:center;gap:10px}.ai-assistant-spark{font-size:23px}.ai-assistant-header strong,.ai-assistant-header small{display:block}.ai-assistant-header small{margin-top:3px;opacity:.8;font-size:11px}
 .ai-assistant-header button{border:0;background:transparent;color:white;font-size:25px;line-height:1}

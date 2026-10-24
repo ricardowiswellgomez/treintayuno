@@ -2166,8 +2166,8 @@ export default function App() {
     ctx.fillStyle = "#2d5947"; ctx.font = "bold 32px Arial"; ctx.fillText(brand, 220, y);
     ctx.fillStyle = "#4f5b51"; ctx.font = "18px Arial";
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
-    companyLines.slice(0,3).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
-    y = 208;
+    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
+    y = 260;
     ctx.strokeStyle = "#d9e2d7"; ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(width-60,y); ctx.stroke();
     y += 54; ctx.fillStyle = "#202820"; ctx.font = "bold 30px Arial"; ctx.fillText("COTIZACIÓN " + quote.quote_number,60,y);
     y += 38; ctx.font = "19px Arial"; ctx.fillText("Cliente: " + String(quote.customer_name || "").slice(0,70),60,y);
@@ -2205,6 +2205,60 @@ export default function App() {
         setNotice("Imagen descargada. Ya puedes compartirla por WhatsApp o correo.");
       }
     } catch (e) { setError("No se pudo generar la imagen en este navegador. Usa PDF / imprimir para compartir la cotización."); }
+  }
+
+  function printSaleDocument(sale) {
+    if (!sale) return;
+    const profile = activeBusiness?.settings?.commercial_profile || {};
+    const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
+    const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
+    const items = (sale.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, sale.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
+    const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
+    const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #2d5947;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#2d5947}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#697369}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #dde4dc;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #e5e9e2}.summary .balance{font-weight:700;color:#2d5947}.footer{margin-top:42px;border-top:1px solid #dde4dc;padding-top:12px;color:#697369;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+    </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
+      <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
+      <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
+      <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table>
+      <div class="summary"><div><span>Total</span><strong>${escapeHtml(money(total, sale.currency_code || currencyCode))}</strong></div><div><span>Pagado</span><strong>${escapeHtml(money(paid, sale.currency_code || currencyCode))}</strong></div><div class="balance"><span>Saldo pendiente</span><strong>${escapeHtml(money(outstanding, sale.currency_code || currencyCode))}</strong></div></div>
+      ${paymentRows ? "<h3>Historial de pagos</h3><table><thead><tr><th>Fecha</th><th>Medio de pago</th><th class=\"num\">Importe</th></tr></thead><tbody>" + paymentRows + "</tbody></table>" : ""}
+      ${sale.notes ? "<p style=\"margin-top:24px\"><strong>Notas:</strong> " + escapeHtml(sale.notes) + "</p>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
+      <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
+    const win = window.open("", "_blank", "width=900,height=900");
+    if (!win) { setError("Permite las ventanas emergentes para abrir el documento e imprimirlo o guardarlo como PDF."); return; }
+    try { win.opener = null; } catch { /* La impresión no depende de window.opener. */ }
+    win.document.open(); win.document.write(html); win.document.close();
+  }
+
+  async function shareSaleImage(sale) {
+    if (!sale) return;
+    const profile = activeBusiness?.settings?.commercial_profile || {};
+    const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
+    const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const rows = sale.items || [];
+    const width = 1200, height = 650 + Math.max(1, rows.length) * 68;
+    const canvas = document.createElement("canvas"); canvas.width=width; canvas.height=height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / Imprimir para compartir la venta."); return; }
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#d9e2d7"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle="#2d5947"; ctx.fillRect(27,27,width-54,12);
+    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
+    let y=86;
+    if (logoUrl) { try { const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl; await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject}); ctx.drawImage(image,60,60,128,96); } catch { /* El comprobante sigue visible si el logo no puede cargarse. */ } }
+    ctx.fillStyle="#2d5947";ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#4f5b51";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
+    y=260;ctx.strokeStyle="#d9e2d7";ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(width-60,y);ctx.stroke();y+=54;ctx.fillStyle="#202820";ctx.font="bold 30px Arial";ctx.fillText("FACTURA / VENTA "+String(sale.sale_number||""),60,y);
+    y+=42;ctx.font="19px Arial";ctx.fillText("Cliente: "+String(sale.customer_name||"Venta sin cliente").slice(0,65),60,y);
+    y+=32;ctx.fillText("Fecha: "+new Date(sale.sold_at||sale.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"}),60,y);
+    y+=42;ctx.fillStyle="#f0f4ed";ctx.fillRect(60,y,width-120,44);ctx.fillStyle="#314236";ctx.font="bold 17px Arial";ctx.fillText("ARTÍCULO",72,y+28);ctx.fillText("CANT.",700,y+28);ctx.fillText("VALOR",830,y+28);ctx.fillText("TOTAL",1010,y+28);y+=54;ctx.font="17px Arial";
+    for (const item of rows){ctx.fillStyle="#202820";ctx.fillText(String(item.item_name||"").slice(0,52),72,y);ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);ctx.fillText(money(item.unit_price_minor,sale.currency_code||currencyCode),830,y);ctx.fillText(money(item.line_total_minor,sale.currency_code||currencyCode),1010,y);y+=58;ctx.strokeStyle="#e5e9e2";ctx.beginPath();ctx.moveTo(60,y-22);ctx.lineTo(width-60,y-22);ctx.stroke();}
+    y+=8;ctx.fillStyle="#2d5947";ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
+    try {
+      const blob = await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png")}catch(e){reject(e)}});
+      const filename=String(sale.sale_number||"venta").replace(/[^a-z0-9_-]/gi,"-")+".png";const file=new File([blob],filename,{type:"image/png"});
+      if(navigator.share&&navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:"Venta "+sale.sale_number,text:"Comprobante de venta de "+brand})}catch(e){if(e?.name==="AbortError")return;}}
+      const url=URL.createObjectURL(blob);const downloadLink=document.createElement("a");downloadLink.href=url;downloadLink.download=filename;document.body.appendChild(downloadLink);downloadLink.click();downloadLink.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1200);setNotice("Imagen del comprobante descargada para compartir.");
+    } catch { setError("No se pudo generar la imagen. Usa PDF / Imprimir para compartir el comprobante."); }
   }
 
   async function updateQuoteStatus(quote, nextStatus) {
@@ -2648,9 +2702,19 @@ export default function App() {
       [],
       ["Movimiento", "Fecha", "Referencia", "Importe"]
     ];
-    statsPeriodPayments.forEach((payment) => rows.push(["Ingreso", profitPeriodDateKey(payment.paid_at), payment.sale_id || "Abono", Number(payment.amount_minor || 0) / unit]));
+    if (statsPayments.length) {
+      const saleNames = new Map(statsSales.map((sale) => [sale.id, sale.sale_number || "Venta"]));
+      statsPeriodPayments.forEach((payment) => rows.push(["Ingreso", profitPeriodDateKey(payment.paid_at), saleNames.get(payment.sale_id) || "Abono", Number(payment.amount_minor || 0) / unit]));
+    } else {
+      statsPeriodSales.filter((sale) => Number(sale.amount_paid_minor || 0) > 0).forEach((sale) => rows.push(["Ingreso", profitPeriodDateKey(sale.sold_at || sale.created_at), sale.sale_number || "Venta", Number(sale.amount_paid_minor || 0) / unit]));
+    }
     statsPeriodExpenses.forEach((expense) => rows.push(["Gasto", profitPeriodDateKey(expense.expense_date), expense.description || expense.category || "Gasto", Number(expense.amount_minor || 0) / unit]));
-    statsPeriodPurchasePayments.forEach((payment) => rows.push(["Compra pagada", profitPeriodDateKey(payment.paid_at), payment.purchase_id || "Pago de compra", Number(payment.amount_minor || 0) / unit]));
+    if (statsPurchasePayments.length) {
+      const purchaseNames = new Map(statsPurchases.map((purchase) => [purchase.id, purchase.purchase_number || "Compra"]));
+      statsPeriodPurchasePayments.forEach((payment) => rows.push(["Compra pagada", profitPeriodDateKey(payment.paid_at), purchaseNames.get(payment.purchase_id) || "Pago de compra", Number(payment.amount_minor || 0) / unit]));
+    } else {
+      statsPeriodPurchases.filter((purchase) => Number(purchase.amount_paid_minor || 0) > 0).forEach((purchase) => rows.push(["Compra pagada", profitPeriodDateKey(purchase.purchased_at || purchase.created_at), purchase.purchase_number || "Compra", Number(purchase.amount_paid_minor || 0) / unit]));
+    }
     const csv = "\uFEFF" + rows.map((row) => row.map((value) => {
       const cell = String(value ?? "");
       return /[;\r\n"]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
@@ -3079,6 +3143,7 @@ export default function App() {
 <div className="sale-record-customer">{sale.customer_name}</div>
 {sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
+{canPermission("sales_view") && <div className="quote-share-actions sale-document-actions"><button type="button" className="secondary-button action-small" onClick={() => printSaleDocument(sale)}>Factura / PDF / Imprimir</button><button type="button" className="primary-button action-small" onClick={() => shareSaleImage(sale)}>Compartir imagen</button></div>}
 <div className="sale-payment-history"><div className="sale-payment-history-heading"><strong>Historial de abonos</strong><span>{(sale.payments||[]).length} {(sale.payments||[]).length===1?"pago":"pagos"}</span></div>
 {(sale.payments||[]).length ? <div className="sale-payment-list">{sale.payments.map((paymentRow)=><div className="sale-payment-row" key={paymentRow.id}><div><strong>{money(paymentRow.amount_minor,sale.currency_code||currencyCode)}</strong><span>{paymentRow.payment_method} · {new Date(paymentRow.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span>{paymentRow.notes&&<small>{paymentRow.notes}</small>}</div></div>)}</div> : <p className="sale-payment-empty">No hay abonos registrados.</p>}
 {canManageSales && Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))>0 && !["canceled","refunded","draft"].includes(sale.status) && <button type="button" className="secondary-button sale-register-payment-button" onClick={()=>salePaymentFormFor===sale.id?setSalePaymentFormFor(null):openSalePaymentForm(sale)}>{salePaymentFormFor===sale.id?"Cancelar":"＋ Registrar abono"}</button>}

@@ -1584,10 +1584,6 @@ export default function App() {
     if (screen === "catalog" && activeBusiness?.id) loadCatalogAdminData();
   }, [screen, activeBusiness?.id]);
 
-  useEffect(() => {
-    if (catalogPage > catalogTotalPages) setCatalogPage(catalogTotalPages);
-  }, [catalogPage, catalogTotalPages]);
-
   async function loadStatsData() {
     if (!activeBusiness?.id || screen !== "stats") return;
     setStatsLoading(true);
@@ -2327,6 +2323,10 @@ export default function App() {
     return [product.name, product.description, category].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedCatalogSearch);
   });
   const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalogProducts.length / catalogPageSize));
+  useEffect(() => {
+    if (catalogPage > catalogTotalPages) setCatalogPage(catalogTotalPages);
+  }, [catalogPage, catalogTotalPages]);
+
   const catalogPageProducts = filteredCatalogProducts.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
   const publishedCatalogCount = catalogProducts.filter((product) => product.is_published && product.is_sellable).length;
   const profitPeriodDateKey = (value) => {

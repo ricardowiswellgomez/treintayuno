@@ -393,7 +393,17 @@ function PublicCatalog({ businessId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [paymentEnabled, setPaymentEnabled] = useState(false);
+  const [paymentStatusLoading, setPaymentStatusLoading] = useState(true);
+  const [returnedOrder, setReturnedOrder] = useState(null);
+  const [orderStatusLoading, setOrderStatusLoading] = useState(false);
   const pageSize = 12;
+  const returnOrderReference = new URLSearchParams(window.location.search).get("order") || "";
 
   useEffect(() => {
     let active = true;
@@ -412,6 +422,36 @@ function PublicCatalog({ businessId }) {
     return () => { active = false; };
   }, [businessId, page, retryKey]);
 
+  useEffect(() => {
+    let active = true;
+    setPaymentStatusLoading(true);
+    supabase.functions.invoke("public-checkout", { body: { action: "status" } })
+      .then(({ data, error: statusError }) => {
+        if (active) setPaymentEnabled(!statusError && data?.enabled === true);
+      })
+      .catch(() => { if (active) setPaymentEnabled(false); })
+      .finally(() => { if (active) setPaymentStatusLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const refreshReturnedOrder = async () => {
+    if (!returnOrderReference) return;
+    setOrderStatusLoading(true);
+    try {
+      const { data, error: statusError } = await supabase.rpc("get_public_store_order_status", {
+        p_order_reference: returnOrderReference
+      });
+      if (statusError) throw statusError;
+      setReturnedOrder(data || null);
+    } catch {
+      setReturnedOrder({ payment_status: "unknown", order_reference: returnOrderReference });
+    } finally { setOrderStatusLoading(false); }
+  };
+
+  useEffect(() => {
+    if (returnOrderReference && businessId) refreshReturnedOrder();
+  }, [returnOrderReference, businessId]);
+
   const business = payload?.business;
   const catalogTheme = normalizeBusinessTheme(business?.theme);
   const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
@@ -422,10 +462,81 @@ function PublicCatalog({ businessId }) {
   };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);
+  const cartCount = cart.reduce((sum, line) => sum + Number(line.quantity || 0), 0);
+  const cartTotal = cart.reduce((sum, line) => sum + Number(line.product.sale_price_minor || 0) * Number(line.quantity || 0), 0);
+  const addToCart = (product) => {
+    setCart((current) => {
+      const found = current.find((line) => line.product.id === product.id);
+      if (found) return current.map((line) => line.product.id === product.id ? { ...line, quantity: Math.min(1000, Number(line.quantity) + 1) } : line);
+      return [...current, { product, quantity: 1 }];
+    });
+    setCheckoutError("");
+    setCartOpen(true);
+  };
+  const updateCartQuantity = (productId, quantity) => {
+    const next = Number(quantity);
+    if (!Number.isFinite(next) || next <= 0) {
+      setCart((current) => current.filter((line) => line.product.id !== productId));
+      return;
+    }
+    setCart((current) => current.map((line) => line.product.id === productId ? { ...line, quantity: Math.min(1000, Math.round(next * 1000) / 1000) } : line));
+  };
+  const submitCheckout = async (event) => {
+    event.preventDefault();
+    if (!cart.length || checkoutBusy) return;
+    if (!paymentEnabled) {
+      setCheckoutError("Los pagos en línea aún no están habilitados. No se ha creado ningún pedido ni se ha cobrado nada.");
+      return;
+    }
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    try {
+      const { data: order, error: orderError } = await supabase.rpc("create_public_store_order", {
+        p_business_id: businessId,
+        p_customer_name: checkoutForm.name.trim(),
+        p_customer_phone: checkoutForm.phone.trim(),
+        p_customer_email: checkoutForm.email.trim() || null,
+        p_customer_address: checkoutForm.address.trim() || null,
+        p_customer_notes: checkoutForm.notes.trim() || null,
+        p_items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity }))
+      });
+      if (orderError) throw orderError;
+      if (!order?.order_id || !order?.checkout_token) throw new Error("No se pudo preparar el pedido para el pago.");
+      const { data: checkout, error: checkoutErrorResult } = await supabase.functions.invoke("public-checkout", {
+        body: { action: "create", order_id: order.order_id, checkout_token: order.checkout_token }
+      });
+      if (checkoutErrorResult || !checkout?.checkout_url) {
+        throw new Error(checkout?.error || checkoutErrorResult?.message || "No se pudo iniciar el pago seguro. Inténtalo de nuevo.");
+      }
+      window.location.assign(checkout.checkout_url);
+    } catch (e) {
+      setCheckoutError(e?.message || friendlyError(e));
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+  const returnedStatus = returnedOrder?.payment_status;
+  const returnedMessage = returnedStatus === "approved"
+    ? "Pago verificado. Tu pedido quedó confirmado."
+    : returnedStatus === "pending"
+      ? "Estamos esperando la confirmación del proveedor de pagos. Si ya pagaste, actualiza el estado en unos segundos."
+      : returnedStatus === "declined"
+        ? "El pago fue rechazado. Puedes volver al catálogo e intentarlo de nuevo."
+        : returnedStatus === "voided"
+          ? "El pago fue cancelado."
+          : returnedStatus === "review"
+            ? "Recibimos la notificación de pago, pero el pedido requiere revisión del negocio. No vuelvas a pagar; contacta al comercio."
+            : returnedStatus === "unknown"
+              ? "No pudimos consultar el estado del pago en este momento."
+              : "";
+
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "Treintayuno"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : "31"}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
+      <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
+        <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
+      </button>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
@@ -438,7 +549,13 @@ function PublicCatalog({ businessId }) {
           {(business.commercial_profile?.address || business.commercial_profile?.city) && <div><strong>Dirección</strong><span>{[business.commercial_profile.address, business.commercial_profile.city].filter(Boolean).join(", ")}</span></div>}
           {business.commercial_profile?.website && <div><strong>Sitio web</strong><span>{business.commercial_profile.website}</span></div>}
           {business.commercial_profile?.hours && <div><strong>Horario de atención</strong><span>{business.commercial_profile.hours}</span></div>}
-        </section>
+        </section>}
+        {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
+          <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
+          {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
+          </div>
+          <button type="button" className="secondary-button" onClick={refreshReturnedOrder} disabled={orderStatusLoading}>{orderStatusLoading ? "Consultando…" : "Actualizar estado"}</button>
+        </div>}
         {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id}>
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
@@ -447,6 +564,7 @@ function PublicCatalog({ businessId }) {
             {product.description && <p>{product.description}</p>}
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
+            <button type="button" className="public-catalog-add-button" onClick={() => addToCart(product)}><span aria-hidden="true">＋</span> Añadir al carrito</button>
           </div>
         </article>)}</div>
           : <div className="public-catalog-message"><h2>Pronto habrá productos aquí</h2><p>Este negocio aún no ha publicado productos para compartir.</p></div>}
@@ -457,6 +575,32 @@ function PublicCatalog({ businessId }) {
         </nav>}
       </section>}
     <footer className="public-catalog-footer">Catálogo compartido con Treintayuno</footer>
+
+    {cartOpen && <div className="public-cart-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCartOpen(false); }}>
+      <section className="public-cart-panel" role="dialog" aria-modal="true" aria-labelledby="public-cart-title">
+        <header className="public-cart-header"><div><span>COMPRA SEGURA</span><h2 id="public-cart-title">Tu carrito <small>({cartCount})</small></h2></div><button type="button" className="public-cart-close" onClick={() => setCartOpen(false)} aria-label="Cerrar carrito">×</button></header>
+        {cart.length === 0 ? <div className="public-cart-empty"><span aria-hidden="true">🛍️</span><h3>Tu carrito está vacío</h3><p>Explora el catálogo y añade los productos que te interesen.</p><button type="button" className="public-catalog-add-button" onClick={() => setCartOpen(false)}>Seguir explorando</button></div>
+          : <>
+            <div className="public-cart-lines">{cart.map((line) => <article className="public-cart-line" key={line.product.id}>
+              <div className="public-cart-line-copy"><strong>{line.product.name}</strong><span>{money(line.product.sale_price_minor, business?.currency_code || "COP")} por {line.product.unit_name || "unidad"}</span><b>{money(Number(line.product.sale_price_minor || 0) * Number(line.quantity), business?.currency_code || "COP")}</b></div>
+              <div className="public-cart-quantity"><button type="button" onClick={() => updateCartQuantity(line.product.id, Number(line.quantity) - 1)} aria-label={`Quitar una unidad de ${line.product.name}`}>−</button><span>{line.quantity}</span><button type="button" onClick={() => updateCartQuantity(line.product.id, Number(line.quantity) + 1)} aria-label={`Añadir una unidad de ${line.product.name}`}>＋</button><button type="button" className="public-cart-remove" onClick={() => updateCartQuantity(line.product.id, 0)}>Eliminar</button></div>
+            </article>)}</div>
+            <div className="public-cart-total"><span>Total del pedido</span><strong>{money(cartTotal, business?.currency_code || "COP")}</strong></div>
+            <form className="public-checkout-form" onSubmit={submitCheckout}>
+              <h3>Datos para el pedido</h3>
+              <label><span>Nombre completo *</span><input required minLength={2} maxLength={160} autoComplete="name" value={checkoutForm.name} onChange={(e) => setCheckoutForm((current) => ({ ...current, name: e.target.value }))} placeholder="¿A nombre de quién?" /></label>
+              <label><span>Celular / WhatsApp *</span><input required minLength={5} maxLength={40} autoComplete="tel" inputMode="tel" value={checkoutForm.phone} onChange={(e) => setCheckoutForm((current) => ({ ...current, phone: e.target.value }))} placeholder="Tu número de contacto" /></label>
+              <label><span>Correo electrónico (opcional)</span><input type="email" maxLength={254} autoComplete="email" value={checkoutForm.email} onChange={(e) => setCheckoutForm((current) => ({ ...current, email: e.target.value }))} placeholder="tucorreo@ejemplo.com" /></label>
+              <label><span>Dirección de entrega (opcional)</span><input maxLength={250} autoComplete="street-address" value={checkoutForm.address} onChange={(e) => setCheckoutForm((current) => ({ ...current, address: e.target.value }))} placeholder="Dirección, barrio y ciudad" /></label>
+              <label><span>Notas del pedido (opcional)</span><textarea maxLength={1000} rows={2} value={checkoutForm.notes} onChange={(e) => setCheckoutForm((current) => ({ ...current, notes: e.target.value }))} placeholder="Indicaciones para el negocio" /></label>
+              {checkoutError && <p className="public-checkout-error" role="alert">{checkoutError}</p>}
+              {!paymentStatusLoading && !paymentEnabled && <p className="public-checkout-unavailable">El pago en línea aún no está configurado para este comercio. No se realizará ningún cobro hasta que el proveedor esté habilitado.</p>}
+              <button type="submit" className="public-checkout-pay-button" disabled={checkoutBusy || paymentStatusLoading || !paymentEnabled}>{checkoutBusy ? "Preparando pago seguro…" : paymentStatusLoading ? "Comprobando pagos…" : "Continuar al pago seguro"}</button>
+              <p className="public-checkout-security"><span aria-hidden="true">🔒</span> El pago se procesa en la plataforma segura de Wompi. El pedido solo se confirma cuando el proveedor verifica el pago.</p>
+            </form>
+          </>}
+      </section>
+    </div>}
   </main>;
 }
 

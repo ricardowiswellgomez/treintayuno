@@ -1071,6 +1071,31 @@ export default function App() {
   const [aiMessage, setAiMessage] = useState("");
   const [aiHistory, setAiHistory] = useState([]);
   const [aiBusy, setAiBusy] = useState(false);
+  const aiMessagesRef = useRef(null);
+  const aiAutoScrollRef = useRef(true);
+  const [aiShowLatest, setAiShowLatest] = useState(false);
+
+  useEffect(() => {
+    const container = aiMessagesRef.current;
+    if (!aiOpen || !container || !aiAutoScrollRef.current) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
+  }, [aiHistory, aiBusy, aiOpen]);
+
+  function handleAiMessagesScroll() {
+    const container = aiMessagesRef.current;
+    if (!container) return;
+    const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 72;
+    aiAutoScrollRef.current = nearBottom;
+    setAiShowLatest(!nearBottom);
+  }
+
+  function jumpToLatestAiMessage() {
+    const container = aiMessagesRef.current;
+    if (!container) return;
+    aiAutoScrollRef.current = true;
+    setAiShowLatest(false);
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }
   const [search, setSearch] = useState("");
   useEffect(() => {
     setAiHistory([]);
@@ -1093,6 +1118,8 @@ export default function App() {
     const message = aiMessage.trim();
     if (!message || aiBusy) return;
     setAiMessage("");
+    aiAutoScrollRef.current = true;
+    setAiShowLatest(false);
     const nextHistory = [...aiHistory, { role: "user", content: message }];
     setAiHistory(nextHistory);
     setAiBusy(true);
@@ -4423,11 +4450,12 @@ export default function App() {
       <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>
         {aiOpen && <section id="treintayuno-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
           <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
-          <div className="ai-assistant-messages" aria-live="polite">
+          <div ref={aiMessagesRef} onScroll={handleAiMessagesScroll} className="ai-assistant-messages" aria-live="polite">
             {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
             {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && item.elapsedMs != null && <small className="ai-assistant-meta">{item.dataBacked ? "Información del negocio" : "Respuesta del asistente"}</small>}</div>)}
             {aiBusy && <div className="ai-assistant-thinking">Estoy revisando la información…</div>}
           </div>
+          {aiShowLatest && <button type="button" className="ai-assistant-jump-latest" onClick={jumpToLatestAiMessage} aria-label="Volver al final de la conversación">↓ Volver al final</button>}
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Uso la información registrada en este negocio y no invento cifras. Si algún dato no está disponible, te lo diré con claridad.</p>
         </section>}

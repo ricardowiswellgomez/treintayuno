@@ -756,6 +756,13 @@ function PublicCatalog({ businessId }) {
               ? "No pudimos consultar el estado del pago en este momento."
               : "";
 
+  async function sharePublicProduct(product) {
+    const url = window.location.origin + "/?catalog=" + encodeURIComponent(businessId) + "#producto-" + encodeURIComponent(product.id);
+    const text = [product.name, product.description || "", "Precio: " + money(product.sale_price_minor, business?.currency_code || "COP"), url].filter(Boolean).join("\n");
+    try { if (navigator.share) await navigator.share({ title: product.name, text, url }); else await navigator.clipboard.writeText(text); }
+    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } }
+  }
+
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "Treintayuno"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : "31"}</a>
@@ -778,7 +785,7 @@ function PublicCatalog({ businessId }) {
         </section>}
         {business.commercial_profile?.cardEnabled && <section className="public-business-card" id="tarjeta-presentacion" style={{"--card-primary":catalogTheme.primary,"--card-surface":catalogTheme.surface,"--card-text":catalogTheme.text}}>
           {catalogLogoUrl && <img className="public-business-card-logo" src={catalogLogoUrl} alt="Logo del negocio" />}
-          <div className="public-business-card-copy"><span>TARJETA DE PRESENTACIÓN</span><h2>{business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name}</h2>{business.commercial_profile.cardEmail && <a href={"mailto:"+business.commercial_profile.cardEmail}>{business.commercial_profile.cardEmail}</a>}{business.commercial_profile.cardPhone && <a href={"https://wa.me/"+String(business.commercial_profile.cardPhone).replace(/\D/g,"")}>{business.commercial_profile.cardPhone}</a>}{business.commercial_profile.cardText && <p>{business.commercial_profile.cardText}</p>}</div>
+          <div className="public-business-card-copy"><span>TARJETA DE PRESENTACIÓN</span><h2>{business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name}</h2>{business.commercial_profile.cardEmail && <a href={"mailto:"+business.commercial_profile.cardEmail}>{business.commercial_profile.cardEmail}</a>}{business.commercial_profile.cardPhone && <a href={"tel:"+business.commercial_profile.cardPhone}>{business.commercial_profile.cardPhone}</a>}{business.commercial_profile.cardText && <p>{business.commercial_profile.cardText}</p>}</div>
           <button type="button" className="public-business-card-share" onClick={async () => { const url=window.location.origin+"/?catalog="+encodeURIComponent(businessId)+"#tarjeta-presentacion"; const text=[business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name,business.commercial_profile.cardEmail,business.commercial_profile.cardPhone,business.commercial_profile.cardText,url].filter(Boolean).join("\n"); try { if(navigator.share) await navigator.share({title:"Tarjeta de presentación",text,url}); else { await navigator.clipboard.writeText(text); } } catch(e) { if(e?.name!=="AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } } }}><span aria-hidden="true">↗</span> Compartir tarjeta</button>
         </section>}
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
@@ -791,7 +798,7 @@ function PublicCatalog({ businessId }) {
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
-            <h2>{product.name}</h2>
+            <div className="public-catalog-product-heading"><h2>{product.name}</h2><button type="button" className="public-product-share" title={"Compartir "+product.name} aria-label={"Compartir "+product.name} onClick={()=>sharePublicProduct(product)}>↗</button></div>
             {product.description && <p>{product.description}</p>}
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>

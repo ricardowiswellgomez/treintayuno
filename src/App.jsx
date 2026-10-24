@@ -835,6 +835,7 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("sales");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -857,6 +858,7 @@ export default function App() {
   const [productPageSize, setProductPageSize] = useState(12);
   const [showArchivedProducts, setShowArchivedProducts] = useState(false);
   const [viewMode, setViewMode] = useState("rows");
+  const [productSort, setProductSort] = useState("name");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
@@ -1023,7 +1025,9 @@ export default function App() {
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsTab, setSettingsTab] = useState("general");
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "" });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", cardEnabled: false, cardName: "", cardEmail: "", cardPhone: "", cardText: "", hoursSchedule: {} });
+  const [aiVoiceListening, setAiVoiceListening] = useState(false);
+  const aiRecognitionRef = useRef(null);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
@@ -1333,7 +1337,7 @@ export default function App() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "" });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", cardEnabled: Boolean(savedCommercial.cardEnabled), cardName: savedCommercial.cardName || "", cardEmail: savedCommercial.cardEmail || savedCommercial.email || "", cardPhone: savedCommercial.cardPhone || savedCommercial.phone || "", cardText: savedCommercial.cardText || "", hoursSchedule: savedCommercial.hoursSchedule || {} });
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
@@ -1504,9 +1508,17 @@ export default function App() {
       city: String(profile?.city || "").trim(),
       website: String(profile?.website || "").trim(),
       publicDescription: String(profile?.publicDescription || "").trim(),
-      hours: String(profile?.hours || "").trim()
+      hours: String(profile?.hours || "").trim(),
+      hoursSchedule: profile?.hoursSchedule && typeof profile.hoursSchedule === "object" ? profile.hoursSchedule : {},
+      orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
+      cardEnabled: Boolean(profile?.cardEnabled), cardName: String(profile?.cardName || "").trim(),
+      cardEmail: String(profile?.cardEmail || profile?.email || "").trim(), cardPhone: String(profile?.cardPhone || profile?.phone || "").trim(),
+      cardText: String(profile?.cardText || "").trim()
     });
-    const commercialProfile = normalizeCommercialProfile(settingsCommercialProfile);
+    const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
+    const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
+    const hoursText = days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n");
+    const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:schedule, hours:hoursText});
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };
@@ -3082,7 +3094,7 @@ export default function App() {
     return ({ paid: "Pagada", partially_paid: "Con abono", pending: "Por cobrar", draft: "Borrador", canceled: "Anulada", refunded: "Devuelta" })[status] || status || "—";
   }
 
-  const filteredProducts = products;
+  const filteredProducts = [...products].sort((a, b) => productSort === "code" ? String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" }) || String(a.name || "").localeCompare(String(b.name || ""), "es") : productSort === "price" ? Number(a.sale_price_minor || 0) - Number(b.sale_price_minor || 0) : String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" }));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
   const filteredCatalogProducts = catalogProducts.filter((product) => {
@@ -3271,7 +3283,7 @@ export default function App() {
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
-    setScreen(next); setError(""); setNotice(""); setShowProductForm(false);
+    setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "quotes") clearQuoteDraft();
     if (next === "purchases") { setPurchaseModuleTab(purchaseTab); if (purchaseTab !== "suppliers") setShowSupplierForm(false); }
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }

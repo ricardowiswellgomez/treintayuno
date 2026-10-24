@@ -20,6 +20,8 @@ function AppIcon({ name, size = 20 }) {
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
     coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,
+    edit: <><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></>,
+    trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>
   };
@@ -572,7 +574,7 @@ function CouponsAdmin({ business }) {
       <div className="coupon-list">{coupons.map(coupon => <article className="panel coupon-card" key={coupon.id}>
         <div className="coupon-card-top"><div><span className={"coupon-status " + (coupon.is_active ? "active" : "inactive")}>{coupon.is_active ? "Activo" : "Inactivo"}</span><h4>{coupon.code}</h4>{coupon.description && <p>{coupon.description}</p>}</div><strong>{coupon.discount_type === "percentage" ? coupon.discount_value + "%" : moneyInput(coupon.discount_value)}</strong></div>
         <div className="coupon-meta"><span>Mínimo: {moneyInput(coupon.minimum_subtotal_minor)}</span><span>Usos: {coupon.usage_count}{coupon.usage_limit == null ? " / ∞" : " / " + coupon.usage_limit}</span>{coupon.maximum_discount_minor != null && <span>Tope: {moneyInput(coupon.maximum_discount_minor)}</span>}{coupon.ends_at && <span>Hasta: {new Date(coupon.ends_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span>}</div>
-        <div className="coupon-card-actions"><button type="button" className="secondary-button" onClick={() => edit(coupon)}>Editar</button><button type="button" className="secondary-button" onClick={() => toggleActive(coupon)}>{coupon.is_active ? "Desactivar" : "Activar"}</button><button type="button" className="text-danger-button" onClick={() => remove(coupon)}>Eliminar</button></div>
+        <div className="coupon-card-actions"><button type="button" className="icon-action-button" title="Editar cupón" aria-label="Editar cupón" onClick={() => edit(coupon)}><AppIcon name="edit" size={15}/></button><button type="button" className="secondary-button" onClick={() => toggleActive(coupon)}>{coupon.is_active ? "Desactivar" : "Activar"}</button><button type="button" className="icon-action-button icon-action-danger" title="Eliminar cupón" aria-label="Eliminar cupón" onClick={() => remove(coupon)}><AppIcon name="trash" size={15}/></button></div>
       </article>)}</div>}
   </section>;
 }
@@ -4154,8 +4156,8 @@ export default function App() {
                 {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
                   {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
                     <span className="category-admin-name">{category.name}</span>
-                    <div className="category-admin-actions"><button type="button" className="text-button" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}>Editar</button>
-                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="text-button danger-text" onClick={() => setConfirmDeleteCategoryId(category.id)}>Eliminar</button>}
+                    <div className="category-admin-actions"><button type="button" className="icon-action-button" title="Editar categoría" aria-label="Editar categoría" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={15}/></button>
+                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title="Eliminar categoría" aria-label="Eliminar categoría" onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={15}/></button>}
                     </div>
                   </>}
                 </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
@@ -4256,7 +4258,7 @@ export default function App() {
                         <td><span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
-                          <button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}
+                          <button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}><AppIcon name="edit" size={16}/></button>}
                         </div></td>
                       </tr>
                     </React.Fragment>)}</tbody>

@@ -37,6 +37,7 @@ const areas = [
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
   { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
+  { icon: "₱", title: "Pagos verificados", description: "Conecta la cuenta de cobro de este negocio.", screen: "payments" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" }
 ];
 
@@ -386,6 +387,76 @@ function CatalogAdminImage({ businessId, product }) {
   return <span className="catalog-admin-symbol" ref={setElement} title={product.name}>
     {source && !failed ? <img src={source} alt="" loading="lazy" onError={() => setFailed(true)} /> : "▦"}
   </span>;
+}
+
+function PaymentsAdmin({ business }) {
+  const [status, setStatus] = useState({ enabled: false, configured: false, environment: null });
+  const [environment, setEnvironment] = useState("sandbox");
+  const [publicKey, setPublicKey] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
+  const [integritySecret, setIntegritySecret] = useState("");
+  const [eventsSecret, setEventsSecret] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const load = async () => {
+    if (!business?.id) { setLoading(false); return; }
+    setLoading(true); setError("");
+    try {
+      const { data, error: statusError } = await supabase.functions.invoke("public-checkout", { body: { action: "status", business_id: business.id } });
+      if (statusError) throw statusError;
+      const next = { enabled: Boolean(data?.enabled), configured: Boolean(data?.configured), environment: data?.environment || "sandbox" };
+      setStatus(next); setEnabled(next.enabled); setEnvironment(next.environment);
+    } catch (e) { setError(e?.message || "No se pudo consultar la configuración de pagos."); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, [business?.id]);
+  const save = async (event) => {
+    event.preventDefault();
+    if (!business?.id || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: saveError } = await supabase.functions.invoke("public-checkout", {
+        body: {
+          action: "configure", business_id: business.id, environment, enabled,
+          public_key: publicKey.trim(), private_key: privateKey.trim(),
+          integrity_secret: integritySecret.trim(), events_secret: eventsSecret.trim()
+        }
+      });
+      if (saveError || !data?.saved) throw new Error(data?.error || saveError?.message || "No se pudo guardar la configuración.");
+      setPublicKey(""); setPrivateKey(""); setIntegritySecret(""); setEventsSecret("");
+      setNotice(enabled ? "Credenciales guardadas. Los cobros verificados están activados para este negocio." : "La configuración se guardó y los cobros quedaron desactivados.");
+      await load();
+    } catch (e) { setError(e?.message || "No se pudo guardar la configuración."); }
+    finally { setSaving(false); }
+  };
+  const canManage = ["owner", "admin"].includes(business?.role);
+  if (!canManage) return <section className="payments-page"><div className="panel"><h2>Acceso restringido</h2><p>Solo el propietario o un administrador puede configurar los cobros de este negocio.</p></div></section>;
+  return <section className="payments-page">
+    <div className="products-intro"><div><h2>Recibe pagos verificados</h2><p>Conecta las credenciales de Wompi de este negocio. Cada negocio guarda sus propias credenciales y recibe los pagos en su propia cuenta.</p></div><button type="button" className="secondary-button" onClick={load} disabled={loading}>Actualizar estado</button></div>
+    <div className={"panel payment-status-panel " + (status.enabled ? "is-enabled" : "")}>
+      <span className={"coupon-status " + (status.enabled ? "active" : "inactive")}>{loading ? "Consultando…" : status.enabled ? "Cobros activos" : status.configured ? "Cobros desactivados" : "Sin configurar"}</span>
+      <h3>{status.enabled ? "Tu catálogo puede recibir pagos en línea" : "Configura los cobros de tu negocio"}</h3>
+      <p>{status.enabled ? "Wompi redirige al cliente a su checkout seguro. Treintayuno confirma el pedido solo después de verificar el evento y consultar la transacción con Wompi." : "Mientras no estén configuradas las credenciales, el catálogo no permitirá iniciar un cobro ni mostrará una falsa confirmación."}</p>
+      {status.configured && <small>Entorno actual: {status.environment === "production" ? "Producción" : "Pruebas (sandbox)"}</small>}
+    </div>
+    <form className="panel payment-config-form" onSubmit={save}>
+      <h3>Credenciales de Wompi</h3>
+      <p className="helper-text">Las credenciales se envían directamente al servidor y no se vuelven a mostrar. Déjalas en blanco para conservar las ya guardadas; al configurar por primera vez, completa los cuatro campos.</p>
+      <label><span>Entorno</span><select value={environment} onChange={e => setEnvironment(e.target.value)}><option value="sandbox">Pruebas (sandbox)</option><option value="production">Producción</option></select></label>
+      <label><span>Llave pública</span><input autoComplete="off" value={publicKey} onChange={e => setPublicKey(e.target.value)} placeholder={status.configured ? "Guardada · escribe solo si deseas cambiarla" : "pub_test_… o pub_prod_…"} /></label>
+      <label><span>Llave privada</span><input type="password" autoComplete="new-password" value={privateKey} onChange={e => setPrivateKey(e.target.value)} placeholder={status.configured ? "Guardada · no se muestra por seguridad" : "prv_test_… o prv_prod_…"} /></label>
+      <label><span>Secreto de integridad</span><input type="password" autoComplete="new-password" value={integritySecret} onChange={e => setIntegritySecret(e.target.value)} placeholder={status.configured ? "Guardado · no se muestra por seguridad" : "Secreto de integridad de Wompi"} /></label>
+      <label><span>Secreto de eventos (webhook)</span><input type="password" autoComplete="new-password" value={eventsSecret} onChange={e => setEventsSecret(e.target.value)} placeholder={status.configured ? "Guardado · no se muestra por seguridad" : "Secreto de eventos de Wompi"} /></label>
+      <label className="coupon-active-toggle"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> Activar cobros verificados para este negocio</label>
+      {error && <p className="message error" role="alert">{error}</p>}
+      {notice && <p className="message success" role="status">{notice}</p>}
+      <div className="coupon-editor-actions"><button className="primary-button" type="submit" disabled={saving || loading}>{saving ? "Guardando credenciales…" : "Guardar configuración"}</button></div>
+      <p className="helper-text">Antes de cobrar en producción, registra en el panel de Wompi la URL del webhook de esta función y prueba una transacción aprobada, rechazada y cancelada. No compartas las llaves privadas.</p>
+    </form>
+  </section>;
 }
 
 function CouponsAdmin({ business }) {
@@ -4016,6 +4087,8 @@ export default function App() {
             </div>}
             
           </section>
+        ) : screen === "payments" ? (
+          <PaymentsAdmin business={activeBusiness} />
         ) : screen === "coupons" ? (
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (

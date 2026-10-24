@@ -2212,3 +2212,62 @@ button{line-height:1.35}
 .settings-card-visibility{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 16px}
 .settings-card-visibility label{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:12px}
 .settings-card-visibility input{width:17px;height:17px;accent-color:var(--green)}
+
+
+/* Menú de módulos a pantalla completa: exclusivamente en teléfonos. */
+@media(max-width:600px){
+  .mobile-module-navigation{
+    position:fixed!important;
+    inset:0!important;
+    z-index:9999!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    width:100vw!important;
+    height:100vh!important;
+    height:100dvh!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    background:var(--background,#f7f6f1)!important;
+  }
+  .mobile-module-menu-heading{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex:0 0 auto;
+    min-height:52px;
+    padding:0 2px 8px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:4px;
+    color:var(--ink);
+  }
+  .mobile-module-menu-heading>strong{font:800 22px Manrope,sans-serif;letter-spacing:-.6px}
+  .mobile-module-menu-close{
+    display:grid;
+    place-items:center;
+    width:44px;
+    height:44px;
+    border:1px solid var(--line);
+    border-radius:13px;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:30px;
+    line-height:1;
+  }
+  .mobile-module-card{
+    flex:0 0 auto;
+    grid-template-columns:50px minmax(0,1fr) 18px!important;
+    min-height:70px!important;
+    padding:13px 14px!important;
+    border-radius:16px!important;
+    gap:13px!important;
+    box-shadow:0 3px 12px #1b271408;
+  }
+  .mobile-module-card>span{gap:0!important}
+  .mobile-module-card strong{font-size:15px!important;line-height:1.35}
+  .mobile-module-card small{display:none!important}
+  .mobile-module-card>svg,.mobile-module-card>.app-icon{width:46px!important;height:46px!important}
+}

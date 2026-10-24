@@ -3333,7 +3333,7 @@ export default function App() {
                 {[["day","Día"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Desde / hasta"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={statsPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={statsPeriod === value} onClick={() => setStatsPeriod(value)}>{label}</button>)}
               </div>
               {statsPeriod === "custom" && <div className="stats-custom-dates"><label><span className="field-label-heading">Desde</span><input type="date" value={statsDateFrom} max={statsDateTo || todayBogotaKey} onChange={(e) => setStatsDateFrom(e.target.value)} /></label><label><span className="field-label-heading">Hasta</span><input type="date" value={statsDateTo} min={statsDateFrom || undefined} max={todayBogotaKey} onChange={(e) => setStatsDateTo(e.target.value)} /></label></div>}
-              <div className="stats-export-actions"><button type="button" className="secondary-button compact-button" onClick={downloadStatsExcel}>Exportar Excel</button><button type="button" className="primary-button compact-button" onClick={printStatsReport}>PDF / Imprimir</button></div>
+              <div className="stats-export-actions"><button type="button" className="secondary-button compact-button" onClick={downloadStatsExcel}>Exportar Excel (CSV)</button><button type="button" className="primary-button compact-button" onClick={printStatsReport}>PDF / Imprimir</button></div>
               <p className="stats-range-label">{statsRangeLabel}</p>
             </div>
             {statsLoading ? <div className="empty-state">Revisando ventas, cobros y gastos…</div> : <>

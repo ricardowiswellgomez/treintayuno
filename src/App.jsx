@@ -2386,6 +2386,8 @@ export default function App() {
 
   async function saveAllocationSettings() {
     if (!activeBusiness?.id || !isBusinessOwner) return;
+    const activePercentTotal = Object.values(allocationSettings).filter((item) => item.enabled).reduce((sum, item) => sum + Math.max(0, Number(item.percent || 0)), 0);
+    if (activePercentTotal > 100) { setError("Los porcentajes activos no pueden sumar más de 100%."); return; }
     const nextSettings = { ...(activeBusiness.settings || {}), profit_allocations: allocationSettings };
     setBusy(true); setError(""); setNotice("");
     try {
@@ -3580,7 +3582,7 @@ export default function App() {
     <div className="audit-list-heading"><span>Usuario</span><span>Qué hizo</span><span>Fecha y hora</span></div>
     {auditRows.map((entry) => {
       const roleLabel = ({owner:"Propietario",admin:"Administrador",employee:"Empleado",sin_acceso_actual:"Ya no pertenece al equipo"})[entry.actor_role] || "Usuario";
-      const typeLabel = ({sales:"venta",sale_items:"artículo de venta",sale_payments:"abono de venta",products:"producto",product_categories:"categoría",product_variants:"variante",product_images:"foto de producto",customers:"cliente",purchases:"compra",purchase_items:"artículo de compra",purchase_payments:"pago a proveedor",expenses:"gasto",suppliers:"proveedor",quotes:"cotización",quote_items:"artículo de cotización",stock_movements:"movimiento de inventario",business_coupons:"cupón"})[entry.entity_type] || String(entry.entity_type || "registro").replaceAll("_"," ");
+      const typeLabel = ({sales:"venta",sale_items:"artículo de venta",sale_payments:"abono de venta",products:"producto",product_categories:"categoría",product_variants:"variante",product_images:"foto de producto",customers:"cliente",purchases:"compra",purchase_items:"artículo de compra",purchase_payments:"pago a proveedor",expenses:"gasto",suppliers:"proveedor",quotes:"cotización",quote_items:"artículo de cotización",stock_movements:"movimiento de inventario",business_coupons:"cupón",businesses:"configuración del negocio",business_members:"acceso del equipo"})[entry.entity_type] || String(entry.entity_type || "registro").replaceAll("_"," ");
       const label = entry.details?.label || typeLabel;
       const when = new Date(entry.created_at).toLocaleString("es-CO", {timeZone:"America/Bogota", dateStyle:"medium", timeStyle:"short"});
       const changes = Object.entries(entry.details?.changes || {}).filter(([key]) => key !== "registro");
@@ -3861,7 +3863,7 @@ export default function App() {
                   <div><span>Resultado actual</span><strong>{money(profitNet, currencyCode)}</strong></div>
                   <div><span>Resultado objetivo</span><strong>{money(Math.round(profitNet * (1 + Math.max(0, Number(targetProfitPercent || 0)) / 100)), currencyCode)}</strong></div>
                   <div><span>Te falta generar</span><strong>{money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode)}</strong></div>
-                  <p>Para alcanzar esa diferencia, podrías generar aproximadamente {money(profitLineRevenue > 0 && profitGross > 0 ? Math.ceil((profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100) / (profitGross / profitLineRevenue)) : 0, currencyCode)} en ventas adicionales si mantienes el margen bruto actual, o reducir gastos por {money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode)} en el periodo. Es una guía, no una garantía.</p>
+                  <p>{profitLineRevenue > 0 && profitGross > 0 ? "Para alcanzar esa diferencia, podrías generar aproximadamente " + money(Math.ceil((profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100) / (profitGross / profitLineRevenue)), currencyCode) + " en ventas adicionales si mantienes el margen bruto actual, o reducir gastos por " + money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode) + " en el periodo." : "No hay un margen bruto positivo suficiente para estimar ventas adicionales con fiabilidad. Revisa los precios y costos, o plantea una reducción de gastos de " + money(Math.round(profitNet * Math.max(0, Number(targetProfitPercent || 0)) / 100), currencyCode) + "."} Es una guía, no una garantía.</p>
                 </div> : <p className="profit-empty-note">El resultado del periodo no es positivo todavía. Primero identifica los gastos que puedes reducir y revisa el margen de tus productos; cuando tengas una base positiva, el simulador calculará la meta porcentual.</p>}
               </section>
               <section className="profit-allocations-panel panel">

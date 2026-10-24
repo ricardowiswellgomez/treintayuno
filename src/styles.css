@@ -1983,3 +1983,64 @@ button{line-height:1.35}
 .payment-config-form input:not([type=checkbox]),.payment-config-form select{width:100%;min-height:43px;border:1px solid var(--border,#dce1d8);border-radius:9px;padding:10px 12px;background:var(--surface,#fff);color:var(--ink,#29362c);font:inherit}
 .payment-config-form input:focus,.payment-config-form select:focus{outline:2px solid #789a7a55;border-color:#789a7a}
 @media(max-width:600px){.payment-config-form,.payment-status-panel{padding:16px}}
+
+
+/* Daily movement navigation */
+.sales-date-toolbar,.audit-toolbar{display:flex;flex-direction:column;gap:12px;padding:15px 18px;margin:0 0 18px}
+.sales-date-toolbar>p,.audit-toolbar>p{margin:0;color:var(--muted);font-size:12px}
+.sales-date-toolbar .stats-period-buttons,.audit-toolbar .stats-period-buttons{display:flex;gap:6px;flex-wrap:wrap}
+.sales-date-toolbar .stats-period-button,.audit-toolbar .stats-period-button{padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:700}
+.sales-date-toolbar .stats-period-button.active,.audit-toolbar .stats-period-button.active{background:var(--green);color:#fff;border-color:var(--green)}
+/* Readable audit trail */
+.audit-page{display:flex;flex-direction:column;gap:14px}
+.audit-list{overflow:hidden}
+.audit-list-heading,.audit-row{display:grid;grid-template-columns:minmax(190px,1.05fr) minmax(240px,1.6fr) minmax(150px,.75fr);gap:18px;align-items:start;padding:15px 18px}
+.audit-list-heading{background:#f5f6f1;color:#697167;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.audit-row{border-top:1px solid var(--line)}
+.audit-actor,.audit-action{display:flex;flex-direction:column;gap:5px;min-width:0}
+.audit-actor-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.audit-actor strong,.audit-action>strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.audit-actor>span{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.audit-role{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;background:#eef0eb;color:#50594e;font-size:10px;font-weight:800;white-space:nowrap}
+.audit-role.owner{background:#e4efe5;color:#28543b}
+.audit-role.employee{background:#edf0f7;color:#465b80}
+.audit-row time{font-size:11px;line-height:1.6;color:var(--muted);font-variant-numeric:tabular-nums}
+.audit-action details{margin-top:3px;font-size:11px;color:var(--muted)}
+.audit-action summary{cursor:pointer;font-weight:700;color:var(--green)}
+.audit-action ul{padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;gap:6px}
+.audit-action li{overflow-wrap:anywhere}
+.audit-action code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;white-space:normal;overflow-wrap:anywhere}
+.audit-load-more{display:flex;justify-content:center;padding:14px;border-top:1px solid var(--line)}
+/* Profit planning and optional allocations */
+.profit-goal-panel,.profit-allocations-panel{padding:20px;display:flex;flex-direction:column;gap:16px;margin-bottom:18px}
+.profit-goal-percent,.profit-allocation-rate{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);font-weight:700}
+.profit-goal-percent>span:last-child,.profit-allocation-rate>span:last-child{display:flex;align-items:center;gap:6px;color:var(--ink)}
+.profit-goal-percent input,.profit-allocation-rate input{width:84px;min-height:36px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+.profit-goal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.profit-goal-grid>div{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:10px;background:#f5f6f1}
+.profit-goal-grid>div>span{font-size:11px;color:var(--muted)}
+.profit-goal-grid>div>strong{font-size:clamp(16px,2vw,22px);overflow-wrap:anywhere}
+.profit-goal-grid>p{grid-column:1/-1;margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+.profit-allocation-list{display:flex;flex-direction:column}
+.profit-allocation-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(140px,1fr) auto auto;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.profit-allocation-toggle{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+.profit-allocation-toggle input{width:17px;height:17px;accent-color:var(--green)}
+.profit-allocation-name{min-width:0;width:100%;height:36px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--paper);color:var(--ink);font:inherit;font-size:12px}
+.profit-allocation-row>strong{font-size:13px;white-space:nowrap}
+.profit-allocation-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;font-weight:700}
+@media(max-width:760px){
+  .audit-list-heading{display:none}
+  .audit-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:13px}
+  .audit-actor{grid-column:1/-1}
+  .audit-action{grid-column:1/-1}
+  .audit-row time{grid-column:1/-1}
+  .profit-goal-grid{grid-template-columns:1fr}
+  .profit-goal-grid>p{grid-column:auto}
+  .profit-breakdown-heading{flex-wrap:wrap}
+  .profit-goal-percent{width:100%}
+  .profit-allocation-row{grid-template-columns:minmax(0,1fr) auto;gap:10px}
+  .profit-allocation-name{grid-column:1/-1}
+  .profit-allocation-rate{grid-column:1;grid-row:2}
+  .profit-allocation-row>strong{grid-column:2;grid-row:2}
+  .profit-allocation-footer{align-items:flex-start;flex-direction:column}
+}

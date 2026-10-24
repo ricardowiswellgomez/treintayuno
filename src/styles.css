@@ -2195,3 +2195,15 @@ button{line-height:1.35}
 .icon-action-danger{color:#b44343!important;border-color:#f0d4d4!important}
 .icon-action-danger:hover{background:#fff0f0!important}
 @media(max-width:760px){.public-business-card-download{width:100%;justify-self:stretch;min-height:42px}}
+
+
+.sales-single-date{display:grid;grid-template-columns:auto minmax(150px,1fr) auto;gap:10px;align-items:end;margin:12px 0}
+.sales-single-date label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sales-single-date label>span{font-size:11px;font-weight:750;color:var(--muted)}
+.sales-single-date input{width:100%;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper);color:var(--ink);font:inherit}
+.sales-single-date button{min-height:42px;white-space:nowrap}
+@media(max-width:600px){
+ .sales-single-date{grid-template-columns:1fr 1fr;gap:8px}
+ .sales-single-date label{grid-column:1/-1;grid-row:1}
+ .sales-single-date button{width:100%;padding:9px 8px;font-size:12px}
+}

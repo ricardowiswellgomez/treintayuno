@@ -889,6 +889,9 @@ export default function App() {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState(blankSupplier);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
+  const [purchasePeriod, setPurchasePeriod] = useState("day");
+  const [purchaseDateFrom, setPurchaseDateFrom] = useState(() => todayInBogota());
+  const [purchaseDateTo, setPurchaseDateTo] = useState(() => todayInBogota());
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(todayInBogota());
   const [purchaseProductChoice, setPurchaseProductChoice] = useState("");
@@ -1985,12 +1988,19 @@ export default function App() {
       const mayReadSuppliers = privileged || Boolean(permissions.suppliers_view) || Boolean(permissions.purchases_view);
       const mayManagePurchases = !suppliersOnly && (privileged || Boolean(permissions.purchases_manage));
       const none = Promise.resolve({ data: [], error: null });
+      const periodToday = todayInBogota();
+      const shiftPeriodDate = (key, amount) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + amount); return date.toISOString().slice(0,10); };
+      const weekStart = shiftPeriodDate(periodToday, -((new Date(periodToday + "T12:00:00Z").getUTCDay() + 6) % 7));
+      const periodFrom = purchasePeriod === "day" ? periodToday : purchasePeriod === "week" ? weekStart : purchasePeriod === "month" ? periodToday.slice(0,7) + "-01" : purchasePeriod === "year" ? periodToday.slice(0,4) + "-01-01" : purchasePeriod === "custom" ? (purchaseDateFrom || periodToday) : null;
+      const periodTo = purchasePeriod === "all" ? null : purchasePeriod === "custom" ? (purchaseDateTo || periodToday) : periodToday;
+      let purchaseQuery = supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+      let expenseQuery = supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+      if (periodFrom) { purchaseQuery = purchaseQuery.gte("purchased_at", periodFrom + "T00:00:00-05:00"); expenseQuery = expenseQuery.gte("expense_date", periodFrom); }
+      if (periodTo) { purchaseQuery = purchaseQuery.lt("purchased_at", shiftPeriodDate(periodTo, 1) + "T00:00:00-05:00"); expenseQuery = expenseQuery.lte("expense_date", periodTo); }
       const [purchaseResult, expenseResult, supplierResult, productResult] = await Promise.all([
-        mayReadPurchases ? supabase.from("purchases").select("id,business_id,supplier_id,purchase_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,purchased_at,created_at", { count: "exact" })
-          .eq("business_id", activeBusiness.id).order("purchased_at", { ascending: false })
+        mayReadPurchases ? purchaseQuery.order("purchased_at", { ascending: false })
           .range((purchasesPage - 1) * purchasesPageSize, (purchasesPage - 1) * purchasesPageSize + purchasesPageSize - 1) : none,
-        mayReadExpenses ? supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date,payment_method,supplier_id,notes,created_at", { count: "exact" })
-          .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false })
+        mayReadExpenses ? expenseQuery.order("expense_date", { ascending: false })
           .range((expensesPage - 1) * expensesPageSize, (expensesPage - 1) * expensesPageSize + expensesPageSize - 1) : none,
         mayReadSuppliers ? supabase.from("suppliers").select("id,business_id,name,email,phone,tax_id,address,notes")
           .eq("business_id", activeBusiness.id).order("name").limit(500) : none,
@@ -2041,7 +2051,7 @@ export default function App() {
 
   useEffect(() => {
     if ((screen === "purchases" || screen === "suppliers") && activeBusiness?.id) loadPurchasesModuleData();
-  }, [screen, activeBusiness?.id, purchaseModuleTab, purchasesPage, purchasesPageSize, expensesPage, expensesPageSize]);
+  }, [screen, activeBusiness?.id, purchaseModuleTab, purchasesPage, purchasesPageSize, expensesPage, expensesPageSize, purchasePeriod, purchaseDateFrom, purchaseDateTo]);
 
   async function loadCatalogAdminData() {
     if (!activeBusiness?.id || screen !== "catalog") return;
@@ -3919,6 +3929,7 @@ export default function App() {
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("purchases"); setShowSupplierForm(false); }}>Compras <span>{purchasesCount}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("expenses"); setShowSupplierForm(false); }}>Gastos <span>{expensesCount}</span></button>}
             </div>}
+            {screen === "purchases" && effectivePurchaseTab !== "suppliers" && <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de compras y gastos">{[["day","Hoy"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={purchasePeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={purchasePeriod === value} onClick={() => {setPurchasePeriod(value);setPurchasesPage(1);setExpensesPage(1);}}>{label}</button>)}</div>{purchasePeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={purchaseDateFrom} max={purchaseDateTo || todayInBogota()} onChange={(e) => {setPurchaseDateFrom(e.target.value);setPurchasesPage(1);setExpensesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={purchaseDateTo} min={purchaseDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setPurchaseDateTo(e.target.value);setPurchasesPage(1);setExpensesPage(1);}} /></label></div>}<p>{purchasePeriod === "day" ? "Movimientos de hoy" : purchasePeriod === "all" ? "Todo el historial" : purchasePeriod === "custom" ? "Del " + purchaseDateFrom + " al " + purchaseDateTo : purchasePeriod === "week" ? "Desde el lunes de esta semana" : purchasePeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>}
             {effectivePurchaseTab === "purchases" ? <>
               <div className="products-intro purchase-subintro">
                 <div><h3>Compras de inventario</h3><p>Al guardar una compra, las existencias se suman en un solo paso.</p></div>

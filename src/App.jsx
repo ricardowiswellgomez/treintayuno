@@ -1871,6 +1871,116 @@ export default function App() {
     if (screen === "profitability" && activeBusiness?.id) loadProfitabilityData();
   }, [screen, activeBusiness?.id]);
 
+  function addQuoteItem() {
+    const product = quoteProducts.find((item) => item.id === quoteProductChoice);
+    const name = String(product?.name || quoteItemName).trim();
+    const quantity = Number(quoteQuantity);
+    const unitPrice = Number(quoteUnitPrice);
+    if (!name) { setError("Escribe el nombre del artículo de la cotización."); return; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { setError("La cantidad debe ser mayor que cero."); return; }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) { setError("Escribe un precio unitario válido."); return; }
+    const unitPriceMinor = toMinorUnits(unitPrice, currencyCode);
+    setQuoteItems((current) => [...current, {
+      id: crypto.randomUUID(),
+      name,
+      quantity,
+      unit_price_minor: unitPriceMinor,
+      line_total_minor: Math.round(unitPriceMinor * quantity)
+    }]);
+    setQuoteItemName("");
+    setQuoteProductChoice("");
+    setQuoteQuantity("1");
+    setQuoteUnitPrice("");
+    setError("");
+  }
+
+  function clearQuoteDraft() {
+    setShowQuoteForm(false);
+    setQuoteCustomerName("");
+    setQuoteCustomerEmail("");
+    setQuoteCustomerPhone("");
+    setQuoteNotes("");
+    setQuoteProductChoice("");
+    setQuoteItemName("");
+    setQuoteQuantity("1");
+    setQuoteUnitPrice("");
+    setQuoteItems([]);
+    const date = new Date(todayInBogota() + "T12:00:00-05:00");
+    date.setDate(date.getDate() + 15);
+    setQuoteValidUntil(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+  }
+
+  async function createQuote(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !canManageSales || quoteSaving) return;
+    if (!quoteCustomerName.trim()) { setError("Escribe el nombre del cliente o de la empresa."); return; }
+    if (!quoteItems.length) { setError("Agrega al menos un artículo a la cotización."); return; }
+    setQuoteSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const subtotal = quoteItems.reduce((sum, item) => sum + item.line_total_minor, 0);
+      const quoteNumber = "COT-" + todayInBogota().replace(/-/g, "") + "-" + crypto.randomUUID().slice(0, 6).toUpperCase();
+      const { data: quote, error: quoteError } = await supabase.from("quotes").insert({
+        business_id: activeBusiness.id,
+        quote_number: quoteNumber,
+        customer_name: quoteCustomerName.trim(),
+        customer_email: quoteCustomerEmail.trim() || null,
+        customer_phone: quoteCustomerPhone.trim() || null,
+        status: "draft",
+        currency_code: currencyCode,
+        subtotal_minor: subtotal,
+        discount_minor: 0,
+        tax_minor: 0,
+        total_minor: subtotal,
+        valid_until: quoteValidUntil || null,
+        notes: quoteNotes.trim() || null,
+        created_by: session?.user?.id || null
+      }).select("id").single();
+      if (quoteError) throw quoteError;
+      const itemRows = quoteItems.map((item) => ({
+        business_id: activeBusiness.id,
+        quote_id: quote.id,
+        item_name: item.name,
+        quantity: item.quantity,
+        unit_price_minor: item.unit_price_minor,
+        line_total_minor: item.line_total_minor
+      }));
+      const { error: itemsError } = await supabase.from("quote_items").insert(itemRows);
+      if (itemsError) {
+        const cleanup = await supabase.from("quotes").delete().eq("id", quote.id).eq("business_id", activeBusiness.id);
+        if (cleanup.error) setError("La cotización quedó creada, pero no se guardaron sus artículos. Abre Cotizaciones y comprueba el registro antes de volver a intentarlo.");
+        throw itemsError;
+      }
+      setNotice("Cotización " + quoteNumber + " guardada.");
+      clearQuoteDraft();
+      setQuotesPage(1);
+      await loadQuotesModuleData();
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setQuoteSaving(false); }
+  }
+
+  async function updateQuoteStatus(quote, nextStatus) {
+    if (!activeBusiness?.id || !canManageSales || quote.status === nextStatus) return;
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: updateError } = await supabase.from("quotes")
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
+        .eq("id", quote.id).eq("business_id", activeBusiness.id)
+        .select("id").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("No se pudo actualizar esta cotización. Comprueba los permisos de tu cuenta.");
+      setNotice("Estado de cotización actualizado.");
+      await loadQuotesModuleData();
+    } catch (e) { setError(friendlyError(e)); }
+  }
+
+  function quoteStatusLabel(status) {
+    return ({ draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Rechazada", expired: "Vencida", converted: "Convertida en venta", cancelled: "Cancelada" })[status] || status || "—";
+  }
+
   function addPurchaseLine() {
     const product = purchaseProducts.find((item) => item.id === purchaseProductChoice);
     const quantity = Number(purchaseQuantity);

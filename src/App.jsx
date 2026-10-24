@@ -1087,13 +1087,25 @@ export default function App() {
     const businessName = settingsBusinessName.trim();
     if (!businessName) { setError("Escribe el nombre del negocio."); return; }
     const nextTheme = normalizeBusinessTheme(settingsTheme);
-    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled };
+    const normalizeCommercialProfile = (profile) => ({
+      tradeName: String(profile?.tradeName || "").trim(),
+      documentNumber: String(profile?.documentNumber || "").trim(),
+      email: String(profile?.email || "").trim(),
+      phone: String(profile?.phone || "").trim(),
+      address: String(profile?.address || "").trim(),
+      city: String(profile?.city || "").trim(),
+      website: String(profile?.website || "").trim()
+    });
+    const commercialProfile = normalizeCommercialProfile(settingsCommercialProfile);
+    const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
+    const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
+    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };
     const nameChanged = businessName !== activeBusiness.name;
     const currencyChanged = settingsCurrency !== currencyCode;
     const themeChanged = JSON.stringify(nextTheme) !== JSON.stringify(normalizeBusinessTheme(activeBusiness.theme));
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
-    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged) {
+    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged) {
       setNotice("No hay cambios pendientes.");
       return;
     }
@@ -1130,10 +1142,11 @@ export default function App() {
       setSettingsCurrency(data.currency_code);
       setSettingsTheme(normalizeBusinessTheme(data.theme));
       setSettingsHelpEnabled(data.settings?.contextual_help_enabled !== false);
+      setSettingsCommercialProfile(commercialProfile);
       setSettingsLogoFile(null);
       setSettingsLogoPreview("");
       setSettingsRemoveLogo(false);
-      setNotice("Configuración guardada. El nombre, el tema, el logo y las ayudas se conservaron.");
+      setNotice("Configuración guardada. Conservamos los datos de tu empresa, el logo y la apariencia.");
       const previousLogoPath = activeBusiness.logo_path;
       if (previousLogoPath && previousLogoPath !== data.logo_path) {
         try { await supabase.storage.from("business-logos").remove([previousLogoPath]); }
@@ -1688,7 +1701,7 @@ export default function App() {
     setError("");
     try {
       let query = supabase.from("quotes")
-        .select("id,business_id,quote_number,customer_name,customer_email,customer_phone,status,currency_code,subtotal_minor,total_minor,valid_until,notes,created_at,updated_at", { count: "exact" })
+        .select("id,business_id,quote_number,customer_id,customer_name,customer_email,customer_phone,status,currency_code,subtotal_minor,total_minor,valid_until,notes,created_at,updated_at", { count: "exact" })
         .eq("business_id", activeBusiness.id)
         .order("created_at", { ascending: false });
       if (quotesStatusFilter !== "all") query = query.eq("status", quotesStatusFilter);
@@ -1956,6 +1969,8 @@ export default function App() {
 
   function clearQuoteDraft() {
     setShowQuoteForm(false);
+    setEditingQuoteId(null);
+    setEditingQuoteOriginalItems([]);
     setQuoteCustomerId("");
     setQuoteCustomerName("");
     setQuoteCustomerEmail("");
@@ -2569,6 +2584,28 @@ export default function App() {
     }
   }
 
+  function confirmSidebarDrop(payload, targetGroupId, targetItemId = null) {
+    if (!payload || !isBusinessOwner) return;
+    const accepted = window.confirm("¿Deseas moverlo aquí? Si aceptas, guardaré el nuevo orden del menú. Si cancelas, lo dejaré como estaba.");
+    if (!accepted) {
+      if (sidebarPreDragRef.current) setSidebarLayout(normalizeSidebarLayout(sidebarPreDragRef.current));
+      setDraggedSidebarItem(null); setSidebarTouchDragging(false); setSidebarEditing(false);
+      return;
+    }
+    if (payload.type === "item") moveSidebarItem(payload.id, targetGroupId, targetItemId);
+    else if (payload.type === "group") moveSidebarGroup(payload.id, targetGroupId);
+    setSidebarEditing(false);
+    setDraggedSidebarItem(null);
+    setSidebarTouchDragging(false);
+    setSidebarConfirmSave(true);
+  }
+
+  useEffect(() => {
+    if (!sidebarConfirmSave) return;
+    setSidebarConfirmSave(false);
+    saveSidebarLayout();
+  }, [sidebarConfirmSave, sidebarLayout]);
+
   function moveSidebarItem(itemId, targetGroupId, targetItemId = null) {
     updateSidebarDraft((current) => {
       const next = current.map((group) => ({ ...group, items: [...group.items] }));
@@ -2603,6 +2640,7 @@ export default function App() {
       event.preventDefault();
       return;
     }
+    sidebarPreDragRef.current = normalizeSidebarLayout(sidebarLayout);
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", payload.id);
@@ -2615,6 +2653,7 @@ export default function App() {
     if (sidebarEditing && event.target?.closest && event.target.closest("input, button")) return;
     if (!event.touches || event.touches.length !== 1) return;
     const touch = event.touches[0];
+    sidebarPreDragRef.current = normalizeSidebarLayout(sidebarLayout);
     sidebarTouchRef.current = {
       ...payload,
       startX: touch.clientX,
@@ -2679,10 +2718,16 @@ export default function App() {
   function finishSidebarTouchDrag() {
     if (sidebarLongPressTimerRef.current) window.clearTimeout(sidebarLongPressTimerRef.current);
     sidebarLongPressTimerRef.current = null;
-    if (sidebarTouchRef.current?.dragging) {
-      if (!sidebarEditing) setSidebarEditing(true);
+    const drag = sidebarTouchRef.current;
+    if (drag?.dragging) {
       setSidebarTouchDragging(false);
       setDraggedSidebarItem(null);
+      setSidebarEditing(false);
+      if (drag.lastTarget) {
+        const accepted = window.confirm("¿Deseas moverlo aquí? Si aceptas, guardaré el nuevo orden del menú. Si cancelas, desharé el movimiento.");
+        if (accepted) setSidebarConfirmSave(true);
+        else if (sidebarPreDragRef.current) setSidebarLayout(normalizeSidebarLayout(sidebarPreDragRef.current));
+      }
       window.setTimeout(() => { sidebarSuppressClickRef.current = false; }, 650);
     }
     sidebarTouchRef.current = null;
@@ -2799,35 +2844,32 @@ export default function App() {
             ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
             : <span className="business-name">{activeBusiness?.name}</span>}
         </div>
-        {!sidebarEditing && isBusinessOwner && <p className="sidebar-touch-tip">Mueve con ⠿: arrastra con el ratón o mantén presionado en celular.</p>}
-        {sidebarEditing && <p className="sidebar-edit-hint">Arrastra ⠿ con el ratón o mantenlo presionado en celular. Guarda al terminar.</p>}
+
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
           {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
-            onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); const payload = draggedSidebarItem; if (payload?.type === "item") { moveSidebarItem(payload.id, group.id); setSidebarEditing(true); } else if (payload?.type === "group") { moveSidebarGroup(payload.id, group.id); setSidebarEditing(true); } setDraggedSidebarItem(null); }}>
+            onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
             <div className="sidebar-group-heading">
               {sidebarEditing ? <><span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span>}<p className="nav-label">{group.title}</p></>}
-              {isBusinessOwner && group.id === sidebarLayout[0]?.id && <button type="button" className={sidebarEditing ? "sidebar-edit-toggle active" : "sidebar-edit-toggle"} onClick={() => sidebarEditing ? saveSidebarLayout() : setSidebarEditing(true)} title={sidebarEditing ? "Guardar cambios del menú" : "Editar menú"}>{sidebarEditing ? "Guardar" : "Editar"}</button>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
               <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row"
                 onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
-                onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); event.stopPropagation(); const payload = draggedSidebarItem; if (payload?.type === "item" && payload.id !== item.id) { moveSidebarItem(payload.id, group.id, item.id); setSidebarEditing(true); } else if (payload?.type === "group") { moveSidebarGroup(payload.id, group.id); setSidebarEditing(true); } setDraggedSidebarItem(null); }}>
+                onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); event.stopPropagation(); if (draggedSidebarItem?.id !== item.id) confirmSidebarDrop(draggedSidebarItem, group.id, item.id); }}>
                 {sidebarEditing ? <>
                   <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span>{item.icon}</span>{item.label}</button></>}
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
               </div>
             ))}
           </section>)}
-          {sidebarEditing && <div className="sidebar-editor-actions"><button type="button" className="secondary-button" onClick={() => updateSidebarDraft((current) => [...current, { id: "group-" + Date.now(), type: "group", title: "Nuevo grupo", items: [] }])}>+ Grupo</button><button type="button" className="primary-button compact-button" disabled={sidebarSaving} onClick={saveSidebarLayout}>{sidebarSaving ? "Guardando…" : "Guardar menú"}</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? (activeBusiness?.name || "Mi negocio") : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "sales" ? (
@@ -3458,7 +3500,7 @@ export default function App() {
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
           <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">{visibleAreas.length} áreas</span></div>
-          <section className="area-grid">{visibleAreas.map((area, index) => { const ready = ["products", "sales", "stats", "quotes", "customers", "purchases", "profitability", "catalog", "team"].includes(area.screen); return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon">{area.icon}</span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p></button>; })}</section>
+          <section className="area-grid">{visibleAreas.map((area, index) => { const ready = ["products", "sales", "stats", "quotes", "customers", "purchases", "profitability", "catalog", "team"].includes(area.screen); return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={25} /></span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p></button>; })}</section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>

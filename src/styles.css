@@ -1557,3 +1557,52 @@ button{line-height:1.35}
   .app-shell > .sidebar { padding-top: 5px; }
   .sidebar .brand { margin-bottom: 7px; }
 }
+
+
+/* Vitrina comercial: tarjetas, lista y navegación por páginas. */
+.catalog-filter-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;min-width:0}
+.catalog-filter-actions .view-switch{flex:0 0 auto}
+.catalog-admin-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:14px}
+.catalog-admin-cards .catalog-admin-row{display:flex;flex-direction:column;align-items:stretch;gap:13px;min-width:0;padding:14px}
+.catalog-admin-cards .catalog-admin-product{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.catalog-admin-cards .catalog-admin-symbol{width:100%;height:150px;flex-basis:150px;border-radius:10px;font-size:32px;overflow:hidden}
+.catalog-admin-cards .catalog-admin-symbol img{width:100%;height:100%;object-fit:cover}
+.catalog-admin-cards .catalog-admin-product>div{gap:5px}
+.catalog-admin-cards .catalog-admin-product>div strong{font-size:15px}
+.catalog-admin-cards .catalog-admin-price{margin:0;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px}
+.catalog-admin-cards .catalog-admin-publish{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.catalog-pagination{margin-top:4px}
+.catalog-admin-page .catalog-filter-row{align-items:center;gap:12px}
+.catalog-admin-page .catalog-filter-row>input{flex:1 1 260px;min-width:0}
+@media(max-width:900px){
+ .catalog-admin-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .catalog-admin-cards .catalog-admin-symbol{height:130px;flex-basis:130px}
+ .catalog-filter-actions{justify-content:space-between}
+}
+@media(max-width:560px){
+ .catalog-admin-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .catalog-admin-cards .catalog-admin-row{padding:9px;gap:9px}
+ .catalog-admin-cards .catalog-admin-symbol{height:100px;flex-basis:100px}
+ .catalog-admin-cards .catalog-admin-publish{align-items:flex-start}
+ .catalog-filter-actions{width:100%;justify-content:space-between}
+ .catalog-filter-actions .view-switch{gap:3px}
+ .catalog-filter-actions .view-option{padding:7px 8px}
+ .catalog-pagination{align-items:flex-start;gap:10px;flex-wrap:wrap}
+}
+
+/* Acceso: evitar que el texto introductorio se corte en pantallas estrechas. */
+.auth-form-panel,.auth-form-wrap{min-width:0;max-width:100%}
+.auth-form-wrap{width:min(100%,410px)}
+.auth-form-wrap .form-intro{display:block;width:100%;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.55}
+.auth-form-wrap .forgot-password-row{width:100%;min-width:0}
+.auth-form-wrap .forgot-password-row .text-button{font-size:14px;min-height:28px}
+
+/* Inicio: un poco más de área útil para las tarjetas y menos margen sobre el logo. */
+.app-shell>.sidebar{padding-top:2px}
+.sidebar .brand{margin-top:0;margin-bottom:4px}
+@media(max-height:760px) and (min-width:901px){
+ .main-content-home .main-header{margin-bottom:2px}
+ .home-dashboard{gap:5px}
+ .home-dashboard .area-grid{gap:8px}
+ .home-dashboard .area-card{padding:11px 12px}
+}

@@ -615,7 +615,7 @@ function PublicCatalog({ businessId }) {
   useEffect(() => {
     let active = true;
     setPaymentStatusLoading(true);
-    supabase.functions.invoke("public-checkout", { body: { action: "status" } })
+    supabase.functions.invoke("public-checkout", { body: { action: "status", business_id: businessId } })
       .then(({ data, error: statusError }) => {
         if (active) setPaymentEnabled(!statusError && data?.enabled === true);
       })

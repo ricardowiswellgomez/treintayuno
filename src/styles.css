@@ -1850,3 +1850,8 @@ button{line-height:1.35}
  .stats-filter-toolbar{border:0;padding:0 0 10px}
  .stats-metric,.stats-pending{break-inside:avoid;box-shadow:none!important}
 }
+
+/* Acciones compactas para compartir comprobantes desde Ventas. */
+.sale-document-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.sale-document-actions .action-small{margin:0;padding:9px 12px;font-size:13px}
+@media(max-width:560px){.sale-document-actions>*{flex:1 1 140px}}

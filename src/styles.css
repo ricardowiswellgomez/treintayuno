@@ -2403,3 +2403,25 @@ button{line-height:1.35}
 .settings-business-card-actions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
 .settings-business-card-actions>*{min-height:42px}
 @keyframes customer-detail-enter{from{transform:translateY(24px);opacity:.7}to{transform:translateY(0);opacity:1}}
+
+/* Mobile-only improvements: business identity, one-tap card sharing, and readable record sheets. */
+@media(max-width:600px){
+  .header-share-card-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 11px;border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:12px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
+  .main-header{gap:8px;flex-wrap:wrap}
+  .main-header>div{min-width:0;flex:1 1 120px}
+  .main-header .role-pill{display:none}
+  .customer-list{min-width:0;max-width:100%;overflow-x:hidden}
+  .customer-row{box-sizing:border-box;min-width:0;width:100%;grid-template-columns:minmax(0,1fr)!important;overflow:hidden}
+  .customer-row>span{display:none!important}
+  .customer-name-cell,.customer-contact-cell{grid-column:1!important;min-width:0;max-width:100%}
+  .customer-contact-cell>*{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .customer-row>.text-button{grid-column:1!important}
+  .mobile-detail-trigger{cursor:pointer;touch-action:manipulation}
+  .mobile-detail-trigger:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .supplier-directory-page .supplier-directory-row{min-width:0;overflow:hidden}
+  .supplier-directory-page .supplier-directory-row>*{min-width:0;overflow-wrap:anywhere}
+  .record-detail-field strong{white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}
+  .record-detail-card .customer-detail-content{padding-bottom:24px}
+  .settings-business-card-preview-top{align-items:center}
+  .settings-business-card-logo{display:block;flex:0 0 48px;width:48px;height:48px;object-fit:contain;border-radius:12px;background:#fff;padding:3px;box-shadow:0 1px 6px #00000012}
+}

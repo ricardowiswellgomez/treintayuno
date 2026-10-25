@@ -2427,3 +2427,75 @@ button{line-height:1.35}
   .settings-business-card-preview-top{align-items:center}
   .settings-business-card-logo{display:block;flex:0 0 48px;width:48px;height:48px;object-fit:contain;border-radius:12px;background:#fff;padding:3px;box-shadow:0 1px 6px #00000012}
 }
+
+
+/* Menú móvil en tarjetas: dos columnas, icono y texto centrados. Solo teléfonos. */
+@media(max-width:640px){
+  .mobile-module-navigation{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    align-content:start!important;
+    align-items:stretch!important;
+    gap:12px!important;
+    overflow-x:hidden!important;
+  }
+  .mobile-module-menu-heading{
+    grid-column:1/-1!important;
+    width:100%;
+    box-sizing:border-box;
+    margin-bottom:2px!important;
+  }
+  .mobile-module-card{
+    display:flex!important;
+    flex:initial!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:11px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:124px!important;
+    box-sizing:border-box!important;
+    padding:15px 9px!important;
+    border:1px solid var(--line)!important;
+    border-radius:18px!important;
+    background:var(--paper)!important;
+    color:var(--ink)!important;
+    text-align:center!important;
+    box-shadow:0 4px 15px #1b27140d!important;
+    white-space:normal!important;
+  }
+  .mobile-module-card>svg,
+  .mobile-module-card>.app-icon{
+    display:block!important;
+    flex:0 0 auto!important;
+    width:42px!important;
+    height:42px!important;
+    padding:8px!important;
+    box-sizing:border-box!important;
+    border-radius:13px!important;
+    background:var(--soft-green)!important;
+    color:var(--green)!important;
+  }
+  .mobile-module-card>span{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    flex:0 0 auto!important;
+    overflow-wrap:anywhere!important;
+  }
+  .mobile-module-card strong{
+    display:block!important;
+    font-size:13px!important;
+    font-weight:800!important;
+    line-height:1.3!important;
+    overflow-wrap:anywhere!important;
+  }
+  .mobile-module-card small,
+  .mobile-module-card>b{display:none!important}
+  .mobile-module-card.active{
+    border-color:var(--green)!important;
+    background:var(--soft-green)!important;
+    box-shadow:inset 0 0 0 1px var(--green),0 5px 16px #1b271412!important;
+  }
+}

@@ -346,6 +346,29 @@ const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text), sidebarBackground: valid(theme?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(theme?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(theme?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(theme?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
+async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text }) {
+  const safe = (value) => escapeHtml(String(value || "").trim());
+  const detailLines = [
+    phone ? '<text x="110" y="325" font-size="27" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
+    email ? '<text x="110" y="375" font-size="25" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
+    address ? '<text x="110" y="425" font-size="23" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
+    website ? '<text x="110" y="475" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
+    message ? '<text x="110" y="530" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
+  ].filter(Boolean).join("");
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="' + primary + '"/><rect x="42" y="42" width="1116" height="546" rx="34" fill="' + surface + '"/><rect x="82" y="82" width="76" height="76" rx="20" fill="' + primary + '"/><text x="120" y="132" text-anchor="middle" font-family="Arial,sans-serif" font-size="29" font-weight="800" fill="#ffffff">31</text><text x="190" y="111" font-family="Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="190" y="153" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 48) + '</text><rect x="82" y="190" width="1036" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="110" y="565" font-family="Arial,sans-serif" font-size="16" fill="' + primary + '" opacity=".85">Tarjeta digital · Compartida desde Treintayuno</text></svg>';
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = svgUrl; });
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200; canvas.height = 630;
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("No se pudo generar la imagen.");
+    return new File([blob], "tarjeta-presentacion.png", { type: "image/png" });
+  } finally { URL.revokeObjectURL(svgUrl); }
+}
+
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
   try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
@@ -4624,8 +4647,15 @@ export default function App() {
                     const cardName = settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
                     const parts = [cardName, settingsCommercialProfile.cardText, settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone ? "Teléfono: " + settingsCommercialProfile.cardPhone : "", settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail ? "Correo: " + settingsCommercialProfile.cardEmail : "", [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), settingsCommercialProfile.website].filter(Boolean);
                     const shareText = parts.join("\n");
-                    try { if (navigator.share) await navigator.share({ title: "Tarjeta de presentación", text: shareText }); else { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta copiada. Ya puedes pegarla en WhatsApp o en otro chat."); } }
-                    catch (error) { if (error?.name !== "AbortError") { try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta copiada. Ya puedes pegarla en WhatsApp o en otro chat."); } catch { setError("No se pudo compartir ni copiar la tarjeta. Revisa los permisos del navegador."); } } }
+                    if (navigator.share) {
+                      try {
+                        const cardFile = await makeBusinessCardPng({ name: cardName, phone: settingsCommercialProfile.cardShowPhone !== false ? settingsCommercialProfile.cardPhone : "", email: settingsCommercialProfile.cardShowEmail !== false ? settingsCommercialProfile.cardEmail : "", address: [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), website: settingsCommercialProfile.website, message: settingsCommercialProfile.cardText, primary: activeTheme.primary, surface: activeTheme.surface, text: activeTheme.text });
+                        if (navigator.canShare?.({ files: [cardFile] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [cardFile] }); return; }
+                      } catch (error) { if (error?.name === "AbortError") return; }
+                      try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); return; } catch (error) { if (error?.name === "AbortError") return; }
+                    }
+                    try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta copiada. Ya puedes pegarla en WhatsApp o en otro chat."); }
+                    catch { setError("No se pudo compartir ni copiar la tarjeta. Revisa los permisos del navegador."); }
                   }}>↗ Compartir tarjeta</button>
                   <button type="button" className="secondary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={() => {
                     const esc = (value) => String(value || "").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");

@@ -2530,3 +2530,77 @@ button{line-height:1.35}
   .product-table-row.mobile-detail-trigger:active,
   .product-card-wa.mobile-detail-trigger:active{background:color-mix(in srgb,var(--green) 7%,var(--paper))}
 }
+
+
+/* Corrección: la vista previa de la tarjeta debe distribuir logo y datos en horizontal.
+   Solo teléfonos; tabletas y escritorio conservan su composición anterior. */
+@media (max-width: 640px) {
+  .settings-business-card-preview {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+  }
+  .settings-business-card-preview-logo {
+    display: grid;
+    place-items: center;
+    flex: 0 0 88px;
+    width: 88px;
+    min-width: 88px;
+    min-height: 88px;
+    align-self: flex-start;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--paper);
+  }
+  .settings-business-card-preview-logo .settings-business-card-logo {
+    display: block;
+    width: 88px;
+    height: 88px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 12px;
+  }
+  .settings-business-card-preview-logo .settings-business-card-mark {
+    width: 88px;
+    height: 88px;
+    border-radius: 14px;
+    font-size: 25px;
+  }
+  .settings-business-card-preview-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .settings-business-card-preview-copy .settings-business-card-preview-top {
+    margin-bottom: 8px;
+    font-size: 8px;
+    letter-spacing: .08em;
+  }
+  .settings-business-card-preview-copy h4 {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .settings-business-card-preview-copy p {
+    margin: 4px 0;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .settings-business-card-preview-copy .settings-business-card-message {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .product-table-row,
+  .product-card-wa.mobile-detail-trigger {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .product-table-row:active,
+  .product-card-wa.mobile-detail-trigger:active {
+    background: color-mix(in srgb, var(--green) 7%, var(--paper));
+  }
+}

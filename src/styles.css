@@ -2404,6 +2404,8 @@ button{line-height:1.35}
 .settings-business-card-actions>*{min-height:42px}
 @keyframes customer-detail-enter{from{transform:translateY(24px);opacity:.7}to{transform:translateY(0);opacity:1}}
 
+/* The shortcut must not alter desktop or tablet layouts. */
+.header-share-card-button{display:none}
 /* Mobile-only improvements: business identity, one-tap card sharing, and readable record sheets. */
 @media(max-width:600px){
   .header-share-card-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 11px;border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:12px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}

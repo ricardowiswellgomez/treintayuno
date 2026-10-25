@@ -23,6 +23,7 @@ function AppIcon({ name, size = 20 }) {
     edit: <><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></>,
     trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
+    businessCard: <><rect x="2.5" y="5" width="19" height="14" rx="2" /><circle cx="8" cy="10" r="2" /><path d="M5 15c.6-1.5 1.6-2.2 3-2.2s2.4.7 3 2.2M14 10h4M14 14h4" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>
   };
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
@@ -346,16 +347,16 @@ const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text), sidebarBackground: valid(theme?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(theme?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(theme?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(theme?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
-async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text, logoUrl }) {
+async async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text, logoUrl }) {
   const safe = (value) => escapeHtml(String(value || "").trim());
   const detailLines = [
-    phone ? '<text x="110" y="325" font-size="27" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
-    email ? '<text x="110" y="375" font-size="25" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
-    address ? '<text x="110" y="425" font-size="23" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
-    website ? '<text x="110" y="475" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
-    message ? '<text x="110" y="530" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
+    phone ? '<text x="390" y="285" font-size="27" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
+    email ? '<text x="390" y="335" font-size="25" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
+    address ? '<text x="390" y="385" font-size="23" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
+    website ? '<text x="390" y="435" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
+    message ? '<text x="390" y="495" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
   ].filter(Boolean).join("");
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="' + primary + '"/><rect x="42" y="42" width="1116" height="546" rx="34" fill="' + surface + '"/><rect x="82" y="82" width="76" height="76" rx="20" fill="' + primary + '"/><text x="120" y="132" text-anchor="middle" font-family="Arial,sans-serif" font-size="29" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="190" y="111" font-family="Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="190" y="153" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 48) + '</text><rect x="82" y="190" width="1036" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="110" y="565" font-family="Arial,sans-serif" font-size="16" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital</text></svg>';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="' + primary + '"/><rect x="42" y="42" width="1116" height="546" rx="34" fill="' + surface + '"/><rect x="82" y="165" width="250" height="250" rx="36" fill="' + primary + '"/><text x="207" y="307" text-anchor="middle" font-family="Arial,sans-serif" font-size="82" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="390" y="145" font-family="Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="390" y="205" font-family="Arial,sans-serif" font-size="38" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 42) + '</text><rect x="390" y="230" width="700" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="82" y="535" font-family="Arial,sans-serif" font-size="16" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital</text></svg>';
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
   try {
     const image = new Image();
@@ -373,11 +374,11 @@ async function makeBusinessCardPng({ name, phone, email, address, website, messa
           const logoObjectUrl = URL.createObjectURL(logoBlob);
           try {
             await new Promise((resolve, reject) => { logoImage.onload = resolve; logoImage.onerror = reject; logoImage.src = logoObjectUrl; });
-            context.save(); context.beginPath(); context.roundRect(82, 82, 76, 76, 20); context.clip();
-            context.fillStyle = surface; context.fillRect(82, 82, 76, 76);
-            const scale = Math.min(76 / logoImage.width, 76 / logoImage.height);
+            context.save(); context.beginPath(); context.roundRect(82, 165, 250, 250, 36); context.clip();
+            context.fillStyle = surface; context.fillRect(82, 165, 250, 250);
+            const scale = Math.min(250 / logoImage.width, 250 / logoImage.height);
             const w = logoImage.width * scale, h = logoImage.height * scale;
-            context.drawImage(logoImage, 82 + (76-w)/2, 82 + (76-h)/2, w, h); context.restore();
+            context.drawImage(logoImage, 82 + (250-w)/2, 165 + (250-h)/2, w, h); context.restore();
           } finally { URL.revokeObjectURL(logoObjectUrl); }
         }
       } catch { /* Mantiene la tarjeta usable aunque el logo no pueda cargarse. */ }
@@ -1588,6 +1589,30 @@ export default function App() {
     const message = [product.name, product.sku ? "Código: " + product.sku : "", "Precio: " + money(product.sale_price_minor, currencyCode), product.description || "", url].filter(Boolean).join("\n");
     try { if (navigator.share) await navigator.share({ title: product.name, text: message, url }); else { await navigator.clipboard.writeText(message); setNotice("Enlace y datos de " + product.name + " copiados para compartir."); } }
     catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(message); setNotice("Datos de " + product.name + " copiados para compartir."); } catch { setError("No se pudo abrir la opción para compartir. Copia el enlace del catálogo."); } } }
+  }
+
+  function openProductDetail(product) {
+    const variants = variantsByProduct[product.id] || [];
+    setSelectedRecordDetail({
+      type: "Producto",
+      title: product.name,
+      fields: [
+        { label: "Categoría", value: categories.find((cat) => cat.id === product.category_id)?.name || "Sin categoría" },
+        { label: "Tipo", value: product.product_type === "physical" ? "Producto físico" : product.product_type === "service" ? "Servicio" : "Digital" },
+        { label: "Código", value: product.sku || "—" },
+        { label: "Unidad", value: product.unit_name || "unidad" },
+        { label: "Precio de venta", value: money(product.sale_price_minor, currencyCode) },
+        { label: "Costo", value: money(product.cost_price_minor, currencyCode) },
+        { label: "Existencias", value: product.track_inventory ? Number(product.stock_on_hand).toLocaleString("es-CO") + " " + (product.unit_name || "unidades") : "No aplica" },
+        { label: "Alerta de stock", value: product.track_inventory && product.low_stock_threshold != null ? Number(product.low_stock_threshold).toLocaleString("es-CO") : "No configurada" },
+        { label: "Estado", value: product.archived_at ? "Archivado" : product.is_sellable ? "Activo" : "Inactivo" },
+        { label: "Catálogo", value: product.is_published ? "Publicado" : "No publicado" },
+        { label: "Presentación", value: product.commercial_presentation || "" },
+        { label: "Variantes", value: variants.length ? variants.map((variant) => [variant.variant_name, variant.variant_value].filter(Boolean).join(": ") || variant.sku || "Variante").join("\\n") : "Sin variantes" },
+        { label: "Descripción", value: product.description || "" }
+      ],
+      notes: product.notes || ""
+    });
   }
 
   async function shareBusinessCardNow() {
@@ -3905,8 +3930,8 @@ export default function App() {
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{activeBusiness?.settings?.commercial_profile?.cardEnabled && <button type="button" className="header-share-card-button" onClick={shareBusinessCardNow}>↗ Mi tarjeta</button>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button>{activeBusiness?.settings?.commercial_profile?.cardEnabled && <button type="button" className="mobile-module-card mobile-business-card-menu" onClick={() => { setMobileNavOpen(false); shareBusinessCardNow(); }}><AppIcon name="businessCard" size={23}/><span><strong>Mi tarjeta de presentación</strong><small>Compartir tarjeta del negocio</small></span></button>}<button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}<AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -4525,7 +4550,7 @@ export default function App() {
                       <th>Producto</th><th>Código</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Compartir / acciones</th>
                     </tr></thead>
                     <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
-                      <tr className="product-table-row">
+                      <tr className="product-table-row mobile-detail-trigger" onClick={(event) => { if (!window.matchMedia("(max-width: 600px)").matches || event.target.closest("button,a,input,select,textarea")) return; openProductDetail(p); }}>
                         <td className="product-table-name"><div className="product-cell">
                           <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
                           <div className="product-cell-copy"><strong>{p.name}</strong><span>{categories.find((cat) => cat.id === p.category_id)?.name || "Sin categoría"} · {p.product_type === "physical" ? "Producto físico" : p.product_type === "service" ? "Servicio" : "Digital"}</span></div>
@@ -4548,7 +4573,7 @@ export default function App() {
               ) : (
                 <div className="product-list product-list-cards">{filteredProducts.map((p) => {
   const productVariants = variantsByProduct[p.id] || [];
-  return <article className="product-card panel product-card-wa" key={p.id}>
+  return <article className="product-card panel product-card-wa mobile-detail-trigger" key={p.id} onClick={(event) => { if (!window.matchMedia("(max-width: 600px)").matches || event.target.closest("button,a,input,select,textarea")) return; openProductDetail(p); }}>
     <div className="product-card-wa-top">
       <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
       <div className="product-card-wa-copy">
@@ -4675,13 +4700,16 @@ export default function App() {
                 <div className="settings-section-divider" /><h3>Tarjeta de presentación virtual</h3><label className="settings-help-toggle"><input type="checkbox" checked={Boolean(settingsCommercialProfile.cardEnabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEnabled:e.target.checked}))}/><span><strong>Activar tarjeta para compartir desde la app</strong><small>La tarjeta no aparecerá en el catálogo público. Tú eliges con quién compartirla.</small></span></label>
                 <label className="settings-field"><span className="field-label-heading">Nombre real para la tarjeta</span><input value={settingsCommercialProfile.cardName} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardName:e.target.value}))} maxLength={160} disabled={activeBusiness?.role!=="owner"} placeholder="Nombre y apellido" /></label><div className="company-profile-grid"><label className="settings-field"><span className="field-label-heading">Correo de la tarjeta</span><input type="email" value={settingsCommercialProfile.cardEmail} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEmail:e.target.value}))} maxLength={254} disabled={activeBusiness?.role!=="owner"} placeholder="tu@correo.com" /></label><label className="settings-field"><span className="field-label-heading">Celular de la tarjeta</span><input value={settingsCommercialProfile.cardPhone} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPhone:e.target.value}))} maxLength={50} disabled={activeBusiness?.role!=="owner"} placeholder="+57…" /></label></div><div className="settings-card-visibility"><label><input type="checkbox" checked={settingsCommercialProfile.cardShowEmail !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowEmail:e.target.checked}))}/><span>Mostrar correo en la tarjeta</span></label><label><input type="checkbox" checked={settingsCommercialProfile.cardShowPhone !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowPhone:e.target.checked}))}/><span>Mostrar celular en la tarjeta</span></label></div><label className="settings-field"><span className="field-label-heading">Texto libre</span><textarea value={settingsCommercialProfile.cardText} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardText:e.target.value}))} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} placeholder="Escribe tu presentación, profesión, servicios o mensaje." /></label>
                 <div className="settings-business-card-preview">
-                  <div className="settings-business-card-preview-top">{(settingsLogoPreview || activeBusinessLogoUrl) ? <img className="settings-business-card-logo" src={settingsLogoPreview || activeBusinessLogoUrl} alt={"Logo de " + (settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "la empresa")} /> : <span className="settings-business-card-mark">{(settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi").slice(0,2).toUpperCase()}</span>}<span>TARJETA DE PRESENTACIÓN</span></div>
-                  <h4>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre o negocio"}</h4>
-                  {(settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail) && <p>✉ {settingsCommercialProfile.cardEmail}</p>}
-                  {(settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone) && <p>☎ {settingsCommercialProfile.cardPhone}</p>}
-                  {(settingsCommercialProfile.address || settingsCommercialProfile.city) && <p>⌖ {[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</p>}
-                  {settingsCommercialProfile.website && <p>↗ {settingsCommercialProfile.website}</p>}
-                  {settingsCommercialProfile.cardText && <p className="settings-business-card-message">{settingsCommercialProfile.cardText}</p>}
+                  <div className="settings-business-card-preview-logo">{(settingsLogoPreview || activeBusinessLogoUrl) ? <img className="settings-business-card-logo" src={settingsLogoPreview || activeBusinessLogoUrl} alt={"Logo de " + (settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "la empresa")} /> : <span className="settings-business-card-mark">{(settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi").slice(0,2).toUpperCase()}</span>}</div>
+                  <div className="settings-business-card-preview-copy">
+                    <div className="settings-business-card-preview-top"><span>TARJETA DE PRESENTACIÓN</span></div>
+                    <h4>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre o negocio"}</h4>
+                    {(settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail) && <p>✉ {settingsCommercialProfile.cardEmail}</p>}
+                    {(settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone) && <p>☎ {settingsCommercialProfile.cardPhone}</p>}
+                    {(settingsCommercialProfile.address || settingsCommercialProfile.city) && <p>⌖ {[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</p>}
+                    {settingsCommercialProfile.website && <p>↗ {settingsCommercialProfile.website}</p>}
+                    {settingsCommercialProfile.cardText && <p className="settings-business-card-message">{settingsCommercialProfile.cardText}</p>}
+                  </div>
                 </div>
                 <div className="settings-business-card-actions">
                   <button type="button" className="primary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={async () => {

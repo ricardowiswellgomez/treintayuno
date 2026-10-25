@@ -2499,3 +2499,7 @@ button{line-height:1.35}
     box-shadow:inset 0 0 0 1px var(--green),0 5px 16px #1b271412!important;
   }
 }
+
+@media(max-width:640px){.mobile-module-card>svg{width:48px!important;height:48px!important}.mobile-module-card strong{font-size:15px!important}}
+.settings-business-card-layout{display:grid;grid-template-columns:minmax(100px,140px) minmax(0,1fr);gap:20px;align-items:start}.settings-business-card-logo-wrap{display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;min-width:0;overflow:hidden;border-radius:16px;background:#fff;border:1px solid var(--line)}.settings-business-card-logo{display:block;width:100%;height:100%;max-height:140px;object-fit:contain;padding:8px;box-sizing:border-box}.settings-business-card-mark{display:grid;place-items:center;width:100%;height:100%;min-height:100px;background:var(--green);color:#fff;font-size:32px;font-weight:850}.settings-business-card-copy{min-width:0;overflow-wrap:anywhere}.settings-business-card-copy h4{font-weight:850}.settings-business-card-copy p{overflow-wrap:anywhere;line-height:1.5}
+@media(max-width:640px){.settings-business-card-layout{grid-template-columns:minmax(76px,96px) minmax(0,1fr);gap:12px}.settings-business-card-logo{max-height:96px;padding:5px}.settings-business-card-mark{min-height:76px;font-size:25px}.settings-business-card-copy h4{font-size:17px}.settings-business-card-copy p{font-size:11px}}

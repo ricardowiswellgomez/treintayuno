@@ -2271,3 +2271,135 @@ button{line-height:1.35}
   .mobile-module-card small{display:none!important}
   .mobile-module-card>svg,.mobile-module-card>.app-icon{width:46px!important;height:46px!important}
 }
+
+
+/* Más visual, con selección de módulos a pantalla completa en teléfonos de hasta 640 px. */
+@media(max-width:640px){
+  .mobile-nav-toggle{display:inline-flex!important}
+  .mobile-module-navigation{
+    position:fixed!important;
+    inset:0!important;
+    z-index:9999!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:12px!important;
+    width:100vw!important;
+    height:100vh!important;
+    height:100dvh!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    background:var(--app-background,#f7f6f1)!important;
+  }
+  .mobile-module-menu-heading{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex:0 0 auto;
+    min-height:56px;
+    padding:0 2px 10px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:5px;
+    color:var(--ink);
+  }
+  .mobile-module-menu-heading>strong{font:800 23px Manrope,sans-serif;letter-spacing:-.6px}
+  .mobile-module-menu-close{
+    display:grid;
+    place-items:center;
+    width:46px;
+    height:46px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:30px;
+    line-height:1;
+  }
+  .mobile-module-card{
+    flex:0 0 auto;
+    grid-template-columns:52px minmax(0,1fr) 20px!important;
+    min-height:78px!important;
+    padding:14px 15px!important;
+    border-radius:18px!important;
+    gap:13px!important;
+    box-shadow:0 5px 18px #1b27140b;
+  }
+  .mobile-module-card>span{gap:0!important}
+  .mobile-module-card strong{font-size:16px!important;line-height:1.35}
+  .mobile-module-card small{display:none!important}
+  .mobile-module-card>svg,.mobile-module-card>.app-icon{width:48px!important;height:48px!important}
+  .settings-theme-reset-block{display:grid;gap:10px;margin-top:12px}
+  .settings-reset-theme{
+    display:flex!important;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    width:100%;
+    min-height:54px;
+    padding:14px 18px!important;
+    border:1px solid var(--green)!important;
+    border-radius:15px!important;
+    background:var(--green)!important;
+    color:#fff!important;
+    font-size:16px!important;
+    font-weight:800!important;
+    box-shadow:0 5px 14px color-mix(in srgb,var(--green) 20%,transparent);
+  }
+  .settings-reset-theme>span{font-size:24px;line-height:1}
+  .settings-theme-reset-block>p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+}
+.settings-theme-reset-block{display:grid;gap:8px;margin-top:10px}
+.settings-reset-theme{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--green);border-radius:10px;background:var(--green);color:#fff;padding:11px 15px;font-weight:800;cursor:pointer}
+.settings-theme-reset-block>p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+
+
+/* Ficha de cliente con todos sus datos, solo para teléfonos. */
+.customer-row{cursor:default}
+.customer-row:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.customer-detail-backdrop{display:none}
+@media(max-width:600px){
+  .customer-list-heading{display:none!important}
+  .customer-list{display:grid;gap:10px;padding:10px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+  .customer-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px 10px!important;align-items:start!important;padding:15px!important;border:1px solid var(--line)!important;border-radius:15px!important;background:var(--paper)!important;box-shadow:0 4px 14px #18261b0a;cursor:pointer!important}
+  .customer-name-cell{grid-column:1/-1!important;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .customer-name-cell strong{font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+  .customer-name-cell span{font-size:12px;color:var(--muted)}
+  .customer-contact-cell{grid-column:1/-1!important;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;overflow-wrap:anywhere}
+  .customer-row>span{font-size:11px;color:var(--muted)}
+  .customer-row>span:nth-of-type(1){grid-column:1;grid-row:3}
+  .customer-row>span:nth-of-type(2){grid-column:2;grid-row:3;text-align:right}
+  .customer-row>.text-button{grid-column:1/-1;justify-self:start;min-height:36px;margin-top:4px}
+  .customer-detail-backdrop{display:flex;position:fixed;inset:0;z-index:10020;align-items:flex-end;justify-content:center;padding:0;background:#111b17a8;backdrop-filter:blur(4px)}
+  .customer-detail-card{display:flex;flex-direction:column;width:100%;max-width:600px;max-height:94dvh;overflow:hidden;border-radius:24px 24px 0 0;background:var(--paper);color:var(--ink);box-shadow:0 -10px 40px #0002;animation:customer-detail-enter .2s ease-out}
+  .customer-detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 18px 17px;background:var(--green);color:#fff}
+  .customer-detail-header>div{min-width:0}
+  .customer-detail-kicker{font-size:10px;font-weight:850;letter-spacing:.14em;opacity:.8}
+  .customer-detail-header h2{margin:7px 0 0;font-size:23px;line-height:1.2;overflow-wrap:anywhere}
+  .customer-detail-header p{margin:5px 0 0;font-size:13px;opacity:.9}
+  .customer-detail-close{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid #ffffff55;border-radius:13px;background:#ffffff18;color:#fff;font-size:29px;line-height:1}
+  .customer-detail-content{padding:16px 18px;overflow:auto;overscroll-behavior:contain}
+  .customer-detail-group{padding:13px 0;border-bottom:1px solid var(--line)}
+  .customer-detail-group h3{margin:0 0 10px;font-size:13px;color:var(--green)}
+  .customer-detail-field{display:flex;flex-direction:column;gap:3px;padding:7px 0;min-width:0}
+  .customer-detail-field>span{font-size:11px;color:var(--muted)}
+  .customer-detail-field strong,.customer-detail-field a{font-size:13px;font-weight:650;color:var(--ink);overflow-wrap:anywhere;text-decoration:none}
+  .customer-detail-field a{color:var(--green)}
+  .customer-detail-notes{margin:0;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+  .customer-detail-created{margin:13px 0 0;font-size:11px;color:var(--muted)}
+  .customer-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--paper)}
+  .customer-detail-actions>*{display:flex;align-items:center;justify-content:center;min-height:43px;text-align:center;text-decoration:none;font-size:12px}
+  .customer-detail-actions>.customer-detail-whatsapp{border-radius:10px;background:#e8f7ec;color:#166b39;font-weight:800}
+  .customer-detail-actions>.primary-button{min-height:43px}
+  .customer-detail-actions>.secondary-button{grid-column:1/-1}
+}
+.settings-business-card-preview{margin:14px 0;padding:18px;border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:17px;background:var(--paper);color:var(--ink);overflow-wrap:anywhere}
+.settings-business-card-preview-top{display:flex;align-items:center;gap:9px;margin-bottom:15px;color:var(--green);font-size:9px;font-weight:850;letter-spacing:.12em}
+.settings-business-card-mark{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;background:var(--green);color:white;font-size:14px;letter-spacing:0}
+.settings-business-card-preview h4{margin:0 0 10px;font-size:20px;line-height:1.25}
+.settings-business-card-preview p{margin:5px 0;font-size:12px;line-height:1.55}
+.settings-business-card-preview .settings-business-card-message{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);white-space:pre-wrap}
+.settings-business-card-actions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
+.settings-business-card-actions>*{min-height:42px}
+@keyframes customer-detail-enter{from{transform:translateY(24px);opacity:.7}to{transform:translateY(0);opacity:1}}

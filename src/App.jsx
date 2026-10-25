@@ -346,6 +346,29 @@ const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text), sidebarBackground: valid(theme?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(theme?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(theme?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(theme?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
+async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text }) {
+  const safe = (value) => escapeHtml(String(value || "").trim());
+  const detailLines = [
+    phone ? '<text x="110" y="325" font-size="27" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
+    email ? '<text x="110" y="375" font-size="25" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
+    address ? '<text x="110" y="425" font-size="23" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
+    website ? '<text x="110" y="475" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
+    message ? '<text x="110" y="530" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
+  ].filter(Boolean).join("");
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="' + primary + '"/><rect x="42" y="42" width="1116" height="546" rx="34" fill="' + surface + '"/><rect x="82" y="82" width="76" height="76" rx="20" fill="' + primary + '"/><text x="120" y="132" text-anchor="middle" font-family="Arial,sans-serif" font-size="29" font-weight="800" fill="#ffffff">31</text><text x="190" y="111" font-family="Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="190" y="153" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 48) + '</text><rect x="82" y="190" width="1036" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="110" y="565" font-family="Arial,sans-serif" font-size="16" fill="' + primary + '" opacity=".85">Tarjeta digital · Compartida desde Treintayuno</text></svg>';
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = svgUrl; });
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200; canvas.height = 630;
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("No se pudo generar la imagen.");
+    return new File([blob], "tarjeta-presentacion.png", { type: "image/png" });
+  } finally { URL.revokeObjectURL(svgUrl); }
+}
+
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
   try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
@@ -939,12 +962,6 @@ function PublicCatalog({ businessId }) {
           {business.commercial_profile?.website && <div><strong>Sitio web</strong><span>{business.commercial_profile.website}</span></div>}
           {business.commercial_profile?.hours && <div><strong>Horario de atención</strong><span className="public-business-hours">{business.commercial_profile.hours}</span></div>}
         </section>}
-        {business.commercial_profile?.cardEnabled && <section className="public-business-card" id="tarjeta-presentacion" style={{"--card-primary":catalogTheme.primary,"--card-surface":catalogTheme.surface,"--card-text":catalogTheme.text}}>
-          {catalogLogoUrl && <img className="public-business-card-logo" src={catalogLogoUrl} alt="Logo del negocio" />}
-          <div className="public-business-card-copy"><span>TARJETA DE PRESENTACIÓN</span><h2>{business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name}</h2>{business.commercial_profile.cardShowEmail !== false && business.commercial_profile.cardEmail && <a href={"mailto:"+business.commercial_profile.cardEmail}>{business.commercial_profile.cardEmail}</a>}{business.commercial_profile.cardShowPhone !== false && business.commercial_profile.cardPhone && <a href={"tel:"+business.commercial_profile.cardPhone}>{business.commercial_profile.cardPhone}</a>}{business.commercial_profile.cardText && <p>{business.commercial_profile.cardText}</p>}</div>
-          <button type="button" className="public-business-card-share" onClick={async () => { const url=window.location.origin+"/?catalog="+encodeURIComponent(businessId)+"#tarjeta-presentacion"; const text=[business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name,business.commercial_profile.cardEmail,business.commercial_profile.cardPhone,business.commercial_profile.cardText,url].filter(Boolean).join("\n"); try { if(navigator.share) await navigator.share({title:"Tarjeta de presentación",text,url}); else { await navigator.clipboard.writeText(text); } } catch(e) { if(e?.name!=="AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } } }}><span aria-hidden="true">↗</span> Compartir tarjeta</button>
-          <button type="button" className="public-business-card-download" onClick={() => { const esc=(value)=>String(value||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); const fields=["BEGIN:VCARD","VERSION:3.0","FN:"+esc(business.commercial_profile.cardName || business.commercial_profile.tradeName || business.name),business.commercial_profile.cardShowEmail !== false && business.commercial_profile.cardEmail?"EMAIL:"+esc(business.commercial_profile.cardEmail):"",business.commercial_profile.cardShowPhone !== false && business.commercial_profile.cardPhone?"TEL;TYPE=CELL:"+esc(business.commercial_profile.cardPhone):"",business.commercial_profile.tradeName?"ORG:"+esc(business.commercial_profile.tradeName):"",business.commercial_profile.cardText?"NOTE:"+esc(business.commercial_profile.cardText):"", "URL:"+window.location.origin+"/?catalog="+encodeURIComponent(businessId)+"#tarjeta-presentacion","END:VCARD"].filter(Boolean).join("\r\n"); const blob=new Blob([fields],{type:"text/vcard;charset=utf-8"}); const href=URL.createObjectURL(blob); const link=document.createElement("a"); link.href=href; link.download="contacto-"+String(business.commercial_profile.cardName || business.name).toLowerCase().replace(/[^a-z0-9]+/g,"-")+".vcf"; link.click(); URL.revokeObjectURL(href); }}><span aria-hidden="true">↓</span> Descargar contacto (.vcf)</button>
-        </section>}
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -1180,6 +1197,7 @@ export default function App() {
   const [customersCount, setCustomersCount] = useState(0);
   const [saleProducts, setSaleProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerDraft, setCustomerDraft] = useState(blankCustomer);
@@ -3958,14 +3976,41 @@ export default function App() {
 </form>}
 {salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
 <div className="customer-list-heading"><span>Cliente / empresa</span><span>Contacto</span><span>Documento</span><span>Ciudad</span><span></span></div>
-{customers.map(customer=><article className="customer-row" key={customer.id}>
+{customers.map(customer=><article className="customer-row" key={customer.id} tabIndex={0} onClick={() => { if (window.matchMedia("(max-width: 600px)").matches) setSelectedCustomer(customer); }} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && window.matchMedia("(max-width: 600px)").matches) { event.preventDefault(); setSelectedCustomer(customer); } }}>
 <div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
 <div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
-{canManageCustomers && <button type="button" className="text-button" onClick={()=>startEditCustomer(customer)}>Editar</button>}
+{canManageCustomers && <button type="button" className="text-button" onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}>Editar</button>}
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
 {!salesLoading && customersCount > customersPageSize && <div className="pagination-bar customer-pagination"><span className="count-label">Mostrando {(customersPage-1)*customersPageSize+1}–{Math.min(customersPage*customersPageSize,customersCount)} de {customersCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={customersPage<=1} onClick={()=>setCustomersPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{customersPage} / {Math.ceil(customersCount/customersPageSize)}</span><button type="button" className="secondary-button" disabled={customersPage>=Math.ceil(customersCount/customersPageSize)} onClick={()=>setCustomersPage((page)=>page+1)}>Siguiente</button></div></div>}
+{selectedCustomer && <div className="customer-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedCustomer(null); }}>
+  <section className="customer-detail-card" role="dialog" aria-modal="true" aria-labelledby="customer-detail-title">
+    <header className="customer-detail-header"><div><span className="customer-detail-kicker">FICHA DEL CLIENTE</span><h2 id="customer-detail-title">{selectedCustomer.full_name || selectedCustomer.company_name || "Cliente"}</h2>{selectedCustomer.company_name && selectedCustomer.company_name !== selectedCustomer.full_name && <p>{selectedCustomer.company_name}</p>}</div><button type="button" className="customer-detail-close" aria-label="Cerrar ficha" onClick={() => setSelectedCustomer(null)}>×</button></header>
+    <div className="customer-detail-content">
+      <section className="customer-detail-group"><h3>Contacto</h3>
+        <div className="customer-detail-field"><span>Correo electrónico</span>{selectedCustomer.email ? <a href={"mailto:" + selectedCustomer.email}>{selectedCustomer.email}</a> : <strong>Sin registrar</strong>}</div>
+        <div className="customer-detail-field"><span>Teléfono</span>{selectedCustomer.phone ? <a href={"tel:" + selectedCustomer.phone}>{selectedCustomer.phone}</a> : <strong>Sin registrar</strong>}</div>
+        <div className="customer-detail-field"><span>WhatsApp</span>{selectedCustomer.whatsapp ? <a href={"https://wa.me/" + selectedCustomer.whatsapp.replace(/\D/g, "")} target="_blank" rel="noreferrer">{selectedCustomer.whatsapp}</a> : <strong>Sin registrar</strong>}</div>
+      </section>
+      <section className="customer-detail-group"><h3>Identificación</h3>
+        <div className="customer-detail-field"><span>Tipo de documento</span><strong>{selectedCustomer.document_type || "Sin registrar"}</strong></div>
+        <div className="customer-detail-field"><span>Número de documento</span><strong>{selectedCustomer.document_number || "Sin registrar"}</strong></div>
+      </section>
+      <section className="customer-detail-group"><h3>Ubicación</h3>
+        <div className="customer-detail-field"><span>Ciudad</span><strong>{selectedCustomer.city || "Sin registrar"}</strong></div>
+        <div className="customer-detail-field"><span>Dirección</span><strong>{selectedCustomer.address || "Sin registrar"}</strong></div>
+      </section>
+      <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedCustomer.notes || "No hay notas guardadas para este cliente."}</p></section>
+      <p className="customer-detail-created">Cliente registrado {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString("es-CO", {year:"numeric",month:"long",day:"numeric"}) : "—"}</p>
+    </div>
+    <footer className="customer-detail-actions">
+      {(selectedCustomer.whatsapp || selectedCustomer.phone) && <a className="customer-detail-whatsapp" href={"https://wa.me/" + (selectedCustomer.whatsapp || selectedCustomer.phone).replace(/\D/g, "")} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
+      {canManageCustomers && <button type="button" className="primary-button" onClick={() => { const customer = selectedCustomer; setSelectedCustomer(null); startEditCustomer(customer); }}>Editar cliente</button>}
+      <button type="button" className="secondary-button" onClick={() => setSelectedCustomer(null)}>Cerrar ficha</button>
+    </footer>
+  </section>
+</div>}
 </section>
  ) : screen === "team" ? (
           <section className="team-page">
@@ -4555,7 +4600,7 @@ export default function App() {
                 <div className="settings-theme-preview-sidebar"><strong>31&nbsp; treintayuno</strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
-              {activeBusiness?.role === "owner" && <button type="button" className="text-button settings-reset-theme" onClick={() => setSettingsTheme(defaultBusinessTheme)}>Restablecer paleta original</button>}
+              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
 
               <div className="settings-section-divider" />
               <h3>Ayudas contextuales</h3>
@@ -4586,9 +4631,40 @@ export default function App() {
                 </div>
                 <div className="settings-section-divider" /><h3>Cómo quieres recibir pedidos</h3><p>Elige un canal para el catálogo público. No necesitas activar Wompi si prefieres coordinar el pedido por WhatsApp.</p>
                 <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>El cliente va al checkout seguro si los cobros están configurados.</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
-                <div className="settings-section-divider" /><h3>Tarjeta de presentación virtual</h3><label className="settings-help-toggle"><input type="checkbox" checked={Boolean(settingsCommercialProfile.cardEnabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEnabled:e.target.checked}))}/><span><strong>Publicar tarjeta en mi catálogo</strong><small>Usa el logo y los colores de tu negocio.</small></span></label>
+                <div className="settings-section-divider" /><h3>Tarjeta de presentación virtual</h3><label className="settings-help-toggle"><input type="checkbox" checked={Boolean(settingsCommercialProfile.cardEnabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEnabled:e.target.checked}))}/><span><strong>Activar tarjeta para compartir desde la app</strong><small>La tarjeta no aparecerá en el catálogo público. Tú eliges con quién compartirla.</small></span></label>
                 <label className="settings-field"><span className="field-label-heading">Nombre real para la tarjeta</span><input value={settingsCommercialProfile.cardName} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardName:e.target.value}))} maxLength={160} disabled={activeBusiness?.role!=="owner"} placeholder="Nombre y apellido" /></label><div className="company-profile-grid"><label className="settings-field"><span className="field-label-heading">Correo de la tarjeta</span><input type="email" value={settingsCommercialProfile.cardEmail} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEmail:e.target.value}))} maxLength={254} disabled={activeBusiness?.role!=="owner"} placeholder="tu@correo.com" /></label><label className="settings-field"><span className="field-label-heading">Celular de la tarjeta</span><input value={settingsCommercialProfile.cardPhone} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPhone:e.target.value}))} maxLength={50} disabled={activeBusiness?.role!=="owner"} placeholder="+57…" /></label></div><div className="settings-card-visibility"><label><input type="checkbox" checked={settingsCommercialProfile.cardShowEmail !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowEmail:e.target.checked}))}/><span>Mostrar correo en la tarjeta</span></label><label><input type="checkbox" checked={settingsCommercialProfile.cardShowPhone !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowPhone:e.target.checked}))}/><span>Mostrar celular en la tarjeta</span></label></div><label className="settings-field"><span className="field-label-heading">Texto libre</span><textarea value={settingsCommercialProfile.cardText} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardText:e.target.value}))} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} placeholder="Escribe tu presentación, profesión, servicios o mensaje." /></label>
-                <p className="helper-text">Los datos comerciales, el horario y la descripción se publican en el catálogo de este negocio. No incluyas información privada.</p>
+                <div className="settings-business-card-preview">
+                  <div className="settings-business-card-preview-top"><span className="settings-business-card-mark">31</span><span>TARJETA DE PRESENTACIÓN</span></div>
+                  <h4>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre o negocio"}</h4>
+                  {(settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail) && <p>✉ {settingsCommercialProfile.cardEmail}</p>}
+                  {(settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone) && <p>☎ {settingsCommercialProfile.cardPhone}</p>}
+                  {(settingsCommercialProfile.address || settingsCommercialProfile.city) && <p>⌖ {[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</p>}
+                  {settingsCommercialProfile.website && <p>↗ {settingsCommercialProfile.website}</p>}
+                  {settingsCommercialProfile.cardText && <p className="settings-business-card-message">{settingsCommercialProfile.cardText}</p>}
+                </div>
+                <div className="settings-business-card-actions">
+                  <button type="button" className="primary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={async () => {
+                    const cardName = settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
+                    const parts = [cardName, settingsCommercialProfile.cardText, settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone ? "Teléfono: " + settingsCommercialProfile.cardPhone : "", settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail ? "Correo: " + settingsCommercialProfile.cardEmail : "", [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), settingsCommercialProfile.website].filter(Boolean);
+                    const shareText = parts.join("\n");
+                    if (navigator.share) {
+                      try {
+                        const cardFile = await makeBusinessCardPng({ name: cardName, phone: settingsCommercialProfile.cardShowPhone !== false ? settingsCommercialProfile.cardPhone : "", email: settingsCommercialProfile.cardShowEmail !== false ? settingsCommercialProfile.cardEmail : "", address: [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), website: settingsCommercialProfile.website, message: settingsCommercialProfile.cardText, primary: activeTheme.primary, surface: activeTheme.surface, text: activeTheme.text });
+                        if (navigator.canShare?.({ files: [cardFile] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [cardFile] }); return; }
+                      } catch (error) { if (error?.name === "AbortError") return; }
+                      try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); return; } catch (error) { if (error?.name === "AbortError") return; }
+                    }
+                    try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta copiada. Ya puedes pegarla en WhatsApp o en otro chat."); }
+                    catch { setError("No se pudo compartir ni copiar la tarjeta. Revisa los permisos del navegador."); }
+                  }}>↗ Compartir tarjeta</button>
+                  <button type="button" className="secondary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={() => {
+                    const esc = (value) => String(value || "").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+                    const cardName = settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
+                    const fields = ["BEGIN:VCARD","VERSION:3.0","FN:"+esc(cardName),settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail ? "EMAIL:"+esc(settingsCommercialProfile.cardEmail) : "",settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone ? "TEL;TYPE=CELL:"+esc(settingsCommercialProfile.cardPhone) : "",settingsCommercialProfile.tradeName ? "ORG:"+esc(settingsCommercialProfile.tradeName) : "",settingsCommercialProfile.cardText ? "NOTE:"+esc(settingsCommercialProfile.cardText) : "",settingsCommercialProfile.website ? "URL:"+esc(settingsCommercialProfile.website) : "","END:VCARD"].filter(Boolean).join("\r\n");
+                    const href = URL.createObjectURL(new Blob([fields], {type:"text/vcard;charset=utf-8"})); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + cardName.toLowerCase().replace(/[^a-z0-9]+/g,"-") + ".vcf"; link.click(); URL.revokeObjectURL(href);
+                  }}>↓ Guardar contacto (.vcf)</button>
+                </div>
+                <p className="helper-text">La tarjeta se comparte únicamente cuando pulsas «Compartir tarjeta». Puedes enviarla por WhatsApp, correo u otra aplicación compatible. No se publica en el catálogo.</p>
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos datos.</p>}
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>

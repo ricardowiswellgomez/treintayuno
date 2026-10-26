@@ -162,7 +162,8 @@ Deno.serve(async (req: Request) => {
       const amountInCents = Number(order.total_minor) * 100;
       if (!Number.isSafeInteger(amountInCents) || amountInCents < 1) return reply({ error: "El valor del pedido no es válido." }, 400);
       const signature = await sha256(order.order_reference + amountInCents + order.currency_code + integration.integrity_secret);
-      const configuredBase = Deno.env.get("APP_BASE_URL") || "https://treintayuno.com";
+      const configuredBase = Deno.env.get("APP_BASE_URL") || "";
+      if (!configuredBase) return reply({ error: "Falta configurar la dirección HTTPS pública de Treintayuno para los retornos de pago." }, 503);
       let origin: string;
       try {
         const base = new URL(configuredBase);

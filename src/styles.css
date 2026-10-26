@@ -79,7 +79,6 @@
  .image-upload-label input[type=file]{max-width:100%;width:100%}
 }
 
-/* Vistas de productos: filas o tarjetas, con páginas reales desde la BD */
 .product-tools{align-items:center;gap:14px;flex-wrap:wrap}
 .product-tools-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
 .view-switch{display:inline-flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
@@ -221,7 +220,6 @@
  .product-card-identifiers{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 }
 
-/* Afinar el tamaño de la miniatura dentro del encabezado de cada tarjeta. */
 .product-list-cards .product-card .product-card-heading .product-thumb{width:74px;min-width:74px;height:74px;min-height:74px}
 @media(max-width:600px){
  .product-list-cards .product-card .product-card-heading{align-items:flex-start;flex-direction:column}
@@ -374,7 +372,6 @@
 .product-table .product-row-actions .action-small{padding:7px 11px}
 @media(max-width:600px){.product-table{min-width:1030px}}
 
-/* Tarjetas estilo WA: tres por fila, foto pequeña y datos esenciales. */
 .product-list-cards{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:12px}
 .product-list-cards .product-card-wa{display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px}
 .product-card-wa-top{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;align-items:center;min-width:0}
@@ -442,7 +439,6 @@
  .customer-form-hint{font-size:clamp(13.5px, calc(13.5px + 0.12vw), 14.5px)}
 }
 
-/* La miniatura compacta de las nuevas tarjetas tiene prioridad sobre los estilos antiguos. */
 .product-list-cards .product-card-wa .product-card-wa-top .product-thumb{width:78px;min-width:78px;height:78px;min-height:78px;max-height:78px;flex:0 0 78px}
 .product-list-cards .product-card-wa .product-card-wa-top .product-thumb img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:600px){
@@ -450,7 +446,6 @@
 }
 
 
-/* Ajustes pedidos: centrar la celda de precio y ampliar la foto de cada tarjeta. */
 .product-table tbody td.product-table-price{
   display:table-cell!important;
   height:auto!important;
@@ -1335,7 +1330,6 @@ button{line-height:1.35}
 .forgot-password-row .text-button{padding:3px 0;text-align:right}
 
 
-/* Inicio: tarjetas más amplias que aprovechan la pantalla sin desplazar el tablero. */
 .main-content-home{height:100vh;height:100dvh;min-height:0;max-width:none;width:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;padding-top:clamp(10px,1.35vh,16px);padding-bottom:10px}
 .main-content-home .main-header{flex:0 0 auto;margin-bottom:clamp(8px,1.2vh,14px)}
 .home-dashboard{display:flex;flex:1 1 auto;min-height:0;flex-direction:column;gap:clamp(8px,1.2vh,12px);overflow:hidden}
@@ -1429,7 +1423,6 @@ button{line-height:1.35}
   margin-bottom: 12px;
 }
 
-/* Inicio: tarjetas un poco más amplias sin provocar desplazamiento en escritorio. */
 .main-content-home {
   padding-top: clamp(6px, .8vh, 10px);
   padding-bottom: 8px;
@@ -1627,7 +1620,6 @@ button{line-height:1.35}
 }
 
 
-/* Vitrina comercial: tarjetas, lista y navegación por páginas. */
 .catalog-filter-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;min-width:0}
 .catalog-filter-actions .view-switch{flex:0 0 auto}
 .catalog-admin-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:14px}
@@ -1665,7 +1657,6 @@ button{line-height:1.35}
 .auth-form-wrap .forgot-password-row{width:100%;min-width:0}
 .auth-form-wrap .forgot-password-row .text-button{font-size:14px;min-height:28px}
 
-/* Inicio: un poco más de área útil para las tarjetas y menos margen sobre el logo. */
 .app-shell>.sidebar{padding-top:2px}
 .sidebar .brand{margin-top:0;margin-bottom:4px}
 @media(max-height:760px) and (min-width:901px){
@@ -2382,7 +2373,6 @@ button{line-height:1.35}
 
 /* The shortcut must not alter desktop or tablet layouts. */
 .header-share-card-button{display:none}
-/* Mobile-only improvements: business identity, one-tap card sharing, and readable record sheets. */
 @media(max-width:600px){
   .header-share-card-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 11px;border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:12px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}
   .main-header{gap:8px;flex-wrap:wrap}
@@ -2400,12 +2390,9 @@ button{line-height:1.35}
   .supplier-directory-page .supplier-directory-row>*{min-width:0;overflow-wrap:anywhere}
   .record-detail-field strong{white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}
   .record-detail-card .customer-detail-content{padding-bottom:24px}
-  .settings-business-card-preview-top{align-items:center}
-  .settings-business-card-logo{display:block;flex:0 0 48px;width:48px;height:48px;object-fit:contain;border-radius:12px;background:#fff;padding:3px;box-shadow:0 1px 6px #00000012}
 }
 
 
-/* Menú móvil en tarjetas: dos columnas, icono y texto centrados. Solo teléfonos. */
 @media(max-width:640px){
   .mobile-module-navigation{
     display:grid!important;
@@ -2477,13 +2464,11 @@ button{line-height:1.35}
 }
 
 
-/* Ajustes solicitados: menú más legible y tarjeta con marca a la izquierda. */
 @media(max-width:640px){
   .mobile-module-card{min-height:140px!important;gap:12px!important;padding:16px 10px!important}
   .mobile-module-card>svg,
   .mobile-module-card>.app-icon{width:48px!important;height:48px!important;padding:9px!important}
   .mobile-module-card strong{font-size:15px!important;line-height:1.32!important}
-  .mobile-business-card-menu{border-color:color-mix(in srgb,var(--green) 35%,var(--line))!important}
 }
 @media(max-width:640px){
   .product-table-row.mobile-detail-trigger,
@@ -2496,65 +2481,6 @@ button{line-height:1.35}
 /* Corrección: la vista previa de la tarjeta debe distribuir logo y datos en horizontal.
    Solo teléfonos; tabletas y escritorio conservan su composición anterior. */
 @media (max-width: 640px) {
-  .settings-business-card-preview {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px;
-  }
-  .settings-business-card-preview-logo {
-    display: grid;
-    place-items: center;
-    flex: 0 0 88px;
-    width: 88px;
-    min-width: 88px;
-    min-height: 88px;
-    align-self: flex-start;
-    overflow: hidden;
-    border-radius: 14px;
-    background: var(--paper);
-  }
-  .settings-business-card-preview-logo .settings-business-card-logo {
-    display: block;
-    width: 88px;
-    height: 88px;
-    max-width: 100%;
-    object-fit: contain;
-    border-radius: 12px;
-  }
-  .settings-business-card-preview-logo .settings-business-card-mark {
-    width: 88px;
-    height: 88px;
-    border-radius: 14px;
-    font-size: 25px;
-  }
-  .settings-business-card-preview-copy {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .settings-business-card-preview-copy .settings-business-card-preview-top {
-    margin-bottom: 8px;
-    font-size: 8px;
-    letter-spacing: .08em;
-  }
-  .settings-business-card-preview-copy h4 {
-    margin-bottom: 8px;
-    font-size: 16px;
-    font-weight: 800;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-  }
-  .settings-business-card-preview-copy p {
-    margin: 4px 0;
-    font-size: 11px;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-  }
-  .settings-business-card-preview-copy .settings-business-card-message {
-    margin-top: 8px;
-    padding-top: 8px;
-  }
   .product-table-row,
   .product-card-wa.mobile-detail-trigger {
     cursor: pointer;
@@ -2567,7 +2493,6 @@ button{line-height:1.35}
 }
 
 
-/* Final mobile overrides: navigable cards stay clear without wasting the viewport. */
 @media(max-width:640px){
   .mobile-module-card{min-height:84px!important;grid-template-columns:42px minmax(0,1fr) 14px!important;gap:11px!important;padding:12px!important}
   .mobile-module-card>svg,.mobile-module-card>.app-icon{width:42px!important;height:42px!important;padding:9px!important}

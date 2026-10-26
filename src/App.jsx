@@ -1002,9 +1002,9 @@ function PublicCatalog({ businessId }) {
         </nav>}
       </section>}
     <nav className="public-catalog-bottom-bar" aria-label="Navegación del catálogo">
-      <button type="button" className="public-catalog-bottom-tab is-active" onClick={() => { setBusinessInfoOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
-      <button type="button" className="public-catalog-bottom-tab" onClick={() => setBusinessInfoOpen(true)} aria-haspopup="dialog"><span aria-hidden="true">ⓘ</span><strong>Información</strong></button>
-      <button type="button" className="public-catalog-bottom-tab" onClick={() => setCartOpen(true)}><span aria-hidden="true">🛒</span><strong>Carrito</strong>{cartCount > 0 && <b>{cartCount}</b>}</button>
+      <button type="button" className={"public-catalog-bottom-tab"+(!businessInfoOpen&&!cartOpen?" is-active":"")} aria-current={!businessInfoOpen&&!cartOpen?"page":undefined} onClick={() => { setBusinessInfoOpen(false); setCartOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
+      <button type="button" className={"public-catalog-bottom-tab"+(businessInfoOpen?" is-active":"")} onClick={() => { setCartOpen(false); setBusinessInfoOpen(true); }} aria-haspopup="dialog" aria-expanded={businessInfoOpen}><span aria-hidden="true">ⓘ</span><strong>Información</strong></button>
+      <button type="button" className={"public-catalog-bottom-tab"+(cartOpen?" is-active":"")} onClick={() => { setBusinessInfoOpen(false); setCartOpen(true); }} aria-expanded={cartOpen}><span aria-hidden="true">🛒</span><strong>Carrito</strong>{cartCount > 0 && <b>{cartCount}</b>}</button>
     </nav>
     {businessInfoOpen && business && <div className="public-business-info-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBusinessInfoOpen(false); }}>
       <section className="public-business-info-sheet" role="dialog" aria-modal="true" aria-labelledby="public-business-info-title">

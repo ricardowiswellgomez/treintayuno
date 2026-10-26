@@ -356,13 +356,13 @@ async function makeBusinessCardPng({ name, phone, email, address, website, messa
     website ? '<text x="390" y="435" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
     message ? '<text x="390" y="495" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
   ].filter(Boolean).join("");
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="' + primary + '"/><rect x="42" y="42" width="1116" height="546" rx="34" fill="' + surface + '"/><rect x="82" y="165" width="250" height="250" rx="36" fill="' + primary + '"/><text x="207" y="307" text-anchor="middle" font-family="Arial,sans-serif" font-size="82" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="390" y="145" font-family="Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="390" y="205" font-family="Arial,sans-serif" font-size="38" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 42) + '</text><rect x="390" y="230" width="700" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="82" y="535" font-family="Arial,sans-serif" font-size="16" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital</text></svg>';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="600" viewBox="0 0 1080 600"><rect width="1080" height="600" fill="' + primary + '"/><rect x="38" y="38" width="1004" height="524" rx="30" fill="' + surface + '"/><rect x="74" y="156" width="225" height="225" rx="32" fill="' + primary + '"/><text x="186" y="291" text-anchor="middle" font-family="Arial,sans-serif" font-size="74" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="350" y="128" font-family="Arial,sans-serif" font-size="16" font-weight="800" letter-spacing="3" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="350" y="190" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 38) + '</text><rect x="350" y="211" width="650" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="74" y="505" font-family="Arial,sans-serif" font-size="15" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital · 9 × 5 cm</text></svg>';
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
   try {
     const image = new Image();
     await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = svgUrl; });
     const canvas = document.createElement("canvas");
-    canvas.width = 1200; canvas.height = 630;
+    canvas.width = 1080; canvas.height = 600;
     const context = canvas.getContext("2d");
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     if (logoUrl) {
@@ -374,11 +374,11 @@ async function makeBusinessCardPng({ name, phone, email, address, website, messa
           const logoObjectUrl = URL.createObjectURL(logoBlob);
           try {
             await new Promise((resolve, reject) => { logoImage.onload = resolve; logoImage.onerror = reject; logoImage.src = logoObjectUrl; });
-            context.save(); context.beginPath(); context.roundRect(82, 165, 250, 250, 36); context.clip();
-            context.fillStyle = surface; context.fillRect(82, 165, 250, 250);
-            const scale = Math.min(250 / logoImage.width, 250 / logoImage.height);
+            context.save(); context.beginPath(); context.roundRect(74, 156, 225, 225, 32); context.clip();
+            context.fillStyle = surface; context.fillRect(74, 156, 225, 225);
+            const scale = Math.min(225 / logoImage.width, 225 / logoImage.height);
             const w = logoImage.width * scale, h = logoImage.height * scale;
-            context.drawImage(logoImage, 82 + (250-w)/2, 165 + (250-h)/2, w, h); context.restore();
+            context.drawImage(logoImage, 74 + (225-w)/2, 156 + (225-h)/2, w, h); context.restore();
           } finally { URL.revokeObjectURL(logoObjectUrl); }
         }
       } catch { /* Mantiene la tarjeta usable aunque el logo no pueda cargarse. */ }
@@ -1085,7 +1085,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [businessCardOpen, setBusinessCardOpen] = useState(false);
   const [businessCardSaving, setBusinessCardSaving] = useState(false);
-  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, showAddress: true, showWebsite: true, text: "" });
+  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, showAddress: true, showWebsite: true, text: "", primaryColor: defaultBusinessTheme.primary, backgroundColor: defaultBusinessTheme.surface, textColor: defaultBusinessTheme.text });
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -1664,7 +1664,10 @@ export default function App() {
       cardShowPhone: Boolean(businessCardForm.showPhone),
       cardShowAddress: Boolean(businessCardForm.showAddress),
       cardShowWebsite: Boolean(businessCardForm.showWebsite),
-      cardText: String(businessCardForm.text || "").trim()
+      cardText: String(businessCardForm.text || "").trim(),
+      cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.primaryColor || "") ? businessCardForm.primaryColor : defaultBusinessTheme.primary,
+      cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.backgroundColor || "") ? businessCardForm.backgroundColor : defaultBusinessTheme.surface,
+      cardTextColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.textColor || "") ? businessCardForm.textColor : defaultBusinessTheme.text
     };
     const nextSettings = { ...(activeBusiness.settings || {}), commercial_profile: nextProfile };
     setBusinessCardSaving(true); setError(""); setNotice("");
@@ -1675,7 +1678,7 @@ export default function App() {
       const savedSettings = data.settings || nextSettings;
       setActiveBusiness((currentBusiness) => currentBusiness ? { ...currentBusiness, settings: savedSettings } : currentBusiness);
       setBusinesses((currentBusinesses) => currentBusinesses.map((business) => business.id === data.id ? { ...business, settings: savedSettings } : business));
-      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardShowAddress: nextProfile.cardShowAddress, cardShowWebsite: nextProfile.cardShowWebsite, cardText: nextProfile.cardText }));
+      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardShowAddress: nextProfile.cardShowAddress, cardShowWebsite: nextProfile.cardShowWebsite, cardText: nextProfile.cardText, cardPrimaryColor: nextProfile.cardPrimaryColor, cardBackgroundColor: nextProfile.cardBackgroundColor, cardTextColor: nextProfile.cardTextColor }));
       setNotice(nextProfile.cardEnabled ? "Tarjeta de presentación guardada." : "Tarjeta desactivada. Puedes volver a activarla desde el menú.");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusinessCardSaving(false); }
@@ -1691,7 +1694,7 @@ export default function App() {
     const message = String(businessCardForm.text || "").trim();
     const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\n");
     try {
-      const file = await makeBusinessCardPng({ name, phone, email, address, website, message, primary: activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
+      const file = await makeBusinessCardPng({ name, phone, email, address, website, message, primary: businessCardForm.primaryColor || saved.cardPrimaryColor || activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: businessCardForm.backgroundColor || saved.cardBackgroundColor || activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: businessCardForm.textColor || saved.cardTextColor || activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
       if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [file] }); return; }
       const href = URL.createObjectURL(file); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".png"; link.click(); URL.revokeObjectURL(href);
       if (navigator.share) { try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); } catch (error) { if (error?.name === "AbortError") return; } }
@@ -1705,7 +1708,7 @@ export default function App() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", cardEnabled: Boolean(savedCommercial.cardEnabled), cardName: savedCommercial.cardName || "", cardEmail: savedCommercial.cardEmail || savedCommercial.email || "", cardPhone: savedCommercial.cardPhone || savedCommercial.phone || "", cardShowEmail: savedCommercial.cardShowEmail !== false, cardShowPhone: savedCommercial.cardShowPhone !== false, cardShowAddress: savedCommercial.cardShowAddress !== false, cardShowWebsite: savedCommercial.cardShowWebsite !== false, cardText: savedCommercial.cardText || "", hoursSchedule: savedCommercial.hoursSchedule || {} });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", cardEnabled: Boolean(savedCommercial.cardEnabled), cardName: savedCommercial.cardName || "", cardEmail: savedCommercial.cardEmail || savedCommercial.email || "", cardPhone: savedCommercial.cardPhone || savedCommercial.phone || "", cardShowEmail: savedCommercial.cardShowEmail !== false, cardShowPhone: savedCommercial.cardShowPhone !== false, cardShowAddress: savedCommercial.cardShowAddress !== false, cardShowWebsite: savedCommercial.cardShowWebsite !== false, cardText: savedCommercial.cardText || "", cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardPrimaryColor || "") ? savedCommercial.cardPrimaryColor : normalizeBusinessTheme(activeBusiness.theme).primary, cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardBackgroundColor || "") ? savedCommercial.cardBackgroundColor : normalizeBusinessTheme(activeBusiness.theme).surface, cardTextColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardTextColor || "") ? savedCommercial.cardTextColor : normalizeBusinessTheme(activeBusiness.theme).text, hoursSchedule: savedCommercial.hoursSchedule || {} });
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
@@ -1883,7 +1886,10 @@ export default function App() {
       cardEmail: String(profile?.cardEmail || profile?.email || "").trim(), cardPhone: String(profile?.cardPhone || profile?.phone || "").trim(),
       cardShowEmail: profile?.cardShowEmail !== false, cardShowPhone: profile?.cardShowPhone !== false,
       cardShowAddress: profile?.cardShowAddress !== false, cardShowWebsite: profile?.cardShowWebsite !== false,
-      cardText: String(profile?.cardText || "").trim()
+      cardText: String(profile?.cardText || "").trim(),
+      cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(profile?.cardPrimaryColor || "") ? profile.cardPrimaryColor : defaultBusinessTheme.primary,
+      cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(profile?.cardBackgroundColor || "") ? profile.cardBackgroundColor : defaultBusinessTheme.surface,
+      cardTextColor: /^#[0-9a-f]{6}$/i.test(profile?.cardTextColor || "") ? profile.cardTextColor : defaultBusinessTheme.text
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
@@ -3992,7 +3998,7 @@ export default function App() {
               </div>
             ))}
           </section>)}
-          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,showAddress:p.cardShowAddress !== false,showWebsite:p.cardShowWebsite !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
+          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,showAddress:p.cardShowAddress !== false,showWebsite:p.cardShowWebsite !== false,text:p.cardText || "",primaryColor:p.cardPrimaryColor || activeBusiness?.theme?.primary || defaultBusinessTheme.primary,backgroundColor:p.cardBackgroundColor || activeBusiness?.theme?.surface || defaultBusinessTheme.surface,textColor:p.cardTextColor || activeBusiness?.theme?.text || defaultBusinessTheme.text}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
@@ -4773,7 +4779,8 @@ export default function App() {
                   <label><input type="checkbox" checked={settingsCommercialProfile.cardShowWebsite!==false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowWebsite:e.target.checked}))}/><span>Mostrar sitio web</span></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Texto libre</span><textarea value={settingsCommercialProfile.cardText} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardText:e.target.value}))} placeholder="Profesión, servicios o mensaje personal."/></label>
-                <div className="business-card-modal-preview settings-card-preview" style={{"--card-primary":settingsTheme.primary || defaultBusinessTheme.primary,"--card-surface":settingsTheme.surface || defaultBusinessTheme.surface,"--card-text":settingsTheme.text || defaultBusinessTheme.text}}>
+                <div className="business-card-color-settings"><p className="field-label-heading">Colores de la tarjeta</p><div className="business-card-color-grid"><label><span>Color principal</span><input type="color" value={settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPrimaryColor:e.target.value}))}/><code>{settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary}</code></label><label><span>Fondo</span><input type="color" value={settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardBackgroundColor:e.target.value}))}/><code>{settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface}</code></label><label><span>Texto</span><input type="color" value={settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardTextColor:e.target.value}))}/><code>{settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text}</code></label></div><small>Estos colores son independientes de los colores generales de la aplicación.</small></div>
+                <div className="business-card-modal-preview settings-card-preview" style={{"--card-primary":settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary,"--card-surface":settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface,"--card-text":settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text,"--card-ratio":"9 / 5"}}>
                   {activeBusiness?.logo_path ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
                   <div><strong>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre"}</strong>{settingsCommercialProfile.cardShowEmail!==false && (settingsCommercialProfile.cardEmail || settingsCommercialProfile.email) && <small>{settingsCommercialProfile.cardEmail || settingsCommercialProfile.email}</small>}{settingsCommercialProfile.cardShowPhone!==false && (settingsCommercialProfile.cardPhone || settingsCommercialProfile.phone) && <small>{settingsCommercialProfile.cardPhone || settingsCommercialProfile.phone}</small>}{settingsCommercialProfile.cardShowAddress!==false && [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ") && <small>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</small>}{settingsCommercialProfile.cardShowWebsite!==false && settingsCommercialProfile.website && <small>{settingsCommercialProfile.website}</small>}{settingsCommercialProfile.cardText && <p>{settingsCommercialProfile.cardText}</p>}</div>
                 </div>
@@ -4825,7 +4832,7 @@ export default function App() {
           <header className="customer-detail-header"><div><span className="customer-detail-kicker">DESDE EL MENÚ</span><h2 id="business-card-modal-title">Mi tarjeta de presentación</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar tarjeta" onClick={() => setBusinessCardOpen(false)}>×</button></header>
           <div className="customer-detail-content">
             <p className="helper-text">Esta tarjeta se configura en <strong>Configuración → Mi empresa</strong>. Desde aquí puedes previsualizarla y compartirla; no se publica automáticamente en el catálogo.</p>
-            <div className="business-card-modal-preview" style={{"--card-primary":activeBusiness?.theme?.primary || defaultBusinessTheme.primary,"--card-surface":activeBusiness?.theme?.surface || defaultBusinessTheme.surface,"--card-text":activeBusiness?.theme?.text || defaultBusinessTheme.text}}>
+            <div className="business-card-modal-preview" style={{"--card-primary":businessCardForm.primaryColor || defaultBusinessTheme.primary,"--card-surface":businessCardForm.backgroundColor || defaultBusinessTheme.surface,"--card-text":businessCardForm.textColor || defaultBusinessTheme.text,"--card-ratio":"9 / 5"}}>
               {(activeBusiness?.logo_path) ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
               <div><strong>{businessCardForm.name || activeBusiness?.name || "Tu nombre"}</strong>{businessCardForm.showEmail && businessCardForm.email && <small>{businessCardForm.email}</small>}{businessCardForm.showPhone && businessCardForm.phone && <small>{businessCardForm.phone}</small>}{businessCardForm.showAddress && [activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ") && <small>{[activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ")}</small>}{businessCardForm.showWebsite && activeBusiness?.settings?.commercial_profile?.website && <small>{activeBusiness.settings.commercial_profile.website}</small>}{businessCardForm.text && <p>{businessCardForm.text}</p>}</div>
             </div>

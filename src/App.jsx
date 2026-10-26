@@ -830,11 +830,21 @@ function PublicCatalog({ businessId }) {
     if (!returnOrderReference) return;
     setOrderStatusLoading(true);
     try {
+      let checkoutToken = "";
+      try { checkoutToken = sessionStorage.getItem("t31-checkout:" + returnOrderReference) || ""; } catch {}
+      if (!checkoutToken) {
+        setReturnedOrder({ payment_status: "unknown", order_reference: returnOrderReference });
+        return;
+      }
       const { data, error: statusError } = await supabase.rpc("get_public_store_order_status", {
-        p_order_reference: returnOrderReference
+        p_order_reference: returnOrderReference,
+        p_checkout_token: checkoutToken
       });
       if (statusError) throw statusError;
-      setReturnedOrder(data || null);
+      setReturnedOrder(data || { payment_status: "unknown", order_reference: returnOrderReference });
+      if (data && !["pending"].includes(data.payment_status)) {
+        try { sessionStorage.removeItem("t31-checkout:" + returnOrderReference); } catch {}
+      }
     } catch {
       setReturnedOrder({ payment_status: "unknown", order_reference: returnOrderReference });
     } finally { setOrderStatusLoading(false); }
@@ -930,7 +940,8 @@ function PublicCatalog({ businessId }) {
         p_coupon_code: couponApplied?.code || null
       });
       if (orderError) throw orderError;
-      if (!order?.order_id || !order?.checkout_token) throw new Error("No se pudo preparar el pedido para el pago.");
+      if (!order?.order_id || !order?.checkout_token || !order?.order_reference) throw new Error("No se pudo preparar el pedido para el pago.");
+      try { sessionStorage.setItem("t31-checkout:" + order.order_reference, order.checkout_token); } catch {}
       const { data: checkout, error: checkoutErrorResult } = await supabase.functions.invoke("public-checkout", {
         body: { action: "create", order_id: order.order_id, checkout_token: order.checkout_token }
       });

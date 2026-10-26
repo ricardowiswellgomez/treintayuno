@@ -908,6 +908,10 @@ function PublicCatalog({ businessId }) {
       window.location.assign("https://wa.me/" + rawPhone + "?text=" + encodeURIComponent(message));
       return;
     }
+    if (business?.currency_code !== "COP") {
+      setCheckoutError("Wompi solo admite pagos en pesos colombianos (COP). Este negocio debe elegir pedidos por WhatsApp o configurar su moneda en COP.");
+      return;
+    }
     if (!paymentEnabled) {
       setCheckoutError("Los pagos en línea aún no están habilitados. No se ha creado ningún pedido ni se ha cobrado nada.");
       return;
@@ -1045,8 +1049,9 @@ function PublicCatalog({ businessId }) {
               <label><span>Dirección de entrega (opcional)</span><input maxLength={250} autoComplete="street-address" value={checkoutForm.address} onChange={(e) => setCheckoutForm((current) => ({ ...current, address: e.target.value }))} placeholder="Dirección, barrio y ciudad" /></label>
               <label><span>Notas del pedido (opcional)</span><textarea maxLength={1000} rows={2} value={checkoutForm.notes} onChange={(e) => setCheckoutForm((current) => ({ ...current, notes: e.target.value }))} placeholder="Indicaciones para el negocio" /></label>
               {checkoutError && <p className="public-checkout-error" role="alert">{checkoutError}</p>}
-              {orderChannel === "wompi" && !paymentStatusLoading && !paymentEnabled && <p className="public-checkout-unavailable">El pago en línea aún no está configurado para este comercio. El propietario puede activar WhatsApp como alternativa.</p>}
-              <button type="submit" className="public-checkout-pay-button" disabled={checkoutBusy || (orderChannel === "wompi" && (paymentStatusLoading || !paymentEnabled))}>{checkoutBusy ? (orderChannel === "whatsapp" ? "Abriendo WhatsApp…" : "Preparando pago seguro…") : orderChannel === "whatsapp" ? "Enviar pedido por WhatsApp" : paymentStatusLoading ? "Comprobando pagos…" : "Continuar al pago seguro"}</button>
+              {orderChannel === "wompi" && !paymentStatusLoading && business?.currency_code !== "COP" && <p className="public-checkout-unavailable">Wompi solo admite COP. El propietario debe cambiar la moneda del negocio a COP o elegir pedidos por WhatsApp.</p>}
+              {orderChannel === "wompi" && !paymentStatusLoading && business?.currency_code === "COP" && !paymentEnabled && <p className="public-checkout-unavailable">El pago en línea aún no está configurado para este comercio. El propietario puede activar WhatsApp como alternativa.</p>}
+              <button type="submit" className="public-checkout-pay-button" disabled={checkoutBusy || (orderChannel === "wompi" && (paymentStatusLoading || !paymentEnabled || business?.currency_code !== "COP"))}>{checkoutBusy ? (orderChannel === "whatsapp" ? "Abriendo WhatsApp…" : "Preparando pago seguro…") : orderChannel === "whatsapp" ? "Enviar pedido por WhatsApp" : paymentStatusLoading ? "Comprobando pagos…" : "Continuar al pago seguro"}</button>
               <p className="public-checkout-security">{orderChannel === "whatsapp" ? "El pedido se enviará al negocio por WhatsApp. El pago y la confirmación se acuerdan directamente con el comercio." : <><span aria-hidden="true">🔒</span> El pago se procesa en la plataforma segura de Wompi. El pedido solo se confirma cuando el proveedor verifica el pago.</>}</p>
             </form>
           </>}
@@ -1876,6 +1881,7 @@ export default function App() {
     const hoursText = hasConfiguredSchedule ? days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n") : String(settingsCommercialProfile.hours || "").trim();
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:hasConfiguredSchedule ? schedule : (settingsCommercialProfile.hoursSchedule || {}), hours:hoursText});
     if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
+    if (commercialProfile.orderChannel === "wompi" && settingsCurrency !== "COP") { setError("Wompi solo admite COP. Elige pedidos por WhatsApp o cambia la moneda del negocio a COP."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };

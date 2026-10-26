@@ -926,17 +926,20 @@ function PublicCatalog({ businessId }) {
     setCheckoutBusy(true);
     setCheckoutError("");
     try {
-      const { data: order, error: orderError } = await supabase.rpc("create_public_store_order", {
-        p_business_id: businessId,
-        p_customer_name: checkoutForm.name.trim(),
-        p_customer_phone: checkoutForm.phone.trim(),
-        p_customer_email: checkoutForm.email.trim() || null,
-        p_customer_address: checkoutForm.address.trim() || null,
-        p_customer_notes: checkoutForm.notes.trim() || null,
-        p_items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
-        p_coupon_code: couponApplied?.code || null
+      const { data: order, error: orderError } = await supabase.functions.invoke("public-checkout", {
+        body: {
+          action: "order",
+          business_id: businessId,
+          customer_name: checkoutForm.name.trim(),
+          customer_phone: checkoutForm.phone.trim(),
+          customer_email: checkoutForm.email.trim() || null,
+          customer_address: checkoutForm.address.trim() || null,
+          customer_notes: checkoutForm.notes.trim() || null,
+          items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+          coupon_code: couponApplied?.code || null
+        }
       });
-      if (orderError) throw orderError;
+      if (orderError) throw new Error(orderError.message || "No se pudo crear el pedido de forma segura.");
       if (!order?.order_id || !order?.checkout_token || !order?.order_reference) throw new Error("No se pudo preparar el pedido para el pago.");
       try { sessionStorage.setItem("t31-checkout:" + order.order_reference, order.checkout_token); } catch {}
       const { data: checkout, error: checkoutErrorResult } = await supabase.functions.invoke("public-checkout", {

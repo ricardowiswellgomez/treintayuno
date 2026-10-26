@@ -17,6 +17,9 @@ Fecha de revisión: 26 de octubre de 2026.
 
 ## Correcciones aplicadas en esta revisión
 
+- La RPC `get_public_store_order_status` ahora exige la referencia del pedido y el token privado de checkout. La firma antigua fue eliminada y sus permisos revocados; el catálogo guarda el token solo en `sessionStorage` para verificar el retorno de Wompi sin exponerlo en la URL. La migración aplicada quedó versionada con el identificador real de Supabase: `20261026190448_require_checkout_token_for_public_order_status.sql`.
+- La ruta de IA valida que las solicitudes sean JSON, limita el cuerpo a 16 KB y aplica un límite de 20 solicitudes por usuario por minuto mediante un binding de Cloudflare Workers. Es un límite aproximado por ubicación de Cloudflare, no una cuota global estricta. El cambio está en Git y pasa el build de producción; debe desplegarse el Worker para quedar activo en el tráfico real.
+
 - La RPC `create_public_store_order` ahora rechaza listas nulas o no-array, limita la longitud de los datos recibidos, suma cantidades repetidas del mismo producto antes de validar inventario, restringe el checkout en línea a COP y rechaza pedidos de total cero. La migración `20261026184804_harden_public_order_validation.sql` está aplicada en Supabase y versionada en Git.
 - Configuración impide guardar Wompi con una moneda distinta de COP; el catálogo bloquea ese checkout y explica que se use WhatsApp o COP.
 - La tarjeta de presentación se configura en Configuración y se comparte desde el menú; no se publica en el catálogo. La información comercial del catálogo está separada de los artículos mediante la barra inferior «Información».

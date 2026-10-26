@@ -8,7 +8,7 @@ Fecha de revisión: 26 de octubre de 2026.
 
 ## Comprobaciones confirmadas
 
-- GitHub Actions compiló correctamente el commit `38d74d2bc1a3968f7c163e62c40cc348078dfbae`.
+- El workflow `Build Treintayuno` valida la sintaxis del Worker, compila el bundle de producción y ejecuta `wrangler deploy --dry-run`. El resultado del commit actual debe comprobarse en [GitHub Actions](https://github.com/ricardowiswellgomez/treintayuno/actions); un build verde no demuestra que los flujos comerciales funcionen de extremo a extremo.
 - La base Supabase `maogebecfottfvlrjbho` está en estado `ACTIVE_HEALTHY`, PostgreSQL 17.
 - El asesor de Supabase no detecta una fuga directa de secretos de pago en la salida revisada. Las funciones `SECURITY DEFINER` que permiten llamadas públicas requieren revisión por función; el aviso por sí solo no prueba una vulnerabilidad.
 - Las tablas de pedidos públicos y credenciales de pago tienen RLS activado sin políticas directas. Eso es deliberado si el acceso ocurre únicamente a través de RPC cuidadosamente validadas o del servicio de servidor; no se deben añadir políticas abiertas para silenciar el aviso.
@@ -19,7 +19,7 @@ Fecha de revisión: 26 de octubre de 2026.
 
 ### P0 — Migraciones fuera de sincronía
 
-La base conectada registra migraciones posteriores a `20261024010000_convert_business_catalog_currency.sql` que no están representadas como archivos SQL en el repositorio. Incluyen pedidos del catálogo, pagos verificados, cupones, integraciones Wompi por negocio, auditoría y privacidad de la tarjeta comercial.
+La comparación directa encontró **64 migraciones registradas en Supabase y 28 archivos SQL en el repositorio; solo 6 identificadores de versión coinciden exactamente**. Hay 58 versiones remotas sin archivo con la misma versión y 22 archivos cuyo identificador no aparece en el historial remoto. Esto no prueba que todo el SQL sea distinto, pero sí que la secuencia no es reproducible con seguridad desde Git. Abarca la base multiempresa, permisos, ventas/compras, catálogo, pagos, cupones, auditoría y privacidad de la tarjeta.
 
 **Riesgo:** un entorno nuevo o una restauración desde Git no puede reconstruir de forma fiable el esquema actual; el historial remoto y el historial versionado no son reproducibles entre sí.
 

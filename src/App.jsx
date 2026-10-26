@@ -20,7 +20,6 @@ function AppIcon({ name, size = 20 }) {
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
     coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,
-    businessCard: <><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="2" /><path d="M5.5 15c.5-1.5 1.5-2.2 3-2.2s2.5.7 3 2.2M14 9h4M14 12h4M14 15h3" /></>,
     edit: <><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></>,
     trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
@@ -347,48 +346,6 @@ const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text), sidebarBackground: valid(theme?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(theme?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(theme?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(theme?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
-async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text, logoUrl }) {
-  const safe = (value) => escapeHtml(String(value || "").trim());
-  const detailLines = [
-    phone ? '<text x="350" y="265" font-size="24" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
-    email ? '<text x="350" y="310" font-size="22" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
-    address ? '<text x="350" y="355" font-size="21" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
-    website ? '<text x="350" y="400" font-size="21" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
-    message ? '<text x="350" y="445" font-size="20" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
-  ].filter(Boolean).join("");
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="600" viewBox="0 0 1080 600"><rect width="1080" height="600" fill="' + primary + '"/><rect x="38" y="38" width="1004" height="524" rx="30" fill="' + surface + '"/><rect x="74" y="156" width="225" height="225" rx="32" fill="' + primary + '"/><text x="186" y="291" text-anchor="middle" font-family="Arial,sans-serif" font-size="74" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="350" y="128" font-family="Arial,sans-serif" font-size="16" font-weight="800" letter-spacing="3" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="350" y="190" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 38) + '</text><rect x="350" y="211" width="650" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="74" y="505" font-family="Arial,sans-serif" font-size="15" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital · 9 × 5 cm</text></svg>';
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-  try {
-    const image = new Image();
-    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = svgUrl; });
-    const canvas = document.createElement("canvas");
-    canvas.width = 1080; canvas.height = 600;
-    const context = canvas.getContext("2d");
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    if (logoUrl) {
-      try {
-        const response = await fetch(logoUrl, { mode: "cors" });
-        if (response.ok) {
-          const logoBlob = await response.blob();
-          const logoImage = new Image();
-          const logoObjectUrl = URL.createObjectURL(logoBlob);
-          try {
-            await new Promise((resolve, reject) => { logoImage.onload = resolve; logoImage.onerror = reject; logoImage.src = logoObjectUrl; });
-            context.save(); context.beginPath(); context.roundRect(74, 156, 225, 225, 32); context.clip();
-            context.fillStyle = surface; context.fillRect(74, 156, 225, 225);
-            const scale = Math.min(225 / logoImage.width, 225 / logoImage.height);
-            const w = logoImage.width * scale, h = logoImage.height * scale;
-            context.drawImage(logoImage, 74 + (225-w)/2, 156 + (225-h)/2, w, h); context.restore();
-          } finally { URL.revokeObjectURL(logoObjectUrl); }
-        }
-      } catch { /* Mantiene la tarjeta usable aunque el logo no pueda cargarse. */ }
-    }
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) throw new Error("No se pudo generar la imagen.");
-    return new File([blob], "tarjeta-presentacion.png", { type: "image/png" });
-  } finally { URL.revokeObjectURL(svgUrl); }
-}
-
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
   try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
@@ -1083,9 +1040,6 @@ export default function App() {
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("sales");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [businessCardOpen, setBusinessCardOpen] = useState(false);
-  const [businessCardSaving, setBusinessCardSaving] = useState(false);
-  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, showAddress: true, showWebsite: true, text: "", primaryColor: defaultBusinessTheme.primary, backgroundColor: defaultBusinessTheme.surface, textColor: defaultBusinessTheme.text });
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -1279,7 +1233,7 @@ export default function App() {
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsTab, setSettingsTab] = useState("general");
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", cardEnabled: false, cardName: "", cardEmail: "", cardPhone: "", cardShowEmail: true, cardShowPhone: true, cardShowAddress: true, cardShowWebsite: true, cardText: "", hoursSchedule: {} });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", hoursSchedule: {} });
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
   useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
@@ -1651,57 +1605,6 @@ export default function App() {
     });
   }
 
-  async function saveBusinessCardFromMenu() {
-    if (!activeBusiness?.id || activeBusiness.role !== "owner") return;
-    const current = activeBusiness.settings?.commercial_profile || {};
-    const nextProfile = {
-      ...current,
-      cardEnabled: Boolean(businessCardForm.enabled),
-      cardName: String(businessCardForm.name || "").trim(),
-      cardEmail: String(businessCardForm.email || "").trim(),
-      cardPhone: String(businessCardForm.phone || "").trim(),
-      cardShowEmail: Boolean(businessCardForm.showEmail),
-      cardShowPhone: Boolean(businessCardForm.showPhone),
-      cardShowAddress: Boolean(businessCardForm.showAddress),
-      cardShowWebsite: Boolean(businessCardForm.showWebsite),
-      cardText: String(businessCardForm.text || "").trim(),
-      cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.primaryColor || "") ? businessCardForm.primaryColor : defaultBusinessTheme.primary,
-      cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.backgroundColor || "") ? businessCardForm.backgroundColor : defaultBusinessTheme.surface,
-      cardTextColor: /^#[0-9a-f]{6}$/i.test(businessCardForm.textColor || "") ? businessCardForm.textColor : defaultBusinessTheme.text
-    };
-    const nextSettings = { ...(activeBusiness.settings || {}), commercial_profile: nextProfile };
-    setBusinessCardSaving(true); setError(""); setNotice("");
-    try {
-      const { data, error: saveError } = await supabase.from("businesses").update({ settings: nextSettings }).eq("id", activeBusiness.id).select("id,settings").maybeSingle();
-      if (saveError) throw saveError;
-      if (!data) throw new Error("No se pudo guardar la tarjeta. Comprueba tus permisos.");
-      const savedSettings = data.settings || nextSettings;
-      setActiveBusiness((currentBusiness) => currentBusiness ? { ...currentBusiness, settings: savedSettings } : currentBusiness);
-      setBusinesses((currentBusinesses) => currentBusinesses.map((business) => business.id === data.id ? { ...business, settings: savedSettings } : business));
-      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardShowAddress: nextProfile.cardShowAddress, cardShowWebsite: nextProfile.cardShowWebsite, cardText: nextProfile.cardText, cardPrimaryColor: nextProfile.cardPrimaryColor, cardBackgroundColor: nextProfile.cardBackgroundColor, cardTextColor: nextProfile.cardTextColor }));
-      setNotice(nextProfile.cardEnabled ? "Tarjeta de presentación guardada." : "Tarjeta desactivada. Puedes volver a activarla desde el menú.");
-    } catch (e) { setError(friendlyError(e)); }
-    finally { setBusinessCardSaving(false); }
-  }
-
-  async function shareBusinessCardFromMenu() {
-    const saved = activeBusiness?.settings?.commercial_profile || {};
-    const name = String(businessCardForm.name || saved.cardName || saved.tradeName || activeBusiness?.name || "Mi negocio").trim();
-    const phone = businessCardForm.showPhone ? String(businessCardForm.phone || saved.cardPhone || saved.phone || "").trim() : "";
-    const email = businessCardForm.showEmail ? String(businessCardForm.email || saved.cardEmail || saved.email || "").trim() : "";
-    const address = businessCardForm.showAddress ? [saved.address, saved.city].filter(Boolean).join(", ") : "";
-    const website = businessCardForm.showWebsite ? (saved.website || "") : "";
-    const message = String(businessCardForm.text || "").trim();
-    const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\n");
-    try {
-      const file = await makeBusinessCardPng({ name, phone, email, address, website, message, primary: businessCardForm.primaryColor || saved.cardPrimaryColor || activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: businessCardForm.backgroundColor || saved.cardBackgroundColor || activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: businessCardForm.textColor || saved.cardTextColor || activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [file] }); return; }
-      const href = URL.createObjectURL(file); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".png"; link.click(); URL.revokeObjectURL(href);
-      if (navigator.share) { try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); } catch (error) { if (error?.name === "AbortError") return; } }
-      else { try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta descargada y datos copiados para compartir."); } catch { setNotice("Tarjeta descargada; puedes adjuntarla en WhatsApp."); } }
-    } catch (error) { if (error?.name !== "AbortError") setError("No se pudo preparar la tarjeta. Vuelve a intentarlo."); }
-  }
-
   useEffect(() => {
     if (screen !== "settings" || !activeBusiness?.id) return;
     let alive = true;
@@ -1882,14 +1785,6 @@ export default function App() {
       hours: String(profile?.hours || "").trim(),
       hoursSchedule: profile?.hoursSchedule && typeof profile.hoursSchedule === "object" ? profile.hoursSchedule : {},
       orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
-      cardEnabled: Boolean(profile?.cardEnabled), cardName: String(profile?.cardName || "").trim(),
-      cardEmail: String(profile?.cardEmail || profile?.email || "").trim(), cardPhone: String(profile?.cardPhone || profile?.phone || "").trim(),
-      cardShowEmail: profile?.cardShowEmail !== false, cardShowPhone: profile?.cardShowPhone !== false,
-      cardShowAddress: profile?.cardShowAddress !== false, cardShowWebsite: profile?.cardShowWebsite !== false,
-      cardText: String(profile?.cardText || "").trim(),
-      cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(profile?.cardPrimaryColor || "") ? profile.cardPrimaryColor : defaultBusinessTheme.primary,
-      cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(profile?.cardBackgroundColor || "") ? profile.cardBackgroundColor : defaultBusinessTheme.surface,
-      cardTextColor: /^#[0-9a-f]{6}$/i.test(profile?.cardTextColor || "") ? profile.cardTextColor : defaultBusinessTheme.text
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
@@ -1900,7 +1795,7 @@ export default function App() {
     const hasConfiguredSchedule = Object.keys(settingsCommercialProfile.hoursSchedule || {}).length > 0;
     const hoursText = hasConfiguredSchedule ? days.filter((day) => schedule[day.key].enabled).map((day) => day.label + ": " + schedule[day.key].periods.filter((p) => p.open && p.close).map((p) => p.open + "–" + p.close).join(" y ")).filter((line) => !line.endsWith(": ")).join("\n") : String(settingsCommercialProfile.hours || "").trim();
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:hasConfiguredSchedule ? schedule : (settingsCommercialProfile.hoursSchedule || {}), hours:hoursText});
-    if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone || commercialProfile.cardPhone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
+    if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     if (commercialProfile.orderChannel === "wompi" && settingsCurrency !== "COP") { setError("Wompi solo admite COP. Elige pedidos por WhatsApp o cambia la moneda del negocio a COP."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
@@ -3998,13 +3893,12 @@ export default function App() {
               </div>
             ))}
           </section>)}
-          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,showAddress:p.cardShowAddress !== false,showWebsite:p.cardShowWebsite !== false,text:p.cardText || "",primaryColor:p.cardPrimaryColor || activeBusiness?.theme?.primary || defaultBusinessTheme.primary,backgroundColor:p.cardBackgroundColor || activeBusiness?.theme?.surface || defaultBusinessTheme.surface,textColor:p.cardTextColor || activeBusiness?.theme?.text || defaultBusinessTheme.text}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button>{(activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <button type="button" className="mobile-module-card mobile-business-card-menu" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,showAddress:p.cardShowAddress !== false,showWebsite:p.cardShowWebsite !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setMobileNavOpen(false); setError(""); }}><AppIcon name="businessCard" size={23}/><span><strong>Mi tarjeta de presentación</strong><small>Editar, guardar o compartir tarjeta</small></span><b>›</b></button>}<button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -4764,26 +4658,6 @@ export default function App() {
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
                 <div className="settings-section-divider" />
-                <h3>Tarjeta de presentación virtual</h3>
-                <p>Configúrala aquí. El acceso del menú sirve para previsualizarla y compartirla; no se publica automáticamente en el catálogo.</p>
-                <label className="settings-help-toggle"><input type="checkbox" checked={Boolean(settingsCommercialProfile.cardEnabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEnabled:e.target.checked}))}/><span><strong>Activar mi tarjeta</strong><small>Habilita la opción de compartirla desde el menú principal.</small></span></label>
-                <label className="settings-field"><span className="field-label-heading">Nombre real de la persona</span><input value={settingsCommercialProfile.cardName} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardName:e.target.value}))} maxLength={160} disabled={activeBusiness?.role!=="owner"} placeholder="Nombre y apellido"/></label>
-                <div className="company-profile-grid">
-                  <label className="settings-field"><span className="field-label-heading">Correo de la tarjeta</span><input type="email" value={settingsCommercialProfile.cardEmail} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEmail:e.target.value}))} maxLength={254} disabled={activeBusiness?.role!=="owner"} placeholder="tu@correo.com"/></label>
-                  <label className="settings-field"><span className="field-label-heading">Celular de la tarjeta</span><input value={settingsCommercialProfile.cardPhone} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPhone:e.target.value}))} maxLength={50} disabled={activeBusiness?.role!=="owner"} placeholder="+57…"/></label>
-                </div>
-                <div className="settings-card-visibility">
-                  <label><input type="checkbox" checked={settingsCommercialProfile.cardShowEmail!==false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowEmail:e.target.checked}))}/><span>Mostrar correo</span></label>
-                  <label><input type="checkbox" checked={settingsCommercialProfile.cardShowPhone!==false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowPhone:e.target.checked}))}/><span>Mostrar celular</span></label>
-                  <label><input type="checkbox" checked={settingsCommercialProfile.cardShowAddress!==false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowAddress:e.target.checked}))}/><span>Mostrar dirección</span></label>
-                  <label><input type="checkbox" checked={settingsCommercialProfile.cardShowWebsite!==false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowWebsite:e.target.checked}))}/><span>Mostrar sitio web</span></label>
-                </div>
-                <label className="settings-field"><span className="field-label-heading">Texto libre</span><textarea value={settingsCommercialProfile.cardText} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardText:e.target.value}))} placeholder="Profesión, servicios o mensaje personal."/></label>
-                <div className="business-card-color-settings"><p className="field-label-heading">Colores de la tarjeta</p><div className="business-card-color-grid"><label><span>Color principal</span><input type="color" value={settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPrimaryColor:e.target.value}))}/><code>{settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary}</code></label><label><span>Fondo</span><input type="color" value={settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardBackgroundColor:e.target.value}))}/><code>{settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface}</code></label><label><span>Texto</span><input type="color" value={settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardTextColor:e.target.value}))}/><code>{settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text}</code></label></div><small>Estos colores son independientes de los colores generales de la aplicación.</small></div>
-                <div className="business-card-modal-preview settings-card-preview" style={{"--card-primary":settingsCommercialProfile.cardPrimaryColor || settingsTheme.primary || defaultBusinessTheme.primary,"--card-surface":settingsCommercialProfile.cardBackgroundColor || settingsTheme.surface || defaultBusinessTheme.surface,"--card-text":settingsCommercialProfile.cardTextColor || settingsTheme.text || defaultBusinessTheme.text,"--card-ratio":"9 / 5"}}>
-                  {activeBusiness?.logo_path ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
-                  <div><strong>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre"}</strong>{settingsCommercialProfile.cardShowEmail!==false && (settingsCommercialProfile.cardEmail || settingsCommercialProfile.email) && <small>{settingsCommercialProfile.cardEmail || settingsCommercialProfile.email}</small>}{settingsCommercialProfile.cardShowPhone!==false && (settingsCommercialProfile.cardPhone || settingsCommercialProfile.phone) && <small>{settingsCommercialProfile.cardPhone || settingsCommercialProfile.phone}</small>}{settingsCommercialProfile.cardShowAddress!==false && [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ") && <small>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</small>}{settingsCommercialProfile.cardShowWebsite!==false && settingsCommercialProfile.website && <small>{settingsCommercialProfile.website}</small>}{settingsCommercialProfile.cardText && <p>{settingsCommercialProfile.cardText}</p>}</div>
-                </div>
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
                   {([{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}]).map((day) => { const dayHours=settingsCommercialProfile.hoursSchedule?.[day.key] || {enabled:false,periods:[{open:"09:00",close:"18:00"}]}; const periods=Array.isArray(dayHours.periods)&&dayHours.periods.length?dayHours.periods:[{open:"09:00",close:"18:00"}]; return <div className={"settings-hours-day"+(dayHours.enabled?" is-enabled":"")} key={day.key}><label className="settings-hours-day-check"><input type="checkbox" checked={Boolean(dayHours.enabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current, hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{enabled:e.target.checked,periods:(current.hoursSchedule?.[day.key]?.periods?.length?current.hoursSchedule[day.key].periods:[{open:"09:00",close:"18:00"}])}} }))}/><strong>{day.label}</strong></label>
                     <div className="settings-hours-periods">{periods.slice(0,2).map((period,index)=><div className="settings-hours-period" key={index}><span>{index===0?"Primer turno":"Segundo turno"}</span><label><span>Apertura</span><input type="time" value={period.open||""} disabled={!dayHours.enabled||activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:periods.map((p,i)=>i===index?{...p,open:e.target.value}:p)}} }))}/></label><label><span>Cierre</span><input type="time" value={period.close||""} disabled={!dayHours.enabled||activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:periods.map((p,i)=>i===index?{...p,close:e.target.value}:p)}} }))}/></label></div>)}</div>
@@ -4827,23 +4701,6 @@ export default function App() {
         </aside>}
       </div>}
 
-      {businessCardOpen && <div className="customer-detail-backdrop business-card-modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setBusinessCardOpen(false); }}>
-        <section className="customer-detail-card business-card-modal" role="dialog" aria-modal="true" aria-labelledby="business-card-modal-title">
-          <header className="customer-detail-header"><div><span className="customer-detail-kicker">DESDE EL MENÚ</span><h2 id="business-card-modal-title">Mi tarjeta de presentación</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar tarjeta" onClick={() => setBusinessCardOpen(false)}>×</button></header>
-          <div className="customer-detail-content">
-            <p className="helper-text">Esta tarjeta se configura en <strong>Configuración → Mi empresa</strong>. Desde aquí puedes previsualizarla y compartirla; no se publica automáticamente en el catálogo.</p>
-            <div className="business-card-modal-preview" style={{"--card-primary":businessCardForm.primaryColor || defaultBusinessTheme.primary,"--card-surface":businessCardForm.backgroundColor || defaultBusinessTheme.surface,"--card-text":businessCardForm.textColor || defaultBusinessTheme.text,"--card-ratio":"9 / 5"}}>
-              {(activeBusiness?.logo_path) ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
-              <div><strong>{businessCardForm.name || activeBusiness?.name || "Tu nombre"}</strong>{businessCardForm.showEmail && businessCardForm.email && <small>{businessCardForm.email}</small>}{businessCardForm.showPhone && businessCardForm.phone && <small>{businessCardForm.phone}</small>}{businessCardForm.showAddress && [activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ") && <small>{[activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ")}</small>}{businessCardForm.showWebsite && activeBusiness?.settings?.commercial_profile?.website && <small>{activeBusiness.settings.commercial_profile.website}</small>}{businessCardForm.text && <p>{businessCardForm.text}</p>}</div>
-            </div>
-          </div>
-          <footer className="customer-detail-actions business-card-modal-actions">
-            {activeBusiness?.role==="owner" && <button type="button" className="secondary-button" onClick={()=>{setBusinessCardOpen(false);navigate("settings");setSettingsTab("company");setNotice("Configura tu tarjeta en Configuración → Mi empresa y guarda los cambios.");}}>Configurar en Configuración</button>}
-            <button type="button" className="primary-button" disabled={!businessCardForm.enabled} onClick={shareBusinessCardFromMenu}>↗ Compartir</button>
-            <button type="button" className="secondary-button" onClick={()=>setBusinessCardOpen(false)}>Cerrar</button>
-          </footer>
-        </section>
-      </div>}
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}
     </main>
   );

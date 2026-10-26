@@ -1653,33 +1653,13 @@ export default function App() {
     const address = [saved.address, saved.city].filter(Boolean).join(", ");
     const website = saved.website || "";
     const message = String(businessCardForm.text || "").trim();
-    const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\\n");
+    const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\n");
     try {
       const file = await makeBusinessCardPng({ name, phone, email, address, website, message, primary: activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
       if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [file] }); return; }
       const href = URL.createObjectURL(file); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".png"; link.click(); URL.revokeObjectURL(href);
       if (navigator.share) { try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); } catch (error) { if (error?.name === "AbortError") return; } }
       else { try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta descargada y datos copiados para compartir."); } catch { setNotice("Tarjeta descargada; puedes adjuntarla en WhatsApp."); } }
-    } catch (error) { if (error?.name !== "AbortError") setError("No se pudo preparar la tarjeta. Vuelve a intentarlo."); }
-  }
-
-  async function shareBusinessCardNow() {
-    const saved = activeBusiness?.settings?.commercial_profile || {};
-    const profile = settingsCommercialProfile || {};
-    if (!(saved.cardEnabled || profile.cardEnabled)) { setNotice("Activa la tarjeta desde Configuración → Mi empresa para poder compartirla."); return; }
-    const cardName = profile.cardName || saved.cardName || profile.tradeName || saved.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
-    const phone = (profile.cardShowPhone ?? saved.cardShowPhone) === false ? "" : (profile.cardPhone || saved.cardPhone || profile.phone || saved.phone || "");
-    const email = (profile.cardShowEmail ?? saved.cardShowEmail) === false ? "" : (profile.cardEmail || saved.cardEmail || profile.email || saved.email || "");
-    const address = [profile.address || saved.address, profile.city || saved.city].filter(Boolean).join(", ");
-    const website = profile.website || saved.website || "";
-    const message = profile.cardText || saved.cardText || "";
-    const shareText = [cardName, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\n");
-    try {
-      const file = await makeBusinessCardPng({ name: cardName, phone, email, address, website, message, primary: activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [file] }); return; }
-      const href = URL.createObjectURL(file); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + cardName.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".png"; link.click(); URL.revokeObjectURL(href);
-      if (navigator.share) { try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); } catch (error) { if (error?.name === "AbortError") return; } }
-      else { try { await navigator.clipboard.writeText(shareText); setNotice("Descargué la tarjeta y copié sus datos para compartir."); } catch { setNotice("La tarjeta se descargó para que puedas adjuntarla en WhatsApp."); } }
     } catch (error) { if (error?.name !== "AbortError") setError("No se pudo preparar la tarjeta. Vuelve a intentarlo."); }
   }
 
@@ -3974,6 +3954,7 @@ export default function App() {
               </div>
             ))}
           </section>)}
+          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>

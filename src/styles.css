@@ -2676,3 +2676,8 @@ button{line-height:1.35}
   .public-business-info-list>a>span:first-child,.public-business-info-hours>span:first-child{width:32px;height:32px}
 }
 @media(min-width:761px){.public-business-info-backdrop{align-items:center}.public-business-info-sheet{border-radius:20px}}
+
+
+.catalog-sort-control{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);font-weight:750}
+.catalog-sort-control select{min-height:36px;max-width:150px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--paper);color:var(--ink);font:inherit}
+@media(max-width:600px){.catalog-filter-actions{width:100%;display:grid;grid-template-columns:1fr;gap:10px}.catalog-sort-control{justify-content:space-between}.catalog-sort-control select{max-width:65%;flex:1}.catalog-filter-actions .view-switch{width:100%}.catalog-filter-actions .view-switch button{flex:1;justify-content:center}}

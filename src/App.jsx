@@ -1412,10 +1412,13 @@ export default function App() {
       .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings, created_at)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
-    // Orden estable: el negocio creado primero es el predeterminado en una sesión nueva.
+    // En una sesión nueva, prioriza el negocio propio; los negocios donde la persona trabaja siguen disponibles en el selector.
     const list = (data || []).map((row) => ({ ...row.businesses, role: row.role, permissions: row.permissions || {} }))
       .filter((b) => b?.id)
       .sort((left, right) => {
+        const rolePriority = (role) => role === "owner" ? 0 : role === "admin" ? 1 : 2;
+        const roleDifference = rolePriority(left.role) - rolePriority(right.role);
+        if (roleDifference) return roleDifference;
         const leftCreated = Date.parse(left.created_at || "");
         const rightCreated = Date.parse(right.created_at || "");
         const leftTime = Number.isFinite(leftCreated) ? leftCreated : Number.MAX_SAFE_INTEGER;

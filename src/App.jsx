@@ -1640,6 +1640,7 @@ export default function App() {
       const savedSettings = data.settings || nextSettings;
       setActiveBusiness((currentBusiness) => currentBusiness ? { ...currentBusiness, settings: savedSettings } : currentBusiness);
       setBusinesses((currentBusinesses) => currentBusinesses.map((business) => business.id === data.id ? { ...business, settings: savedSettings } : business));
+      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardText: nextProfile.cardText }));
       setNotice(nextProfile.cardEnabled ? "Tarjeta de presentación guardada." : "Tarjeta desactivada. Puedes volver a activarla desde el menú.");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusinessCardSaving(false); }

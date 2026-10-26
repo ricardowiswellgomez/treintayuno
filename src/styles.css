@@ -2604,3 +2604,30 @@ button{line-height:1.35}
     background: color-mix(in srgb, var(--green) 7%, var(--paper));
   }
 }
+
+
+/* The business card lives only behind its menu entry. */
+.business-card-modal-backdrop{z-index:2147483000}
+.business-card-modal{width:min(620px,calc(100vw - 28px));max-height:min(88dvh,900px);display:flex;flex-direction:column;overflow:hidden}
+.business-card-modal .customer-detail-content{overflow-y:auto;min-height:0;padding:18px}
+.business-card-modal .customer-detail-header{flex-shrink:0}
+.business-card-modal .helper-text{line-height:1.55}
+.business-card-enable{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.business-card-modal-preview{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;align-items:center;padding:16px;margin:16px 0 0;border:1px solid color-mix(in srgb,var(--card-primary) 25%,var(--line));border-radius:14px;background:var(--card-surface);color:var(--card-text);overflow-wrap:anywhere}
+.business-card-modal-preview img,.business-card-modal-mark{width:62px;height:62px;object-fit:contain;border-radius:10px}
+.business-card-modal-mark{display:grid;place-items:center;background:var(--card-primary);color:white;font-weight:900;font-size:20px}
+.business-card-modal-preview>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.business-card-modal-preview strong{font-size:16px}
+.business-card-modal-preview small{font-size:12px;overflow-wrap:anywhere}
+.business-card-modal-preview p{font-size:12px;line-height:1.5;white-space:pre-wrap;margin:3px 0 0}
+.business-card-modal-actions{display:flex;gap:9px;flex-wrap:wrap;flex-shrink:0;padding:14px 18px;border-top:1px solid var(--line)}
+.business-card-modal-actions>*{flex:1;min-width:105px}
+.mobile-business-card-menu{border-color:var(--green)!important;background:var(--soft-green)!important}
+@media(max-width:600px){
+ .business-card-modal{width:calc(100vw - 20px);max-height:calc(92dvh - env(safe-area-inset-top,0px));border-radius:17px}
+ .business-card-modal .customer-detail-content{padding:13px}
+ .business-card-modal .company-profile-grid{grid-template-columns:minmax(0,1fr)!important}
+ .business-card-modal-actions{display:grid;grid-template-columns:1fr 1fr;padding:12px}
+ .business-card-modal-actions>*{width:100%;min-width:0;min-height:42px}
+ .business-card-modal-actions>*:last-child{grid-column:1/-1}
+}

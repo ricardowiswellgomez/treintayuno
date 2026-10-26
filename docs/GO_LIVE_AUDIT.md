@@ -15,6 +15,13 @@ Fecha de revisión: 26 de octubre de 2026.
 - Se aplicó y versionó `20261026181346_add_missing_foreign_key_indexes.sql` para cubrir ocho claves foráneas que el asesor marcó sin índices.
 - Las nuevas referencias de pedidos públicos ahora usan el UUID completo (32 caracteres hexadecimales), en lugar de solo 12; los pedidos existentes conservan sus referencias.
 
+## Correcciones aplicadas en esta revisión
+
+- La RPC `create_public_store_order` ahora rechaza listas nulas o no-array, limita la longitud de los datos recibidos, suma cantidades repetidas del mismo producto antes de validar inventario, restringe el checkout en línea a COP y rechaza pedidos de total cero. La migración `20261026184804_harden_public_order_validation.sql` está aplicada en Supabase y versionada en Git.
+- Configuración impide guardar Wompi con una moneda distinta de COP; el catálogo bloquea ese checkout y explica que se use WhatsApp o COP.
+- La tarjeta de presentación se configura en Configuración y se comparte desde el menú; no se publica en el catálogo. La información comercial del catálogo está separada de los artículos mediante la barra inferior «Información».
+- Una prueba SQL confirmó que la RPC rechaza una lista de artículos nula y que la definición desplegada contiene las tres validaciones de pedidos añadidas.
+
 ## Bloqueadores antes de vender el servicio
 
 ### P0 — Migraciones fuera de sincronía

@@ -1054,6 +1054,9 @@ export default function App() {
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [businessCardOpen, setBusinessCardOpen] = useState(false);
+  const [businessCardSaving, setBusinessCardSaving] = useState(false);
+  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, text: "" });
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -1613,6 +1616,51 @@ export default function App() {
       ],
       notes: product.notes || ""
     });
+  }
+
+  async function saveBusinessCardFromMenu() {
+    if (!activeBusiness?.id || activeBusiness.role !== "owner") return;
+    const current = activeBusiness.settings?.commercial_profile || {};
+    const nextProfile = {
+      ...current,
+      cardEnabled: Boolean(businessCardForm.enabled),
+      cardName: String(businessCardForm.name || "").trim(),
+      cardEmail: String(businessCardForm.email || "").trim(),
+      cardPhone: String(businessCardForm.phone || "").trim(),
+      cardShowEmail: Boolean(businessCardForm.showEmail),
+      cardShowPhone: Boolean(businessCardForm.showPhone),
+      cardText: String(businessCardForm.text || "").trim()
+    };
+    const nextSettings = { ...(activeBusiness.settings || {}), commercial_profile: nextProfile };
+    setBusinessCardSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: saveError } = await supabase.from("businesses").update({ settings: nextSettings }).eq("id", activeBusiness.id).select("id,settings").maybeSingle();
+      if (saveError) throw saveError;
+      if (!data) throw new Error("No se pudo guardar la tarjeta. Comprueba tus permisos.");
+      const savedSettings = data.settings || nextSettings;
+      setActiveBusiness((currentBusiness) => currentBusiness ? { ...currentBusiness, settings: savedSettings } : currentBusiness);
+      setBusinesses((currentBusinesses) => currentBusinesses.map((business) => business.id === data.id ? { ...business, settings: savedSettings } : business));
+      setNotice(nextProfile.cardEnabled ? "Tarjeta de presentación guardada." : "Tarjeta desactivada. Puedes volver a activarla desde el menú.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusinessCardSaving(false); }
+  }
+
+  async function shareBusinessCardFromMenu() {
+    const saved = activeBusiness?.settings?.commercial_profile || {};
+    const name = String(businessCardForm.name || saved.cardName || saved.tradeName || activeBusiness?.name || "Mi negocio").trim();
+    const phone = businessCardForm.showPhone ? String(businessCardForm.phone || saved.cardPhone || saved.phone || "").trim() : "";
+    const email = businessCardForm.showEmail ? String(businessCardForm.email || saved.cardEmail || saved.email || "").trim() : "";
+    const address = [saved.address, saved.city].filter(Boolean).join(", ");
+    const website = saved.website || "";
+    const message = String(businessCardForm.text || "").trim();
+    const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\\n");
+    try {
+      const file = await makeBusinessCardPng({ name, phone, email, address, website, message, primary: activeBusiness?.theme?.primary || defaultBusinessTheme.primary, surface: activeBusiness?.theme?.surface || defaultBusinessTheme.surface, text: activeBusiness?.theme?.text || defaultBusinessTheme.text, logoUrl: getBusinessLogoUrl(activeBusiness?.logo_path) });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [file] }); return; }
+      const href = URL.createObjectURL(file); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".png"; link.click(); URL.revokeObjectURL(href);
+      if (navigator.share) { try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); } catch (error) { if (error?.name === "AbortError") return; } }
+      else { try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta descargada y datos copiados para compartir."); } catch { setNotice("Tarjeta descargada; puedes adjuntarla en WhatsApp."); } }
+    } catch (error) { if (error?.name !== "AbortError") setError("No se pudo preparar la tarjeta. Vuelve a intentarlo."); }
   }
 
   async function shareBusinessCardNow() {
@@ -3931,7 +3979,7 @@ export default function App() {
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div><span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button>{activeBusiness?.settings?.commercial_profile?.cardEnabled && <button type="button" className="mobile-module-card mobile-business-card-menu" onClick={() => { setMobileNavOpen(false); shareBusinessCardNow(); }}><AppIcon name="businessCard" size={23}/><span><strong>Mi tarjeta de presentación</strong><small>Compartir tarjeta del negocio</small></span></button>}<button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}<AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button>{(activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <button type="button" className="mobile-module-card mobile-business-card-menu" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setMobileNavOpen(false); setError(""); }}><AppIcon name="businessCard" size={23}/><span><strong>Mi tarjeta de presentación</strong><small>Editar, guardar o compartir tarjeta</small></span><b>›</b></button>}<button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}<AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -4697,44 +4745,6 @@ export default function App() {
                 </div>
                 <div className="settings-section-divider" /><h3>Cómo quieres recibir pedidos</h3><p>Elige un canal para el catálogo público. No necesitas activar Wompi si prefieres coordinar el pedido por WhatsApp.</p>
                 <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>El cliente va al checkout seguro si los cobros están configurados.</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
-                <div className="settings-section-divider" /><h3>Tarjeta de presentación virtual</h3><label className="settings-help-toggle"><input type="checkbox" checked={Boolean(settingsCommercialProfile.cardEnabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEnabled:e.target.checked}))}/><span><strong>Activar tarjeta para compartir desde la app</strong><small>La tarjeta no aparecerá en el catálogo público. Tú eliges con quién compartirla.</small></span></label>
-                <label className="settings-field"><span className="field-label-heading">Nombre real para la tarjeta</span><input value={settingsCommercialProfile.cardName} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardName:e.target.value}))} maxLength={160} disabled={activeBusiness?.role!=="owner"} placeholder="Nombre y apellido" /></label><div className="company-profile-grid"><label className="settings-field"><span className="field-label-heading">Correo de la tarjeta</span><input type="email" value={settingsCommercialProfile.cardEmail} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardEmail:e.target.value}))} maxLength={254} disabled={activeBusiness?.role!=="owner"} placeholder="tu@correo.com" /></label><label className="settings-field"><span className="field-label-heading">Celular de la tarjeta</span><input value={settingsCommercialProfile.cardPhone} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardPhone:e.target.value}))} maxLength={50} disabled={activeBusiness?.role!=="owner"} placeholder="+57…" /></label></div><div className="settings-card-visibility"><label><input type="checkbox" checked={settingsCommercialProfile.cardShowEmail !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowEmail:e.target.checked}))}/><span>Mostrar correo en la tarjeta</span></label><label><input type="checkbox" checked={settingsCommercialProfile.cardShowPhone !== false} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardShowPhone:e.target.checked}))}/><span>Mostrar celular en la tarjeta</span></label></div><label className="settings-field"><span className="field-label-heading">Texto libre</span><textarea value={settingsCommercialProfile.cardText} onChange={(e)=>setSettingsCommercialProfile((current)=>({...current,cardText:e.target.value}))} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} placeholder="Escribe tu presentación, profesión, servicios o mensaje." /></label>
-                <div className="settings-business-card-preview">
-                  <div className="settings-business-card-preview-logo">{(settingsLogoPreview || activeBusinessLogoUrl) ? <img className="settings-business-card-logo" src={settingsLogoPreview || activeBusinessLogoUrl} alt={"Logo de " + (settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "la empresa")} /> : <span className="settings-business-card-mark">{(settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi").slice(0,2).toUpperCase()}</span>}</div>
-                  <div className="settings-business-card-preview-copy">
-                    <div className="settings-business-card-preview-top"><span>TARJETA DE PRESENTACIÓN</span></div>
-                    <h4>{settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Tu nombre o negocio"}</h4>
-                    {(settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail) && <p>✉ {settingsCommercialProfile.cardEmail}</p>}
-                    {(settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone) && <p>☎ {settingsCommercialProfile.cardPhone}</p>}
-                    {(settingsCommercialProfile.address || settingsCommercialProfile.city) && <p>⌖ {[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</p>}
-                    {settingsCommercialProfile.website && <p>↗ {settingsCommercialProfile.website}</p>}
-                    {settingsCommercialProfile.cardText && <p className="settings-business-card-message">{settingsCommercialProfile.cardText}</p>}
-                  </div>
-                </div>
-                <div className="settings-business-card-actions">
-                  <button type="button" className="primary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={async () => {
-                    const cardName = settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
-                    const parts = [cardName, settingsCommercialProfile.cardText, settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone ? "Teléfono: " + settingsCommercialProfile.cardPhone : "", settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail ? "Correo: " + settingsCommercialProfile.cardEmail : "", [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), settingsCommercialProfile.website].filter(Boolean);
-                    const shareText = parts.join("\n");
-                    if (navigator.share) {
-                      try {
-                        const cardFile = await makeBusinessCardPng({ name: cardName, phone: settingsCommercialProfile.cardShowPhone !== false ? settingsCommercialProfile.cardPhone : "", email: settingsCommercialProfile.cardShowEmail !== false ? settingsCommercialProfile.cardEmail : "", address: [settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", "), website: settingsCommercialProfile.website, message: settingsCommercialProfile.cardText, primary: activeTheme.primary, surface: activeTheme.surface, text: activeTheme.text, logoUrl: activeBusinessLogoUrl });
-                        if (navigator.canShare?.({ files: [cardFile] })) { await navigator.share({ title: "Tarjeta de presentación", text: shareText, files: [cardFile] }); return; }
-                      } catch (error) { if (error?.name === "AbortError") return; }
-                      try { await navigator.share({ title: "Tarjeta de presentación", text: shareText }); return; } catch (error) { if (error?.name === "AbortError") return; }
-                    }
-                    try { await navigator.clipboard.writeText(shareText); setNotice("Tarjeta copiada. Ya puedes pegarla en WhatsApp o en otro chat."); }
-                    catch { setError("No se pudo compartir ni copiar la tarjeta. Revisa los permisos del navegador."); }
-                  }}>↗ Compartir tarjeta</button>
-                  <button type="button" className="secondary-button" disabled={!settingsCommercialProfile.cardEnabled} onClick={() => {
-                    const esc = (value) => String(value || "").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
-                    const cardName = settingsCommercialProfile.cardName || settingsCommercialProfile.tradeName || settingsBusinessName || activeBusiness?.name || "Mi negocio";
-                    const fields = ["BEGIN:VCARD","VERSION:3.0","FN:"+esc(cardName),settingsCommercialProfile.cardShowEmail !== false && settingsCommercialProfile.cardEmail ? "EMAIL:"+esc(settingsCommercialProfile.cardEmail) : "",settingsCommercialProfile.cardShowPhone !== false && settingsCommercialProfile.cardPhone ? "TEL;TYPE=CELL:"+esc(settingsCommercialProfile.cardPhone) : "",settingsCommercialProfile.tradeName ? "ORG:"+esc(settingsCommercialProfile.tradeName) : "",settingsCommercialProfile.cardText ? "NOTE:"+esc(settingsCommercialProfile.cardText) : "",settingsCommercialProfile.website ? "URL:"+esc(settingsCommercialProfile.website) : "","END:VCARD"].filter(Boolean).join("\r\n");
-                    const href = URL.createObjectURL(new Blob([fields], {type:"text/vcard;charset=utf-8"})); const link = document.createElement("a"); link.href = href; link.download = "tarjeta-" + cardName.toLowerCase().replace(/[^a-z0-9]+/g,"-") + ".vcf"; link.click(); URL.revokeObjectURL(href);
-                  }}>↓ Guardar contacto (.vcf)</button>
-                </div>
-                <p className="helper-text">La tarjeta se comparte únicamente cuando pulsas «Compartir tarjeta». Puedes enviarla por WhatsApp, correo u otra aplicación compatible. No se publica en el catálogo.</p>
-                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos datos.</p>}
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>
@@ -4771,6 +4781,28 @@ export default function App() {
         </aside>}
       </div>}
 
+      {businessCardOpen && <div className="customer-detail-backdrop business-card-modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setBusinessCardOpen(false); }}>
+        <section className="customer-detail-card business-card-modal" role="dialog" aria-modal="true" aria-labelledby="business-card-modal-title">
+          <header className="customer-detail-header"><div><span className="customer-detail-kicker">DESDE EL MENÚ</span><h2 id="business-card-modal-title">Mi tarjeta de presentación</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar tarjeta" onClick={() => setBusinessCardOpen(false)}>×</button></header>
+          <div className="customer-detail-content">
+            <p className="helper-text">Configura tu tarjeta aquí. Solo se comparte cuando tú lo decides; no se publica en el catálogo.</p>
+            {activeBusiness?.role === "owner" ? <label className="settings-help-toggle business-card-enable"><input type="checkbox" checked={businessCardForm.enabled} onChange={(e)=>setBusinessCardForm((v)=>({...v,enabled:e.target.checked}))}/><span><strong>Tarjeta activada</strong><small>Actívala para mostrar el acceso de tarjeta en el menú.</small></span></label> : <p className="helper-text">Solo el propietario puede editar la tarjeta.</p>}
+            <label className="settings-field"><span className="field-label-heading">Nombre real</span><input value={businessCardForm.name} maxLength={160} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,name:e.target.value}))} placeholder="Nombre y apellido"/></label>
+            <div className="company-profile-grid"><label className="settings-field"><span className="field-label-heading">Correo</span><input type="email" value={businessCardForm.email} maxLength={254} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,email:e.target.value}))} placeholder="tu@correo.com"/></label><label className="settings-field"><span className="field-label-heading">Celular</span><input value={businessCardForm.phone} maxLength={50} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,phone:e.target.value}))} placeholder="+57…"/></label></div>
+            <div className="settings-card-visibility"><label><input type="checkbox" checked={businessCardForm.showEmail} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showEmail:e.target.checked}))}/><span>Mostrar correo</span></label><label><input type="checkbox" checked={businessCardForm.showPhone} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showPhone:e.target.checked}))}/><span>Mostrar celular</span></label></div>
+            <label className="settings-field"><span className="field-label-heading">Mensaje o descripción libre</span><textarea value={businessCardForm.text} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,text:e.target.value}))} placeholder="Tu profesión, servicios o un mensaje personal."/></label>
+            <div className="business-card-modal-preview" style={{"--card-primary":activeBusiness?.theme?.primary || defaultBusinessTheme.primary,"--card-surface":activeBusiness?.theme?.surface || defaultBusinessTheme.surface,"--card-text":activeBusiness?.theme?.text || defaultBusinessTheme.text}}>
+              {(activeBusiness?.logo_path) ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
+              <div><strong>{businessCardForm.name || activeBusiness?.name || "Tu nombre"}</strong>{businessCardForm.showEmail && businessCardForm.email && <small>{businessCardForm.email}</small>}{businessCardForm.showPhone && businessCardForm.phone && <small>{businessCardForm.phone}</small>}{businessCardForm.text && <p>{businessCardForm.text}</p>}</div>
+            </div>
+          </div>
+          <footer className="customer-detail-actions business-card-modal-actions">
+            {activeBusiness?.role==="owner" && <button type="button" className="secondary-button" disabled={businessCardSaving} onClick={saveBusinessCardFromMenu}>{businessCardSaving?"Guardando…":"Guardar tarjeta"}</button>}
+            <button type="button" className="primary-button" disabled={!businessCardForm.enabled && activeBusiness?.role==="owner"} onClick={shareBusinessCardFromMenu}>↗ Compartir</button>
+            <button type="button" className="secondary-button" onClick={()=>setBusinessCardOpen(false)}>Cerrar</button>
+          </footer>
+        </section>
+      </div>}
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}
     </main>
   );

@@ -10,7 +10,7 @@ Fecha de revisión: 26 de octubre de 2026.
 
 - El workflow `Build Treintayuno` valida la sintaxis del Worker, compila el bundle de producción y ejecuta `wrangler deploy --dry-run`. El resultado del commit actual debe comprobarse en [GitHub Actions](https://github.com/ricardowiswellgomez/treintayuno/actions); un build verde no demuestra que los flujos comerciales funcionen de extremo a extremo.
 - La base Supabase `maogebecfottfvlrjbho` está en estado `ACTIVE_HEALTHY`, PostgreSQL 17.
-- El asesor de Supabase no detecta una fuga directa de secretos de pago en la salida revisada. Las funciones `SECURITY DEFINER` que permiten llamadas públicas requieren revisión por función; el aviso por sí solo no prueba una vulnerabilidad.
+- El asesor de Supabase no detecta una fuga directa de secretos de pago en la salida revisada. La tabla de integraciones de pago no tiene permisos directos para `anon` ni `authenticated`; en la comprobación actual no hay credenciales de Wompi guardadas. Las funciones `SECURITY DEFINER` que permiten llamadas públicas requieren revisión por función; el aviso por sí solo no prueba una vulnerabilidad.
 - Las tablas de pedidos públicos y credenciales de pago tienen RLS activado sin políticas directas. Eso es deliberado si el acceso ocurre únicamente a través de RPC cuidadosamente validadas o del servicio de servidor; no se deben añadir políticas abiertas para silenciar el aviso.
 - Se aplicó y versionó `20261026181346_add_missing_foreign_key_indexes.sql` para cubrir ocho claves foráneas que el asesor marcó sin índices.
 - Las nuevas referencias de pedidos públicos ahora usan el UUID completo (32 caracteres hexadecimales), en lugar de solo 12; los pedidos existentes conservan sus referencias.
@@ -54,6 +54,10 @@ No se encontró una suite automatizada de pruebas funcionales. Antes de habilita
 
 - Se añadió `npm audit --audit-level=high` como control obligatorio del workflow y se actualizó Wrangler de 4.0.0 a 4.153.0. La ejecución del commit `3ad5caad` pasó la auditoría de vulnerabilidades altas.
 - **Sigue faltando `package-lock.json` versionado.** El workflow usa `npm install`, que crea un lockfile temporal en cada ejecución. Aunque el audit actual pasa, las dependencias transitivas no quedan fijadas para reproducir exactamente el mismo build. Generar y comprometer el lockfile desde un entorno con acceso al registro npm antes de producción.
+
+### P1 — Abuso del checkout público
+
+La función SQL `create_public_store_order` sigue siendo ejecutable directamente por `anon`. Sus validaciones de datos e inventario son más estrictas, pero no hay una limitación de frecuencia ni verificación anti-bot en esa ruta. Como los pedidos pendientes participan en las reservas de uso de cupones durante 24 horas, un abuso automatizado podría llenar el límite de un cupón o crear carga innecesaria. Antes de abrir el catálogo a gran escala, mover la creación de pedidos a una ruta de servidor con límite/anti-bot y retirar el permiso `EXECUTE` directo de `anon` después de migrar el frontend.
 
 ### P1 — URL canónica de retorno de Wompi
 

@@ -782,6 +782,7 @@ function PublicCatalog({ businessId }) {
   const [retryKey, setRetryKey] = useState(0);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [businessInfoOpen, setBusinessInfoOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(null);
@@ -975,13 +976,6 @@ function PublicCatalog({ businessId }) {
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
         <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
-        {(business.commercial_profile?.phone || business.commercial_profile?.email || business.commercial_profile?.address || business.commercial_profile?.city || business.commercial_profile?.website || business.commercial_profile?.hours) && <section className="public-catalog-business-info" aria-label="Información del negocio">
-          {business.commercial_profile?.phone && <div><strong>Teléfono / WhatsApp</strong><span>{business.commercial_profile.phone}</span></div>}
-          {business.commercial_profile?.email && <div><strong>Correo</strong><span>{business.commercial_profile.email}</span></div>}
-          {(business.commercial_profile?.address || business.commercial_profile?.city) && <div><strong>Dirección</strong><span>{[business.commercial_profile.address, business.commercial_profile.city].filter(Boolean).join(", ")}</span></div>}
-          {business.commercial_profile?.website && <div><strong>Sitio web</strong><span>{business.commercial_profile.website}</span></div>}
-          {business.commercial_profile?.hours && <div><strong>Horario de atención</strong><span className="public-business-hours">{business.commercial_profile.hours}</span></div>}
-        </section>}
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -1006,6 +1000,25 @@ function PublicCatalog({ businessId }) {
           <button type="button" className="secondary-button" disabled={(page + 1) * pageSize >= total} onClick={() => { setPage((current) => current + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Siguiente</button>
         </nav>}
       </section>}
+    <nav className="public-catalog-bottom-bar" aria-label="Navegación del catálogo">
+      <button type="button" className="public-catalog-bottom-tab is-active" onClick={() => { setBusinessInfoOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
+      <button type="button" className="public-catalog-bottom-tab" onClick={() => setBusinessInfoOpen(true)} aria-haspopup="dialog"><span aria-hidden="true">ⓘ</span><strong>Información</strong></button>
+      <button type="button" className="public-catalog-bottom-tab" onClick={() => setCartOpen(true)}><span aria-hidden="true">🛒</span><strong>Carrito</strong>{cartCount > 0 && <b>{cartCount}</b>}</button>
+    </nav>
+    {businessInfoOpen && business && <div className="public-business-info-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBusinessInfoOpen(false); }}>
+      <section className="public-business-info-sheet" role="dialog" aria-modal="true" aria-labelledby="public-business-info-title">
+        <div className="public-business-info-sheet-heading"><div><span>CONOCE EL NEGOCIO</span><h2 id="public-business-info-title">{business.commercial_profile?.tradeName || business.name}</h2></div><button type="button" onClick={() => setBusinessInfoOpen(false)} aria-label="Cerrar información">×</button></div>
+        {business.commercial_profile?.publicDescription && <p className="public-business-info-description">{business.commercial_profile.publicDescription}</p>}
+        <div className="public-business-info-list">
+          {(business.commercial_profile?.phone || business.commercial_profile?.cardPhone) && <a href={"tel:"+(business.commercial_profile.phone || business.commercial_profile.cardPhone)}><span aria-hidden="true">☎</span><span><strong>Teléfono / WhatsApp</strong><small>{business.commercial_profile.phone || business.commercial_profile.cardPhone}</small></span><b>›</b></a>}
+          {business.commercial_profile?.email && <a href={"mailto:"+business.commercial_profile.email}><span aria-hidden="true">✉</span><span><strong>Correo electrónico</strong><small>{business.commercial_profile.email}</small></span><b>›</b></a>}
+          {(business.commercial_profile?.address || business.commercial_profile?.city) && <a href={"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent([business.commercial_profile.address,business.commercial_profile.city].filter(Boolean).join(", "))} target="_blank" rel="noreferrer"><span aria-hidden="true">⌖</span><span><strong>Dirección</strong><small>{[business.commercial_profile.address,business.commercial_profile.city].filter(Boolean).join(", ")}</small></span><b>↗</b></a>}
+          {business.commercial_profile?.website && <a href={/^https?:\/\//i.test(business.commercial_profile.website)?business.commercial_profile.website:"https://"+business.commercial_profile.website} target="_blank" rel="noreferrer"><span aria-hidden="true">◎</span><span><strong>Sitio web</strong><small>{business.commercial_profile.website}</small></span><b>↗</b></a>}
+          {business.commercial_profile?.hours && <div className="public-business-info-hours"><span aria-hidden="true">◷</span><span><strong>Horario de atención</strong><small className="public-business-hours">{business.commercial_profile.hours}</small></span></div>}
+        </div>
+        <button type="button" className="public-business-info-done" onClick={() => setBusinessInfoOpen(false)}>Volver al catálogo</button>
+      </section>
+    </div>}
     <footer className="public-catalog-footer">Catálogo compartido con Treintayuno</footer>
 
     {cartOpen && <div className="public-cart-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCartOpen(false); }}>

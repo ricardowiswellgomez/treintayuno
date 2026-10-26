@@ -26,7 +26,7 @@ Cloudflare Workers sirve el contenido de `dist/`; `/api/health` permite comproba
 
 ## Estado de preparación comercial
 
-La compilación de producción del commit más reciente pasó en GitHub Actions. Eso confirma que el bundle de frontend compila; **no** demuestra por sí solo que el flujo de ventas, pagos reales, permisos y aislamiento entre negocios esté probado de extremo a extremo.
+El workflow `Build Treintayuno` de [GitHub Actions](https://github.com/ricardowiswellgomez/treintayuno/actions) verifica sintaxis del Worker, compilación de producción y `wrangler deploy --dry-run`. Revisa allí el resultado del commit actual. Un build verde **no** demuestra por sí solo que ventas, pagos reales, permisos y aislamiento entre negocios funcionen de extremo a extremo.
 
 Antes de aceptar negocios y pagos reales, quedan pendientes como mínimo:
 

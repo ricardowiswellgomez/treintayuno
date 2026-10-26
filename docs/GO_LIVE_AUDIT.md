@@ -4,7 +4,7 @@ Fecha de revisión: 26 de octubre de 2026 (re-auditoría de seguridad y desplieg
 
 ## Decisión
 
-**NO APTO todavía para una apertura pública con pagos reales.** La última compilación previa fue exitosa y el Worker está activo en Cloudflare, pero la versión desplegada del frontend no incluye todavía el cambio de checkout que acaba de entrar en GitHub. Además, la reconstrucción del esquema desde Git sigue sin ser reproducible y faltan pruebas transaccionales completas.
+**NO APTO todavía para una apertura pública con pagos reales.** La compilación del frontend y el dry-run de Wrangler pasan; Cloudflare registra un despliegue del Worker al 100 % el 26 de octubre a las 19:50:39 UTC, posterior a los commits del checkout protegido. La comprobación HTTP de extremo a extremo no pudo verificarse de forma independiente. Siguen abiertos la reconstrucción del esquema desde Git, las pruebas transaccionales y la configuración de producción.
 
 ## Comprobaciones confirmadas
 
@@ -63,7 +63,7 @@ La función SQL `create_public_store_order` sigue siendo ejecutable directamente
 
 ### P1 — URL canónica de retorno de Wompi y dominio público
 
-La función ya no confía en el encabezado `Origin` y ahora **falla de forma segura si falta `APP_BASE_URL`**; no usa un dominio supuesto. Antes de activar pagos reales, configurar el secreto `APP_BASE_URL` con el dominio HTTPS definitivo. En la auditoría de Cloudflare no se encontraron dominios personalizados vinculados al Worker `treintayuno`; el subdominio `workers.dev` está habilitado. Confirmar y configurar el dominio público que se utilizará para el lanzamiento, y verificar que el retorno de Wompi vuelve a ese dominio.
+La función ya no confía en el encabezado `Origin` y ahora **falla de forma segura si falta `APP_BASE_URL`**; no usa un dominio supuesto. Antes de activar pagos reales, configurar el secreto `APP_BASE_URL` con el dominio HTTPS definitivo. En la auditoría de Cloudflare no se encontraron dominios personalizados vinculados al Worker `treintayuno`; el subdominio `workers.dev` está habilitado. El despliegue activo corresponde a la versión 352, con 100 % de tráfico, registrada el 26 de octubre a las 19:50:39 UTC. Confirmar y configurar el dominio público que se utilizará para el lanzamiento, y verificar que el retorno de Wompi vuelve a ese dominio.
 
 ### P1 — Ajustes de seguridad de Supabase Auth
 
@@ -99,7 +99,7 @@ La ruta de IA valida sesión y pertenencia al negocio, lo cual es positivo. Falt
 - [ ] Protección de contraseñas filtradas activada.
 - [ ] Se eliminó la inyección frágil de scripts por parte del Worker.
 - [ ] Se configuraron límites y monitoreo para la IA.
-- [ ] Se desplegó en Cloudflare el frontend que usa la nueva ruta de checkout.
+- [ ] Se ejecutó una prueba de humo HTTP/funcional contra el frontend desplegado y se verificó el checkout con una cuenta de prueba.
 - [ ] Se configuró y probó el dominio HTTPS público y `APP_BASE_URL`.
 - [ ] Se probó restauración de base de datos y se definió cómo atender incidentes.
 

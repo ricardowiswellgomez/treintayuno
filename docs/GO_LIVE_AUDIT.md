@@ -50,6 +50,15 @@ No se encontró una suite automatizada de pruebas funcionales. Antes de habilita
 - el canal WhatsApp no requiere credenciales Wompi y muestra un pedido con total correcto;
 - el catálogo público no revela documentos privados, datos internos ni credenciales.
 
+### P1 — Dependencias y cadena de suministro
+
+- Se añadió `npm audit --audit-level=high` como control obligatorio del workflow y se actualizó Wrangler de 4.0.0 a 4.153.0. La ejecución del commit `3ad5caad` pasó la auditoría de vulnerabilidades altas.
+- **Sigue faltando `package-lock.json` versionado.** El workflow usa `npm install`, que crea un lockfile temporal en cada ejecución. Aunque el audit actual pasa, las dependencias transitivas no quedan fijadas para reproducir exactamente el mismo build. Generar y comprometer el lockfile desde un entorno con acceso al registro npm antes de producción.
+
+### P1 — URL canónica de retorno de Wompi
+
+La función ya no confía en el encabezado `Origin` de la solicitud. Antes de activar pagos reales, confirmar que el secreto `APP_BASE_URL` de la Edge Function apunta al dominio HTTPS canónico de producción; si no está definido, el código usa `https://treintayuno.com`.
+
 ### P1 — Ajustes de seguridad de Supabase Auth
 
 El asesor informa que la protección de contraseñas filtradas está desactivada. Activarla en la configuración de Auth y probar registro, inicio de sesión, recuperación y cambio de contraseña.

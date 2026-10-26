@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.118.0";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +11,7 @@ const cors = {
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: cors });
 const hex = (bytes: ArrayBuffer) => [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 const sha256 = async (value: string) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-const uuidPattern = /^[0-9a-f-]{36}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const apiBase = (environment: string) => environment === "production" ? "https://production.wompi.co/v1" : "https://sandbox.wompi.co/v1";
 
 function serviceClient() {
@@ -40,8 +40,17 @@ async function getIntegration(supabase: ReturnType<typeof createClient>, busines
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: "Método no permitido." }, 405);
+  if (!/^application\/json(?:;|$)/i.test(req.headers.get("content-type") || "")) return reply({ error: "Envía la solicitud en formato JSON." }, 415);
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (declaredLength > 16384) return reply({ error: "La solicitud es demasiado grande." }, 413);
   let body: Record<string, unknown>;
-  try { body = await req.json(); } catch { return reply({ error: "Solicitud inválida." }, 400); }
+  try {
+    const raw = await req.text();
+    if (raw.length > 16384) return reply({ error: "La solicitud es demasiado grande." }, 413);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return reply({ error: "Solicitud inválida." }, 400);
+    body = parsed as Record<string, unknown>;
+  } catch { return reply({ error: "Solicitud inválida." }, 400); }
 
   const action = String(body.action || "");
   const supabase = serviceClient();
@@ -108,7 +117,15 @@ Deno.serve(async (req: Request) => {
       const amountInCents = Number(order.total_minor) * 100;
       if (!Number.isSafeInteger(amountInCents) || amountInCents < 1) return reply({ error: "El valor del pedido no es válido." }, 400);
       const signature = await sha256(order.order_reference + amountInCents + order.currency_code + integration.integrity_secret);
-      const origin = Deno.env.get("APP_BASE_URL") || req.headers.get("origin") || "https://treintayuno.com";
+      const configuredBase = Deno.env.get("APP_BASE_URL") || "https://treintayuno.com";
+      let origin: string;
+      try {
+        const base = new URL(configuredBase);
+        if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash) throw new Error("invalid public base URL");
+        origin = base.origin;
+      } catch {
+        return reply({ error: "La dirección pública del catálogo no está configurada correctamente." }, 503);
+      }
       const checkout = new URL("https://checkout.wompi.co/p/");
       checkout.searchParams.set("public-key", integration.public_key);
       checkout.searchParams.set("currency", order.currency_code);

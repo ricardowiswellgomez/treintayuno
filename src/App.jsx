@@ -1056,7 +1056,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [businessCardOpen, setBusinessCardOpen] = useState(false);
   const [businessCardSaving, setBusinessCardSaving] = useState(false);
-  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, text: "" });
+  const [businessCardForm, setBusinessCardForm] = useState({ enabled: false, name: "", email: "", phone: "", showEmail: true, showPhone: true, showAddress: true, showWebsite: true, text: "" });
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -1629,6 +1629,8 @@ export default function App() {
       cardPhone: String(businessCardForm.phone || "").trim(),
       cardShowEmail: Boolean(businessCardForm.showEmail),
       cardShowPhone: Boolean(businessCardForm.showPhone),
+      cardShowAddress: Boolean(businessCardForm.showAddress),
+      cardShowWebsite: Boolean(businessCardForm.showWebsite),
       cardText: String(businessCardForm.text || "").trim()
     };
     const nextSettings = { ...(activeBusiness.settings || {}), commercial_profile: nextProfile };
@@ -1640,7 +1642,7 @@ export default function App() {
       const savedSettings = data.settings || nextSettings;
       setActiveBusiness((currentBusiness) => currentBusiness ? { ...currentBusiness, settings: savedSettings } : currentBusiness);
       setBusinesses((currentBusinesses) => currentBusinesses.map((business) => business.id === data.id ? { ...business, settings: savedSettings } : business));
-      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardText: nextProfile.cardText }));
+      setSettingsCommercialProfile((currentProfile) => ({ ...currentProfile, cardEnabled: nextProfile.cardEnabled, cardName: nextProfile.cardName, cardEmail: nextProfile.cardEmail, cardPhone: nextProfile.cardPhone, cardShowEmail: nextProfile.cardShowEmail, cardShowPhone: nextProfile.cardShowPhone, cardShowAddress: nextProfile.cardShowAddress, cardShowWebsite: nextProfile.cardShowWebsite, cardText: nextProfile.cardText }));
       setNotice(nextProfile.cardEnabled ? "Tarjeta de presentación guardada." : "Tarjeta desactivada. Puedes volver a activarla desde el menú.");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusinessCardSaving(false); }
@@ -1651,8 +1653,8 @@ export default function App() {
     const name = String(businessCardForm.name || saved.cardName || saved.tradeName || activeBusiness?.name || "Mi negocio").trim();
     const phone = businessCardForm.showPhone ? String(businessCardForm.phone || saved.cardPhone || saved.phone || "").trim() : "";
     const email = businessCardForm.showEmail ? String(businessCardForm.email || saved.cardEmail || saved.email || "").trim() : "";
-    const address = [saved.address, saved.city].filter(Boolean).join(", ");
-    const website = saved.website || "";
+    const address = businessCardForm.showAddress ? [saved.address, saved.city].filter(Boolean).join(", ") : "";
+    const website = businessCardForm.showWebsite ? (saved.website || "") : "";
     const message = String(businessCardForm.text || "").trim();
     const shareText = [name, message, phone ? "Teléfono: " + phone : "", email ? "Correo: " + email : "", address, website].filter(Boolean).join("\n");
     try {
@@ -1847,6 +1849,7 @@ export default function App() {
       cardEnabled: Boolean(profile?.cardEnabled), cardName: String(profile?.cardName || "").trim(),
       cardEmail: String(profile?.cardEmail || profile?.email || "").trim(), cardPhone: String(profile?.cardPhone || profile?.phone || "").trim(),
       cardShowEmail: profile?.cardShowEmail !== false, cardShowPhone: profile?.cardShowPhone !== false,
+      cardShowAddress: profile?.cardShowAddress !== false, cardShowWebsite: profile?.cardShowWebsite !== false,
       cardText: String(profile?.cardText || "").trim()
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
@@ -3955,7 +3958,7 @@ export default function App() {
               </div>
             ))}
           </section>)}
-          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
+          {!sidebarEditing && (activeBusiness?.role === "owner" || activeBusiness?.settings?.commercial_profile?.cardEnabled) && <div className="sidebar-nav-row business-card-sidebar-row"><button type="button" className="nav-item" onClick={() => { const p=activeBusiness?.settings?.commercial_profile || {}; setBusinessCardForm({enabled:Boolean(p.cardEnabled),name:p.cardName || p.tradeName || activeBusiness?.name || "",email:p.cardEmail || p.email || "",phone:p.cardPhone || p.phone || "",showEmail:p.cardShowEmail !== false,showPhone:p.cardShowPhone !== false,showAddress:p.cardShowAddress !== false,showWebsite:p.cardShowWebsite !== false,text:p.cardText || ""}); setBusinessCardOpen(true); setError(""); }}><span className="nav-icon"><AppIcon name="businessCard" size={19}/></span>Mi tarjeta de presentación</button></div>}
         </nav>
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
@@ -4771,11 +4774,11 @@ export default function App() {
             {activeBusiness?.role === "owner" ? <label className="settings-help-toggle business-card-enable"><input type="checkbox" checked={businessCardForm.enabled} onChange={(e)=>setBusinessCardForm((v)=>({...v,enabled:e.target.checked}))}/><span><strong>Tarjeta activada</strong><small>Actívala para mostrar el acceso de tarjeta en el menú.</small></span></label> : <p className="helper-text">Solo el propietario puede editar la tarjeta.</p>}
             <label className="settings-field"><span className="field-label-heading">Nombre real</span><input value={businessCardForm.name} maxLength={160} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,name:e.target.value}))} placeholder="Nombre y apellido"/></label>
             <div className="company-profile-grid"><label className="settings-field"><span className="field-label-heading">Correo</span><input type="email" value={businessCardForm.email} maxLength={254} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,email:e.target.value}))} placeholder="tu@correo.com"/></label><label className="settings-field"><span className="field-label-heading">Celular</span><input value={businessCardForm.phone} maxLength={50} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,phone:e.target.value}))} placeholder="+57…"/></label></div>
-            <div className="settings-card-visibility"><label><input type="checkbox" checked={businessCardForm.showEmail} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showEmail:e.target.checked}))}/><span>Mostrar correo</span></label><label><input type="checkbox" checked={businessCardForm.showPhone} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showPhone:e.target.checked}))}/><span>Mostrar celular</span></label></div>
+            <div className="settings-card-visibility"><label><input type="checkbox" checked={businessCardForm.showEmail} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showEmail:e.target.checked}))}/><span>Mostrar correo</span></label><label><input type="checkbox" checked={businessCardForm.showPhone} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showPhone:e.target.checked}))}/><span>Mostrar celular</span></label><label><input type="checkbox" checked={businessCardForm.showAddress} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showAddress:e.target.checked}))}/><span>Mostrar dirección</span></label><label><input type="checkbox" checked={businessCardForm.showWebsite} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,showWebsite:e.target.checked}))}/><span>Mostrar sitio web</span></label></div>
             <label className="settings-field"><span className="field-label-heading">Mensaje o descripción libre</span><textarea value={businessCardForm.text} rows={3} maxLength={700} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setBusinessCardForm((v)=>({...v,text:e.target.value}))} placeholder="Tu profesión, servicios o un mensaje personal."/></label>
             <div className="business-card-modal-preview" style={{"--card-primary":activeBusiness?.theme?.primary || defaultBusinessTheme.primary,"--card-surface":activeBusiness?.theme?.surface || defaultBusinessTheme.surface,"--card-text":activeBusiness?.theme?.text || defaultBusinessTheme.text}}>
               {(activeBusiness?.logo_path) ? <img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo del negocio"/> : <span className="business-card-modal-mark">31</span>}
-              <div><strong>{businessCardForm.name || activeBusiness?.name || "Tu nombre"}</strong>{businessCardForm.showEmail && businessCardForm.email && <small>{businessCardForm.email}</small>}{businessCardForm.showPhone && businessCardForm.phone && <small>{businessCardForm.phone}</small>}{businessCardForm.text && <p>{businessCardForm.text}</p>}</div>
+              <div><strong>{businessCardForm.name || activeBusiness?.name || "Tu nombre"}</strong>{businessCardForm.showEmail && businessCardForm.email && <small>{businessCardForm.email}</small>}{businessCardForm.showPhone && businessCardForm.phone && <small>{businessCardForm.phone}</small>}{businessCardForm.showAddress && [activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ") && <small>{[activeBusiness?.settings?.commercial_profile?.address,activeBusiness?.settings?.commercial_profile?.city].filter(Boolean).join(", ")}</small>}{businessCardForm.showWebsite && activeBusiness?.settings?.commercial_profile?.website && <small>{activeBusiness.settings.commercial_profile.website}</small>}{businessCardForm.text && <p>{businessCardForm.text}</p>}</div>
             </div>
           </div>
           <footer className="customer-detail-actions business-card-modal-actions">

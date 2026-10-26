@@ -24,5 +24,9 @@ jobs:
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Check Cloudflare Worker syntax
+        run: node --check src/worker.js
       - name: Build production bundle
         run: npm run build
+      - name: Validate Cloudflare Worker bundle
+        run: npx wrangler deploy --dry-run

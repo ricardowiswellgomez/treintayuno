@@ -842,9 +842,6 @@ function PublicCatalog({ businessId }) {
       });
       if (statusError) throw statusError;
       setReturnedOrder(data || { payment_status: "unknown", order_reference: returnOrderReference });
-      if (data && !["pending"].includes(data.payment_status)) {
-        try { sessionStorage.removeItem("t31-checkout:" + returnOrderReference); } catch {}
-      }
     } catch {
       setReturnedOrder({ payment_status: "unknown", order_reference: returnOrderReference });
     } finally { setOrderStatusLoading(false); }

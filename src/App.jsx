@@ -862,7 +862,7 @@ function PublicCatalog({ businessId }) {
     event.preventDefault();
     if (!cart.length || checkoutBusy) return;
     if (business?.commercial_profile?.orderChannel === "whatsapp") {
-      let rawPhone = String(business?.commercial_profile?.phone || business?.commercial_profile?.cardPhone || "").replace(/\D/g, "");
+      let rawPhone = String(business?.commercial_profile?.phone || "").replace(/\D/g, "");
       if (rawPhone.length === 10 && rawPhone.startsWith("3")) rawPhone = "57" + rawPhone;
       if (rawPhone.length < 8) { setCheckoutError("Este negocio debe configurar un número de WhatsApp válido antes de recibir pedidos."); return; }
       setCheckoutBusy(true); setCheckoutError("");
@@ -1611,7 +1611,7 @@ export default function App() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", cardEnabled: Boolean(savedCommercial.cardEnabled), cardName: savedCommercial.cardName || "", cardEmail: savedCommercial.cardEmail || savedCommercial.email || "", cardPhone: savedCommercial.cardPhone || savedCommercial.phone || "", cardShowEmail: savedCommercial.cardShowEmail !== false, cardShowPhone: savedCommercial.cardShowPhone !== false, cardShowAddress: savedCommercial.cardShowAddress !== false, cardShowWebsite: savedCommercial.cardShowWebsite !== false, cardText: savedCommercial.cardText || "", cardPrimaryColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardPrimaryColor || "") ? savedCommercial.cardPrimaryColor : normalizeBusinessTheme(activeBusiness.theme).primary, cardBackgroundColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardBackgroundColor || "") ? savedCommercial.cardBackgroundColor : normalizeBusinessTheme(activeBusiness.theme).surface, cardTextColor: /^#[0-9a-f]{6}$/i.test(savedCommercial.cardTextColor || "") ? savedCommercial.cardTextColor : normalizeBusinessTheme(activeBusiness.theme).text, hoursSchedule: savedCommercial.hoursSchedule || {} });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {} });
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);

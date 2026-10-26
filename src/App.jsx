@@ -1052,7 +1052,7 @@ export default function App() {
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState("sales");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [businessCardOpen, setBusinessCardOpen] = useState(false);
   const [businessCardSaving, setBusinessCardSaving] = useState(false);
@@ -1462,7 +1462,7 @@ export default function App() {
       }
       setSession(currentSession);
       if (!currentSession) {
-        setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("home");
+        setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("sales");
       } else if (event !== "PASSWORD_RECOVERY") {
         queueMicrotask(() => loadBusinesses(currentSession.user.id).catch((e) => setError(friendlyError(e))));
       }

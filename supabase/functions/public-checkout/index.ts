@@ -100,6 +100,51 @@ Deno.serve(async (req: Request) => {
     return reply({ saved: true, enabled, environment });
   }
 
+  if (action === "order") {
+    const businessId = String(body.business_id || "");
+    const customerName = String(body.customer_name || "").trim();
+    const customerPhone = String(body.customer_phone || "").trim();
+    const customerEmail = String(body.customer_email || "").trim();
+    const customerAddress = String(body.customer_address || "").trim();
+    const customerNotes = String(body.customer_notes || "").trim();
+    const couponCode = String(body.coupon_code || "").trim();
+    const items = body.items;
+    if (!uuidPattern.test(businessId)) return reply({ error: "Negocio no válido." }, 400);
+    if (!customerName || customerName.length > 160 || customerPhone.length < 5 || customerPhone.length > 40 ||
+        customerEmail.length > 254 || customerAddress.length > 250 || customerNotes.length > 1000 || couponCode.length > 32 ||
+        !Array.isArray(items) || items.length < 1 || items.length > 50) {
+      return reply({ error: "Revisa los datos de contacto y los artículos del pedido." }, 400);
+    }
+    const forwarded = (req.headers.get("x-forwarded-for") || "").split(",").map((value) => value.trim()).filter(Boolean);
+    const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || forwarded.at(-1);
+    if (!ip || ip.length > 128) return reply({ error: "No pudimos validar el origen de la solicitud. Inténtalo de nuevo." }, 503);
+    try {
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+      const ipHash = await sha256(businessId + ":" + ip + ":" + serviceKey);
+      const { data: allowed, error: limitError } = await supabase.rpc("consume_public_checkout_rate_limit", {
+        p_business_id: businessId, p_ip_hash: ipHash, p_limit: 8, p_window_seconds: 600
+      });
+      if (limitError) return reply({ error: "No se pudo validar el límite de pedidos. Inténtalo de nuevo más tarde." }, 503);
+      if (allowed !== true) return reply({ error: "Has intentado crear varios pedidos en poco tiempo. Espera unos minutos e inténtalo de nuevo." }, 429);
+      const { data: order, error: orderError } = await supabase.rpc("create_public_store_order", {
+        p_business_id: businessId,
+        p_customer_name: customerName,
+        p_customer_phone: customerPhone,
+        p_customer_email: customerEmail || null,
+        p_customer_address: customerAddress || null,
+        p_customer_notes: customerNotes || null,
+        p_items: items,
+        p_coupon_code: couponCode || null
+      });
+      if (orderError || !order?.order_id || !order?.checkout_token || !order?.order_reference) {
+        return reply({ error: "No se pudo validar el pedido. Revisa los datos, el cupón y las existencias." }, 400);
+      }
+      return reply(order, 201);
+    } catch {
+      return reply({ error: "No se pudo crear el pedido de forma segura. Inténtalo de nuevo." }, 500);
+    }
+  }
+
   if (action === "create") {
     const orderId = String(body.order_id || "");
     const token = String(body.checkout_token || "");

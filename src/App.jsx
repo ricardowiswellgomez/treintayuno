@@ -350,11 +350,11 @@ const normalizeBusinessTheme = (theme) => {
 async function makeBusinessCardPng({ name, phone, email, address, website, message, primary, surface, text, logoUrl }) {
   const safe = (value) => escapeHtml(String(value || "").trim());
   const detailLines = [
-    phone ? '<text x="390" y="285" font-size="27" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
-    email ? '<text x="390" y="335" font-size="25" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
-    address ? '<text x="390" y="385" font-size="23" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
-    website ? '<text x="390" y="435" font-size="23" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
-    message ? '<text x="390" y="495" font-size="22" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
+    phone ? '<text x="350" y="265" font-size="24" fill="' + text + '">☎  ' + safe(phone) + '</text>' : "",
+    email ? '<text x="350" y="310" font-size="22" fill="' + text + '">✉  ' + safe(email) + '</text>' : "",
+    address ? '<text x="350" y="355" font-size="21" fill="' + text + '">⌖  ' + safe(address) + '</text>' : "",
+    website ? '<text x="350" y="400" font-size="21" fill="' + text + '">↗  ' + safe(website) + '</text>' : "",
+    message ? '<text x="350" y="445" font-size="20" fill="' + text + '">' + safe(message).slice(0, 110) + '</text>' : ""
   ].filter(Boolean).join("");
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="600" viewBox="0 0 1080 600"><rect width="1080" height="600" fill="' + primary + '"/><rect x="38" y="38" width="1004" height="524" rx="30" fill="' + surface + '"/><rect x="74" y="156" width="225" height="225" rx="32" fill="' + primary + '"/><text x="186" y="291" text-anchor="middle" font-family="Arial,sans-serif" font-size="74" font-weight="800" fill="#ffffff">' + safe(name).slice(0,2).toUpperCase() + '</text><text x="350" y="128" font-family="Arial,sans-serif" font-size="16" font-weight="800" letter-spacing="3" fill="' + primary + '">TARJETA DE PRESENTACIÓN</text><text x="350" y="190" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="' + text + '">' + safe(name).slice(0, 38) + '</text><rect x="350" y="211" width="650" height="3" rx="2" fill="' + primary + '" opacity=".25"/>' + detailLines + '<text x="74" y="505" font-family="Arial,sans-serif" font-size="15" fill="' + primary + '" opacity=".85">Tarjeta de presentación digital · 9 × 5 cm</text></svg>';
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));

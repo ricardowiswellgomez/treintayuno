@@ -46,9 +46,9 @@ El asesor también marca funciones `SECURITY DEFINER` ejecutables por `anon` o `
 
 ### P1 — Worker y mantenimiento de interfaz
 
-`src/worker.js` inyecta estilos y un script en las respuestas HTML y contiene un parche condicionado al nombre hash de un archivo JS generado. Es frágil: un cambio de bundle puede dejar de aplicar el parche silenciosamente, y dificulta auditar y probar la interfaz.
+`src/worker.js` todavía inyecta estilos y un script en las respuestas HTML. Se retiró el parche obsoleto condicionado al hash del bundle (la compilación actual generaba `index-xhP7nsMn.js`, mientras el parche apuntaba a `index-BY_d2kG1.js` y nunca se ejecutaba).
 
-**Corrección estructural:** migrar cada comportamiento requerido al código fuente React/CSS, eliminar el parche por hash y comprobar las rutas de recuperación, imágenes del catálogo y diseños móviles sin mutación de HTML en tiempo de respuesta.
+**Corrección estructural pendiente:** migrar cada comportamiento restante al código fuente React/CSS y comprobar las rutas de recuperación, imágenes del catálogo y diseños móviles sin mutación de HTML en tiempo de respuesta.
 
 ### P1 — Protección contra abuso de la IA
 

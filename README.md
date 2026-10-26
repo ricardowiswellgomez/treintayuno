@@ -30,7 +30,7 @@ El workflow `Build Treintayuno` de [GitHub Actions](https://github.com/ricardowi
 
 Antes de aceptar negocios y pagos reales, quedan pendientes como mínimo:
 
-1. **Sincronizar las migraciones:** la base de datos conectada tiene migraciones posteriores a la última migración SQL versionada en este repositorio. Deben incorporarse y verificarse en orden para que una instalación nueva reproduzca el esquema actual.
+1. **Sincronizar las migraciones:** el historial de Supabase registra 64 migraciones, el repositorio contiene 28 archivos SQL y solo 6 identificadores de versión coinciden exactamente. Hay que reconciliar el historial y validar una instalación limpia antes de considerar reproducible el esquema.
 2. **Pruebas automatizadas:** faltan pruebas de regresión para autenticación, permisos por rol, aislamiento entre negocios, ventas/abonos, stock, cupones, webhooks y pagos duplicados.
 3. **Seguridad de Auth:** el asesor de Supabase informa que la protección contra contraseñas filtradas está desactivada; activarla en la configuración de Auth.
 4. **Prueba operativa de pagos:** probar en sandbox aprobación, rechazo, cancelación, webhook repetido y conciliación de inventario antes de habilitar producción.

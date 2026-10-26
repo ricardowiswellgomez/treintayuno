@@ -1162,6 +1162,7 @@ export default function App() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogViewMode, setCatalogViewMode] = useState("cards");
+  const [catalogSort, setCatalogSort] = useState("name");
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogPageSize, setCatalogPageSize] = useState(12);
   const [catalogPublishingId, setCatalogPublishingId] = useState(null);
@@ -2442,7 +2443,7 @@ export default function App() {
     setCatalogLoading(true); setError("");
     try {
       const [productsResult, categoriesResult] = await Promise.all([
-        supabase.from("products").select("id,business_id,name,category_id,description,commercial_presentation,unit_name,sale_price_minor,is_published,is_sellable,image_paths,archived_at")
+        supabase.from("products").select("id,business_id,name,sku,category_id,description,commercial_presentation,unit_name,sale_price_minor,is_published,is_sellable,image_paths,archived_at")
           .eq("business_id", activeBusiness.id).is("archived_at", null).order("name").limit(1000),
         supabase.from("product_categories").select("id,name").eq("business_id", activeBusiness.id).order("name")
       ]);
@@ -3465,10 +3466,10 @@ export default function App() {
   const filteredProducts = [...products].sort((a, b) => productSort === "code" ? String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" }) || String(a.name || "").localeCompare(String(b.name || ""), "es") : productSort === "price" ? Number(a.sale_price_minor || 0) - Number(b.sale_price_minor || 0) : String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" }));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
-  const filteredCatalogProducts = catalogProducts.filter((product) => {
+  const filteredCatalogProducts = [...catalogProducts].filter((product) => {
     const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "";
     return [product.name, product.description, category].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(normalizedCatalogSearch);
-  });
+  }).sort((a, b) => catalogSort === "code" ? String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" }) || String(a.name || "").localeCompare(String(b.name || ""), "es") : catalogSort === "price" ? Number(a.sale_price_minor || 0) - Number(b.sale_price_minor || 0) || String(a.name || "").localeCompare(String(b.name || ""), "es") : String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" }));
   const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalogProducts.length / catalogPageSize));
   useEffect(() => {
     if (catalogPage > catalogTotalPages) setCatalogPage(catalogTotalPages);
@@ -4184,7 +4185,7 @@ export default function App() {
             </div>
             <div className="catalog-filter-row">
               <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => { setCatalogSearch(e.target.value); setCatalogPage(1); }} placeholder="Buscar producto o categoría…" />
-              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Lista</button></div></div>
+              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><label className="catalog-sort-control"><span>Ordenar</span><select value={catalogSort} onChange={(e)=>{setCatalogSort(e.target.value);setCatalogPage(1);}} aria-label="Ordenar productos del catálogo"><option value="name">Nombre A–Z</option><option value="code">Código</option><option value="price">Precio</option></select></label><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Lista</button></div></div>
             </div>
             {catalogLoading ? <div className="empty-state">Cargando productos reales…</div>
               : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {

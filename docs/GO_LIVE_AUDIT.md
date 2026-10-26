@@ -12,7 +12,8 @@ Fecha de revisión: 26 de octubre de 2026.
 - La base Supabase `maogebecfottfvlrjbho` está en estado `ACTIVE_HEALTHY`, PostgreSQL 17.
 - El asesor de Supabase no detecta una fuga directa de secretos de pago en la salida revisada. Las funciones `SECURITY DEFINER` que permiten llamadas públicas requieren revisión por función; el aviso por sí solo no prueba una vulnerabilidad.
 - Las tablas de pedidos públicos y credenciales de pago tienen RLS activado sin políticas directas. Eso es deliberado si el acceso ocurre únicamente a través de RPC cuidadosamente validadas o del servicio de servidor; no se deben añadir políticas abiertas para silenciar el aviso.
-- Se aplicó en Supabase y se versionó la migración `20261026190000_add_missing_foreign_key_indexes.sql` para cubrir ocho claves foráneas que el asesor marcó sin índices.
+- Se aplicó y versionó `20261026181346_add_missing_foreign_key_indexes.sql` para cubrir ocho claves foráneas que el asesor marcó sin índices.
+- Las nuevas referencias de pedidos públicos ahora usan el UUID completo (32 caracteres hexadecimales), en lugar de solo 12; los pedidos existentes conservan sus referencias.
 
 ## Bloqueadores antes de vender el servicio
 

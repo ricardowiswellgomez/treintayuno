@@ -52,7 +52,7 @@ No se encontró una suite automatizada de pruebas funcionales. Antes de habilita
 
 ### P1 — Dependencias y cadena de suministro
 
-- Se añadió `npm audit --audit-level=high` como control obligatorio del workflow y se actualizó Wrangler de 4.0.0 a 4.153.0. La ejecución del commit `3ad5caad` pasó la auditoría de vulnerabilidades altas.
+- Se añadió `npm audit --audit-level=high` como control obligatorio del workflow y se actualizó Wrangler de 4.0.0 a 4.153.0. La ejecución del commit `3ad5caad` pasó `npm audit` con **0 vulnerabilidades reportadas**. El workflow también fija `actions/checkout` y `actions/setup-node` a commits inmutables.
 - **Sigue faltando `package-lock.json` versionado.** El workflow usa `npm install`, que crea un lockfile temporal en cada ejecución. Aunque el audit actual pasa, las dependencias transitivas no quedan fijadas para reproducir exactamente el mismo build. Generar y comprometer el lockfile desde un entorno con acceso al registro npm antes de producción.
 
 ### P1 — Abuso del checkout público

@@ -34,7 +34,7 @@ Antes de aceptar negocios y pagos reales, quedan pendientes como mínimo:
 2. **Pruebas automatizadas:** faltan pruebas de regresión para autenticación, permisos por rol, aislamiento entre negocios, ventas/abonos, stock, cupones, webhooks y pagos duplicados.
 3. **Seguridad de Auth:** el asesor de Supabase informa que la protección contra contraseñas filtradas está desactivada; activarla en la configuración de Auth.
 4. **Prueba operativa de pagos:** probar en sandbox aprobación, rechazo, cancelación, webhook repetido y conciliación de inventario antes de habilitar producción.
-5. **Revisión del Worker:** algunas mejoras visuales y de recuperación están inyectadas en tiempo de respuesta desde `src/worker.js` y dependen de nombres internos del bundle. Deben trasladarse al código fuente de React y eliminar esa dependencia frágil antes de considerar estable la interfaz.
+5. **Revisión del Worker:** algunas mejoras visuales y de recuperación siguen inyectadas en tiempo de respuesta desde `src/worker.js`. Se retiró un parche obsoleto que dependía del hash del bundle; falta trasladar el resto de esas mejoras al código fuente de React y CSS.
 
 Consulta `docs/GO_LIVE_AUDIT.md` para el resultado de la auditoría y los criterios de salida.
 

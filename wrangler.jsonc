@@ -11,5 +11,15 @@
   },
   "ai": {
     "binding": "AI"
-  }
+  },
+  "ratelimits": [
+    {
+      "name": "AI_USER_LIMITER",
+      "namespace_id": "310261026",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ]
 }

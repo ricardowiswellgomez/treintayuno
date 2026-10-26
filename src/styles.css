@@ -2631,3 +2631,13 @@ button{line-height:1.35}
  .business-card-modal-actions>*{width:100%;min-width:0;min-height:42px}
  .business-card-modal-actions>*:last-child{grid-column:1/-1}
 }
+
+
+/* Final mobile overrides: navigable cards stay clear without wasting the viewport. */
+@media(max-width:640px){
+  .mobile-module-card{min-height:84px!important;grid-template-columns:42px minmax(0,1fr) 14px!important;gap:11px!important;padding:12px!important}
+  .mobile-module-card>svg,.mobile-module-card>.app-icon{width:42px!important;height:42px!important;padding:9px!important}
+  .mobile-module-card strong{font-size:14px!important}
+  .mobile-module-card small{font-size:11px!important}
+  .mobile-module-navigation{gap:8px!important}
+}

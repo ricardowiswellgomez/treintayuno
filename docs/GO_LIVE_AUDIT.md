@@ -1,12 +1,14 @@
 # Auditoría de salida a producción — Treintayuno
 
-Fecha de revisión: 26 de octubre de 2026.
+Fecha de revisión: 26 de octubre de 2026 (re-auditoría de seguridad y despliegue).
 
 ## Decisión
 
-**NO APTO todavía para una apertura pública con pagos reales.** El frontend compila y la base de datos conectada está activa, pero la compilación no demuestra la seguridad ni la corrección de los flujos transaccionales de extremo a extremo.
+**NO APTO todavía para una apertura pública con pagos reales.** La última compilación previa fue exitosa y el Worker está activo en Cloudflare, pero la versión desplegada del frontend no incluye todavía el cambio de checkout que acaba de entrar en GitHub. Además, la reconstrucción del esquema desde Git sigue sin ser reproducible y faltan pruebas transaccionales completas.
 
 ## Comprobaciones confirmadas
+
+- En la re-auditoría, `public_checkout_rate_limits` está restringida a `service_role`, y una consulta SQL confirmó que `anon` y `authenticated` ya no pueden ejecutar ni `create_public_store_order` ni `consume_public_checkout_rate_limit`. La Edge Function activa es la versión 7 y su fuente está sincronizada en `supabase/functions/public-checkout/index.ts`.
 
 - El workflow `Build Treintayuno` valida la sintaxis del Worker, compila el bundle de producción y ejecuta `wrangler deploy --dry-run`. El resultado del commit actual debe comprobarse en [GitHub Actions](https://github.com/ricardowiswellgomez/treintayuno/actions); un build verde no demuestra que los flujos comerciales funcionen de extremo a extremo.
 - La base Supabase `maogebecfottfvlrjbho` está en estado `ACTIVE_HEALTHY`, PostgreSQL 17.
@@ -59,9 +61,9 @@ No se encontró una suite automatizada de pruebas funcionales. Antes de habilita
 
 La función SQL `create_public_store_order` sigue siendo ejecutable directamente por `anon`. Sus validaciones de datos e inventario son más estrictas, pero no hay una limitación de frecuencia ni verificación anti-bot en esa ruta. Como los pedidos pendientes participan en las reservas de uso de cupones durante 24 horas, un abuso automatizado podría llenar el límite de un cupón o crear carga innecesaria. Antes de abrir el catálogo a gran escala, mover la creación de pedidos a una ruta de servidor con límite/anti-bot y retirar el permiso `EXECUTE` directo de `anon` después de migrar el frontend.
 
-### P1 — URL canónica de retorno de Wompi
+### P1 — URL canónica de retorno de Wompi y dominio público
 
-La función ya no confía en el encabezado `Origin` de la solicitud. Antes de activar pagos reales, confirmar que el secreto `APP_BASE_URL` de la Edge Function apunta al dominio HTTPS canónico de producción; si no está definido, el código usa `https://treintayuno.com`.
+La función ya no confía en el encabezado `Origin` y ahora **falla de forma segura si falta `APP_BASE_URL`**; no usa un dominio supuesto. Antes de activar pagos reales, configurar el secreto `APP_BASE_URL` con el dominio HTTPS definitivo. En la auditoría de Cloudflare no se encontraron dominios personalizados vinculados al Worker `treintayuno`; el subdominio `workers.dev` está habilitado. Confirmar y configurar el dominio público que se utilizará para el lanzamiento, y verificar que el retorno de Wompi vuelve a ese dominio.
 
 ### P1 — Ajustes de seguridad de Supabase Auth
 
@@ -97,6 +99,8 @@ La ruta de IA valida sesión y pertenencia al negocio, lo cual es positivo. Falt
 - [ ] Protección de contraseñas filtradas activada.
 - [ ] Se eliminó la inyección frágil de scripts por parte del Worker.
 - [ ] Se configuraron límites y monitoreo para la IA.
+- [ ] Se desplegó en Cloudflare el frontend que usa la nueva ruta de checkout.
+- [ ] Se configuró y probó el dominio HTTPS público y `APP_BASE_URL`.
 - [ ] Se probó restauración de base de datos y se definió cómo atender incidentes.
 
 No declarar el producto listo para pagos reales hasta cerrar los bloqueadores P0 y validar los casos críticos en un entorno de pruebas.

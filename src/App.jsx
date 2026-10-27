@@ -6070,7 +6070,7 @@ export default function App() {
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>
+            <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p><button type="button" className="secondary-button settings-business-card-link" onClick={() => setSettingsTab("company")}>Ver tarjeta de presentación</button></div>
             <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
               {[
                 ["general", "General"],

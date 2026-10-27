@@ -1593,6 +1593,8 @@ export default function App() {
   const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState(() => {
     try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
@@ -1602,6 +1604,17 @@ export default function App() {
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!session?.user?.id) { setOwnerPhone(""); return; }
+    supabase.from("profiles").select("phone").eq("user_id", session.user.id).maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) { setError(friendlyError(error)); return; }
+        setOwnerPhone(String(data?.phone || ""));
+      });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
   useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
@@ -2833,6 +2846,24 @@ export default function App() {
       setNotice("Categoría eliminada."); await loadProducts();
     } catch (e) { setError(friendlyError(e)); setConfirmDeleteCategoryId(null); }
     finally { setBusy(false); }
+  }
+
+  async function saveOwnerPhone() {
+    if (!session?.user?.id || ownerPhoneSaving) return;
+    const phone = ownerPhone.trim();
+    if (phone && phone.replace(/\\D/g, "").length < 7) {
+      setError("Escribe un número de celular válido o deja el campo vacío.");
+      return;
+    }
+    setOwnerPhoneSaving(true); setError(""); setNotice("");
+    try {
+      const { error: profileError } = await supabase.from("profiles")
+        .upsert({ user_id: session.user.id, phone: phone || null }, { onConflict: "user_id" });
+      if (profileError) throw profileError;
+      setNotice("Número de celular del propietario guardado.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setOwnerPhoneSaving(false); }
   }
 
   async function saveSettings(event) {
@@ -6057,6 +6088,10 @@ export default function App() {
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
+              <div className="owner-contact-settings">
+                <label className="settings-field"><span className="field-label-heading">Celular del propietario</span><input type="tel" inputMode="tel" autoComplete="tel" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} maxLength={40} placeholder="Tu número de celular" /></label>
+                <div className="owner-contact-actions"><p className="helper-text">Este número pertenece a tu cuenta personal. Es independiente del teléfono público de tu empresa.</p><button type="button" className="secondary-button" onClick={saveOwnerPhone} disabled={ownerPhoneSaving || !session?.user?.id}>{ownerPhoneSaving ? "Guardando…" : "Guardar celular"}</button></div>
+              </div>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
                 <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en treseiscinco." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
                 <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de treseiscinco solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y treseiscinco no lo verifica.</p>

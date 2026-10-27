@@ -341,14 +341,14 @@ const employeePermissionProfiles = {
 };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
-const defaultBusinessTheme = Object.freeze({ primary: "#174580", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#102F60", buttonHoverText: "#FFFFFF" });
+const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
 const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
-  // Migra el tema anterior solo cuando todos sus valores corresponden a los antiguos valores predeterminados.
-  // Los colores personalizados de cada negocio permanecen intactos.
+  // Cambia solo los temas predeterminados de versiones anteriores; los colores elegidos por cada negocio se respetan.
   const legacyDefault = { primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f", sidebarBackground: "#fffefa", sidebarText: "#20251f", buttonHover: "#234635", buttonHoverText: "#ffffff" };
-  const isLegacyDefault = Boolean(theme) && Object.entries(legacyDefault).every(([key, value]) => !theme[key] || String(theme[key]).toLowerCase() === value);
-  const source = isLegacyDefault ? null : theme;
+  const previousBrandDefault = { primary: "#174580", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#102F60", buttonHoverText: "#FFFFFF" };
+  const matchesDefault = (candidate) => Boolean(theme) && Object.entries(candidate).every(([key, value]) => !theme[key] || String(theme[key]).toLowerCase() === value.toLowerCase());
+  const source = matchesDefault(legacyDefault) || matchesDefault(previousBrandDefault) ? null : theme;
   return { primary: valid(source?.primary, defaultBusinessTheme.primary), background: valid(source?.background, defaultBusinessTheme.background), surface: valid(source?.surface, defaultBusinessTheme.surface), text: valid(source?.text, defaultBusinessTheme.text), sidebarBackground: valid(source?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(source?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(source?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(source?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
 const getBusinessLogoUrl = (path) => {
@@ -1709,7 +1709,7 @@ export default function App() {
       const { error: insertError } = await supabase.from("businesses").insert({
         id: crypto.randomUUID(), owner_user_id: session.user.id, name: businessName.trim(),
         country_code: "CO", currency_code: "COP", timezone: "America/Bogota",
-        theme: { primary: "#174580", background: "#F5F7FC" }
+        theme: { primary: "#159F92", background: "#F5F7FC" }
       });
       if (insertError) throw insertError;
       const list = await loadBusinesses(session.user.id);

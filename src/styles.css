@@ -2603,3 +2603,13 @@ body { background: #F5F7FC; color: #19243A; }
   .sidebar .brand .brand-name { font-size:22px; text-align:left; }
   .sidebar .business-switcher { margin-bottom:10px; }
 }
+
+.brand-logo-full { display:block; width:clamp(220px, 26vw, 320px); max-width:100%; height:auto; flex:0 1 auto; }
+.auth-brand-panel .brand-logo-full { width:min(100%, 340px); }
+.topbar .brand-logo-full { width:min(260px, 60vw); }
+.sidebar .brand { flex-direction:column; align-items:center; justify-content:flex-start; }
+.sidebar .brand .brand-logo-full { width:min(100%, 218px); height:auto; }
+@media (max-width:600px) {
+  .sidebar .brand { flex-direction:row; align-items:center; justify-content:flex-start; gap:10px; }
+  .sidebar .brand .brand-logo-full { width:min(210px, 70vw); }
+}

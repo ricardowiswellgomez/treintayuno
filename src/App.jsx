@@ -139,8 +139,12 @@ const normalizeSidebarLayout = (layout) => {
     personalGroup = { ...defaultPersonal, items: [] };
     groups.push(personalGroup);
   }
+  const otherPersonalItems = personalGroup.items.filter((item) => !personalItemIds.includes(item.id));
   personalGroup.title = "PERSONAL";
-  personalGroup.items = personalItemIds.map((id) => savedPersonalItems.get(id) || known.get(id));
+  personalGroup.items = [
+    ...personalItemIds.map((id) => savedPersonalItems.get(id) || known.get(id)),
+    ...otherPersonalItems
+  ];
 
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
   const missing = orderedItems.filter((item) => !placed.has(item.id));

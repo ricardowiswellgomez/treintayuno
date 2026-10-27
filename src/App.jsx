@@ -1551,7 +1551,6 @@ export default function App() {
           .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at")
           .eq("business_id", activeBusiness.id).order("name").range(offset, offset + chunkSize - 1);
         query = showArchivedProducts ? query.not("archived_at", "is", null) : query.is("archived_at", null);
-        if (search.trim()) query = query.ilike("name", "%" + search.trim() + "%");
         const { data, error: queryError } = await query;
         if (queryError) throw queryError;
         const batch = data || [];
@@ -3620,6 +3619,7 @@ export default function App() {
   }
 
   const filteredProducts = [...products].sort((a, b) => productSort === "code" ? String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" }) || String(a.name || "").localeCompare(String(b.name || ""), "es") : productSort === "price" ? Number(a.sale_price_minor || 0) - Number(b.sale_price_minor || 0) : String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" }));
+  const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
   const filteredCatalogProducts = [...catalogProducts].filter((product) => {
@@ -4728,10 +4728,10 @@ export default function App() {
             {bulkEditMode && <section className="bulk-inventory-editor">
               <div className="bulk-inventory-heading">
                 <div><span className="eyebrow">INVENTARIO · EDICIÓN EN LOTE</span><h3>Edita varios artículos en una sola vista</h3><p>Los cambios se guardan solo cuando pulses «Guardar cambios». La ganancia y el margen se recalculan automáticamente.</p></div>
-                <div className="bulk-inventory-summary"><strong>{bulkProductRows.length.toLocaleString("es-CO")}</strong><span>{bulkProductRows.length === 1 ? "artículo cargado" : "artículos cargados"}</span></div>
+                <div className="bulk-inventory-summary"><strong>{visibleBulkProductRows.length.toLocaleString("es-CO")}</strong><span>{visibleBulkProductRows.length === 1 ? "artículo visible" : "artículos visibles"}</span></div>
               </div>
-              {bulkProductsLoading ? <div className="empty-state">Cargando todos los artículos del inventario…</div> : bulkProductRows.length ? <div className="bulk-inventory-grid">
-                {bulkProductRows.map((row) => {
+              {bulkProductsLoading ? <div className="empty-state">Cargando todos los artículos del inventario…</div> : visibleBulkProductRows.length ? <div className="bulk-inventory-grid">
+                {visibleBulkProductRows.map((row) => {
                   const saleMinor = Number.isFinite(Number(row._draftSalePrice)) ? toMinorUnits(row._draftSalePrice || 0, currencyCode) : 0;
                   const costMinor = Number.isFinite(Number(row._draftCostPrice)) ? toMinorUnits(row._draftCostPrice || 0, currencyCode) : 0;
                   const profitMinor = saleMinor - costMinor;

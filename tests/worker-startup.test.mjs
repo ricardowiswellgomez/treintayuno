@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import worker from "../src/worker.js";
+import { getSidebarItemLabel } from "../src/lib/sidebar-menu.js";
+import { readFileSync as readSource } from "node:fs";
 
 const source = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
 
@@ -100,4 +102,21 @@ test("requests without ChatGPT source parameter are not redirected", async () =>
     {}
   );
   assert.notEqual(response.status, 302);
+});
+
+test("Cuentas label always wins over stale or numeric saved labels", () => {
+  assert.equal(getSidebarItemLabel({ id: "accounts", screen: "accounts", label: "2" }), "Cuentas");
+  assert.equal(getSidebarItemLabel({ id: "accounts", screen: "accounts", label: "" }), "Cuentas");
+  assert.equal(getSidebarItemLabel({ id: "another-id", screen: "accounts", label: "2" }), "Cuentas");
+});
+
+test("sidebar rendering uses the canonical Cuentas label and icon", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(appSource, /getSidebarItemLabel\(item\)/);
+  assert.match(appSource, /accounts:\s*<>/);
+});
+
+test("service worker cache version is incremented to evict stale sidebar bundles", () => {
+  const swSource = readSource(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.match(swSource, /treseiscinco-shell-v3/);
 });

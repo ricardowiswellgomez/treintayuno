@@ -1123,7 +1123,7 @@ export default function App() {
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(12);
   const [showArchivedProducts, setShowArchivedProducts] = useState(false);
-  const [viewMode, setViewMode] = useState("rows");
+  const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);
   const [bulkProductsLoading, setBulkProductsLoading] = useState(false);
@@ -4656,7 +4656,7 @@ export default function App() {
         ) : screen === "products" ? (
 
           <section className="products-page">
-            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div>{canManageProducts && <button className="primary-button compact-button" onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button>}</div>
+            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div>{canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button>}</div>
             <div className="product-sort-toolbar panel"><label><span>Ordenar por</span><select value={productSort} onChange={(e)=>setProductSort(e.target.value)}><option value="name">Nombre (A–Z)</option><option value="code">Código</option><option value="price">Precio (menor a mayor)</option></select></label><span>{filteredProducts.length} productos en esta página</span></div>
             {canManageProducts && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
@@ -4716,7 +4716,7 @@ export default function App() {
             <div className="product-tools">
               <label className="search-box"><span className="field-label-heading"><span>⌕</span><FieldHelp enabled={contextualHelpEnabled} text="Busca productos por su nombre dentro del inventario." /></span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
               <div className="product-tools-actions">
-                {canManageProducts && <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>}
+                {canManageProducts && <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }} disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>}
                 {canManageProducts && <button type="button" className="secondary-button action-small bulk-edit-toggle" disabled={bulkProductsLoading || bulkProductsSaving} onClick={() => { if (bulkEditMode) { if (bulkEditHasChanges && !window.confirm("Hay cambios sin guardar. ¿Quieres salir sin guardarlos?")) return; setBulkEditMode(false); } else { loadBulkProducts(); } }}>{bulkEditMode ? "Salir de edición masiva" : bulkProductsLoading ? "Cargando inventario…" : "Editar todos"}</button>}
                 <div className="view-switch" role="group" aria-label="Vista de productos">
                   <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>

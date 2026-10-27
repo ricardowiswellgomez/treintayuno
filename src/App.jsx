@@ -1593,6 +1593,8 @@ export default function App() {
   const [saleNotes, setSaleNotes] = useState("");
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState(() => {
     try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
@@ -1602,6 +1604,17 @@ export default function App() {
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!session?.user?.id) { setOwnerPhone(""); return; }
+    supabase.from("profiles").select("phone").eq("user_id", session.user.id).maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) { setError(friendlyError(error)); return; }
+        setOwnerPhone(String(data?.phone || ""));
+      });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
   useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
@@ -2833,6 +2846,24 @@ export default function App() {
       setNotice("Categoría eliminada."); await loadProducts();
     } catch (e) { setError(friendlyError(e)); setConfirmDeleteCategoryId(null); }
     finally { setBusy(false); }
+  }
+
+  async function saveOwnerPhone() {
+    if (!session?.user?.id || ownerPhoneSaving) return;
+    const phone = ownerPhone.trim();
+    if (phone && phone.replace(/\D/g, "").length < 7) {
+      setError("Escribe un número de celular válido o deja el campo vacío.");
+      return;
+    }
+    setOwnerPhoneSaving(true); setError(""); setNotice("");
+    try {
+      const { error: profileError } = await supabase.from("profiles")
+        .upsert({ user_id: session.user.id, phone: phone || null }, { onConflict: "user_id" });
+      if (profileError) throw profileError;
+      setNotice("Número de celular del propietario guardado.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setOwnerPhoneSaving(false); }
   }
 
   async function saveSettings(event) {
@@ -6057,6 +6088,10 @@ export default function App() {
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
+              <div className="owner-contact-settings">
+                <label className="settings-field"><span className="field-label-heading">Celular del propietario</span><input type="tel" inputMode="tel" autoComplete="tel" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} maxLength={40} placeholder="Tu número de celular" /></label>
+                <div className="owner-contact-actions"><p className="helper-text">Este número pertenece a tu cuenta personal. Es independiente del teléfono público de tu empresa.</p><button type="button" className="secondary-button" onClick={saveOwnerPhone} disabled={ownerPhoneSaving || !session?.user?.id}>{ownerPhoneSaving ? "Guardando…" : "Guardar celular"}</button></div>
+              </div>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
                 <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en treseiscinco." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
                 <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de treseiscinco solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y treseiscinco no lo verifica.</p>
@@ -6143,7 +6178,7 @@ export default function App() {
                 <label className="settings-field"><span className="field-label-heading">NIT o documento</span><input value={settingsCommercialProfile.documentNumber} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, documentNumber: e.target.value }))} maxLength={80} disabled={activeBusiness?.role !== "owner"} placeholder="Identificación tributaria (opcional)" /></label>
                 <div className="company-profile-grid">
                   <label className="settings-field"><span className="field-label-heading">Correo comercial</span><input type="email" value={settingsCommercialProfile.email} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, email: e.target.value }))} maxLength={254} disabled={activeBusiness?.role !== "owner"} placeholder="ventas@tuempresa.com" /></label>
-                  <label className="settings-field"><span className="field-label-heading">Teléfono / WhatsApp</span><input value={settingsCommercialProfile.phone} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, phone: e.target.value }))} maxLength={60} disabled={activeBusiness?.role !== "owner"} placeholder="Número de contacto" /></label>
+                  <label className="settings-field"><span className="field-label-heading">Teléfono / WhatsApp</span><input type="tel" inputMode="tel" autoComplete="tel" value={settingsCommercialProfile.phone} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, phone: e.target.value }))} maxLength={60} disabled={activeBusiness?.role !== "owner"} placeholder="Número de contacto" /></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Dirección</span><input value={settingsCommercialProfile.address} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, address: e.target.value }))} maxLength={220} disabled={activeBusiness?.role !== "owner"} placeholder="Dirección comercial" /></label>
                 <div className="company-profile-grid">
@@ -6255,10 +6290,6 @@ export default function App() {
             </div>
             {inventoryOverview.lowStockCount > 0 && canAccessScreen("products") && <button type="button" className="home-stock-warning" onClick={() => { setProductStockFilter("low_stock"); setProductPage(1); navigate("products"); }}><span><strong>{inventoryOverview.lowStockCount} artículos están en su mínimo o por debajo</strong><small>Abre el filtro y revisa qué necesitas reponer.</small></span><b>Ver inventario ↗</b></button>}
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
-          </section>
-          <section className="home-work-modules">
-            <div className="home-section-heading home-modules-heading"><div><h2>Accesos principales</h2><p>Las tareas más habituales, en su sitio. El resto de módulos está en el menú lateral.</p></div><span className="count-label">{homeShortcutAreas.length} accesos</span></div>
-            <section className="area-grid home-area-grid">{homeShortcutAreas.map((area) => <button type="button" className={"area-card area-card-button home-area-card home-area-card-"+area.screen} key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={22} /></span><span className="area-arrow" aria-hidden="true">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>

@@ -328,7 +328,7 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
@@ -1437,6 +1437,7 @@ export default function App() {
   const currencyCode = activeBusiness?.currency_code || "COP";
   const bulkEditHasChanges = bulkProductRows.some((row) =>
     String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+    String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
     Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
     Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
     (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
@@ -1715,6 +1716,7 @@ export default function App() {
       setBulkProductRows(allRows.map((product) => ({
         ...product,
         _draftName: product.name || "",
+        _draftSku: product.sku || "",
         _draftSalePrice: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
         _draftCostPrice: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
         _draftStock: String(product.stock_on_hand ?? 0)
@@ -1735,6 +1737,7 @@ export default function App() {
     const digits = currencyDigits(currencyCode);
     const changedRows = bulkProductRows.filter((row) =>
       String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+      String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
       toMinorUnits(row._draftSalePrice || 0, currencyCode) !== Number(row.sale_price_minor || 0) ||
       toMinorUnits(row._draftCostPrice || 0, currencyCode) !== Number(row.cost_price_minor || 0) ||
       (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
@@ -1753,11 +1756,13 @@ export default function App() {
     try {
       for (const row of changedRows) {
         const nextName = String(row._draftName).trim();
+        const nextSku = String(row._draftSku || "").trim() || null;
         const nextSale = toMinorUnits(row._draftSalePrice, currencyCode);
         const nextCost = toMinorUnits(row._draftCostPrice, currencyCode);
         const nextStock = Number(row._draftStock || 0);
         const productChanges = {};
         if (nextName !== String(row.name || "")) productChanges.name = nextName;
+        if (nextSku !== (row.sku || null)) productChanges.sku = nextSku;
         if (nextSale !== Number(row.sale_price_minor || 0)) productChanges.sale_price_minor = nextSale;
         if (nextCost !== Number(row.cost_price_minor || 0)) productChanges.cost_price_minor = nextCost;
 
@@ -1781,10 +1786,12 @@ export default function App() {
         setBulkProductRows((current) => current.map((item) => item.id !== row.id ? item : ({
           ...item,
           name: nextName,
+          sku: nextSku,
           sale_price_minor: nextSale,
           cost_price_minor: nextCost,
           stock_on_hand: row.track_inventory ? nextStock : item.stock_on_hand,
           _draftName: nextName,
+          _draftSku: nextSku || "",
           _draftSalePrice: String(nextSale / (10 ** digits)),
           _draftCostPrice: String(nextCost / (10 ** digits)),
           _draftStock: String(row.track_inventory ? nextStock : item.stock_on_hand)
@@ -2285,6 +2292,7 @@ export default function App() {
     setShowProductForm(true);
     setProductForm({
       name: product.name || "",
+      sku: product.sku || "",
       category_id: product.category_id || "",
       description: product.description || "",
       commercial_presentation: product.commercial_presentation || "",
@@ -2427,6 +2435,7 @@ export default function App() {
         const { data: updated, error: updateError } = await supabase.from("products")
           .update({
             name: productForm.name.trim(),
+            sku: productForm.sku.trim() || null,
             category_id: productForm.category_id || null,
             description: productForm.description.trim() || null,
             commercial_presentation: productForm.commercial_presentation.trim() || null,
@@ -2453,7 +2462,7 @@ export default function App() {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
         p_category_id: productForm.category_id || null,
-        p_sku: null,
+        p_sku: productForm.sku.trim() || null,
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
         p_unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
@@ -3778,7 +3787,7 @@ export default function App() {
   }
 
   const filteredProducts = [...products].sort((a, b) => compareInventoryProducts(a, b, productSort));
-  const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
+  const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row._draftSku, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
   const filteredCatalogProducts = [...catalogProducts].filter((product) => {
@@ -4875,6 +4884,7 @@ export default function App() {
               </div>}
               <div className="form-grid">
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
+                <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
                 <label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
@@ -4924,7 +4934,8 @@ export default function App() {
                       <span className={row.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{row.is_sellable ? "Activo" : "Inactivo"}</span>
                     </div>
                     <label className="bulk-card-name"><span>Producto</span><input value={row._draftName} maxLength={160} onChange={(event) => updateBulkDraft(row.id, "_draftName", event.target.value)} aria-label={"Nombre de " + row.name} /></label>
-                    <div className="bulk-card-meta"><span>{categories.find((category) => category.id === row.category_id)?.name || "Sin categoría"}</span><code>{row.sku || "Sin código"}</code></div>
+                    <div className="bulk-card-meta"><span>{categories.find((category) => category.id === row.category_id)?.name || "Sin categoría"}</span></div>
+                    <label className="bulk-card-sku-field"><span>Código del artículo</span><input value={row._draftSku} maxLength={100} onChange={(event) => updateBulkDraft(row.id, "_draftSku", event.target.value)} aria-label={"Código de " + row.name} placeholder="Opcional" /></label>
                     <div className="bulk-card-edit-fields">
                       <label><span>Precio</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftSalePrice} onChange={(event) => updateBulkDraft(row.id, "_draftSalePrice", event.target.value)} /></label>
                       <label><span>Costo</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftCostPrice} onChange={(event) => updateBulkDraft(row.id, "_draftCostPrice", event.target.value)} /></label>

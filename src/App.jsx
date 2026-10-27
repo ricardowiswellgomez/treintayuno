@@ -1355,7 +1355,7 @@ function SalesModuleCards({ active, onChoose, showQuotes = true }) {
   </div>;
 }
 
-export default function App() {
+function AuthenticatedApp() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [mode, setMode] = useState("login");
@@ -5385,11 +5385,6 @@ export default function App() {
     : screen;
   const contextualHelp = contextualHelpContent[contextualHelpKey] || contextualHelpContent.home;
 
-  const requestedPublicCatalog = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("catalog") : null;
-  if (requestedPublicCatalog && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)) {
-    return <PublicCatalog businessId={requestedPublicCatalog} />;
-  }
-
   if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
 
   if (!session && showPublicLanding && mode !== "update-password") return <PublicLanding onLogin={() => { setShowPublicLanding(false); setMode("login"); setPassword(""); setError(""); setNotice(""); }} onSignup={() => { setShowPublicLanding(false); setMode("signup"); setPassword(""); setError(""); setNotice(""); }} />;
@@ -6572,4 +6567,24 @@ export default function App() {
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}
     </main>
   );
+}
+
+
+/**
+ * Public catalogs are independent of the authenticated workspace. Route them
+ * before mounting workspace effects, auth state, and private data queries.
+ */
+export default function App() {
+  const requestedPublicCatalog = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("catalog")
+    : null;
+  const isValidCatalogId = Boolean(
+    requestedPublicCatalog &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)
+  );
+
+  if (isValidCatalogId) {
+    return <PublicCatalog businessId={requestedPublicCatalog} />;
+  }
+  return <AuthenticatedApp />;
 }

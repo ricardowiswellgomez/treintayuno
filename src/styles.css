@@ -3518,3 +3518,21 @@ body { background: #F5F7FC; color: #19243A; }
   .home-workspace-actions { grid-template-columns:minmax(0,1fr); }
   .home-operating-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* Inline workflows: compact panels that never create nested forms. */
+.quick-sale-product-form .quick-product-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:10px; }
+.quick-sale-product-form .quick-product-fields>label { min-width:0; }
+.quick-sale-product-form .quick-product-fields>label>span { font-size:11px; }
+.quick-sale-product-form .quick-product-fields input,.quick-sale-product-form .quick-product-fields select { min-width:0; width:100%; }
+.quick-quote-customer-form { margin:2px 0 12px; }
+.inline-customer-toggle { justify-self:start; }
+.product-category-field .inline-create-panel { margin-top:2px; }
+.product-category-field .inline-create-actions .primary-button { min-height:38px; }
+@media(max-width:800px) {
+  .quick-sale-product-form .quick-product-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:520px) {
+  .quick-sale-product-form .quick-product-fields { grid-template-columns:minmax(0,1fr); }
+  .inline-create-actions { align-items:stretch; }
+  .inline-create-actions .primary-button { flex:1 1 auto; }
+}

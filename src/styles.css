@@ -2928,3 +2928,27 @@ body { background: #F5F7FC; color: #19243A; }
   }
   .app-shell > .sidebar .sidebar-nav-group { gap: 0; }
 }
+
+
+/* Business identity and richer team records. */
+.business-avatar { position:relative; overflow:hidden; }
+.business-avatar.has-business-logo { background:var(--paper,#FFFFFF); color:transparent; border:1px solid color-mix(in srgb,var(--green) 18%,var(--line)); }
+.business-avatar-initial { position:relative; z-index:0; }
+.business-avatar.has-business-logo img { position:absolute; z-index:1; inset:0; display:block; width:100%; height:100%; padding:2px; object-fit:contain; background:var(--paper,#FFFFFF); border-radius:inherit; }
+.team-member-details { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0 6px; }
+.team-member-detail { display:flex; flex-direction:column; gap:3px; min-width:0; padding:8px 9px; border:1px solid var(--line); border-radius:9px; background:color-mix(in srgb,var(--paper,#fff) 92%,var(--green) 8%); }
+.team-member-detail>span { color:var(--muted); font-size:11px; font-weight:750; }
+.team-member-detail>strong,.team-member-detail>a { min-width:0; overflow-wrap:anywhere; font-size:13px; font-weight:750; color:var(--ink); text-decoration:none; }
+.team-member-detail>a:hover { color:var(--green); text-decoration:underline; }
+.team-member-permissions { line-height:1.55; }
+.settings-tab-content[hidden] { display:none!important; }
+.settings-tab-content { min-width:0; }
+.tax-guidance-note { margin-top:16px; padding:14px 16px; border:1px solid #F1D96B; border-left:4px solid var(--brand-yellow); border-radius:12px; background:#FFF9DF; color:#493D16; line-height:1.6; }
+.tax-guidance-note p { margin:6px 0 0; }
+.settings-tabs { gap:7px; flex-wrap:wrap; }
+.settings-tab { white-space:nowrap; }
+@media(max-width:700px) {
+ .team-member-details { grid-template-columns:1fr; }
+ .settings-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .settings-tab { width:100%; justify-content:center; }
+}

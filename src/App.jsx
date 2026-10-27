@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabasePublishableKey } from "./lib/supabase.js";
+import { applyAppLanguage } from "./i18n.js";
 
 function AppIcon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, focusable: "false" };
@@ -52,46 +53,11 @@ const sidebarAreaItem = (screen, label = null) => {
   return area ? { id: area.screen, screen: area.screen, label: label || area.title, icon: area.icon } : null;
 };
 const defaultSidebarLayout = () => [
-  {
-    id: "inicio",
-    type: "group",
-    title: "INICIO",
-    items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }]
-  },
-  {
-    id: "operaciones",
-    type: "group",
-    title: "OPERACIONES",
-    items: [sidebarAreaItem("products"), sidebarAreaItem("purchases")].filter(Boolean)
-  },
-  {
-    id: "comercial",
-    type: "group",
-    title: "COMERCIAL",
-    items: ["sales", "quotes", "catalog", "coupons"].map(sidebarAreaItem).filter(Boolean)
-  },
-  {
-    id: "finanzas",
-    type: "group",
-    title: "FINANZAS",
-    items: ["stats", "profitability", "payments"].map(sidebarAreaItem).filter(Boolean)
-  },
-  {
-    id: "personal",
-    type: "group",
-    title: "PERSONAL",
-    items: [
-      sidebarAreaItem("customers"),
-      { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" },
-      sidebarAreaItem("team", "Personal")
-    ].filter(Boolean)
-  },
-  {
-    id: "administracion",
-    type: "group",
-    title: "ADMINISTRACIÓN",
-    items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }]
-  }
+  { id: "inicio", type: "group", title: "INICIO", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
+  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -112,8 +78,7 @@ const normalizeSidebarLayout = (layout) => {
     }));
   if (!groups.length) return fallback;
 
-  // Migra el menú antiguo de una única sección a las categorías predeterminadas,
-  // conservando las etiquetas e iconos que el propietario haya personalizado.
+  // Convert the original one-section menu to the current categories, preserving labels/icons edited by the owner.
   if (groups.length === 1 && (groups[0].id === "business" || groups[0].title.toUpperCase() === "TU NEGOCIO")) {
     const savedItems = new Map(groups[0].items.map((item) => [item.id, item]));
     return fallback.map((group) => ({
@@ -122,29 +87,36 @@ const normalizeSidebarLayout = (layout) => {
     })).filter((group) => group.items.length > 0);
   }
 
-  // Los contactos y el equipo pertenecen siempre a PERSONAL, también cuando ya estaba
-  // guardada la versión anterior de los grupos. Se conserva el icono personalizado.
-  const personalItemIds = ["customers", "suppliers", "team"];
-  const savedPersonalItems = new Map();
+  // Reconcile prior layouts with the agreed categories without discarding item labels/icons.
+  const requiredDestinations = {
+    products: "comercial",
+    purchases: "finanzas",
+    coupons: "finanzas",
+    customers: "personal",
+    suppliers: "personal",
+    team: "personal"
+  };
+  const movedItems = new Map();
   for (const group of groups) {
     group.items = group.items.filter((item) => {
-      if (!personalItemIds.includes(item.id)) return true;
-      if (!savedPersonalItems.has(item.id)) savedPersonalItems.set(item.id, item);
+      const destination = requiredDestinations[item.id];
+      if (!destination || group.id === destination) return true;
+      if (!movedItems.has(item.id)) movedItems.set(item.id, item);
       return false;
     });
   }
-  let personalGroup = groups.find((group) => group.id === "personal");
-  if (!personalGroup) {
-    const defaultPersonal = fallback.find((group) => group.id === "personal");
-    personalGroup = { ...defaultPersonal, items: [] };
-    groups.push(personalGroup);
+  for (const [itemId, destinationId] of Object.entries(requiredDestinations)) {
+    const targetTemplate = fallback.find((group) => group.id === destinationId);
+    let target = groups.find((group) => group.id === destinationId);
+    if (!target && targetTemplate) {
+      target = { ...targetTemplate, items: [] };
+      groups.push(target);
+    }
+    if (!target) continue;
+    const existing = target.items.find((item) => item.id === itemId);
+    const item = movedItems.get(itemId);
+    if (item && !existing) target.items.push(item);
   }
-  const otherPersonalItems = personalGroup.items.filter((item) => !personalItemIds.includes(item.id));
-  personalGroup.title = "PERSONAL";
-  personalGroup.items = [
-    ...personalItemIds.map((id) => savedPersonalItems.get(id) || known.get(id)),
-    ...otherPersonalItems
-  ];
 
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
   const missing = orderedItems.filter((item) => !placed.has(item.id));
@@ -411,6 +383,30 @@ const normalizeBusinessTheme = (theme) => {
   const matchesDefault = (candidate) => Boolean(theme) && Object.entries(candidate).every(([key, value]) => !theme[key] || String(theme[key]).toLowerCase() === value.toLowerCase());
   const source = matchesDefault(legacyDefault) || matchesDefault(previousBrandDefault) ? null : theme;
   return { primary: valid(source?.primary, defaultBusinessTheme.primary), background: valid(source?.background, defaultBusinessTheme.background), surface: valid(source?.surface, defaultBusinessTheme.surface), text: valid(source?.text, defaultBusinessTheme.text), sidebarBackground: valid(source?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(source?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(source?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(source?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
+};
+const DEFAULT_TAX_PROFILE = Object.freeze({
+  vatStatus: "unsure",
+  defaultRate: 19,
+  defaultRateMode: "standard",
+  customRate: 19,
+  pricesIncludeVat: false,
+  showVatBreakdown: false
+});
+const normalizeTaxProfile = (profile) => {
+  const allowed = new Set(["responsible", "not_responsible", "not_applicable", "unsure"]);
+  const numberOr = (value, fallback) => {
+    if (String(value ?? "").trim() === "") return fallback;
+    const number = Number(String(value ?? "").replace(",", "."));
+    return Number.isFinite(number) && number >= 0 && number <= 100 ? number : fallback;
+  };
+  return {
+    vatStatus: allowed.has(profile?.vatStatus) ? profile.vatStatus : "unsure",
+    defaultRate: numberOr(profile?.defaultRate, 19),
+    defaultRateMode: profile?.defaultRateMode === "custom" ? "custom" : "standard",
+    customRate: numberOr(profile?.customRate, 19),
+    pricesIncludeVat: Boolean(profile?.pricesIncludeVat),
+    showVatBreakdown: Boolean(profile?.showVatBreakdown)
+  };
 };
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
@@ -1299,15 +1295,21 @@ export default function App() {
   const [settingsCurrency, setSettingsCurrency] = useState("COP");
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [settingsTab, setSettingsTab] = useState("general");
+  const [uiLanguage, setUiLanguage] = useState(() => {
+    try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
+    catch { return "es"; }
+  });
   const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", hoursSchedule: {} });
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
+  useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => () => { try { aiRecognitionRef.current?.stop?.(); } catch {} }, []);
   const [settingsChecking, setSettingsChecking] = useState(false);
   const [settingsHasData, setSettingsHasData] = useState(false);
   const [settingsConversionRate, setSettingsConversionRate] = useState("");
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
   const [settingsHelpEnabled, setSettingsHelpEnabled] = useState(true);
+  const [settingsTaxProfile, setSettingsTaxProfile] = useState(DEFAULT_TAX_PROFILE);
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
   const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
@@ -1681,6 +1683,7 @@ export default function App() {
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
+    setSettingsTaxProfile(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     setSettingsLogoFile(null);
     setSettingsLogoPreview("");
     setSettingsRemoveLogo(false);
@@ -1839,6 +1842,13 @@ export default function App() {
     const businessName = settingsBusinessName.trim();
     if (!businessName) { setError("Escribe el nombre del negocio."); return; }
     const nextTheme = normalizeBusinessTheme(settingsTheme);
+    const nextTaxProfile = normalizeTaxProfile(settingsTaxProfile);
+    const rawTaxRate = nextTaxProfile.defaultRateMode === "custom" ? String(settingsTaxProfile.customRate ?? "").trim() : String(nextTaxProfile.defaultRate);
+    const effectiveTaxRate = Number(String(rawTaxRate).replace(",", "."));
+    if (nextTaxProfile.vatStatus === "responsible" && (!rawTaxRate || !Number.isFinite(effectiveTaxRate) || effectiveTaxRate < 0 || effectiveTaxRate > 100)) {
+      setError("Indica una tarifa de IVA válida entre 0 y 100.");
+      return;
+    }
     const normalizeCommercialProfile = (profile) => ({
       tradeName: String(profile?.tradeName || "").trim(),
       documentNumber: String(profile?.documentNumber || "").trim(),
@@ -1865,15 +1875,16 @@ export default function App() {
     if (commercialProfile.orderChannel === "wompi" && settingsCurrency !== "COP") { setError("Wompi solo admite COP. Elige pedidos por WhatsApp o cambia la moneda del negocio a COP."); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
-    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile };
+    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
     const nameChanged = businessName !== activeBusiness.name;
     const currencyChanged = settingsCurrency !== currencyCode;
     const conversionRate = Number(String(settingsConversionRate).replace(",", "."));
     if (currencyChanged && settingsHasData && (!Number.isFinite(conversionRate) || conversionRate <= 0)) { setError("Indica una tasa válida: cuántas unidades de la nueva moneda equivalen a 1 unidad de la moneda actual."); return; }
     const themeChanged = JSON.stringify(nextTheme) !== JSON.stringify(normalizeBusinessTheme(activeBusiness.theme));
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
+    const taxProfileChanged = JSON.stringify(nextTaxProfile) !== JSON.stringify(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
-    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged) {
+    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
       setNotice("No hay cambios pendientes.");
       return;
     }
@@ -1919,6 +1930,7 @@ export default function App() {
       setSettingsConversionRate("");
       setSettingsTheme(normalizeBusinessTheme(data.theme));
       setSettingsHelpEnabled(data.settings?.contextual_help_enabled !== false);
+      setSettingsTaxProfile(normalizeTaxProfile(data.settings?.tax_profile || nextTaxProfile));
       setSettingsCommercialProfile(commercialProfile);
       setSettingsLogoFile(null);
       setSettingsLogoPreview("");
@@ -3867,6 +3879,7 @@ export default function App() {
     setError(""); setNotice("");
   }
 
+  const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
   const appThemeStyle = { "--green": activeTheme.primary, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
@@ -3932,7 +3945,7 @@ export default function App() {
       <aside className="sidebar">
         <a className="brand" href="/"><img className="brand-logo-full" src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
         <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
-          <span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>
+          <span className={"business-avatar" + (activeBusinessLogoUrl ? " has-business-logo" : "")}><span className="business-avatar-initial">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>{activeBusinessLogoUrl && <img src={activeBusinessLogoUrl} alt={"Logo de " + (activeBusiness?.name || "negocio")} onError={(event) => { event.currentTarget.remove(); event.currentTarget.parentElement?.classList.remove("has-business-logo"); }} />}</span>
           {businesses.length > 1
             ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
             : <span className="business-name">{activeBusiness?.name}</span>}
@@ -4147,7 +4160,12 @@ export default function App() {
                   <div className="team-member-avatar">{(member.display_name || member.email || "?").slice(0, 1).toLocaleUpperCase("es")}</div>
                   <div className="team-member-main"><div className="team-member-title"><strong>{member.display_name || member.email}</strong><span className={"team-role-pill " + (isEmployee ? "team-role-employee" : "team-role-admin")}>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</span></div>
                     <span className="team-member-email">{member.email}</span>
-                    <p>{isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>
+                    <div className="team-member-details">
+                      <div className="team-member-detail"><span>Rol</span><strong>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</strong></div>
+                      <div className="team-member-detail"><span>Celular</span>{member.phone ? <a href={"tel:" + String(member.phone).replace(/[^+\d]/g, "")}>{member.phone}</a> : <strong className="muted-value">Sin registrar</strong>}</div>
+                      <div className="team-member-detail"><span>Desde</span><strong>{member.joined_at ? new Intl.DateTimeFormat(uiLanguage === "en" ? "en-US" : "es-CO", { year: "numeric", month: "short", day: "numeric" }).format(new Date(member.joined_at)) : "—"}</strong></div>
+                    </div>
+                    <p className="team-member-permissions"><strong>Accesos:</strong> {isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>
                   </div>
                   {isEmployee && <div className="team-member-actions"><button type="button" className="icon-action-button" title="Editar permisos" aria-label={"Editar permisos de " + (member.display_name || member.email)} onClick={() => startEditTeamMember(member)}>✎</button><button type="button" className="text-button danger-text" disabled={teamSaving} onClick={() => removeTeamMember(member)}>Quitar acceso</button></div>}
                 </article>;
@@ -4654,9 +4672,19 @@ export default function App() {
         ) : screen === "settings" ? (
           <section className="settings-page">
             <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>
-            <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración"><button type="button" role="tab" aria-selected={settingsTab === "general"} className={settingsTab === "general" ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab("general")}>General</button><button type="button" role="tab" aria-selected={settingsTab === "company"} className={settingsTab === "company" ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab("company")}>Mi empresa</button></div>
+            <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
+              {[
+                ["general", "General"],
+                ["company", "Mi empresa"],
+                ["customization", "Personalización"],
+                ["help", "Ayudas"],
+                ["language", "Idioma"],
+                ["taxes", "Impuestos"]
+              ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
+            </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={settingsTab !== "general"} className="settings-tab-panel">
+              <div hidden={!["general", "customization", "help", "language", "taxes"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
@@ -4666,7 +4694,8 @@ export default function App() {
                 {settingsHasData && settingsCurrency !== currencyCode ? <div className="settings-conversion-box"><p className="helper-text">Se convertirán los precios de venta y costo del catálogo y sus variantes. Las ventas, compras, gastos y cotizaciones existentes conservarán sus importes y moneda históricos.</p><label className="settings-field"><span>Tasa de conversión</span><span className="helper-text">¿Cuántas unidades de {settingsCurrency} equivalen a 1 {currencyCode}?</span><input type="number" min="0.00000001" step="any" inputMode="decimal" value={settingsConversionRate} onChange={(e) => setSettingsConversionRate(e.target.value)} placeholder="Ej. 0,00024" required /></label><p className="helper-text">Confirma la tasa antes de guardar. La conversión se ejecuta en una sola transacción en la base de datos.</p></div> : settingsHasData ? <p className="helper-text">Puedes cambiar la moneda principal. Si eliges otra, te pediremos una tasa para convertir los precios actuales del catálogo sin modificar los movimientos históricos.</p> : <p className="helper-text">Elige la moneda para los precios del catálogo y los próximos movimientos de dinero.</p>}
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos ajustes.</p>}
               </>}
-
+              </div>
+              <div hidden={settingsTab !== "customization"} className="settings-tab-content">
               <div className="settings-section-divider" />
               <h3>Logo del negocio</h3>
               <p>Tu logo se conservará para las próximas sesiones y se mostrará en la navegación y el catálogo público.</p>
@@ -4699,12 +4728,38 @@ export default function App() {
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
               {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
-
+              </div>
+              <div hidden={settingsTab !== "help"} className="settings-tab-content">
               <div className="settings-section-divider" />
               <h3>Ayudas contextuales</h3>
               <p>Una guía clara que cambia según la sección en la que estés, con instrucciones y consejos prácticos.</p>
               <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar ayudas contextuales<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva tanto las ayudas breves de los campos como el panel explicativo general." /></strong><small>El botón «Ayuda» abre el mismo panel explicativo sobre formularios y ventanas.</small></span></label>
               {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar esta preferencia.</p>}
+              </div>
+              <div hidden={settingsTab !== "language"} className="settings-tab-content language-settings-panel">
+                <div className="settings-icon"><AppIcon name="grid" size={23} /></div>
+                <h3>Idioma de la aplicación</h3>
+                <p>Selecciona el idioma de toda la interfaz de treseiscinco. El cambio se aplica inmediatamente y se guarda en este navegador.</p>
+                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = event.target.value === "en" ? "en" : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language", next); } catch {} setNotice(next === "en" ? "Language saved." : "Idioma guardado."); }}><option value="es">Español</option><option value="en">English</option></select></label>
+                <p className="helper-text">Al elegir English se traducen los textos de navegación, formularios, botones, ayudas, estados y mensajes que estén incluidos en el catálogo de traducciones. Los nombres y datos escritos por ti no se traducen.</p>
+              </div>
+              <div hidden={settingsTab !== "taxes"} className="settings-tab-content tax-settings-panel">
+                <div className="settings-icon"><AppIcon name="stats" size={23} /></div>
+                <h3>Impuestos y tratamiento fiscal</h3>
+                <p>Configura el perfil tributario de tu negocio. No activaremos el cobro de IVA por defecto ni cambiaremos movimientos históricos.</p>
+                <label className="settings-field"><span className="field-label-heading">¿Cómo está tu negocio frente al IVA?</span><select value={settingsTaxProfile.vatStatus} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, vatStatus: event.target.value }))} disabled={activeBusiness?.role !== "owner"}><option value="unsure">No estoy seguro todavía</option><option value="responsible">Responsable de IVA</option><option value="not_responsible">No responsable de IVA</option><option value="not_applicable">Mis operaciones no están gravadas con IVA</option></select></label>
+                {settingsTaxProfile.vatStatus === "responsible" && <>
+                  <label className="settings-field"><span className="field-label-heading">Tarifa predeterminada de IVA</span><select value={settingsTaxProfile.defaultRateMode === "custom" ? "custom" : String(settingsTaxProfile.defaultRate)} onChange={(event) => setSettingsTaxProfile((current) => event.target.value === "custom" ? { ...current, defaultRateMode: "custom" } : { ...current, defaultRateMode: "standard", defaultRate: Number(event.target.value) })} disabled={activeBusiness?.role !== "owner"}><option value="19">IVA general (19 %)</option><option value="5">IVA diferencial (5 %)</option><option value="0">0 %</option><option value="custom">Tarifa personalizada</option></select></label>
+                  {settingsTaxProfile.defaultRateMode === "custom" && <label className="settings-field"><span className="field-label-heading">Porcentaje de IVA</span><input type="number" min="0" max="100" step="0.01" inputMode="decimal" value={settingsTaxProfile.customRate} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, customRate: event.target.value }))} disabled={activeBusiness?.role !== "owner"} /></label>}
+                  <label className="settings-help-toggle"><input type="checkbox" checked={settingsTaxProfile.pricesIncludeVat} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, pricesIncludeVat: event.target.checked }))} disabled={activeBusiness?.role !== "owner"} /><span><strong>Los precios ya incluyen IVA</strong><small>Activa esta opción si la tarifa publicada ya contiene el impuesto.</small></span></label>
+                  <label className="settings-help-toggle"><input type="checkbox" checked={settingsTaxProfile.showVatBreakdown} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, showVatBreakdown: event.target.checked }))} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar IVA por separado en nuevos documentos</strong><small>Preferencia para documentos que admitan desglose tributario.</small></span></label>
+                </>}
+                <div className="tax-guidance-note">
+                  <strong>Importante:</strong>
+                  <p>Esta configuración guarda tu perfil y una tarifa predeterminada; no activa por sí sola el cobro de IVA ni recalcula ventas, compras o cotizaciones. La tarifa puede variar según el producto o servicio y tu responsabilidad tributaria. Revisa tu RUT y confirma tu situación con un contador o la DIAN antes de cobrar IVA.</p>
+                </div>
+                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar estos ajustes.</p>}
+              </div>
               </div>
               <div hidden={settingsTab !== "company"} className="settings-tab-panel company-profile-panel">
                 <div className="settings-icon"><AppIcon name="team" size={23} /></div>

@@ -960,7 +960,7 @@ function PublicCatalog({ businessId }) {
   const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
   const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
   const catalogThemeStyle = {
-    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
+    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--muted": readableText(catalogTheme.surface,"#69758A"), "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
     "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
     background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
   };
@@ -1902,6 +1902,8 @@ export default function App() {
     if (!isPlatformAdmin) return;
     setPlatformAdminLoading(true);
     try {
+      const { error: expiryError } = await supabase.rpc("platform_admin_expire_trials");
+      if (expiryError) throw expiryError;
       const { data, error: rpcError } = await supabase.rpc("platform_admin_dashboard");
       if (rpcError) throw rpcError;
       setPlatformAdminData(data || null);
@@ -4399,7 +4401,7 @@ export default function App() {
     const today = new Date(todayInBogota() + "T12:00:00-05:00");
     const keyFor = (value) => {
       if (!value) return "";
-      if (typeof value==="string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
+      if (typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value).slice(0,10);
       return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
@@ -4840,9 +4842,10 @@ export default function App() {
   const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
   const safeAppText = readableText(activeTheme.background, activeTheme.text);
+  const safeMutedText = readableText(activeTheme.surface, "#69758A");
   const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
   const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
-  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--primary-button-text": readableText(safeAccent, "#FFFFFF"), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
+  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--muted": safeMutedText, "--primary-button-text": readableText(safeAccent, "#FFFFFF"), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"

@@ -1583,7 +1583,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   useEffect(() => {
-    const closeGlobalHelpWhenFieldHelpOpens = () => setHelpOpen(false);
+    const closeGlobalHelpWhenFieldHelpOpens = (event) => { if (event.detail?.source) setHelpOpen(false); };
     document.addEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
     return () => document.removeEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
   }, []);
@@ -1932,15 +1932,39 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    let startupExpired = false;
+    const startupTimer = window.setTimeout(() => {
       if (!alive) return;
+      startupExpired = true;
+      setSession(null);
+      setBusinesses([]);
+      setActiveBusiness(null);
+      setAuthReady(true);
+      setError("No pudimos comprobar tu sesión a tiempo. Comprueba tu conexión y vuelve a iniciar sesión.");
+    }, 10000);
+
+    supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
+      if (!alive || startupExpired) return;
+      if (sessionError) throw sessionError;
+      const currentSession = data?.session || null;
       setSession(currentSession);
       if (currentSession?.user) {
         try { await loadBusinesses(currentSession.user.id); }
-        catch (e) { if (alive) setError(friendlyError(e)); }
+        catch (e) { if (alive && !startupExpired) setError(friendlyError(e)); }
       }
-      if (alive) setAuthReady(true);
+      if (!alive || startupExpired) return;
+      window.clearTimeout(startupTimer);
+      setAuthReady(true);
+    }).catch(() => {
+      if (!alive || startupExpired) return;
+      window.clearTimeout(startupTimer);
+      setSession(null);
+      setBusinesses([]);
+      setActiveBusiness(null);
+      setError("No pudimos comprobar tu sesión. Comprueba tu conexión e inténtalo de nuevo.");
+      setAuthReady(true);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (event === "PASSWORD_RECOVERY") {
         setMode("update-password");
@@ -1952,10 +1976,16 @@ export default function App() {
       if (!currentSession) {
         setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("home");
       } else if (event !== "PASSWORD_RECOVERY") {
+        if (startupExpired) {
+          startupExpired = false;
+          window.clearTimeout(startupTimer);
+          setError("");
+          setAuthReady(true);
+        }
         queueMicrotask(() => loadBusinesses(currentSession.user.id).catch((e) => setError(friendlyError(e))));
       }
     });
-    return () => { alive = false; subscription.unsubscribe(); };
+    return () => { alive = false; window.clearTimeout(startupTimer); subscription.unsubscribe(); };
   }, [loadBusinesses]);
 
 
@@ -5946,8 +5976,8 @@ export default function App() {
               <div hidden={settingsTab !== "help"} className="settings-tab-content">
               <div className="settings-section-divider" />
               <h3>Ayudas contextuales</h3>
-              <p>Una guía clara que cambia según la sección en la que estés, con instrucciones y consejos prácticos.</p>
-              <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar ayudas contextuales<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva tanto las ayudas breves de los campos como el panel explicativo general." /></strong><small>El botón «Ayuda» abre el mismo panel explicativo sobre formularios y ventanas.</small></span></label>
+              <p>El botón flotante «Ayuda» muestra la guía de la sección actual. Los consejos junto a los campos se pueden ocultar por separado.</p>
+              <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar consejos junto a los campos<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva los iconos de ayuda breve junto a los campos. El botón general «Ayuda» permanece visible." /></strong><small>Esta opción solo controla los iconos junto a los campos. El botón flotante «Ayuda» siempre permanece disponible.</small></span></label>
               {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar esta preferencia.</p>}
               </div>
               <div hidden={settingsTab !== "language"} className="settings-tab-content language-settings-panel">
@@ -6103,7 +6133,7 @@ export default function App() {
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
-      <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>
+      <div className="ai-assistant-layer ai-with-help">
         {aiOpen && <section id="treseiscinco-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de treseiscinco">
           <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
           <div ref={aiMessagesRef} className="ai-assistant-messages" aria-live="polite">
@@ -6116,7 +6146,7 @@ export default function App() {
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { setHelpOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
-      {contextualHelpEnabled && <div className="context-help-layer">
+      <div className={"context-help-layer" + (helpOpen ? " is-open" : "")}>
         <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
         {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>
           <header className="context-help-header"><div><p>AYUDA CONTEXTUAL</p><h2>{contextualHelp.title}</h2></div><button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button></header>
@@ -6125,7 +6155,7 @@ export default function App() {
           <div className="context-help-tip"><strong><span aria-hidden="true">✦</span> Consejo útil</strong><p>{contextualHelp.tip}</p></div>
           <footer className="context-help-footer"><button type="button" className="primary-button" onClick={() => setHelpOpen(false)}>Entendido</button></footer>
         </aside>}
-      </div>}
+      </div>
 
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}
     </main>

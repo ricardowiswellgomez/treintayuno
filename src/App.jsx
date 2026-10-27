@@ -7,6 +7,7 @@ function AppIcon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, focusable: "false" };
   const glyphs = {
     home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
+    "business-card": <><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="2" /><path d="M5.5 15a3 3 0 0 1 6 0M14 9h4M14 12h4M14 15h2" /></>,
     products: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z" /><path d="m3.4 7.6 8.6 4.7 8.6-4.7M12 12.3V21" /></>,
     sales: <><path d="M4 4.5h16v15H4z" /><path d="M8 9h8M8 13h4M8 16h8" /></>,
     accounts: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
@@ -106,12 +107,12 @@ const areas = [
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
   { icon: "◷", title: "Rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
-  { icon: "▤", title: "Compras", description: "Compras, proveedores y gastos.", screen: "purchases" },
+  { icon: "▤", title: "Compras", description: "Compras y gastos del negocio.", screen: "purchases" },
+  { icon: "♧", title: "Proveedores", description: "Directorio y datos de contacto de tus proveedores.", screen: "suppliers" },
   { icon: "◉", title: "Catálogo", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
   { icon: "₱", title: "Pagos verificados", description: "Conecta la cuenta de cobro de este negocio.", screen: "payments" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" },
-  { icon: "◷", title: "Auditorías", description: "Consulta quién hizo cada cambio y cuándo.", screen: "audit" }
 ];
 
 const sidebarAreaItem = (screen, label = null) => {
@@ -121,9 +122,9 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "suppliers", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
-  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -131,7 +132,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", suppliers: "Proveedores", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -158,6 +159,7 @@ const normalizeSidebarLayout = (layout) => {
     products: "comercial",
     accounts: "finanzas",
     purchases: "finanzas",
+    suppliers: "finanzas",
     coupons: "finanzas",
     customers: "personal",
     team: "personal"
@@ -2466,6 +2468,116 @@ function AuthenticatedApp() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
+  async function shareBusinessCard() {
+    if (!activeBusiness) return;
+    setError(""); setNotice("");
+    try {
+      const profile = settingsCommercialProfile || {};
+      const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim().slice(0, 160);
+      const primary = /^#[0-9a-f]{6}$/i.test(profile.cardPrimary || "") ? profile.cardPrimary : "#159F92";
+      const surface = /^#[0-9a-f]{6}$/i.test(profile.cardSurface || "") ? profile.cardSurface : "#FFFFFF";
+      const textColor = /^#[0-9a-f]{6}$/i.test(profile.cardText || "") ? profile.cardText : "#1F2937";
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080; canvas.height = 600;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No fue posible preparar la imagen de la tarjeta.");
+      ctx.fillStyle = surface; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = primary; ctx.fillRect(0, 0, canvas.width, 16);
+      ctx.fillStyle = "#F0F5F6"; ctx.fillRect(54, 174, 220, 220);
+      let logoImage = null;
+      const logoUrl = getBusinessLogoUrl(activeBusiness.logo_path) || "";
+      if (logoUrl) {
+        try {
+          const response = await fetch(logoUrl, { mode: "cors", credentials: "omit" });
+          if (response.ok) {
+            const logoBlob = await response.blob();
+            const logoDataUrl = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(logoBlob);
+            });
+            if (logoDataUrl) {
+              logoImage = await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = logoDataUrl;
+              });
+            }
+          }
+        } catch { /* Optional logo: card is still shareable without it. */ }
+      }
+      if (logoImage) {
+        const ratio = Math.min(184 / logoImage.width, 184 / logoImage.height);
+        const w = logoImage.width * ratio, h = logoImage.height * ratio;
+        ctx.drawImage(logoImage, 72 + (184 - w) / 2, 192 + (184 - h) / 2, w, h);
+      } else {
+        ctx.fillStyle = primary; ctx.font = "bold 106px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText((businessName.slice(0, 1) || "N").toUpperCase(), 164, 284);
+      }
+      ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillStyle = primary; ctx.font = "bold 18px Arial";
+      ctx.fillText("INFORMACIÓN COMERCIAL", 330, 52);
+      const drawTextBlock = (value, x, y, maxWidth, lineHeight, maxLines, font, color) => {
+        const text = String(value || "").trim();
+        if (!text) return y;
+        ctx.font = font; ctx.fillStyle = color;
+        const words = text.split(/\s+/);
+        const lines = []; let line = "";
+        for (const word of words) {
+          const candidate = line ? line + " " + word : word;
+          if (line && ctx.measureText(candidate).width > maxWidth) { lines.push(line); line = word; }
+          else line = candidate;
+        }
+        if (line) lines.push(line);
+        const visible = lines.slice(0, maxLines);
+        if (lines.length > maxLines && visible.length) {
+          let last = visible[visible.length - 1];
+          while (last && ctx.measureText(last + "…").width > maxWidth) last = last.slice(0, -1);
+          visible[visible.length - 1] = last + "…";
+        }
+        visible.forEach((lineText, index) => ctx.fillText(lineText, x, y + index * lineHeight));
+        return y + visible.length * lineHeight;
+      };
+      let y = drawTextBlock(businessName, 330, 88, 690, 52, 1, "bold 46px Arial", textColor) + 10;
+      if (profile.publicDescription) y = drawTextBlock(profile.publicDescription, 330, y, 690, 30, 2, "24px Arial", textColor) + 12;
+      const details = [
+        profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "",
+        profile.phone ? "Teléfono / WhatsApp: " + profile.phone : "",
+        profile.email ? "Correo: " + profile.email : "",
+        [profile.address, profile.city].filter(Boolean).join(", "),
+        profile.website ? String(profile.website).trim() : ""
+      ].filter(Boolean);
+      for (const detail of details.slice(0, 5)) {
+        if (y > 535) break;
+        y = drawTextBlock(detail, 330, y, 690, 30, 1, "21px Arial", textColor) + 3;
+      }
+      ctx.fillStyle = primary; ctx.fillRect(330, 560, 690, 3);
+      const png = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!png) throw new Error("No fue posible convertir la tarjeta en imagen.");
+      const safeName = businessName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "negocio";
+      const file = new File([png], "tarjeta-" + safeName + ".png", { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "Tarjeta de " + businessName, text: "Tarjeta comercial de " + businessName });
+          setNotice("Tarjeta compartida.");
+          return;
+        } catch (shareError) {
+          if (shareError?.name === "AbortError") return;
+        }
+      }
+      const objectUrl = URL.createObjectURL(png);
+      const download = document.createElement("a");
+      download.href = objectUrl; download.download = file.name; download.style.display = "none";
+      document.body.appendChild(download); download.click(); download.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+      setNotice("La tarjeta se descargó como PNG. Ya puedes adjuntarla en WhatsApp u otra aplicación.");
+    } catch (shareError) {
+      setError(shareError?.message || "No fue posible preparar la tarjeta para compartir.");
+    }
+  }
+
   function printBusinessCard() {
     if (!activeBusiness) return;
     const profile=settingsCommercialProfile||{};
@@ -2519,8 +2631,10 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     let alive=true;
+    setIsPlatformAdmin(false);
+    setSettingsTab("general");
     if (!session?.user?.id) {
-      setIsPlatformAdmin(false); setPlatformAdminData(null); setBusinessSubscription(null);
+      setPlatformAdminData(null); setBusinessSubscription(null);
       return () => { alive=false; };
     }
     supabase.rpc("is_platform_admin").then(({data,error:rpcError})=>{
@@ -2563,8 +2677,8 @@ function AuthenticatedApp() {
   }, [screen, accountsTab, activeBusiness?.id]);
 
   useEffect(() => {
-    if (screen==="platform_admin" && isPlatformAdmin) loadPlatformAdminDashboard();
-  }, [screen,isPlatformAdmin]);
+    if ((screen === "platform_admin" || (screen === "settings" && settingsTab === "platform")) && isPlatformAdmin) loadPlatformAdminDashboard();
+  }, [screen, settingsTab, isPlatformAdmin]);
 
   async function loadBulkProducts() {
     if (!activeBusiness?.id) return;
@@ -2870,7 +2984,7 @@ function AuthenticatedApp() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {} });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
@@ -5053,27 +5167,21 @@ function AuthenticatedApp() {
   const canViewExpenses = canPermission("expenses_view");
   const canViewSuppliers = canPermission("suppliers_view") || canViewPurchases;
   const effectivePurchaseTab = screen === "suppliers" ? "suppliers"
-    : purchaseModuleTab === "suppliers" && canViewSuppliers
-      ? "suppliers"
-      : canViewPurchases
-        ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
-        : canViewExpenses
-          ? "expenses"
-          : canViewSuppliers
-            ? "suppliers"
-            : "expenses";
+    : canViewPurchases
+      ? (purchaseModuleTab === "expenses" && canViewExpenses ? "expenses" : "purchases")
+      : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "platform_admin") return isPlatformAdmin;
     if (next === "accounts") return canPermission("sales_view") || canViewPurchases;
     if (next === "receivables") return canPermission("sales_view");
     if (next === "payables") return canViewPurchases;
-    if (next === "settings") return isBusinessOwner;
+    if (next === "settings") return isBusinessOwner || isPlatformAdmin;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
     if (next === "sales" || next === "stats" || next === "quotes") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
-    if (next === "purchases") return canViewPurchases || canViewExpenses || canViewSuppliers;
+    if (next === "purchases") return canViewPurchases || canViewExpenses;
     if (next === "suppliers") return canViewSuppliers;
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
     if (next === "audit") return canPermission("reports_view") || isBusinessManager;
@@ -5139,11 +5247,15 @@ function AuthenticatedApp() {
   }, [screen]);
 
   function navigate(next, purchaseTab = "purchases") {
+    const openPlatformSettings = next === "platform_admin";
+    if (openPlatformSettings && !isPlatformAdmin) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
+    if (openPlatformSettings) next = "settings";
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     const switchingWithinSales = ["sales", "quotes"].includes(next) && ["sales", "quotes"].includes(screen);
     if (next !== screen && !switchingWithinSales && !confirmLeaveForm()) return;
     if (next !== screen) window.history.pushState({ treseiscinco: true, screen: next }, "", window.location.href);
     dirtyFormsRef.current = new WeakSet();
+    if (openPlatformSettings) setSettingsTab("platform");
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
     if (!["sales", "quotes"].includes(next)) clearQuoteDraft();
     if (next === "sales") setSalesWorkspaceTab("sales");
@@ -5440,6 +5552,28 @@ function AuthenticatedApp() {
     : screen;
   const contextualHelp = contextualHelpContent[contextualHelpKey] || contextualHelpContent.home;
 
+  const platformAdminPanel = (
+<section className="platform-admin-page">
+            <div className="products-intro"><div><p className="eyebrow">CONTROL INTERNO</p><h2>Administración de plataforma</h2><p>Usuarios, actividad, pruebas de 30 días, pagos e historial. Los cobros recurrentes se conectarán después.</p></div><button type="button" className="secondary-button" onClick={loadPlatformAdminDashboard} disabled={platformAdminLoading}>Actualizar</button></div>
+            {!isPlatformAdmin?<div className="empty-state"><h3>Acceso restringido</h3><p>Este panel se valida también en el servidor.</p></div>:platformAdminLoading&&!platformAdminData?<div className="empty-state">Cargando estadísticas…</div>:<>
+              <div className="platform-admin-metrics">
+                {[[ "Cuentas registradas",platformAdminData?.summary?.total_users ],["Activos hoy",platformAdminData?.summary?.active_today],["Activos en 7 días",platformAdminData?.summary?.active_7d],["Activos en 30 días",platformAdminData?.summary?.active_30d],["PWA detectadas",platformAdminData?.summary?.installed_users],["Pruebas activas",platformAdminData?.summary?.trials_live],["Suscripciones activas",platformAdminData?.summary?.subscribers_active]].map(([label,value])=><article key={label} className="platform-admin-metric panel"><span>{label}</span><strong>{Number(value||0).toLocaleString("es-CO")}</strong></article>)}
+                <article className="platform-admin-metric panel"><span>Pagos confirmados este mes</span><strong>{money(platformAdminData?.summary?.collected_month||0,"COP")}</strong></article>
+              </div>
+              <div className="platform-admin-controls"><label><span>Buscar negocio o correo</span><input value={platformAdminSearch} onChange={e=>setPlatformAdminSearch(e.target.value)} placeholder="Nombre o correo"/></label><label><span>Motivo de la acción</span><input value={platformAdminNote} onChange={e=>setPlatformAdminNote(e.target.value)} maxLength={2000} placeholder="Nota interna opcional"/></label></div>
+              <div className="platform-admin-business-list">{(platformAdminData?.subscriptions||[]).filter(x=>!platformAdminSearch.trim()||[x.business_name,x.owner_email].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(platformAdminSearch.trim().toLocaleLowerCase("es"))).map(x=>{const labels={trialing:"En prueba",active:"Activa",past_due:"Pago pendiente",canceled:"Cancelada",expired:"Vencida",paused:"Pausada"};return <article className="platform-business-card panel" key={x.subscription_id}>
+                <div className="platform-business-heading"><div><span>{x.owner_email}</span><h3>{x.business_name}</h3><small>Creado: {x.business_created_at?new Date(x.business_created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"} · Última actividad: {x.last_seen_at?new Date(x.last_seen_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"}):"Sin datos"}</small></div><span className={"status-pill "+(x.status==="active"?"status-active":x.status==="trialing"?"status-unpublished":"status-inactive")}>{labels[x.status]||x.status}</span></div>
+                <div className="platform-business-facts"><div><span>Inicio</span><strong>{x.current_period_start?new Date(x.current_period_start).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Vence</span><strong>{x.current_period_end?new Date(x.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Días restantes</span><strong>{x.current_period_end?x.days_remaining+" días":"—"}</strong></div><div><span>Total recibido</span><strong>{money(x.total_paid_minor||0,"COP")}</strong></div><div><span>Instalación</span><strong>{x.is_installed?"Detectada":"No detectada"}</strong></div></div>
+                <div className="platform-subscription-editor"><label><span>Estado</span><select value={platformAdminStatusDrafts[x.subscription_id]||x.status} onChange={e=>setPlatformAdminStatusDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}><option value="trialing">En prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="paused">Pausada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option></select></label><label><span>Fin del periodo</span><input type="datetime-local" value={platformAdminPeriodDrafts[x.subscription_id]??""} onChange={e=>setPlatformAdminPeriodDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}/></label><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x)}>Guardar cambios</button><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x,"trialing",7)}>Extender prueba 7 días</button></div>
+                <button type="button" className="primary-button compact-button" onClick={()=>{setPlatformPaymentBusiness(v=>v===x.business_id?"":x.business_id);setPlatformPaymentDraft({interval:"month",amount:"",method:"Nequi",reference:"",notes:""});}}>＋ Registrar pago</button>
+                {platformPaymentBusiness===x.business_id&&<form className="platform-payment-form" onSubmit={e=>submitPlatformPayment(e,x)}><h4>Confirmar pago recibido</h4><p>Confirma solo después de verificar el ingreso en Nequi o tu cuenta bancaria.</p><div className="platform-payment-grid"><label><span>Periodo</span><select value={platformPaymentDraft.interval} onChange={e=>setPlatformPaymentDraft(v=>({...v,interval:e.target.value}))}><option value="month">Mensual</option><option value="quarter">Trimestral</option><option value="year">Anual</option></select></label><label><span>Valor (COP)</span><input type="number" min="1" value={platformPaymentDraft.amount} onChange={e=>setPlatformPaymentDraft(v=>({...v,amount:e.target.value}))} required/></label><label><span>Medio</span><select value={platformPaymentDraft.method} onChange={e=>setPlatformPaymentDraft(v=>({...v,method:e.target.value}))}><option>Nequi</option><option>Transferencia bancaria</option><option>Efectivo</option><option>Wompi manual</option><option>Tarjeta manual</option><option>Otro</option></select></label><label><span>Referencia única{["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)?" *":""}</span><input value={platformPaymentDraft.reference} onChange={e=>setPlatformPaymentDraft(v=>({...v,reference:e.target.value}))} maxLength={180} required={["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)}/></label><label><span>Notas</span><input value={platformPaymentDraft.notes} onChange={e=>setPlatformPaymentDraft(v=>({...v,notes:e.target.value}))} maxLength={2000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPlatformPaymentBusiness("")}>Cancelar</button><button type="submit" className="primary-button" disabled={platformAdminSaving}>Confirmar y activar</button></div></form>}
+              </article>})}</div>
+              <section className="platform-history-section panel"><h3>Historial de pagos</h3>{(platformAdminData?.payments||[]).length?<div className="platform-history-table-wrap"><table className="platform-history-table"><thead><tr><th>Fecha</th><th>Negocio</th><th>Medio / referencia</th><th>Periodo</th><th>Valor</th><th>Estado</th></tr></thead><tbody>{platformAdminData.payments.map(p=><tr key={p.id}><td>{new Date(p.received_at||p.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"})}</td><td>{p.business_name}<small>{p.owner_email}</small></td><td>{p.payment_method}<small>{p.external_reference||"Sin referencia"}</small></td><td>{{month:"Mensual",quarter:"Trimestral",year:"Anual"}[p.billing_interval]}</td><td>{money(p.amount_minor,p.currency_code||"COP")}</td><td>{p.status}</td></tr>)}</tbody></table></div>:<p>No hay pagos registrados.</p>}</section>
+              <section className="platform-history-section panel"><h3>Historial de suscripciones</h3>{(platformAdminData?.events||[]).length?<div className="platform-events-list">{platformAdminData.events.slice(0,100).map(e=><article className="platform-event-row" key={e.id}><div><strong>{e.business_name}</strong><span>{e.event_type.replaceAll("_"," ")} · {e.old_status||"—"} → {e.new_status||"—"}</span><small>{new Date(e.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}{e.actor_email?" · "+e.actor_email:""}</small>{e.metadata?.note&&<p>{e.metadata.note}</p>}</div>{e.amount_minor!=null&&<strong>{money(e.amount_minor,e.currency_code||"COP")}</strong>}</article>)}</div>:<p>El historial aparecerá aquí cuando se creen pruebas, cambios y pagos.</p>}</section>
+            </>}
+          </section>
+  );
+
   if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
 
   if (!session && showPublicLanding && mode !== "update-password") return <PublicLanding onLogin={() => { setShowPublicLanding(false); setMode("login"); setPassword(""); setError(""); setNotice(""); }} onSignup={() => { setShowPublicLanding(false); setMode("signup"); setPassword(""); setError(""); setNotice(""); }} />;
@@ -5495,14 +5629,14 @@ function AuthenticatedApp() {
         </div>
 
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
-          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
+          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? (isBusinessOwner || isPlatformAdmin) : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
             onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
             {!group.items.some((navItem) => navItem.id === "home") && <div className="sidebar-group-heading">
               {sidebarEditing ? <><span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span>}<p className="nav-label">{group.title}</p></>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>}
-            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
+            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? (isBusinessOwner || isPlatformAdmin) : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
               <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row"
                 onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
                 onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); event.stopPropagation(); if (draggedSidebarItem?.id !== item.id) confirmSidebarDrop(draggedSidebarItem, group.id, item.id); }}>
@@ -5510,7 +5644,7 @@ function AuthenticatedApp() {
                   <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + getSidebarItemLabel(item)} value={getSidebarItemLabel(item)} readOnly={item.id === "accounts" || item.screen === "accounts"} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span><span className="nav-label-text">{getSidebarItemLabel(item)}</span></button></>}
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || screen === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span><span className="nav-label-text">{getSidebarItemLabel(item)}</span></button></>}
               </div>
             ))}
           </section>)}
@@ -5518,8 +5652,8 @@ function AuthenticatedApp() {
         <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Ventas</strong><small>Ventas y cotizaciones en un solo módulo</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales"&&area.screen!=="quotes").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "audit" ? "AUDITORÍAS" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : screen === "audit" ? "Auditorías" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Ventas</strong><small>Ventas y cotizaciones en un solo módulo</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales"&&area.screen!=="quotes").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{(isBusinessOwner || isPlatformAdmin) && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -5864,7 +5998,7 @@ function AuthenticatedApp() {
                 {[["day","Día"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Desde / hasta"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={statsPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={statsPeriod === value} onClick={() => setStatsPeriod(value)}>{label}</button>)}
               </div>
               {statsPeriod === "custom" && <div className="stats-custom-dates"><label><span className="field-label-heading">Desde</span><input type="date" value={statsDateFrom} max={statsDateTo || todayBogotaKey} onChange={(e) => setStatsDateFrom(e.target.value)} /></label><label><span className="field-label-heading">Hasta</span><input type="date" value={statsDateTo} min={statsDateFrom || undefined} max={todayBogotaKey} onChange={(e) => setStatsDateTo(e.target.value)} /></label></div>}
-              <div className="stats-export-actions"><button type="button" className="secondary-button compact-button" onClick={downloadStatsExcel}>Exportar Excel (CSV)</button><button type="button" className="primary-button compact-button" onClick={printStatsReport}>PDF / Imprimir</button></div>
+              <div className="stats-export-actions"><button type="button" className="secondary-button compact-button" onClick={downloadStatsExcel}>Exportar Excel (CSV)</button><button type="button" className="primary-button compact-button" onClick={printStatsReport}>PDF / Imprimir</button>{canAccessScreen("audit") && <button type="button" className="secondary-button compact-button" onClick={() => navigate("audit")}><AppIcon name="audit" size={16}/> Auditorías</button>}</div>
               <p className="stats-range-label">{statsRangeLabel}</p>
             </div>
             {statsLoading ? <div className="empty-state">Revisando ventas, cobros y gastos…</div> : <>
@@ -5970,10 +6104,10 @@ function AuthenticatedApp() {
             {screen === "purchases" && <div className="products-intro">
               <div><h2>Movimientos del negocio</h2><p>Registra las compras de inventario, los pagos a proveedores y los gastos de funcionamiento sin duplicar operaciones.</p></div>
             </div>}
-            {screen === "purchases" && <div className="purchase-module-tabs" role="tablist" aria-label="Compras, gastos y proveedores">
+            {screen === "purchases" && <div className="purchase-module-tabs" role="tablist" aria-label="Compras y gastos">
               {canViewPurchases && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "purchases"} className={effectivePurchaseTab === "purchases" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("purchases"); setShowSupplierForm(false); }}>Compras <span>{purchasesCount}</span></button>}
               {canViewExpenses && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "expenses"} className={effectivePurchaseTab === "expenses" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("expenses"); setShowSupplierForm(false); }}>Gastos <span>{expensesCount}</span></button>}
-              {canViewSuppliers && <button type="button" role="tab" aria-selected={effectivePurchaseTab === "suppliers"} className={effectivePurchaseTab === "suppliers" ? "purchase-tab active" : "purchase-tab"} onClick={() => { setPurchaseModuleTab("suppliers"); setShowSupplierForm(false); setError(""); setNotice(""); }}>Proveedores</button>}
+              
             </div>}
             {screen === "purchases" && effectivePurchaseTab !== "suppliers" && <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de compras y gastos">{[["day","Hoy"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={purchasePeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={purchasePeriod === value} onClick={() => {setPurchasePeriod(value);setPurchasesPage(1);setExpensesPage(1);}}>{label}</button>)}</div>{purchasePeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={purchaseDateFrom} max={purchaseDateTo || todayInBogota()} onChange={(e) => {setPurchaseDateFrom(e.target.value);setPurchasesPage(1);setExpensesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={purchaseDateTo} min={purchaseDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setPurchaseDateTo(e.target.value);setPurchasesPage(1);setExpensesPage(1);}} /></label></div>}<p>{purchasePeriod === "day" ? "Movimientos de hoy" : purchasePeriod === "all" ? "Todo el historial" : purchasePeriod === "custom" ? "Del " + purchaseDateFrom + " al " + purchaseDateTo : purchasePeriod === "week" ? "Desde el lunes de esta semana" : purchasePeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>}
             {effectivePurchaseTab === "purchases" ? <>
@@ -6364,10 +6498,11 @@ function AuthenticatedApp() {
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
                 ["taxes", "Impuestos"],
-                ["data", "Datos y copias"]
+                ["data", "Datos y copias"],
+                ...(isPlatformAdmin ? [["platform", "Plataforma"]] : [])
               ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
-            <form className="settings-card panel" onSubmit={saveSettings}>
+            <form className="settings-card panel" hidden={settingsTab === "platform"} onSubmit={saveSettings}>
               <div hidden={!["general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
@@ -6506,7 +6641,8 @@ function AuthenticatedApp() {
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>
-            <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
+            <p className="settings-footnote" hidden={settingsTab === "platform"}>Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
+            {settingsTab === "platform" && isPlatformAdmin && platformAdminPanel}
           </section>
 
         ) : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
@@ -6532,25 +6668,7 @@ function AuthenticatedApp() {
             {accountsLoading?<div className="empty-state">Consultando pagos…</div>:(()=>{const q=accountsSearch.trim().toLocaleLowerCase("es");const rows=payableRows.filter(x=>(accountsStatusFilter==="all"||x.balance_minor>0)&&(!q||[x.purchase_number,x.supplier?.name,x.supplier?.phone,x.supplier?.email,x.supplier?.tax_id].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(q)));rows.sort((a,b)=>accountsSort==="oldest"?new Date(a.purchased_at||a.created_at)-new Date(b.purchased_at||b.created_at):accountsSort==="balance_desc"?b.balance_minor-a.balance_minor:accountsSort==="balance_asc"?a.balance_minor-b.balance_minor:accountsSort==="name"?String(a.supplier?.name||"").localeCompare(String(b.supplier?.name||""),"es"):new Date(b.purchased_at||b.created_at)-new Date(a.purchased_at||a.created_at));return rows.length?<div className="account-record-list">{rows.slice(0,250).map(x=><article className="account-record panel" key={x.id}><div className="account-record-heading"><div><span className="account-record-kicker">{x.purchase_number||"Compra"}</span><h3>{x.supplier?.name||"Proveedor sin ficha"}</h3><span>{new Date(x.purchased_at||x.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span></div><span className={"status-pill "+(x.balance_minor>0?"status-unpublished":"status-active")}>{x.balance_minor>0?"Pendiente":"Saldada"}</span></div><div className="account-record-amounts"><div><span>Total</span><strong>{money(x.total_minor,x.currency_code||currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(x.amount_paid_minor,x.currency_code||currencyCode)}</strong></div><div className={x.balance_minor>0?"account-balance-open":""}><span>Saldo</span><strong>{money(x.balance_minor,x.currency_code||currencyCode)}</strong></div></div>{x.balance_minor>0&&canManagePurchases&&<button type="button" className="primary-button compact-button" onClick={()=>openPurchasePaymentForm(x)}>＋ Registrar pago</button>}{purchasePaymentFormFor===x.id&&x.balance_minor>0&&<form className="account-payment-form" onSubmit={e=>recordPurchasePayment(e,x)}><div className="account-payment-grid"><label><span>Valor del pago</span><input type="number" min="1" max={x.balance_minor/(10**currencyDigits(x.currency_code||currencyCode))} value={purchasePaymentAmount} onChange={e=>setPurchasePaymentAmount(e.target.value)} required/></label><label><span>Forma de pago</span><select value={purchasePaymentMethod} onChange={e=>setPurchasePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Tarjeta</option><option>Otro</option></select></label><label><span>Fecha</span><input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={e=>setPurchasePaymentDate(e.target.value)} required/></label><label><span>Nota</span><input value={purchasePaymentNotes} onChange={e=>setPurchasePaymentNotes(e.target.value)} maxLength={1000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPurchasePaymentFormFor(null)}>Cancelar</button><button className="primary-button" disabled={purchasePaymentSaving}>Guardar pago</button></div></form>}</article>)}</div>:<div className="empty-state"><h3>No hay resultados</h3><p>Prueba otro filtro o registra una compra con saldo pendiente.</p><button className="secondary-button" onClick={()=>navigate("purchases")}>Ir a compras</button></div>})()}
           </section>
         ) : screen === "platform_admin" ? (
-          <section className="platform-admin-page">
-            <div className="products-intro"><div><p className="eyebrow">CONTROL INTERNO</p><h2>Administración de plataforma</h2><p>Usuarios, actividad, pruebas de 30 días, pagos e historial. Los cobros recurrentes se conectarán después.</p></div><button type="button" className="secondary-button" onClick={loadPlatformAdminDashboard} disabled={platformAdminLoading}>Actualizar</button></div>
-            {!isPlatformAdmin?<div className="empty-state"><h3>Acceso restringido</h3><p>Este panel se valida también en el servidor.</p></div>:platformAdminLoading&&!platformAdminData?<div className="empty-state">Cargando estadísticas…</div>:<>
-              <div className="platform-admin-metrics">
-                {[[ "Cuentas registradas",platformAdminData?.summary?.total_users ],["Activos hoy",platformAdminData?.summary?.active_today],["Activos en 7 días",platformAdminData?.summary?.active_7d],["Activos en 30 días",platformAdminData?.summary?.active_30d],["PWA detectadas",platformAdminData?.summary?.installed_users],["Pruebas activas",platformAdminData?.summary?.trials_live],["Suscripciones activas",platformAdminData?.summary?.subscribers_active]].map(([label,value])=><article key={label} className="platform-admin-metric panel"><span>{label}</span><strong>{Number(value||0).toLocaleString("es-CO")}</strong></article>)}
-                <article className="platform-admin-metric panel"><span>Pagos confirmados este mes</span><strong>{money(platformAdminData?.summary?.collected_month||0,"COP")}</strong></article>
-              </div>
-              <div className="platform-admin-controls"><label><span>Buscar negocio o correo</span><input value={platformAdminSearch} onChange={e=>setPlatformAdminSearch(e.target.value)} placeholder="Nombre o correo"/></label><label><span>Motivo de la acción</span><input value={platformAdminNote} onChange={e=>setPlatformAdminNote(e.target.value)} maxLength={2000} placeholder="Nota interna opcional"/></label></div>
-              <div className="platform-admin-business-list">{(platformAdminData?.subscriptions||[]).filter(x=>!platformAdminSearch.trim()||[x.business_name,x.owner_email].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(platformAdminSearch.trim().toLocaleLowerCase("es"))).map(x=>{const labels={trialing:"En prueba",active:"Activa",past_due:"Pago pendiente",canceled:"Cancelada",expired:"Vencida",paused:"Pausada"};return <article className="platform-business-card panel" key={x.subscription_id}>
-                <div className="platform-business-heading"><div><span>{x.owner_email}</span><h3>{x.business_name}</h3><small>Creado: {x.business_created_at?new Date(x.business_created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"} · Última actividad: {x.last_seen_at?new Date(x.last_seen_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"}):"Sin datos"}</small></div><span className={"status-pill "+(x.status==="active"?"status-active":x.status==="trialing"?"status-unpublished":"status-inactive")}>{labels[x.status]||x.status}</span></div>
-                <div className="platform-business-facts"><div><span>Inicio</span><strong>{x.current_period_start?new Date(x.current_period_start).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Vence</span><strong>{x.current_period_end?new Date(x.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Días restantes</span><strong>{x.current_period_end?x.days_remaining+" días":"—"}</strong></div><div><span>Total recibido</span><strong>{money(x.total_paid_minor||0,"COP")}</strong></div><div><span>Instalación</span><strong>{x.is_installed?"Detectada":"No detectada"}</strong></div></div>
-                <div className="platform-subscription-editor"><label><span>Estado</span><select value={platformAdminStatusDrafts[x.subscription_id]||x.status} onChange={e=>setPlatformAdminStatusDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}><option value="trialing">En prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="paused">Pausada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option></select></label><label><span>Fin del periodo</span><input type="datetime-local" value={platformAdminPeriodDrafts[x.subscription_id]??""} onChange={e=>setPlatformAdminPeriodDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}/></label><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x)}>Guardar cambios</button><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x,"trialing",7)}>Extender prueba 7 días</button></div>
-                <button type="button" className="primary-button compact-button" onClick={()=>{setPlatformPaymentBusiness(v=>v===x.business_id?"":x.business_id);setPlatformPaymentDraft({interval:"month",amount:"",method:"Nequi",reference:"",notes:""});}}>＋ Registrar pago</button>
-                {platformPaymentBusiness===x.business_id&&<form className="platform-payment-form" onSubmit={e=>submitPlatformPayment(e,x)}><h4>Confirmar pago recibido</h4><p>Confirma solo después de verificar el ingreso en Nequi o tu cuenta bancaria.</p><div className="platform-payment-grid"><label><span>Periodo</span><select value={platformPaymentDraft.interval} onChange={e=>setPlatformPaymentDraft(v=>({...v,interval:e.target.value}))}><option value="month">Mensual</option><option value="quarter">Trimestral</option><option value="year">Anual</option></select></label><label><span>Valor (COP)</span><input type="number" min="1" value={platformPaymentDraft.amount} onChange={e=>setPlatformPaymentDraft(v=>({...v,amount:e.target.value}))} required/></label><label><span>Medio</span><select value={platformPaymentDraft.method} onChange={e=>setPlatformPaymentDraft(v=>({...v,method:e.target.value}))}><option>Nequi</option><option>Transferencia bancaria</option><option>Efectivo</option><option>Wompi manual</option><option>Tarjeta manual</option><option>Otro</option></select></label><label><span>Referencia única{["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)?" *":""}</span><input value={platformPaymentDraft.reference} onChange={e=>setPlatformPaymentDraft(v=>({...v,reference:e.target.value}))} maxLength={180} required={["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)}/></label><label><span>Notas</span><input value={platformPaymentDraft.notes} onChange={e=>setPlatformPaymentDraft(v=>({...v,notes:e.target.value}))} maxLength={2000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPlatformPaymentBusiness("")}>Cancelar</button><button type="submit" className="primary-button" disabled={platformAdminSaving}>Confirmar y activar</button></div></form>}
-              </article>})}</div>
-              <section className="platform-history-section panel"><h3>Historial de pagos</h3>{(platformAdminData?.payments||[]).length?<div className="platform-history-table-wrap"><table className="platform-history-table"><thead><tr><th>Fecha</th><th>Negocio</th><th>Medio / referencia</th><th>Periodo</th><th>Valor</th><th>Estado</th></tr></thead><tbody>{platformAdminData.payments.map(p=><tr key={p.id}><td>{new Date(p.received_at||p.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"})}</td><td>{p.business_name}<small>{p.owner_email}</small></td><td>{p.payment_method}<small>{p.external_reference||"Sin referencia"}</small></td><td>{{month:"Mensual",quarter:"Trimestral",year:"Anual"}[p.billing_interval]}</td><td>{money(p.amount_minor,p.currency_code||"COP")}</td><td>{p.status}</td></tr>)}</tbody></table></div>:<p>No hay pagos registrados.</p>}</section>
-              <section className="platform-history-section panel"><h3>Historial de suscripciones</h3>{(platformAdminData?.events||[]).length?<div className="platform-events-list">{platformAdminData.events.slice(0,100).map(e=><article className="platform-event-row" key={e.id}><div><strong>{e.business_name}</strong><span>{e.event_type.replaceAll("_"," ")} · {e.old_status||"—"} → {e.new_status||"—"}</span><small>{new Date(e.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}{e.actor_email?" · "+e.actor_email:""}</small>{e.metadata?.note&&<p>{e.metadata.note}</p>}</div>{e.amount_minor!=null&&<strong>{money(e.amount_minor,e.currency_code||"COP")}</strong>}</article>)}</div>:<p>El historial aparecerá aquí cuando se creen pruebas, cambios y pagos.</p>}</section>
-            </>}
-          </section>
+          (isPlatformAdmin ? <section className="empty-state"><h2>Administración integrada en Configuración</h2><p>Abre la pestaña Plataforma dentro de Configuración.</p><button type="button" className="primary-button" onClick={() => { setSettingsTab("platform"); setScreen("settings"); }}>Abrir Configuración → Plataforma</button></section> : <div className="empty-state"><h3>Acceso restringido</h3></div>)
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
             <div className="home-workspace-copy">
@@ -6568,6 +6686,7 @@ function AuthenticatedApp() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
+              {activeBusiness && <button type="button" className="home-utility-action home-business-card-action" onClick={shareBusinessCard} title="Compartir la tarjeta comercial" aria-label="Compartir tarjeta comercial"><AppIcon name="business-card" size={16}/> Compartir tarjeta</button>}
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

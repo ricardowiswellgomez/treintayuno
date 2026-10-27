@@ -4787,3 +4787,228 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell > .sidebar .nav-list { overflow-y:auto!important; }
   .app-shell > .sidebar .sidebar-group-heading .nav-label { display:block!important; font-size:9.5px!important; }
 }
+
+
+/* Unified Cuentas module: compact, accessible internal tabs. */
+.accounts-tabs {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  width:fit-content;
+  max-width:100%;
+  padding:5px;
+  margin:0 0 14px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--paper);
+}
+.accounts-tab {
+  appearance:none;
+  border:1px solid transparent;
+  border-radius:9px;
+  min-height:38px;
+  padding:8px 18px;
+  color:var(--muted);
+  background:transparent;
+  font:700 13px "DM Sans",sans-serif;
+  cursor:pointer;
+}
+.accounts-tab:hover { background:color-mix(in srgb,var(--green) 7%,var(--paper)); color:var(--ink); }
+.accounts-tab.active {
+  border-color:var(--line);
+  background:var(--soft-green);
+  color:var(--green);
+  box-shadow:0 1px 2px #00000008;
+}
+
+/* Inventory overview keeps its key figures visible without pushing the products below the fold. */
+.inventory-metric-grid {
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
+}
+.inventory-metric-grid .inventory-metric-card {
+  min-width:0;
+  min-height:0!important;
+  padding:12px 13px!important;
+  border-radius:13px!important;
+  gap:5px!important;
+}
+.inventory-metric-grid .inventory-metric-card>span {
+  font-size:11px!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere;
+}
+.inventory-metric-grid .inventory-metric-card>strong {
+  font-size:clamp(17px,1.55vw,23px)!important;
+  line-height:1.2!important;
+  letter-spacing:-.45px;
+  overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;
+}
+.inventory-metric-grid .inventory-metric-card>p {
+  margin:0!important;
+  font-size:11px!important;
+  line-height:1.35!important;
+  color:var(--muted)!important;
+}
+.inventory-low-stock-notice { margin:8px 0 10px!important; padding:10px 13px!important; }
+.inventory-controls.panel {
+  padding:12px!important;
+  gap:10px!important;
+  margin-top:10px!important;
+}
+.inventory-data-actions {
+  padding:13px!important;
+  border-radius:13px!important;
+  gap:12px!important;
+}
+.inventory-data-actions p { margin:4px 0 0!important; font-size:12px!important; line-height:1.45!important; }
+.inventory-import-disclosure {
+  margin:10px 0 12px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--paper);
+  overflow:hidden;
+}
+.inventory-import-disclosure>summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:7px 16px;
+  padding:11px 14px;
+  color:var(--ink);
+  cursor:pointer;
+  list-style:none;
+  font-size:13px;
+  font-weight:750;
+}
+.inventory-import-disclosure>summary::-webkit-details-marker { display:none; }
+.inventory-import-disclosure>summary::after { content:"＋"; margin-left:auto; color:var(--muted); font-size:17px; line-height:1; }
+.inventory-import-disclosure[open]>summary::after { content:"−"; }
+.inventory-import-disclosure>summary>span { color:var(--muted); font-size:11px; font-weight:500; line-height:1.4; }
+.inventory-import-disclosure[open]>summary { border-bottom:1px solid var(--line); }
+.inventory-import-disclosure .inventory-data-actions { border:0!important; box-shadow:none!important; border-radius:0!important; margin:0!important; }
+.inventory-import-disclosure .inventory-data-action-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+
+/* A sale is a single compact row by default; items and payment history are expandable on demand. */
+.sales-list {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+}
+.sales-list .sale-record {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  min-width:0;
+  padding:12px 14px!important;
+  border-radius:13px!important;
+  box-shadow:0 2px 9px #17253b08;
+}
+.sales-list .sale-record-top {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  min-width:0;
+  margin:0!important;
+}
+.sales-list .sale-record-top>div { display:flex!important; align-items:center; flex-wrap:wrap; gap:5px 10px; min-width:0; }
+.sales-list .sale-record-top>div>strong { font-size:12px!important; line-height:1.4; overflow-wrap:anywhere; }
+.sales-list .sale-record-top>div>span { font-size:11px!important; color:var(--muted); line-height:1.4; }
+.sales-list .sale-record-top>.status-pill { flex:0 0 auto; max-width:45%; font-size:10px!important; padding:4px 8px!important; }
+.sales-list .sale-record-customer { font-size:12px!important; line-height:1.4; color:var(--muted); overflow-wrap:anywhere; }
+.sales-list .sale-record-bottom {
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+  padding:8px 0 0!important;
+  margin:0!important;
+  border-top:1px solid var(--line);
+  border-bottom:0!important;
+}
+.sales-list .sale-record-bottom>div { display:flex!important; flex-direction:column!important; align-items:flex-start!important; gap:3px!important; min-width:0; }
+.sales-list .sale-record-bottom>div>span { font-size:10px!important; line-height:1.3!important; color:var(--muted)!important; }
+.sales-list .sale-record-bottom>div>strong { font-size:13px!important; line-height:1.35!important; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.sales-list .sale-record-disclosure-bar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px 14px;
+  flex-wrap:wrap;
+  padding-top:7px;
+  border-top:1px solid var(--line);
+}
+.sales-list .sale-record-disclosure-bar>span { font-size:11px; line-height:1.4; color:var(--muted); }
+.sales-list .sale-record-disclosure-bar .text-button { padding:4px 0!important; font-size:11px!important; font-weight:750; white-space:normal; }
+.sales-list .sale-record-details[hidden] { display:none!important; }
+.sales-list .sale-record-details { min-width:0; display:flex; flex-direction:column; gap:10px; padding-top:3px; }
+.sales-list .sale-record-items { border:0!important; border-top:1px solid var(--line)!important; border-radius:0!important; padding:8px 0 0!important; margin:0!important; }
+.sales-list .sale-record-note { margin:0!important; font-size:12px!important; line-height:1.45!important; overflow-wrap:anywhere; }
+@media(max-width:1120px) {
+  .inventory-metric-grid { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+}
+@media(max-width:760px) {
+  .inventory-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:8px!important; }
+  .inventory-metric-grid .inventory-metric-card { padding:10px!important; }
+  .inventory-metric-grid .inventory-metric-card>strong { font-size:19px!important; }
+  .inventory-metric-grid .inventory-metric-card:last-child { grid-column:1/-1; }
+  .inventory-controls.panel { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .inventory-controls .inventory-search { grid-column:1/-1; }
+  .inventory-import-disclosure>summary { align-items:flex-start; }
+  .accounts-tabs { width:100%; }
+  .accounts-tab { flex:1 1 0; padding:8px 10px; }
+  .sales-list .sale-record { padding:11px!important; }
+  .sales-list .sale-record-bottom>div>strong { font-size:12px!important; }
+}
+@media(max-width:380px) {
+  .inventory-controls.panel { grid-template-columns:minmax(0,1fr)!important; }
+  .inventory-controls .inventory-search { grid-column:auto; }
+  .inventory-metric-grid .inventory-metric-card>span { font-size:10px!important; }
+  .sales-list .sale-record-top { align-items:flex-start!important; }
+  .sales-list .sale-record-top>.status-pill { max-width:38%; }
+}
+
+/* The business identity has its own prominent space, separate from the treseiscinco brand. */
+.app-shell > .sidebar .business-logo-stage {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  margin:0 0 12px!important;
+  padding:4px 0 8px!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar {
+  position:relative!important;
+  display:grid!important;
+  place-items:center!important;
+  width:min(100%,118px)!important;
+  min-width:88px!important;
+  flex:0 0 min(100%,118px)!important;
+  height:112px!important;
+  min-height:96px!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+  background:color-mix(in srgb,var(--sidebar-background,#FFFFFF) 94%,var(--sidebar-text,#20251F))!important;
+  border:1px solid var(--sidebar-border,#D7DCE3)!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar img {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  padding:8px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar-initial { font-size:38px!important; }
+@media(max-width:760px) {
+  .app-shell > .sidebar .business-logo-stage .business-avatar {
+    width:min(100%,116px)!important;
+    flex-basis:min(100%,116px)!important;
+    height:108px!important;
+    min-height:100px!important;
+  }
+}

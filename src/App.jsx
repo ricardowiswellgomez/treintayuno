@@ -421,7 +421,7 @@ function readableText(background, preferred) {
 }
 function readableAccent(accent, background) {
   if (!hexRgb(accent) || !hexRgb(background)) return accent || "#174580";
-  return contrastRatio(accent, background) >= 3 ? accent : readableText(background, accent);
+  return contrastRatio(accent, background) >= 4.5 ? accent : readableText(background, accent);
 }
 
 const compareInventoryProducts = (a, b, sort) => {
@@ -949,8 +949,8 @@ function PublicCatalog({ businessId }) {
     const dayKey=({Mon:"mon",Tue:"tue",Wed:"wed",Thu:"thu",Fri:"fri",Sat:"sat",Sun:"sun"})[values.weekday];
     const dayLabel=({mon:"Lunes",tue:"Martes",wed:"Miércoles",thu:"Jueves",fri:"Viernes",sat:"Sábado",sun:"Domingo"})[dayKey]||"Hoy";
     const day=schedule[dayKey];
-    const periods=(Array.isArray(day?.periods)?day.periods:[]).filter((p)=>p&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(p.open||"")&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(p.close||""));
-    const fmt=(time)=>{const [hour,minute]=time.split(":").map(Number);const d=new Date(Date.UTC(2020,0,1,hour,minute));return new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",hour:"numeric",minute:"2-digit",hour12:true}).format(d).replace(/\\./g,"").replace(/\\s+/g," ").trim();};
+    const periods=(Array.isArray(day?.periods)?day.periods:[]).filter((p)=>p&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.open||"")&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.close||""));
+    const fmt=(time)=>{const [hour,minute]=time.split(":").map(Number);const h=hour%12||12;const suffix=hour<12?"a. m.":"p. m.";return h+":"+String(minute).padStart(2,"0")+" "+suffix;};
     const nowMinute=Number(values.hour)*60+Number(values.minute);
     const isOpen=Boolean(day?.enabled)&&periods.some((p)=>{const [sh,sm]=p.open.split(":").map(Number);const [eh,em]=p.close.split(":").map(Number);const from=sh*60+sm,to=eh*60+em;return from<=to?(nowMinute>=from&&nowMinute<to):(nowMinute>=from||nowMinute<to);});
     const hours=day?.enabled&&periods.length?periods.map((p)=>fmt(p.open)+"–"+fmt(p.close)).join(" · "):"Sin atención programada";
@@ -960,7 +960,7 @@ function PublicCatalog({ businessId }) {
   const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
   const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
   const catalogThemeStyle = {
-    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
+    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
     "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
     background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
   };
@@ -1981,10 +1981,7 @@ export default function App() {
   }
 
   function downloadInventoryTemplate() {
-    const rows = [
-      ["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"],
-      ["Ejemplo (puedes borrarlo)","REF-001","General","physical","unidad","15000","8000","10","sí","2","Artículo de ejemplo","Unidad individual"]
-    ];
+    const rows = [["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"]];
     const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
     downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
     setNotice("Plantilla descargada. Puedes abrirla y editarla en Excel; guarda el resultado como CSV UTF-8 para importarlo.");
@@ -2032,31 +2029,42 @@ export default function App() {
       const categoryMap=new Map(categories.map((x)=>[String(x.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),x.id]));
       const toBool=(v)=>/^(si|sí|s|true|1|yes|y)$/i.test(String(v||"").trim());
       const parseNumber=(v, fallback=0)=>{
-        const raw=String(v??"").trim().replace(/\s/g,"");
+        let raw=String(v??"").trim().replace(/\\s/g,"");
         if (!raw) return fallback;
-        const cleaned=raw.includes(",") && !raw.includes(".") ? raw.replace(",",".") : raw.replace(/,/g,"");
-        const number=Number(cleaned);
+        raw=raw.replace(/[^0-9,.-]/g,"");
+        if (!raw || raw==="-" || raw==="." || raw===",") return NaN;
+        const lastDot=raw.lastIndexOf("."), lastComma=raw.lastIndexOf(",");
+        if (lastDot>=0 && lastComma>=0) {
+          raw=lastDot>lastComma ? raw.replace(/,/g,"") : raw.replace(/\\./g,"").replace(",",".");
+        } else if (lastComma>=0) {
+          const decimals=raw.length-lastComma-1;
+          raw=decimals===3 ? raw.replace(/,/g,"") : raw.replace(",",".");
+        } else if (lastDot>=0) {
+          const decimals=raw.length-lastDot-1;
+          raw=decimals===3 ? raw.replace(/\\./g,"") : raw;
+        }
+        const number=Number(raw);
         return Number.isFinite(number) ? number : NaN;
       };
       for (let index=0; index<dataRows.length; index++) {
         const csvRow=dataRows[index], rowNo=index+2;
-        const name=col(csvRow,"nombre","producto","name","product");
+        const name=col(csvRow,"nombre","producto","articulo","name","product");
         if (!name) { skipped++; failures.push("Fila "+rowNo+": falta el nombre."); continue; }
-        const sku=col(csvRow,"codigo","sku","code").slice(0,100) || null;
+        const sku=col(csvRow,"codigo","referencia","sku","code").slice(0,100) || null;
         if (sku && (existingCodes.has(sku.toLocaleLowerCase()) || fileCodes.has(sku.toLocaleLowerCase()))) {
           skipped++; failures.push("Fila "+rowNo+" ("+name+"): el código «"+sku+"» ya existe; se omitió para no duplicar referencias."); continue;
         }
         const rawType=normalizeHeader(col(csvRow,"tipo","type")) || "physical";
         const type=({fisico:"physical",fisica:"physical",physical:"physical",servicio:"service",service:"service",digital:"digital","digital_": "digital"})[rawType] || "physical";
-        const price=parseNumber(col(csvRow,"precio","price")), cost=parseNumber(col(csvRow,"costo","cost"));
-        const stock=parseNumber(col(csvRow,"cantidad","stock","existencias"),0);
+        const price=parseNumber(col(csvRow,"precio","precio_venta","valor_venta","price")), cost=parseNumber(col(csvRow,"costo","costo_unitario","cost"));
+        const stock=parseNumber(col(csvRow,"cantidad","cantidad_disponible","existencias","stock","quantity"),0);
         const thresholdText=col(csvRow,"stock_minimo","stock_bajo","low_stock_threshold");
         const threshold=thresholdText ? parseNumber(thresholdText) : null;
         if (![price,cost,stock].every(Number.isFinite) || price<0 || cost<0 || stock<0 || (threshold!==null&&(!Number.isFinite(threshold)||threshold<0))) {
           skipped++; failures.push("Fila "+rowNo+" ("+name+"): precio, costo, cantidad o mínimo inválido; no se importó."); continue;
         }
         let categoryId=null;
-        const categoryName=col(csvRow,"categoria","category");
+        const categoryName=col(csvRow,"categoria","categoria_nombre","category");
         if (categoryName) {
           const key=categoryName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
           categoryId=categoryMap.get(key)||null;
@@ -4806,7 +4814,7 @@ export default function App() {
   const safeAppText = readableText(activeTheme.background, activeTheme.text);
   const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
   const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
-  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
+  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--primary-button-text": readableText(safeAccent, "#FFFFFF"), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"
@@ -4899,7 +4907,7 @@ export default function App() {
             ))}
           </section>)}
         </nav>
-        <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
+        <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
@@ -5114,7 +5122,7 @@ export default function App() {
  ) : screen === "catalog" ? (
           <section className="catalog-admin-page">
             <div className="products-intro catalog-admin-intro">
-              <div><p className="eyebrow">VITRINA COMERCIAL</p><h2>Catálogo para compartir</h2><p>Publica los productos que quieras mostrar y comparte un único enlace con tus clientes.</p></div>
+              <div><p className="eyebrow">VITRINA COMERCIAL</p><h2>Catálogo</h2><p>Publica los productos que quieras mostrar y comparte un único enlace con tus clientes.</p></div>
               <div className="catalog-admin-actions">
                 <button type="button" className="secondary-button compact-button" onClick={copyPublicCatalogLink}>Copiar enlace</button>
                 <a className="primary-button compact-button catalog-open-link" href={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} target="_blank" rel="noreferrer">Abrir catálogo</a>
@@ -5885,12 +5893,15 @@ export default function App() {
           <section className="home-workspace-hero">
             <div className="home-workspace-copy"><h2>¿Qué necesitas poner en marcha hoy?</h2><p>Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.</p></div>
             <div className="home-workspace-actions">
+              {isBusinessOwner && <button className="secondary-button" onClick={()=>{setSettingsTab("company");navigate("settings");}}>Tarjeta de presentación ↗</button>}
               {canAccessScreen("sales") && <button className="primary-button" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}>＋ Registrar venta</button>}
               {canManageProducts && <button className="secondary-button" onClick={() => { navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}>＋ Agregar artículo</button>}
               {canAccessScreen("quotes") && <button className="secondary-button" onClick={() => navigate("quotes")}>Crear cotización ↗</button>}
               {canManagePurchases && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}>＋ Registrar compra</button>}
               {canManageExpenses && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}>＋ Registrar gasto</button>}
               {canManageCustomers && <button className="secondary-button" onClick={() => { setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}>＋ Nuevo cliente</button>}
+              {canAccessScreen("receivables") && <button className="secondary-button" onClick={() => navigate("receivables")}>↗ Cuentas por cobrar</button>}
+              {(canViewPurchases || canViewExpenses) && <button className="secondary-button" onClick={() => navigate("payables")}>↙ Cuentas por pagar</button>}
               {!appInstalled && <button className="secondary-button install-app-button" onClick={requestPwaInstall}>{installPrompt ? "＋ Instalar aplicación" : "＋ Cómo instalar"}</button>}
             </div>
           </section>

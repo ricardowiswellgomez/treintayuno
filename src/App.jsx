@@ -118,7 +118,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", accounts: "Cuentas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -1336,6 +1336,21 @@ function PublicLanding({ onLogin, onSignup }) {
 
     <footer className="landing-footer"><a className="landing-footer-brand" href="#inicio"><img src="/symbol-treseiscinco.svg" alt=""/><strong>treseiscinco</strong></a><span>Tu negocio, todos los días.</span><nav><a href="#planes">Planes y precios</a><a href="#importar">Importar inventario</a><a href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco">Soporte y contacto</a></nav><small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small></footer>
   </main>;
+}
+
+function SalesModuleCards({ active, onChoose, showQuotes = true }) {
+  return <div className="sales-module-cards" aria-label="Secciones de ventas">
+    <button type="button" className={"sales-module-card" + (active === "sales" ? " active" : "")} aria-pressed={active === "sales"} onClick={() => onChoose("sales")}>
+      <span className="sales-module-card-icon"><AppIcon name="sales" size={23}/></span>
+      <span className="sales-module-card-copy"><strong>Ventas</strong><small>Registra ventas, abonos y saldos pendientes.</small></span>
+      <span className="sales-module-card-arrow" aria-hidden="true">→</span>
+    </button>
+    {showQuotes && <button type="button" className={"sales-module-card" + (active === "quotes" ? " active" : "")} aria-pressed={active === "quotes"} onClick={() => onChoose("quotes")}>
+      <span className="sales-module-card-icon"><AppIcon name="quotes" size={23}/></span>
+      <span className="sales-module-card-copy"><strong>Cotizaciones</strong><small>Prepara y comparte propuestas antes de vender.</small></span>
+      <span className="sales-module-card-arrow" aria-hidden="true">→</span>
+    </button>}
+  </div>;
 }
 
 export default function App() {
@@ -5071,7 +5086,7 @@ export default function App() {
     if (next !== screen) window.history.pushState({ treseiscinco: true, screen: next }, "", window.location.href);
     dirtyFormsRef.current = new WeakSet();
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
-    if (next !== "quotes") clearQuoteDraft();
+    if (!["sales", "quotes"].includes(next)) clearQuoteDraft();
     if (next === "sales") setSalesWorkspaceTab("sales");
     if (next === "quotes") setSalesWorkspaceTab("quotes");
     if (next === "accounts") setAccountsTab(canPermission("sales_view") ? "receivables" : "payables");
@@ -5441,7 +5456,7 @@ export default function App() {
                   <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
               </div>
             ))}
           </section>)}
@@ -5489,6 +5504,7 @@ export default function App() {
 </section>
 ) : screen === "sales" ? (
 <section className="sales-page">
+<SalesModuleCards active="sales" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
 <div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Por defecto ves las ventas de hoy. Cambia rápidamente a otra fecha o consulta un rango.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
 <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de ventas">{[["day","Hoy"],["date","Fecha"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={salesPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={salesPeriod === value} onClick={() => {if(value==="date"&&salesPeriod!=="date")setSalesSelectedDate(todayInBogota());setSalesPeriod(value);setSalesPage(1);}}>{label}</button>)}</div>{salesPeriod === "date" && <div className="sales-single-date"><button type="button" className="secondary-button" aria-label="Día anterior" onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>← Anterior</button><label><span>Ver movimientos del día</span><input type="date" value={salesSelectedDate} max={todayInBogota()} onChange={(e)=>{setSalesSelectedDate(e.target.value);setSalesPage(1);}} /></label><button type="button" className="secondary-button" aria-label="Día siguiente" disabled={salesSelectedDate>=todayInBogota()} onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>Siguiente →</button></div>}{salesPeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={salesDateFrom} max={salesDateTo || todayInBogota()} onChange={(e) => {setSalesDateFrom(e.target.value);setSalesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={salesDateTo} min={salesDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setSalesDateTo(e.target.value);setSalesPage(1);}} /></label></div>}<p>{salesPeriod === "day" ? "Ventas de hoy" : salesPeriod === "date" ? "Movimientos del " + new Date(salesSelectedDate+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : salesPeriod === "all" ? "Todo el historial" : salesPeriod === "custom" ? "Del " + salesDateFrom + " al " + salesDateTo : salesPeriod === "week" ? "Desde el lunes de esta semana" : salesPeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
@@ -5718,6 +5734,7 @@ export default function App() {
           </section>
         ) : screen === "quotes" ? (
           <section className="quotes-page">
+            <SalesModuleCards active="quotes" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
             <div className="products-intro">
               <div><h2>Cotizaciones para tus clientes</h2><p>Prepara propuestas con productos, cantidades, precios y fecha de validez. Los valores se guardan en este negocio.</p></div>
               {canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if (showQuoteForm) clearQuoteDraft(); else { setShowQuoteForm(true); setError(""); setNotice(""); } }}>{showQuoteForm ? "Cancelar" : "+ Nueva cotización"}</button>}
@@ -6057,14 +6074,19 @@ export default function App() {
               <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
             </details>
             <div className="inventory-controls panel">
-              <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
-              <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
-              <label><span>Categoría</span><select value={productCategoryFilter} onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}><option value="all">Todas las categorías</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
-              <label><span>Tipo</span><select value={productTypeFilter} onChange={(e) => { setProductTypeFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los tipos</option><option value="physical">Físicos</option><option value="service">Servicios</option><option value="digital">Digitales</option></select></label>
-              <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
+              <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
+              <details className="inventory-filter-disclosure">
+                <summary><AppIcon name="sliders" size={16}/><span>Filtros y orden</span><span className="inventory-filter-summary-detail">{productStockFilter !== "all" || productCategoryFilter !== "all" || productTypeFilter !== "all" ? "Filtros activos" : "Opcionales"}</span></summary>
+                <div className="inventory-filter-panel">
+                  <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
+                  <label><span>Categoría</span><select value={productCategoryFilter} onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}><option value="all">Todas las categorías</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
+                  <label><span>Tipo</span><select value={productTypeFilter} onChange={(e) => { setProductTypeFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los tipos</option><option value="physical">Físicos</option><option value="service">Servicios</option><option value="digital">Digitales</option></select></label>
+                  <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
+                </div>
+              </details>
             </div>
-            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
+            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               {!editingProductId && <div className="product-photo-uploader full-span">
                 <span className="photo-section-label">Fotos del producto (máximo 3)</span>
@@ -6080,6 +6102,7 @@ export default function App() {
                 </div>
                 <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
               </div>}
+              <details className="product-categories-inline full-span"><summary><AppIcon name="chevron-down" size={15}/> Administrar categorías existentes</summary><div className="product-categories-inline-list">{categories.length ? categories.map((category) => <div className="product-categories-inline-row" key={category.id}>{editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button type="submit" className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <><span>{category.name}</span><div><button type="button" className="icon-action-button" title={"Editar categoría "+category.name} aria-label={"Editar categoría "+category.name} onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={14}/></button>{confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title={"Eliminar categoría "+category.name} aria-label={"Eliminar categoría "+category.name} onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={14}/></button>}</div></>}</div>) : <p>No hay categorías existentes.</p>}</div></details>
               <div className="form-grid">
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>

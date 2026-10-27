@@ -20,6 +20,8 @@ function AppIcon({ name, size = 20 }) {
     team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
+    receivables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2 2 3-4" /></>,
+    payables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2-2 3 4" /></>,
     coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,
     edit: <><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></>,
     trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></>,
@@ -4659,6 +4661,8 @@ export default function App() {
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
+  const homeShortcutOrder = ["products","sales","customers","stats","quotes","purchases"];
+  const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
@@ -6007,7 +6011,7 @@ export default function App() {
           </section>}
           {businessSubscription && ["trialing","expired"].includes(businessSubscription.status) && <section className={"trial-status-banner panel"+(businessSubscription.status==="expired"?" trial-expired":"")}><div><strong>{businessSubscription.status==="expired"?"Tu prueba gratuita terminó":"Prueba gratuita de treseiscinco"}</strong><p>{businessSubscription.status==="expired"?"Tu periodo de prueba ha terminado. Revisa con treseiscinco las opciones para continuar.":("Te quedan "+Math.max(0,Math.ceil((new Date(businessSubscription.current_period_end).getTime()-Date.now())/86400000))+" días de prueba. Finaliza el "+new Date(businessSubscription.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})+".")}</p></div><span>{businessSubscription.status==="expired"?"Periodo vencido":"Acceso de prueba"}</span></section>}
           <section className="home-operating-summary">
-            <div className="home-section-heading"><div><h2>Resumen operativo</h2><p>Cifras calculadas con los registros actuales del negocio</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
+            <div className="home-section-heading"><div><h2>Cifras clave</h2><p>Indicadores actualizados desde tus movimientos registrados.</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos reales"}</span></div>
             <div className="home-operating-metrics">
               {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Referencias</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><small>Artículos en inventario</small></button>}
               {canAccessScreen("products") && <button type="button" className={"home-operating-metric" + (inventoryOverview.outOfStockCount ? " home-metric-alert" : "")} onClick={() => { setProductStockFilter("out_of_stock"); setProductPage(1); navigate("products"); }}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><small>{inventoryOverview.outOfStockCount ? "Revisar agotados" : "Sin agotados registrados"}</small></button>}
@@ -6020,8 +6024,8 @@ export default function App() {
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
           <section className="home-work-modules">
-            <div className="home-section-heading home-modules-heading"><div><h2>Áreas de tu negocio</h2><p>Cada herramienta en su lugar, conectada con tus datos reales.</p></div><span className="count-label">{visibleAreas.length} áreas</span></div>
-            <section className="area-grid home-area-grid">{visibleAreas.map((area) => <button type="button" className={"area-card area-card-button home-area-card home-area-card-"+area.screen} key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={22} /></span><span className="area-arrow" aria-hidden="true">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
+            <div className="home-section-heading home-modules-heading"><div><h2>Accesos principales</h2><p>Las tareas más habituales, en su sitio. El resto de módulos está en el menú lateral.</p></div><span className="count-label">{homeShortcutAreas.length} accesos</span></div>
+            <section className="area-grid home-area-grid">{homeShortcutAreas.map((area) => <button type="button" className={"area-card area-card-button home-area-card home-area-card-"+area.screen} key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={22} /></span><span className="area-arrow" aria-hidden="true">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>

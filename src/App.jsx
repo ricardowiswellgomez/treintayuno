@@ -5632,7 +5632,7 @@ export default function App() {
             </div>
             {canManageProducts && !showProductForm && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
-                <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
+                <span>{showCategoryManager ? "▾" : "▸"} Gestionar categorías</span><span className="category-toggle-count">{categories.length}</span>
               </button>
               {showCategoryManager && <section className="category-panel panel">
                 <p className="category-management-hint">Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.</p>

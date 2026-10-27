@@ -79,7 +79,7 @@ const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "receivables", "payables", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
@@ -88,7 +88,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras y gastos", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -96,7 +96,7 @@ const normalizeSidebarLayout = (layout) => {
     .map((group) => ({
       id: group.id,
       type: "group",
-      title: group.id === "inicio" || (Array.isArray(group.items) && group.items.some((item) => item?.id === "home")) ? "" : String(group.title || "Sección").slice(0, 60),
+      title: group.id === "inicio" || (Array.isArray(group.items) && group.items.some((item) => item?.id === "home")) ? "" : ({ comercial: "COMERCIAL", finanzas: "FINANZAS", personal: "PERSONAL", administracion: "ADMINISTRACIÓN" })[group.id] || String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;
@@ -434,6 +434,12 @@ function shadeHex(value, amount = 0.12) {
   const rgb = hexRgb(value);
   if (!rgb) return "#334155";
   return "#" + rgb.map((channel) => Math.max(0, Math.min(255, Math.round(channel * (1 - amount)))).toString(16).padStart(2, "0")).join("");
+}
+function mixHex(foreground, background, foregroundWeight = 0.12) {
+  const front = hexRgb(foreground), back = hexRgb(background);
+  if (!front || !back) return background || "#FFFFFF";
+  const weight = Math.max(0, Math.min(1, Number(foregroundWeight) || 0));
+  return "#" + front.map((channel, index) => Math.round(channel * weight + back[index] * (1 - weight)).toString(16).padStart(2, "0")).join("");
 }
 
 const compareInventoryProducts = (a, b, sort) => {
@@ -5016,6 +5022,12 @@ export default function App() {
   const safeDangerText = readableText(activeTheme.surface, "#B42318");
   const safeSuccessText = readableText(activeTheme.surface, "#16824B");
   const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
+  const sidebarActiveBackground = mixHex(activeTheme.primary, activeTheme.sidebarBackground, 0.17);
+  const sidebarHoverBackground = mixHex(safeSidebarText, activeTheme.sidebarBackground, 0.055);
+  const sidebarHeadingBackground = mixHex(activeTheme.primary, activeTheme.sidebarBackground, 0.075);
+  const sidebarHeadingText = readableText(sidebarHeadingBackground, safeSidebarText);
+  const sidebarActiveText = readableText(sidebarActiveBackground, safeSidebarText);
+  const sidebarBorder = mixHex(safeSidebarText, activeTheme.sidebarBackground, 0.18);
   const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
   const primaryHover = shadeHex(activeTheme.primary);
   const primaryButtonText = readableText(activeTheme.primary, "#FFFFFF");
@@ -5035,6 +5047,12 @@ export default function App() {
     "--primary-button-text": primaryButtonText,
     "--sidebar-background": activeTheme.sidebarBackground,
     "--sidebar-text": safeSidebarText,
+    "--sidebar-active-background": sidebarActiveBackground,
+    "--sidebar-active-text": sidebarActiveText,
+    "--sidebar-hover-background": sidebarHoverBackground,
+    "--sidebar-heading-background": sidebarHeadingBackground,
+    "--sidebar-heading-text": sidebarHeadingText,
+    "--sidebar-border": sidebarBorder,
     "--button-hover": primaryHover,
     "--button-hover-text": primaryHoverText,
     "--app-background": activeTheme.background,

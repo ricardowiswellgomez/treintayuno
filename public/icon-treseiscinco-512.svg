@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">treseiscinco</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#24BDA6"/><stop offset="1" stop-color="#174580"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#29C6A8"/><stop offset="1" stop-color="#0A9D9F"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#159C9C"/><stop offset="1" stop-color="#174580"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#tile)"/>
+  <g fill="none" stroke-width="68" stroke-linecap="butt">
+    <path d="M 104 156 A 180 180 0 0 1 356 88" stroke="#F5C928"/>
+    <path d="M 396 116 A 180 180 0 0 1 412 376" stroke="url(#teal)"/>
+    <path d="M 368 412 A 180 180 0 0 1 88 216" stroke="url(#blue)"/>
+  </g>
+  <circle cx="256" cy="256" r="104" fill="#fff"/>
+</svg>

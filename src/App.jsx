@@ -4925,6 +4925,7 @@ export default function App() {
                   const profitMinor = saleMinor - costMinor;
                   const margin = saleMinor > 0 ? (profitMinor / saleMinor) * 100 : 0;
                   const changed = String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+                    String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
                     Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
                     Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
                     (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0));

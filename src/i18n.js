@@ -239,6 +239,13 @@ Object.assign(ENGLISH_TEXT, {
 "Catálogo": "Catalog",
 "Inicio": "Home",
 "INICIO": "HOME"
+"Nombre o razón social": "Business / legal name",
+"Sin especificar": "Not specified",
+"Cédula de ciudadanía": "National ID card",
+"Cédula de extranjería": "Foreign resident ID",
+"Tarjeta de identidad": "Identity card",
+"Pasaporte": "Passport",
+"Otro": "Other"
 });
 
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();

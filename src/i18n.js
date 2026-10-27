@@ -255,7 +255,11 @@ Object.assign(ENGLISH_TEXT, {
 "Color de las tarjetas, formularios y paneles. El texto se ajusta automáticamente para mantener el contraste.":"Color of cards, forms, and panels. Text automatically adjusts to maintain contrast.",
 "Fondo del menú lateral":"Sidebar background",
 "Cambia únicamente el fondo del menú lateral. El sistema selecciona un color de texto legible automáticamente.":"Change only the sidebar background. The system automatically selects a readable text color.",
-"Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.":"Automatic contrast is enabled: you do not need to choose text colors or button hover text colors manually."
+"Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.":"Automatic contrast is enabled: you do not need to choose text colors or button hover text colors manually.",
+"Trabajadores":"Workers",
+"TRABAJADORES":"WORKERS",
+"Compras y gastos":"Purchases & expenses",
+"Administración de plataforma":"Platform administration"
 });
 
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();

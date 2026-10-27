@@ -34,14 +34,14 @@ function escapeHtml(value) {
 }
 
 const areas = [
-  { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
+  { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
   { icon: "◷", title: "Rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
-  { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
+  { icon: "◉", title: "Catálogo", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
   { icon: "₱", title: "Pagos verificados", description: "Conecta la cuenta de cobro de este negocio.", screen: "payments" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" },
@@ -53,7 +53,7 @@ const sidebarAreaItem = (screen, label = null) => {
   return area ? { id: area.screen, screen: area.screen, label: label || area.title, icon: area.icon } : null;
 };
 const defaultSidebarLayout = () => [
-  { id: "inicio", type: "group", title: "INICIO", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
+  { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
@@ -65,7 +65,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "home" ? "Inicio" : item.id === "team" ? "Personal" : String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -73,7 +73,7 @@ const normalizeSidebarLayout = (layout) => {
     .map((group) => ({
       id: group.id,
       type: "group",
-      title: String(group.title || "Sección").slice(0, 60),
+      title: group.id === "inicio" ? "" : String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;
@@ -1123,6 +1123,13 @@ export default function App() {
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(12);
   const [showArchivedProducts, setShowArchivedProducts] = useState(false);
+  const [productStockFilter, setProductStockFilter] = useState("all");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  const [productTypeFilter, setProductTypeFilter] = useState("all");
+  const [inventoryOverview, setInventoryOverview] = useState({ productCount: 0, trackedUnits: 0, costMinor: 0, retailMinor: 0, outOfStockCount: 0, lowStockCount: 0 });
+  const [inventoryOverviewLoading, setInventoryOverviewLoading] = useState(false);
+  const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
+  const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);
@@ -1474,17 +1481,49 @@ export default function App() {
   const loadProducts = useCallback(async () => {
     if (!activeBusiness?.id) return;
     setProductsLoading(true); setError("");
+    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at";
+    const safeTerm = search.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
+    const sortColumn = ({ name: "name", name_desc: "name", code: "sku", code_desc: "sku", price: "sale_price_minor", price_desc: "sale_price_minor", cost: "cost_price_minor", cost_desc: "cost_price_minor", stock: "stock_on_hand", stock_desc: "stock_on_hand" })[productSort] || "name";
+    const descending = productSort.endsWith("_desc");
+    const needsClientRanking = productStockFilter === "low_stock" || ["profit", "profit_asc", "margin", "margin_asc"].includes(productSort);
     try {
-      const from = (productPage - 1) * productPageSize;
-      const to = from + productPageSize - 1;
-      let productsQuery = supabase.from("products")
-        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at", { count: "exact" })
-        .eq("business_id", activeBusiness.id).order(productSort === "code" ? "sku" : productSort === "price" ? "sale_price_minor" : "name").order("name").range(from, to);
-      productsQuery = showArchivedProducts ? productsQuery.not("archived_at", "is", null) : productsQuery.is("archived_at", null);
-      if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
-      const [productResult, categoryResult] = await Promise.all([
-        productsQuery,
-        supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name")
+      const makeBaseQuery = () => {
+        let query = supabase.from("products").select(columns, { count: "exact" }).eq("business_id", activeBusiness.id);
+        query = showArchivedProducts ? query.not("archived_at", "is", null) : query.is("archived_at", null);
+        if (safeTerm) {
+          const term = safeTerm.replace(/"/g, '\\"');
+          query = query.or("name.ilike.%" + term + "%,sku.ilike.%" + term + "%,description.ilike.%" + term + "%");
+        }
+        if (productCategoryFilter !== "all") query = query.eq("category_id", productCategoryFilter);
+        if (productTypeFilter !== "all") query = query.eq("product_type", productTypeFilter);
+        if (productStockFilter === "out_of_stock") query = query.eq("track_inventory", true).lte("stock_on_hand", 0);
+        if (productStockFilter === "in_stock") query = query.eq("track_inventory", true).gt("stock_on_hand", 0);
+        return query;
+      };
+      const [categoryResult, productResult] = await Promise.all([
+        supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name"),
+        (async () => {
+          if (!needsClientRanking) {
+            let query = makeBaseQuery().order(sortColumn, { ascending: !descending, nullsFirst: false });
+            if (sortColumn !== "name") query = query.order("name", { ascending: true });
+            return query.range((productPage - 1) * productPageSize, productPage * productPageSize - 1);
+          }
+          const all = [];
+          const chunkSize = 500;
+          for (let offset = 0; offset < 50000; offset += chunkSize) {
+            const { data, error: chunkError } = await makeBaseQuery().order("name").range(offset, offset + chunkSize - 1);
+            if (chunkError) throw chunkError;
+            const batch = data || [];
+            all.push(...batch);
+            if (batch.length < chunkSize) break;
+            if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos. Usa la búsqueda para limitar los resultados.");
+          }
+          const filtered = productStockFilter === "low_stock"
+            ? all.filter((product) => product.track_inventory && Number(product.stock_on_hand || 0) > 0 && product.low_stock_threshold != null && Number(product.stock_on_hand || 0) <= Number(product.low_stock_threshold))
+            : all;
+          filtered.sort((a, b) => compareInventoryProducts(a, b, productSort));
+          return { data: filtered.slice((productPage - 1) * productPageSize, productPage * productPageSize), count: filtered.length, error: null };
+        })()
       ]);
       if (productResult.error) throw productResult.error;
       if (categoryResult.error) throw categoryResult.error;
@@ -1510,7 +1549,7 @@ export default function App() {
       setCategories(categoryResult.data || []);
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
-  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort]);
+  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort, productStockFilter, productCategoryFilter, productTypeFilter]);
 
   useEffect(() => {
     let alive = true;

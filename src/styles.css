@@ -5070,3 +5070,24 @@ body { background: #F5F7FC; color: #19243A; }
     min-height:108px!important;
   }
 }
+
+
+/* Keep the inline category creator inside the product form without invalid nested labels. */
+.quick-product-category-field {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+  width:100%;
+}
+.quick-product-category-field>label {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+  width:100%;
+}
+.quick-product-category-field .inline-create-panel {
+  min-width:0;
+  width:100%;
+}

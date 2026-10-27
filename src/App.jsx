@@ -29,6 +29,21 @@ function AppIcon({ name, size = 20 }) {
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }
 
+function SimpleBars({ title, description, data, formatValue }) {
+  const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
+  return <section className="simple-chart panel">
+    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">7 días</span></div>
+    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title}>
+      {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
+        <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
+        <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%"}} /></div>
+        <span className="simple-chart-label">{item.label}</span>
+      </div>)}
+    </div> : <p className="simple-chart-empty">Aún no hay datos suficientes para formar el gráfico.</p>}
+    <div className="simple-chart-footnote">Valores calculados a partir de movimientos registrados, no de estimaciones.</div>
+  </section>;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -36,6 +51,8 @@ function escapeHtml(value) {
 const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
+  { icon: "↗", title: "Cuentas por cobrar", description: "Controla las ventas pendientes y registra abonos de tus clientes.", screen: "receivables" },
+  { icon: "↙", title: "Cuentas por pagar", description: "Controla las compras pendientes y registra pagos a proveedores.", screen: "payables" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
@@ -55,9 +72,9 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "receivables", "payables", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
-  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -65,7 +82,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -90,6 +107,8 @@ const normalizeSidebarLayout = (layout) => {
   // Reconcile prior layouts with the agreed categories without discarding item labels/icons.
   const requiredDestinations = {
     products: "comercial",
+    receivables: "finanzas",
+    payables: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
     customers: "personal",
@@ -375,6 +394,35 @@ const employeePermissionProfiles = {
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
+
+function hexRgb(value) {
+  const match = String(value || "").trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return null;
+  let hex = match[1];
+  if (hex.length === 3) hex = hex.split("").map((x) => x + x).join("");
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function luminance(rgb) {
+  const channel = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+}
+function contrastRatio(a, b) {
+  const ca = hexRgb(a), cb = hexRgb(b);
+  if (!ca || !cb) return 0;
+  const la = luminance(ca), lb = luminance(cb);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+function readableText(background, preferred) {
+  if (!hexRgb(background)) return preferred || "#19243A";
+  if (preferred && contrastRatio(background, preferred) >= 4.5) return preferred;
+  const black = "#111827", white = "#FFFFFF";
+  return contrastRatio(background, black) >= contrastRatio(background, white) ? black : white;
+}
+function readableAccent(accent, background) {
+  if (!hexRgb(accent) || !hexRgb(background)) return accent || "#174580";
+  return contrastRatio(accent, background) >= 4.5 ? accent : readableText(background, accent);
+}
 
 const compareInventoryProducts = (a, b, sort) => {
   const nameCompare = String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" });
@@ -893,11 +941,28 @@ function PublicCatalog({ businessId }) {
 
   const business = payload?.business;
   const catalogTheme = normalizeBusinessTheme(business?.theme);
+  const openingInfo = (() => {
+    const schedule=business?.commercial_profile?.hoursSchedule;
+    if (!schedule || typeof schedule!=="object") return null;
+    const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Bogota",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+    const values=Object.fromEntries(parts.map((part)=>[part.type,part.value]));
+    const dayKey=({Mon:"mon",Tue:"tue",Wed:"wed",Thu:"thu",Fri:"fri",Sat:"sat",Sun:"sun"})[values.weekday];
+    const dayLabel=({mon:"Lunes",tue:"Martes",wed:"Miércoles",thu:"Jueves",fri:"Viernes",sat:"Sábado",sun:"Domingo"})[dayKey]||"Hoy";
+    const day=schedule[dayKey];
+    const periods=(Array.isArray(day?.periods)?day.periods:[]).filter((p)=>p&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.open||"")&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.close||""));
+    const fmt=(time)=>{const [hour,minute]=time.split(":").map(Number);const h=hour%12||12;const suffix=hour<12?"a. m.":"p. m.";return h+":"+String(minute).padStart(2,"0")+" "+suffix;};
+    const nowMinute=Number(values.hour)*60+Number(values.minute);
+    const isOpen=Boolean(day?.enabled)&&periods.some((p)=>{const [sh,sm]=p.open.split(":").map(Number);const [eh,em]=p.close.split(":").map(Number);const from=sh*60+sm,to=eh*60+em;return from<=to?(nowMinute>=from&&nowMinute<to):(nowMinute>=from||nowMinute<to);});
+    const hours=day?.enabled&&periods.length?periods.map((p)=>fmt(p.open)+"–"+fmt(p.close)).join(" · "):"Sin atención programada";
+    return {dayKey,dayLabel,isOpen,hours,configured:Boolean(day?.enabled&&periods.length)};
+  })();
   const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
+  const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
+  const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
   const catalogThemeStyle = {
-    "--green": catalogTheme.primary, "--paper": catalogTheme.surface, "--ink": catalogTheme.text, "--button-hover": catalogTheme.buttonHover, "--button-hover-text": catalogTheme.buttonHoverText,
-    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogTheme.primary + " 12%,white)",
-    background: catalogTheme.background, color: catalogTheme.text
+    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--muted": readableText(catalogTheme.surface,"#69758A"), "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
+    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
+    background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
   };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);
@@ -1030,7 +1095,7 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span>{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -1121,7 +1186,27 @@ export default function App() {
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
-  const [screen, setScreen] = useState("sales");
+  const [screen, setScreen] = useState("home");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [platformAdminData, setPlatformAdminData] = useState(null);
+  const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
+  const [platformAdminSaving, setPlatformAdminSaving] = useState(false);
+  const [platformAdminSearch, setPlatformAdminSearch] = useState("");
+  const [platformPaymentBusiness, setPlatformPaymentBusiness] = useState("");
+  const [platformPaymentDraft, setPlatformPaymentDraft] = useState({ interval: "month", amount: "", method: "Nequi", reference: "", notes: "" });
+  const [platformAdminNote, setPlatformAdminNote] = useState("");
+  const [platformAdminStatusDrafts, setPlatformAdminStatusDrafts] = useState({});
+  const [platformAdminPeriodDrafts, setPlatformAdminPeriodDrafts] = useState({});
+  const [businessSubscription, setBusinessSubscription] = useState(null);
+  const [receivableRows, setReceivableRows] = useState([]);
+  const [payableRows, setPayableRows] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsSearch, setAccountsSearch] = useState("");
+  const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
+  const [accountsSort, setAccountsSort] = useState("newest");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [inventoryImportBusy, setInventoryImportBusy] = useState(false);
+  const [inventoryImportProgress, setInventoryImportProgress] = useState("");
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -1310,6 +1395,8 @@ export default function App() {
   const [statsExpenses, setStatsExpenses] = useState([]);
   const [statsPurchases, setStatsPurchases] = useState([]);
   const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
+  const [balanceTrendRows, setBalanceTrendRows] = useState({payments:[],expenses:[],purchasePayments:[]});
+  const [balanceTrendLoading, setBalanceTrendLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsPeriod, setStatsPeriod] = useState("day");
   const [statsDateFrom, setStatsDateFrom] = useState(() => todayInBogota().slice(0, 7) + "-01");
@@ -1763,13 +1850,358 @@ export default function App() {
       }
       setSession(currentSession);
       if (!currentSession) {
-        setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("sales");
+        setBusinesses([]); setActiveBusiness(null); setProducts([]); setCategories([]); setScreen("home");
       } else if (event !== "PASSWORD_RECOVERY") {
         queueMicrotask(() => loadBusinesses(currentSession.user.id).catch((e) => setError(friendlyError(e))));
       }
     });
     return () => { alive = false; subscription.unsubscribe(); };
   }, [loadBusinesses]);
+
+
+  async function loadOutstandingAccounts() {
+    if (!activeBusiness?.id || !["receivables","payables"].includes(screen)) return;
+    setAccountsLoading(true);
+    try {
+      async function fetchAll(table, columns, orderColumn) {
+        const all = [];
+        for (let offset = 0; offset < 50000; offset += 500) {
+          const { data, error: queryError } = await supabase.from(table).select(columns)
+            .eq("business_id", activeBusiness.id).order(orderColumn, { ascending: false, nullsFirst: false })
+            .range(offset, offset + 499);
+          if (queryError) throw queryError;
+          const rows = data || []; all.push(...rows);
+          if (rows.length < 500) break;
+          if (offset + 500 >= 50000) throw new Error("Hay demasiados movimientos para mostrar de una sola vez. Usa los filtros del módulo correspondiente.");
+        }
+        return all;
+      }
+      if (screen === "receivables") {
+        const [sales, customers] = await Promise.all([
+          fetchAll("sales","id,sale_number,customer_id,status,total_minor,amount_paid_minor,currency_code,sold_at,created_at,notes","sold_at"),
+          supabase.from("customers").select("id,full_name,company_name,phone,whatsapp,email").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
+        ]);
+        const byId = new Map(customers.map((x)=>[x.id,x]));
+        setReceivableRows(sales.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status))
+          .map((x)=>({...x,customer:byId.get(x.customer_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
+      } else {
+        const [purchases, suppliers] = await Promise.all([
+          fetchAll("purchases","id,purchase_number,supplier_id,status,total_minor,amount_paid_minor,currency_code,purchased_at,created_at,notes","purchased_at"),
+          supabase.from("suppliers").select("id,name,phone,email,tax_id").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
+        ]);
+        const byId = new Map(suppliers.map((x)=>[x.id,x]));
+        setPayableRows(purchases.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status))
+          .map((x)=>({...x,supplier:byId.get(x.supplier_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
+      }
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setAccountsLoading(false); }
+  }
+
+  async function loadPlatformAdminDashboard() {
+    if (!isPlatformAdmin) return;
+    setPlatformAdminLoading(true);
+    try {
+      const { error: expiryError } = await supabase.rpc("platform_admin_expire_trials");
+      if (expiryError) throw expiryError;
+      const { data, error: rpcError } = await supabase.rpc("platform_admin_dashboard");
+      if (rpcError) throw rpcError;
+      setPlatformAdminData(data || null);
+      setPlatformAdminStatusDrafts((current)=> {
+        const next={...current};
+        for (const row of data?.subscriptions || []) if (!(row.subscription_id in next)) next[row.subscription_id]=row.status;
+        return next;
+      });
+      setPlatformAdminPeriodDrafts((current)=> {
+        const next={...current};
+        for (const row of data?.subscriptions || []) if (!(row.subscription_id in next)) next[row.subscription_id]=row.current_period_end ? new Date(row.current_period_end).toISOString().slice(0,16) : "";
+        return next;
+      });
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setPlatformAdminLoading(false); }
+  }
+
+  async function updatePlatformSubscription(row, statusOverride = null, daysToAdd = 0) {
+    if (!isPlatformAdmin || !row?.business_id || platformAdminSaving) return;
+    const chosenStatus = statusOverride ?? platformAdminStatusDrafts[row.subscription_id] ?? row.status;
+    const draftEnd = platformAdminPeriodDrafts[row.subscription_id];
+    let periodEnd = draftEnd ? new Date(draftEnd).toISOString() : row.current_period_end;
+    if (daysToAdd) {
+      const base = new Date(row.current_period_end || Date.now());
+      base.setDate(base.getDate() + daysToAdd);
+      periodEnd = base.toISOString();
+    }
+    const note = platformAdminNote.trim();
+    setPlatformAdminSaving(true); setError(""); setNotice("");
+    try {
+      const { error: rpcError } = await supabase.rpc("platform_admin_update_subscription", {
+        p_business_id: row.business_id,
+        p_new_status: chosenStatus,
+        p_period_end: periodEnd,
+        p_note: note || null
+      });
+      if (rpcError) throw rpcError;
+      setPlatformAdminNote("");
+      setNotice("Estado y periodo de la suscripción guardados en el historial.");
+      await loadPlatformAdminDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setPlatformAdminSaving(false); }
+  }
+
+  async function submitPlatformPayment(event, row) {
+    event.preventDefault();
+    if (!isPlatformAdmin || !row?.business_id || platformAdminSaving) return;
+    const amountMinor = toMinorUnits(platformPaymentDraft.amount, "COP");
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) { setError("Escribe un valor de pago mayor que cero."); return; }
+    if (["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method) && !platformPaymentDraft.reference.trim()) { setError("Escribe la referencia de la transacción para poder conciliar este pago."); return; }
+    setPlatformAdminSaving(true); setError(""); setNotice("");
+    try {
+      const { error: rpcError } = await supabase.rpc("platform_admin_record_payment", {
+        p_business_id: row.business_id,
+        p_billing_interval: platformPaymentDraft.interval,
+        p_amount_minor: amountMinor,
+        p_currency_code: "COP",
+        p_payment_method: platformPaymentDraft.method,
+        p_external_reference: platformPaymentDraft.reference.trim() || null,
+        p_notes: platformPaymentDraft.notes.trim() || null,
+        p_received_at: new Date().toISOString()
+      });
+      if (rpcError) throw rpcError;
+      setPlatformPaymentBusiness("");
+      setPlatformPaymentDraft({ interval:"month",amount:"",method:"Nequi",reference:"",notes:"" });
+      setNotice("Pago confirmado manualmente; el periodo quedó extendido y el registro no se puede alterar desde la aplicación.");
+      await loadPlatformAdminDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setPlatformAdminSaving(false); }
+  }
+
+  function downloadBlobFile(filename, content, type = "application/octet-stream") {
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = filename; anchor.style.display = "none";
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }
+
+  function downloadInventoryTemplate() {
+    const rows = [["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"]];
+    const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
+    downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
+    setNotice("Plantilla descargada. Puedes abrirla y editarla en Excel; guarda el resultado como CSV UTF-8 para importarlo.");
+  }
+
+  async function importInventoryFile(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || !activeBusiness?.id || !canManageProducts || inventoryImportBusy) return;
+    if (file.size > 10 * 1024 * 1024) { setError("El archivo no puede superar 10 MB."); return; }
+    if (!/\.csv$/i.test(file.name)) { setError("Para la carga inicial usa la plantilla CSV compatible con Excel."); return; }
+    setInventoryImportBusy(true); setInventoryImportProgress("Leyendo archivo…"); setError(""); setNotice("");
+    const failures = [];
+    let imported = 0, skipped = 0;
+    try {
+      const source = (await file.text()).replace(/^\uFEFF/,"");
+      const firstLine = source.split(/\r?\n/,1)[0] || "";
+      const delimiter = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ";" : ",";
+      const parsed = [];
+      let row=[], cell="", quoted=false;
+      for (let i=0;i<source.length;i++) {
+        const ch=source[i];
+        if (ch === '"' && quoted && source[i+1] === '"') { cell+='"'; i++; }
+        else if (ch === '"') quoted=!quoted;
+        else if (ch === delimiter && !quoted) { row.push(cell); cell=""; }
+        else if ((ch === "\n" || ch === "\r") && !quoted) {
+          if (ch === "\r" && source[i+1] === "\n") i++;
+          row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row);
+          row=[]; cell="";
+        } else cell+=ch;
+      }
+      if (cell.length || row.length) { row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row); }
+      if (parsed.length < 2) throw new Error("La plantilla no contiene filas de artículos.");
+      const normalizeHeader=(value)=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/\s+/g,"_");
+      const headers=parsed[0].map(normalizeHeader);
+      const col=(row,...names)=>{const index=headers.findIndex((h)=>names.includes(h));return index<0?"":String(row[index]??"").trim();};
+      if (!headers.some((h)=>["nombre","producto","name","product"].includes(h))) throw new Error("Falta la columna «Nombre» en la primera fila.");
+      const dataRows=parsed.slice(1);
+      if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios CSV para conservar el control de errores.");
+      const {data:currentProducts,error:currentError}=await supabase.from("products").select("sku,name").eq("business_id",activeBusiness.id).is("archived_at",null);
+      if (currentError) throw currentError;
+      const existingCodes=new Set((currentProducts||[]).map((x)=>String(x.sku||"").trim().toLocaleLowerCase()).filter(Boolean));
+      const fileCodes=new Set();
+      const categoryMap=new Map(categories.map((x)=>[String(x.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),x.id]));
+      const toBool=(v)=>/^(si|sí|s|true|1|yes|y)$/i.test(String(v||"").trim());
+      const parseNumber=(v, fallback=0)=>{
+        let raw=String(v??"").trim().replace(/\\s/g,"");
+        if (!raw) return fallback;
+        raw=raw.replace(/[^0-9,.-]/g,"");
+        if (!raw || raw==="-" || raw==="." || raw===",") return NaN;
+        const lastDot=raw.lastIndexOf("."), lastComma=raw.lastIndexOf(",");
+        if (lastDot>=0 && lastComma>=0) {
+          raw=lastDot>lastComma ? raw.replace(/,/g,"") : raw.replace(/\\./g,"").replace(",",".");
+        } else if (lastComma>=0) {
+          const decimals=raw.length-lastComma-1;
+          raw=decimals===3 ? raw.replace(/,/g,"") : raw.replace(",",".");
+        } else if (lastDot>=0) {
+          const decimals=raw.length-lastDot-1;
+          raw=decimals===3 ? raw.replace(/\\./g,"") : raw;
+        }
+        const number=Number(raw);
+        return Number.isFinite(number) ? number : NaN;
+      };
+      for (let index=0; index<dataRows.length; index++) {
+        const csvRow=dataRows[index], rowNo=index+2;
+        const name=col(csvRow,"nombre","producto","articulo","name","product");
+        if (!name) { skipped++; failures.push("Fila "+rowNo+": falta el nombre."); continue; }
+        const sku=col(csvRow,"codigo","referencia","sku","code").slice(0,100) || null;
+        if (sku && (existingCodes.has(sku.toLocaleLowerCase()) || fileCodes.has(sku.toLocaleLowerCase()))) {
+          skipped++; failures.push("Fila "+rowNo+" ("+name+"): el código «"+sku+"» ya existe; se omitió para no duplicar referencias."); continue;
+        }
+        const rawType=normalizeHeader(col(csvRow,"tipo","type")) || "physical";
+        const type=({fisico:"physical",fisica:"physical",physical:"physical",servicio:"service",service:"service",digital:"digital","digital_": "digital"})[rawType] || "physical";
+        const price=parseNumber(col(csvRow,"precio","precio_venta","valor_venta","price")), cost=parseNumber(col(csvRow,"costo","costo_unitario","cost"));
+        const stock=parseNumber(col(csvRow,"cantidad","cantidad_disponible","existencias","stock","quantity"),0);
+        const thresholdText=col(csvRow,"stock_minimo","stock_bajo","low_stock_threshold");
+        const threshold=thresholdText ? parseNumber(thresholdText) : null;
+        if (![price,cost,stock].every(Number.isFinite) || price<0 || cost<0 || stock<0 || (threshold!==null&&(!Number.isFinite(threshold)||threshold<0))) {
+          skipped++; failures.push("Fila "+rowNo+" ("+name+"): precio, costo, cantidad o mínimo inválido; no se importó."); continue;
+        }
+        let categoryId=null;
+        const categoryName=col(csvRow,"categoria","categoria_nombre","category");
+        if (categoryName) {
+          const key=categoryName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+          categoryId=categoryMap.get(key)||null;
+          if (!categoryId) {
+            const {data:newCategory,error:categoryError}=await supabase.from("product_categories").insert({business_id:activeBusiness.id,name:categoryName.slice(0,80)}).select("id,name").single();
+            if (categoryError) {
+              const {data:matches}=await supabase.from("product_categories").select("id,name").eq("business_id",activeBusiness.id).ilike("name",categoryName.slice(0,80)).limit(1);
+              if (!matches?.length) { skipped++; failures.push("Fila "+rowNo+" ("+name+"): no se pudo crear la categoría «"+categoryName+"»."); continue; }
+              categoryId=matches[0].id;
+            } else { categoryId=newCategory.id; categoryMap.set(key,categoryId); setCategories((current)=>[...current,newCategory].sort((a,b)=>a.name.localeCompare(b.name,"es"))); }
+          }
+        }
+        setInventoryImportProgress("Importando "+(index+1)+" de "+dataRows.length+" artículos…");
+        try {
+          const {error:insertError}=await supabase.rpc("create_product_with_opening_stock",{
+            p_business_id:activeBusiness.id,p_name:name.slice(0,160),p_category_id:categoryId,p_sku:sku,
+            p_description:col(csvRow,"descripcion","description").slice(0,5000)||null,
+            p_product_type:type,p_unit_name:col(csvRow,"unidad","unit").slice(0,40)||"unidad",
+            p_sale_price_minor:toMinorUnits(price,currencyCode),p_cost_price_minor:toMinorUnits(cost,currencyCode),
+            p_opening_stock:type==="physical"&&toBool(col(csvRow,"controla_inventario","controla_stock","track_inventory")||"si")?stock:0,
+            p_low_stock_threshold:type==="physical"&&threshold!==null?threshold:null,
+            p_commercial_presentation:col(csvRow,"presentacion","presentation").slice(0,200)||null
+          });
+          if (insertError) throw insertError;
+          imported++; if (sku) fileCodes.add(sku.toLocaleLowerCase());
+        } catch (e) { skipped++; failures.push("Fila "+rowNo+" ("+name+"): "+friendlyError(e)); }
+      }
+      setInventoryOverviewRefresh((n)=>n+1);
+      await loadProducts();
+      const firstErrors=failures.slice(0,8);
+      setNotice("Carga completada: "+imported+" artículos importados; "+skipped+" filas omitidas. El stock inicial quedó en el historial."+ (failures.length>8?" Hay "+(failures.length-8)+" errores adicionales.":""));
+      if (firstErrors.length) setError(firstErrors.join("\n"));
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
+  }
+
+  function printBusinessCard() {
+    if (!activeBusiness) return;
+    const profile=settingsCommercialProfile||{};
+    const name=profile.tradeName||settingsBusinessName||activeBusiness.name||"Mi negocio";
+    const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
+    const website=String(profile.website||"").trim();
+    const safeWebsite=/^https?:\/\//i.test(website)?website:(website?"https://"+website:"");
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:#fff;border:1px solid #d9dee5;border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:#174580}.details{min-width:0;flex:1}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:#667085;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:#fff}.card{box-shadow:none;border:0;border-radius:0;max-width:none;page-break-inside:avoid}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
+    const printWindow=window.open("","_blank");
+    if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
+    printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
+  }
+
+  async function downloadBusinessBackup() {
+    if (!activeBusiness?.id || backupBusy) return;
+    setBackupBusy(true); setError(""); setNotice("");
+    try {
+      const tableNames=[
+        "product_categories","products","product_images","product_variants","customers","suppliers",
+        "sales","sale_items","sale_payments","purchases","purchase_items","purchase_payments",
+        "expenses","stock_movements","audit_logs","quotes","quote_items","business_coupons"
+      ];
+      const backup={format:"treseiscinco-business-backup-v1",generated_at:new Date().toISOString(),
+        business:{id:activeBusiness.id,name:activeBusiness.name,currency_code:activeBusiness.currency_code,
+          country_code:activeBusiness.country_code,timezone:activeBusiness.timezone,theme:activeBusiness.theme,settings:activeBusiness.settings},
+        tables:{},not_exported:[]};
+      for (const table of tableNames) {
+        try {
+          const tableRows=[];
+          for (let offset=0;offset<50000;offset+=500) {
+            const {data,error:queryError}=await supabase.from(table).select("*").eq("business_id",activeBusiness.id).range(offset,offset+499);
+            if (queryError) throw queryError;
+            const batch=data||[]; tableRows.push(...batch);
+            if (batch.length<500) break;
+            if (offset+500>=50000) throw new Error("Tabla supera 50.000 filas");
+          }
+          backup.tables[table]=tableRows;
+        } catch (e) { backup.not_exported.push({table,reason:String(e?.message||e).slice(0,180)}); }
+      }
+      downloadBlobFile("treseiscinco-copia-"+String(activeBusiness.name||"negocio").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9_-]+/gi,"-").toLowerCase()+"-"+todayInBogota()+".json",JSON.stringify(backup,null,2),"application/json;charset=utf-8");
+      const complete=backup.not_exported.length===0;
+      setNotice(complete?"Copia de seguridad descargada. Guárdala en un lugar seguro; este archivo no sustituye las copias internas del servicio.":"Copia descargada con "+backup.not_exported.length+" tablas no exportadas por permisos o límites. Revisa el detalle antes de considerarla completa.");
+      if (!complete) setError("Tablas no exportadas: "+backup.not_exported.map((x)=>x.table).join(", ")+". Por seguridad no se incluyeron credenciales privadas de pasarelas.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBackupBusy(false); }
+  }
+
+
+  useEffect(() => {
+    let alive=true;
+    if (!session?.user?.id) {
+      setIsPlatformAdmin(false); setPlatformAdminData(null); setBusinessSubscription(null);
+      return () => { alive=false; };
+    }
+    supabase.rpc("is_platform_admin").then(({data,error:rpcError})=>{
+      if (!alive) return;
+      if (rpcError) { setIsPlatformAdmin(false); return; }
+      setIsPlatformAdmin(Boolean(data));
+    }).catch(()=>{if(alive)setIsPlatformAdmin(false);});
+    return () => { alive=false; };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const standalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
+    const ua = navigator.userAgent || "";
+    const platform = /iphone|ipad|ipod/i.test(ua) ? "iOS" : /android/i.test(ua) ? "Android" : /windows/i.test(ua) ? "Windows" : /macintosh|mac os/i.test(ua) ? "macOS" : "Other";
+    supabase.rpc("record_platform_activity", {
+      p_event: standalone ? "pwa_installed" : "app_open",
+      p_is_standalone: standalone,
+      p_platform: platform
+    }).then(({error:activityError})=>{
+      if(activityError) console.warn("No se pudo registrar la actividad de plataforma.");
+    }).catch(()=>{});
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!activeBusiness?.id || !["owner","admin"].includes(activeBusiness.role)) {
+      setBusinessSubscription(null);
+      return;
+    }
+    let alive=true;
+    supabase.from("business_subscriptions").select("id,status,current_period_start,current_period_end,created_at")
+      .eq("business_id",activeBusiness.id).maybeSingle()
+      .then(({data,error:subscriptionError})=>{if(alive)setBusinessSubscription(subscriptionError?null:data||null);})
+      .catch(()=>{if(alive)setBusinessSubscription(null);});
+    return ()=>{alive=false;};
+  }, [activeBusiness?.id,activeBusiness?.role]);
+
+  useEffect(() => {
+    if ((screen==="receivables" || screen==="payables") && activeBusiness?.id) loadOutstandingAccounts();
+  }, [screen,activeBusiness?.id]);
+
+  useEffect(() => {
+    if (screen==="platform_admin" && isPlatformAdmin) loadPlatformAdminDashboard();
+  }, [screen,isPlatformAdmin]);
 
   async function loadBulkProducts() {
     if (!activeBusiness?.id) return;
@@ -3941,6 +4373,51 @@ export default function App() {
   }
 
   const filteredProducts = [...products].sort((a, b) => compareInventoryProducts(a, b, productSort));
+  useEffect(() => {
+    if (!activeBusiness?.id || screen !== "stats") return;
+    let alive=true;
+    setBalanceTrendLoading(true);
+    const dateKey=(date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+    const today=todayInBogota();
+    const start=new Date(today+"T12:00:00-05:00");start.setDate(start.getDate()-6);
+    const startKey=dateKey(start);
+    const tomorrow=new Date(today+"T12:00:00-05:00");tomorrow.setDate(tomorrow.getDate()+1);
+    const tomorrowKey=dateKey(tomorrow);
+    const startAt=startKey+"T00:00:00-05:00",endAt=tomorrowKey+"T00:00:00-05:00";
+    Promise.all([
+      supabase.from("sale_payments").select("paid_at,amount_minor").eq("business_id",activeBusiness.id).gte("paid_at",startAt).lt("paid_at",endAt),
+      supabase.from("expenses").select("expense_date,amount_minor").eq("business_id",activeBusiness.id).gte("expense_date",startKey).lte("expense_date",today),
+      supabase.from("purchase_payments").select("paid_at,amount_minor").eq("business_id",activeBusiness.id).gte("paid_at",startAt).lt("paid_at",endAt)
+    ]).then(([sales,expenses,purchases])=>{
+      if(!alive)return;
+      const firstError=sales.error||expenses.error||purchases.error;
+      if(firstError)throw firstError;
+      setBalanceTrendRows({payments:sales.data||[],expenses:expenses.data||[],purchasePayments:purchases.data||[]});
+    }).catch((e)=>{if(alive)setError(friendlyError(e));})
+      .finally(()=>{if(alive)setBalanceTrendLoading(false);});
+    return ()=>{alive=false;};
+  },[activeBusiness?.id,screen]);
+
+  const balanceChartData = useMemo(() => {
+    const today = new Date(todayInBogota() + "T12:00:00-05:00");
+    const keyFor = (value) => {
+      if (!value) return "";
+      if (typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0,10);
+      return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+    };
+    const buckets = new Map();
+    for (let offset=6; offset>=0; offset--) {
+      const date = new Date(today); date.setDate(date.getDate()-offset);
+      const key = keyFor(date);
+      buckets.set(key,{key,label:new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",day:"2-digit",month:"short"}).format(date),income:0,outgoing:0,value:0});
+    }
+    for (const row of balanceTrendRows.payments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.income+=Number(row.amount_minor||0); }
+    for (const row of balanceTrendRows.expenses) { const b=buckets.get(keyFor(row.expense_date)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    for (const row of balanceTrendRows.purchasePayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    return [...buckets.values()].map((b)=>({...b,value:b.income-b.outgoing}));
+  },[balanceTrendRows]);
   const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row._draftSku, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
@@ -4114,6 +4591,9 @@ export default function App() {
         : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
+    if (next === "platform_admin") return isPlatformAdmin;
+    if (next === "receivables") return canPermission("sales_view");
+    if (next === "payables") return canViewPurchases;
     if (next === "settings") return isBusinessOwner;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
@@ -4362,7 +4842,13 @@ export default function App() {
 
   const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
-  const appThemeStyle = { "--green": activeTheme.primary, "--brand-teal": activeTheme.primary, "--brand-blue": activeTheme.primary, "--brand-yellow": activeTheme.primary, "--soft-green": `color-mix(in srgb, ${activeTheme.primary} 12%, white)`, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
+  const safeAppText = readableText(activeTheme.background, activeTheme.text);
+  const safeMutedText = readableText(activeTheme.surface, "#69758A");
+  const safeDangerText = readableText(activeTheme.surface, "#B42318");
+  const safeSuccessText = readableText(activeTheme.surface, "#16824B");
+  const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
+  const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
+  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--muted": safeMutedText, "--danger-text": safeDangerText, "--success-text": safeSuccessText, "--primary-button-text": readableText(safeAccent, "#FFFFFF"), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"
@@ -4455,11 +4941,11 @@ export default function App() {
             ))}
           </section>)}
         </nav>
-        <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
+        <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -4670,7 +5156,7 @@ export default function App() {
  ) : screen === "catalog" ? (
           <section className="catalog-admin-page">
             <div className="products-intro catalog-admin-intro">
-              <div><p className="eyebrow">VITRINA COMERCIAL</p><h2>Catálogo para compartir</h2><p>Publica los productos que quieras mostrar y comparte un único enlace con tus clientes.</p></div>
+              <div><p className="eyebrow">VITRINA COMERCIAL</p><h2>Catálogo</h2><p>Publica los productos que quieras mostrar y comparte un único enlace con tus clientes.</p></div>
               <div className="catalog-admin-actions">
                 <button type="button" className="secondary-button compact-button" onClick={copyPublicCatalogLink}>Copiar enlace</button>
                 <a className="primary-button compact-button catalog-open-link" href={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} target="_blank" rel="noreferrer">Abrir catálogo</a>
@@ -4682,10 +5168,10 @@ export default function App() {
             </div>
             <div className="catalog-filter-row">
               <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => { setCatalogSearch(e.target.value); setCatalogPage(1); }} placeholder="Buscar producto o categoría…" />
-              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><label className="catalog-sort-control"><span>Ordenar</span><select value={catalogSort} onChange={(e)=>{setCatalogSort(e.target.value);setCatalogPage(1);}} aria-label="Ordenar productos del catálogo"><option value="name">Nombre A–Z</option><option value="code">Código</option><option value="price">Precio</option></select></label><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Lista</button></div></div>
+              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><label className="catalog-sort-control"><span>Ordenar</span><select value={catalogSort} onChange={(e)=>{setCatalogSort(e.target.value);setCatalogPage(1);}} aria-label="Ordenar productos del catálogo"><option value="name">Nombre A–Z</option><option value="code">Código</option><option value="price">Precio</option></select></label><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Filas</button><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "compact" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("compact")} aria-pressed={catalogViewMode === "compact"}><AppIcon name="list" size={16} /> Compacta</button></div></div>
             </div>
             {catalogLoading ? <div className="empty-state">Cargando productos reales…</div>
-              : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {
+              : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : catalogViewMode === "compact" ? "catalog-admin-list catalog-admin-compact" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {
                 const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "Sin categoría";
                 return <article className="catalog-admin-row panel" key={product.id}>
                   <div className="catalog-admin-product"><CatalogAdminImage businessId={activeBusiness.id} product={product} /><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>
@@ -4780,6 +5266,7 @@ export default function App() {
                 <article className="stats-metric panel"><span>Compras pagadas</span><strong>{money(statsPaidPurchases, currencyCode)}</strong><small>Pagos de compras del periodo</small></article>
                 <article className={"stats-metric panel stats-balance" + (statsCashBalance < 0 ? " profit-negative" : " profit-positive")}><span>Balance</span><strong>{money(statsCashBalance, currencyCode)}</strong><small>Ingresos − gastos − compras pagadas</small></article>
               </div>
+              <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} />
               <div className="stats-secondary-metrics"><span>Ventas registradas: <strong>{money(statsSalesTotal, currencyCode)}</strong></span><span>Pendiente por cobrar: <strong>{money(statsOutstanding, currencyCode)}</strong></span><span>{statsPeriodSales.length} {statsPeriodSales.length === 1 ? "venta" : "ventas"}</span></div>
               <section className="stats-pending panel"><div className="stats-section-heading"><div><h3>Ventas con saldo pendiente</h3><p>Las ventas con dinero por cobrar en el periodo elegido.</p></div><button type="button" className="secondary-button compact-button" onClick={() => navigate("sales")}>Ver ventas</button></div>
                 {statsPeriodSales.filter((sale) => Number(sale.total_minor || 0) > Number(sale.amount_paid_minor || 0)).length
@@ -5025,6 +5512,7 @@ export default function App() {
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
+            <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
             <div className="inventory-controls panel">
               <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
@@ -5273,11 +5761,12 @@ export default function App() {
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
-                ["taxes", "Impuestos"]
+                ["taxes", "Impuestos"],
+                ["data", "Datos y copias"]
               ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={!["general", "customization", "help", "language", "taxes"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["general", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
@@ -5354,6 +5843,14 @@ export default function App() {
                 </div>
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar estos ajustes.</p>}
               </div>
+              <div hidden={settingsTab !== "data"} className="settings-tab-content settings-data-panel">
+                <div className="settings-icon"><AppIcon name="settings" size={23}/></div>
+                <h3>Copias de seguridad</h3>
+                <p>Descarga una copia de los registros accesibles de este negocio. El archivo incluye las filas que tus permisos permiten consultar y señala cualquier tabla que no se haya podido exportar.</p>
+                <div className="settings-data-card"><div><strong>Copia de seguridad del negocio</strong><p>Productos, categorías, clientes, proveedores, ventas, pagos, compras, gastos, movimientos, cotizaciones, cupones y auditoría cuando los permisos lo permitan.</p></div><button type="button" className="primary-button" onClick={downloadBusinessBackup} disabled={backupBusy||!activeBusiness?.id||activeBusiness?.role!=="owner"}>{backupBusy?"Preparando copia…":"Descargar copia"}</button></div>
+                {activeBusiness?.role!=="owner"&&<p className="helper-text">Solo el propietario puede descargar una copia completa del negocio.</p>}
+                <div className="tax-guidance-note"><strong>Importante</strong><p>La descarga no incluye contraseñas, credenciales privadas de pasarelas ni cuentas de acceso. Guarda el archivo en un lugar seguro; contiene información comercial y datos de clientes.</p></div>
+              </div>
               </div>
               <div hidden={settingsTab !== "company"} className="settings-tab-panel company-profile-panel">
                 <div className="settings-icon"><AppIcon name="team" size={23} /></div>
@@ -5371,6 +5868,13 @@ export default function App() {
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
+                <div className="business-card-preview-wrap">
+                  <div className="business-card-preview">
+                    <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
+                    <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
+                  </div>
+                  <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
+                </div>
                 <div className="settings-section-divider" />
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
                   {([{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}]).map((day) => { const dayHours=settingsCommercialProfile.hoursSchedule?.[day.key] || {enabled:false,periods:[{open:"09:00",close:"18:00"}]}; const periods=Array.isArray(dayHours.periods)&&dayHours.periods.length?dayHours.periods:[{open:"09:00",close:"18:00"}]; return <div className={"settings-hours-day"+(dayHours.enabled?" is-enabled":"")} key={day.key}><label className="settings-hours-day-check"><input type="checkbox" checked={Boolean(dayHours.enabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current, hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{enabled:e.target.checked,periods:(current.hoursSchedule?.[day.key]?.periods?.length?current.hoursSchedule[day.key].periods:[{open:"09:00",close:"18:00"}])}} }))}/><strong>{day.label}</strong></label>
@@ -5384,16 +5888,54 @@ export default function App() {
             </form>
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
+
+        ) : screen === "receivables" ? (
+          <section className="accounts-page">
+            <div className="products-intro"><div><h2>Cuentas por cobrar</h2><p>Controla las ventas pendientes y registra abonos sin perder el registro actual.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>
+            <div className="accounts-metrics"><article className="accounts-metric panel"><span>Ventas con saldo</span><strong>{receivableRows.filter(x=>x.balance_minor>0).length}</strong></article><article className="accounts-metric panel"><span>Total por cobrar</span><strong>{money(receivableRows.reduce((n,x)=>n+x.balance_minor,0),currencyCode)}</strong></article><article className="accounts-metric panel"><span>Ventas saldadas</span><strong>{receivableRows.filter(x=>x.balance_minor<=0).length}</strong></article></div>
+            <div className="accounts-toolbar"><label><span>Buscar cliente o venta</span><input value={accountsSearch} onChange={e=>setAccountsSearch(e.target.value)} placeholder="Nombre, número o celular"/></label><label><span>Estado</span><select value={accountsStatusFilter} onChange={e=>setAccountsStatusFilter(e.target.value)}><option value="pending">Con saldo pendiente</option><option value="all">Todas las ventas</option></select></label><label><span>Ordenar por</span><select value={accountsSort} onChange={e=>setAccountsSort(e.target.value)}><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option><option value="balance_desc">Mayor saldo</option><option value="balance_asc">Menor saldo</option><option value="name">Nombre del cliente</option></select></label></div>
+            {accountsLoading?<div className="empty-state">Consultando saldos…</div>:(()=>{const q=accountsSearch.trim().toLocaleLowerCase("es");const rows=receivableRows.filter(x=>(accountsStatusFilter==="all"||x.balance_minor>0)&&(!q||[x.sale_number,x.customer?.full_name,x.customer?.company_name,x.customer?.phone,x.customer?.whatsapp].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(q)));rows.sort((a,b)=>accountsSort==="oldest"?new Date(a.sold_at||a.created_at)-new Date(b.sold_at||b.created_at):accountsSort==="balance_desc"?b.balance_minor-a.balance_minor:accountsSort==="balance_asc"?a.balance_minor-b.balance_minor:accountsSort==="name"?String(a.customer?.company_name||a.customer?.full_name||"").localeCompare(String(b.customer?.company_name||b.customer?.full_name||""),"es"):new Date(b.sold_at||b.created_at)-new Date(a.sold_at||a.created_at));return rows.length?<div className="account-record-list">{rows.slice(0,250).map(x=><article className="account-record panel" key={x.id}><div className="account-record-heading"><div><span className="account-record-kicker">{x.sale_number||"Venta"}</span><h3>{x.customer?.company_name||x.customer?.full_name||"Cliente sin ficha"}</h3><span>{new Date(x.sold_at||x.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span></div><span className={"status-pill "+(x.balance_minor>0?"status-unpublished":"status-active")}>{x.balance_minor>0?"Pendiente":"Saldada"}</span></div><div className="account-record-amounts"><div><span>Total</span><strong>{money(x.total_minor,x.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(x.amount_paid_minor,x.currency_code||currencyCode)}</strong></div><div className={x.balance_minor>0?"account-balance-open":""}><span>Saldo</span><strong>{money(x.balance_minor,x.currency_code||currencyCode)}</strong></div></div>{x.balance_minor>0&&canManageSales&&<button type="button" className="primary-button compact-button" onClick={()=>openSalePaymentForm(x)}>＋ Registrar abono</button>}{salePaymentFormFor===x.id&&x.balance_minor>0&&<form className="account-payment-form" onSubmit={e=>registerSalePayment(e,x)}><div className="account-payment-grid"><label><span>Valor del abono</span><input type="number" min="1" max={x.balance_minor/(10**currencyDigits(x.currency_code||currencyCode))} value={salePaymentAmount} onChange={e=>setSalePaymentAmount(e.target.value)} required/></label><label><span>Forma de pago</span><select value={salePaymentMethod} onChange={e=>setSalePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Tarjeta</option><option>Otro</option></select></label><label><span>Fecha</span><input type="date" max={todayInBogota()} value={salePaymentDate} onChange={e=>setSalePaymentDate(e.target.value)} required/></label><label><span>Nota</span><input value={salePaymentNotes} onChange={e=>setSalePaymentNotes(e.target.value)} maxLength={1000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button className="primary-button" disabled={salePaymentSaving}>Guardar abono</button></div></form>}</article>)}</div>:<div className="empty-state"><h3>No hay resultados</h3><p>Prueba otro filtro o registra una venta con saldo pendiente.</p><button className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>})()}
+          </section>
+        ) : screen === "payables" ? (
+          <section className="accounts-page">
+            <div className="products-intro"><div><h2>Cuentas por pagar</h2><p>Consulta saldos de proveedores y registra pagos vinculados a cada compra.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("purchases")}>Ir a compras</button></div>
+            <div className="accounts-metrics"><article className="accounts-metric panel"><span>Compras con saldo</span><strong>{payableRows.filter(x=>x.balance_minor>0).length}</strong></article><article className="accounts-metric panel"><span>Total por pagar</span><strong>{money(payableRows.reduce((n,x)=>n+x.balance_minor,0),currencyCode)}</strong></article><article className="accounts-metric panel"><span>Compras saldadas</span><strong>{payableRows.filter(x=>x.balance_minor<=0).length}</strong></article></div>
+            <div className="accounts-toolbar"><label><span>Buscar proveedor o compra</span><input value={accountsSearch} onChange={e=>setAccountsSearch(e.target.value)} placeholder="Proveedor, número o correo"/></label><label><span>Estado</span><select value={accountsStatusFilter} onChange={e=>setAccountsStatusFilter(e.target.value)}><option value="pending">Con saldo pendiente</option><option value="all">Todas las compras</option></select></label><label><span>Ordenar por</span><select value={accountsSort} onChange={e=>setAccountsSort(e.target.value)}><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option><option value="balance_desc">Mayor saldo</option><option value="balance_asc">Menor saldo</option><option value="name">Nombre del proveedor</option></select></label></div>
+            {accountsLoading?<div className="empty-state">Consultando pagos…</div>:(()=>{const q=accountsSearch.trim().toLocaleLowerCase("es");const rows=payableRows.filter(x=>(accountsStatusFilter==="all"||x.balance_minor>0)&&(!q||[x.purchase_number,x.supplier?.name,x.supplier?.phone,x.supplier?.email,x.supplier?.tax_id].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(q)));rows.sort((a,b)=>accountsSort==="oldest"?new Date(a.purchased_at||a.created_at)-new Date(b.purchased_at||b.created_at):accountsSort==="balance_desc"?b.balance_minor-a.balance_minor:accountsSort==="balance_asc"?a.balance_minor-b.balance_minor:accountsSort==="name"?String(a.supplier?.name||"").localeCompare(String(b.supplier?.name||""),"es"):new Date(b.purchased_at||b.created_at)-new Date(a.purchased_at||a.created_at));return rows.length?<div className="account-record-list">{rows.slice(0,250).map(x=><article className="account-record panel" key={x.id}><div className="account-record-heading"><div><span className="account-record-kicker">{x.purchase_number||"Compra"}</span><h3>{x.supplier?.name||"Proveedor sin ficha"}</h3><span>{new Date(x.purchased_at||x.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span></div><span className={"status-pill "+(x.balance_minor>0?"status-unpublished":"status-active")}>{x.balance_minor>0?"Pendiente":"Saldada"}</span></div><div className="account-record-amounts"><div><span>Total</span><strong>{money(x.total_minor,x.currency_code||currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(x.amount_paid_minor,x.currency_code||currencyCode)}</strong></div><div className={x.balance_minor>0?"account-balance-open":""}><span>Saldo</span><strong>{money(x.balance_minor,x.currency_code||currencyCode)}</strong></div></div>{x.balance_minor>0&&canManagePurchases&&<button type="button" className="primary-button compact-button" onClick={()=>openPurchasePaymentForm(x)}>＋ Registrar pago</button>}{purchasePaymentFormFor===x.id&&x.balance_minor>0&&<form className="account-payment-form" onSubmit={e=>recordPurchasePayment(e,x)}><div className="account-payment-grid"><label><span>Valor del pago</span><input type="number" min="1" max={x.balance_minor/(10**currencyDigits(x.currency_code||currencyCode))} value={purchasePaymentAmount} onChange={e=>setPurchasePaymentAmount(e.target.value)} required/></label><label><span>Forma de pago</span><select value={purchasePaymentMethod} onChange={e=>setPurchasePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Tarjeta</option><option>Otro</option></select></label><label><span>Fecha</span><input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={e=>setPurchasePaymentDate(e.target.value)} required/></label><label><span>Nota</span><input value={purchasePaymentNotes} onChange={e=>setPurchasePaymentNotes(e.target.value)} maxLength={1000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPurchasePaymentFormFor(null)}>Cancelar</button><button className="primary-button" disabled={purchasePaymentSaving}>Guardar pago</button></div></form>}</article>)}</div>:<div className="empty-state"><h3>No hay resultados</h3><p>Prueba otro filtro o registra una compra con saldo pendiente.</p><button className="secondary-button" onClick={()=>navigate("purchases")}>Ir a compras</button></div>})()}
+          </section>
+        ) : screen === "platform_admin" ? (
+          <section className="platform-admin-page">
+            <div className="products-intro"><div><p className="eyebrow">CONTROL INTERNO</p><h2>Administración de plataforma</h2><p>Usuarios, actividad, pruebas de 30 días, pagos e historial. Los cobros recurrentes se conectarán después.</p></div><button type="button" className="secondary-button" onClick={loadPlatformAdminDashboard} disabled={platformAdminLoading}>Actualizar</button></div>
+            {!isPlatformAdmin?<div className="empty-state"><h3>Acceso restringido</h3><p>Este panel se valida también en el servidor.</p></div>:platformAdminLoading&&!platformAdminData?<div className="empty-state">Cargando estadísticas…</div>:<>
+              <div className="platform-admin-metrics">
+                {[[ "Cuentas registradas",platformAdminData?.summary?.total_users ],["Activos hoy",platformAdminData?.summary?.active_today],["Activos en 7 días",platformAdminData?.summary?.active_7d],["Activos en 30 días",platformAdminData?.summary?.active_30d],["PWA detectadas",platformAdminData?.summary?.installed_users],["Pruebas activas",platformAdminData?.summary?.trials_live],["Suscripciones activas",platformAdminData?.summary?.subscribers_active]].map(([label,value])=><article key={label} className="platform-admin-metric panel"><span>{label}</span><strong>{Number(value||0).toLocaleString("es-CO")}</strong></article>)}
+                <article className="platform-admin-metric panel"><span>Pagos confirmados este mes</span><strong>{money(platformAdminData?.summary?.collected_month||0,"COP")}</strong></article>
+              </div>
+              <div className="platform-admin-controls"><label><span>Buscar negocio o correo</span><input value={platformAdminSearch} onChange={e=>setPlatformAdminSearch(e.target.value)} placeholder="Nombre o correo"/></label><label><span>Motivo de la acción</span><input value={platformAdminNote} onChange={e=>setPlatformAdminNote(e.target.value)} maxLength={2000} placeholder="Nota interna opcional"/></label></div>
+              <div className="platform-admin-business-list">{(platformAdminData?.subscriptions||[]).filter(x=>!platformAdminSearch.trim()||[x.business_name,x.owner_email].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(platformAdminSearch.trim().toLocaleLowerCase("es"))).map(x=>{const labels={trialing:"En prueba",active:"Activa",past_due:"Pago pendiente",canceled:"Cancelada",expired:"Vencida",paused:"Pausada"};return <article className="platform-business-card panel" key={x.subscription_id}>
+                <div className="platform-business-heading"><div><span>{x.owner_email}</span><h3>{x.business_name}</h3><small>Creado: {x.business_created_at?new Date(x.business_created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"} · Última actividad: {x.last_seen_at?new Date(x.last_seen_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"}):"Sin datos"}</small></div><span className={"status-pill "+(x.status==="active"?"status-active":x.status==="trialing"?"status-unpublished":"status-inactive")}>{labels[x.status]||x.status}</span></div>
+                <div className="platform-business-facts"><div><span>Inicio</span><strong>{x.current_period_start?new Date(x.current_period_start).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Vence</span><strong>{x.current_period_end?new Date(x.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota"}):"—"}</strong></div><div><span>Días restantes</span><strong>{x.current_period_end?x.days_remaining+" días":"—"}</strong></div><div><span>Total recibido</span><strong>{money(x.total_paid_minor||0,"COP")}</strong></div><div><span>Instalación</span><strong>{x.is_installed?"Detectada":"No detectada"}</strong></div></div>
+                <div className="platform-subscription-editor"><label><span>Estado</span><select value={platformAdminStatusDrafts[x.subscription_id]||x.status} onChange={e=>setPlatformAdminStatusDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}><option value="trialing">En prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="paused">Pausada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option></select></label><label><span>Fin del periodo</span><input type="datetime-local" value={platformAdminPeriodDrafts[x.subscription_id]??""} onChange={e=>setPlatformAdminPeriodDrafts(v=>({...v,[x.subscription_id]:e.target.value}))}/></label><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x)}>Guardar cambios</button><button type="button" className="secondary-button action-small" disabled={platformAdminSaving} onClick={()=>updatePlatformSubscription(x,"trialing",7)}>Extender prueba 7 días</button></div>
+                <button type="button" className="primary-button compact-button" onClick={()=>{setPlatformPaymentBusiness(v=>v===x.business_id?"":x.business_id);setPlatformPaymentDraft({interval:"month",amount:"",method:"Nequi",reference:"",notes:""});}}>＋ Registrar pago</button>
+                {platformPaymentBusiness===x.business_id&&<form className="platform-payment-form" onSubmit={e=>submitPlatformPayment(e,x)}><h4>Confirmar pago recibido</h4><p>Confirma solo después de verificar el ingreso en Nequi o tu cuenta bancaria.</p><div className="platform-payment-grid"><label><span>Periodo</span><select value={platformPaymentDraft.interval} onChange={e=>setPlatformPaymentDraft(v=>({...v,interval:e.target.value}))}><option value="month">Mensual</option><option value="quarter">Trimestral</option><option value="year">Anual</option></select></label><label><span>Valor (COP)</span><input type="number" min="1" value={platformPaymentDraft.amount} onChange={e=>setPlatformPaymentDraft(v=>({...v,amount:e.target.value}))} required/></label><label><span>Medio</span><select value={platformPaymentDraft.method} onChange={e=>setPlatformPaymentDraft(v=>({...v,method:e.target.value}))}><option>Nequi</option><option>Transferencia bancaria</option><option>Efectivo</option><option>Wompi manual</option><option>Tarjeta manual</option><option>Otro</option></select></label><label><span>Referencia única{["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)?" *":""}</span><input value={platformPaymentDraft.reference} onChange={e=>setPlatformPaymentDraft(v=>({...v,reference:e.target.value}))} maxLength={180} required={["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)}/></label><label><span>Notas</span><input value={platformPaymentDraft.notes} onChange={e=>setPlatformPaymentDraft(v=>({...v,notes:e.target.value}))} maxLength={2000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPlatformPaymentBusiness("")}>Cancelar</button><button type="submit" className="primary-button" disabled={platformAdminSaving}>Confirmar y activar</button></div></form>}
+              </article>})}</div>
+              <section className="platform-history-section panel"><h3>Historial de pagos</h3>{(platformAdminData?.payments||[]).length?<div className="platform-history-table-wrap"><table className="platform-history-table"><thead><tr><th>Fecha</th><th>Negocio</th><th>Medio / referencia</th><th>Periodo</th><th>Valor</th><th>Estado</th></tr></thead><tbody>{platformAdminData.payments.map(p=><tr key={p.id}><td>{new Date(p.received_at||p.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"})}</td><td>{p.business_name}<small>{p.owner_email}</small></td><td>{p.payment_method}<small>{p.external_reference||"Sin referencia"}</small></td><td>{{month:"Mensual",quarter:"Trimestral",year:"Anual"}[p.billing_interval]}</td><td>{money(p.amount_minor,p.currency_code||"COP")}</td><td>{p.status}</td></tr>)}</tbody></table></div>:<p>No hay pagos registrados.</p>}</section>
+              <section className="platform-history-section panel"><h3>Historial de suscripciones</h3>{(platformAdminData?.events||[]).length?<div className="platform-events-list">{platformAdminData.events.slice(0,100).map(e=><article className="platform-event-row" key={e.id}><div><strong>{e.business_name}</strong><span>{e.event_type.replaceAll("_"," ")} · {e.old_status||"—"} → {e.new_status||"—"}</span><small>{new Date(e.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}{e.actor_email?" · "+e.actor_email:""}</small>{e.metadata?.note&&<p>{e.metadata.note}</p>}</div>{e.amount_minor!=null&&<strong>{money(e.amount_minor,e.currency_code||"COP")}</strong>}</article>)}</div>:<p>El historial aparecerá aquí cuando se creen pruebas, cambios y pagos.</p>}</section>
+            </>}
+          </section>
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
-            <div className="home-workspace-copy"><p className="eyebrow">INICIO · RESUMEN OPERATIVO</p><h2>¿Qué necesitas poner en marcha hoy?</h2><p>Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.</p></div>
+            <div className="home-workspace-copy"><h2>¿Qué necesitas poner en marcha hoy?</h2><p>Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.</p></div>
             <div className="home-workspace-actions">
+              {isBusinessOwner && <button className="secondary-button" onClick={()=>{setSettingsTab("company");navigate("settings");}}>Tarjeta de presentación ↗</button>}
               {canAccessScreen("sales") && <button className="primary-button" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}>＋ Registrar venta</button>}
               {canManageProducts && <button className="secondary-button" onClick={() => { navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}>＋ Agregar artículo</button>}
               {canAccessScreen("quotes") && <button className="secondary-button" onClick={() => navigate("quotes")}>Crear cotización ↗</button>}
               {canManagePurchases && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}>＋ Registrar compra</button>}
               {canManageExpenses && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}>＋ Registrar gasto</button>}
               {canManageCustomers && <button className="secondary-button" onClick={() => { setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}>＋ Nuevo cliente</button>}
+              {canAccessScreen("receivables") && <button className="secondary-button" onClick={() => navigate("receivables")}>↗ Cuentas por cobrar</button>}
+              {(canViewPurchases || canViewExpenses) && <button className="secondary-button" onClick={() => navigate("payables")}>↙ Cuentas por pagar</button>}
               {!appInstalled && <button className="secondary-button install-app-button" onClick={requestPwaInstall}>{installPrompt ? "＋ Instalar aplicación" : "＋ Cómo instalar"}</button>}
             </div>
           </section>
@@ -5405,6 +5947,7 @@ export default function App() {
               <div><strong>Computador · Chrome o Edge</strong><p>Busca el icono Instalar en la barra de direcciones o abre el menú del navegador y selecciona «Instalar treseiscinco».</p></div>
             </div>
           </section>}
+          {businessSubscription && ["trialing","expired"].includes(businessSubscription.status) && <section className={"trial-status-banner panel"+(businessSubscription.status==="expired"?" trial-expired":"")}><div><strong>{businessSubscription.status==="expired"?"Tu prueba gratuita terminó":"Prueba gratuita de treseiscinco"}</strong><p>{businessSubscription.status==="expired"?"Tu periodo de prueba ha terminado. Revisa con treseiscinco las opciones para continuar.":("Te quedan "+Math.max(0,Math.ceil((new Date(businessSubscription.current_period_end).getTime()-Date.now())/86400000))+" días de prueba. Finaliza el "+new Date(businessSubscription.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})+".")}</p></div><span>{businessSubscription.status==="expired"?"Periodo vencido":"Acceso de prueba"}</span></section>}
           <section className="home-operating-summary">
             <div className="home-section-heading"><div><h2>Resumen operativo</h2><p>Cifras calculadas con los registros actuales del negocio</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
             <div className="home-operating-metrics">

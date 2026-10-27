@@ -47,50 +47,83 @@ const areas = [
   { icon: "◷", title: "Auditorías", description: "Consulta quién hizo cada cambio y cuándo.", screen: "audit" }
 ];
 
-const defaultSidebarLayout = () => [{
-  id: "business",
-  type: "group",
-  title: "TU NEGOCIO",
-  items: [
-    { id: "home", screen: "home", label: "Inicio", icon: "⌂" },
-    ...areas.map((area) => ({ id: area.screen, screen: area.screen, label: area.title, icon: area.icon })),
-    { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" },
-    { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }
-  ]
-}];
+const sidebarAreaItem = (screen) => {
+  const area = areas.find((candidate) => candidate.screen === screen);
+  return area ? { id: area.screen, screen: area.screen, label: area.title, icon: area.icon } : null;
+};
+const defaultSidebarLayout = () => [
+  {
+    id: "inicio",
+    type: "group",
+    title: "INICIO",
+    items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }]
+  },
+  {
+    id: "operaciones",
+    type: "group",
+    title: "OPERACIONES",
+    items: [sidebarAreaItem("products"), sidebarAreaItem("purchases"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }].filter(Boolean)
+  },
+  {
+    id: "comercial",
+    type: "group",
+    title: "COMERCIAL",
+    items: ["sales", "quotes", "customers", "catalog", "coupons"].map(sidebarAreaItem).filter(Boolean)
+  },
+  {
+    id: "finanzas",
+    type: "group",
+    title: "FINANZAS",
+    items: ["stats", "profitability", "payments"].map(sidebarAreaItem).filter(Boolean)
+  },
+  {
+    id: "personal",
+    type: "group",
+    title: "PERSONAL",
+    items: ["team"].map(sidebarAreaItem).filter(Boolean)
+  },
+  {
+    id: "administracion",
+    type: "group",
+    title: "ADMINISTRACIÓN",
+    items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }]
+  }
+];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
+  const orderedItems = fallback.flatMap((group) => group.items);
+  const known = new Map(orderedItems.map((item) => [item.id, item]));
+  const normalizeItem = (item) => ({
+    ...known.get(item.id),
+    label: item.id === "home" ? "Inicio" : String(item.label || known.get(item.id).label).slice(0, 60),
+    icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
+  });
   if (!Array.isArray(layout) || !layout.length) return fallback;
-  const known = new Map(fallback[0].items.map((item) => [item.id, item]));
   const groups = layout.filter((group) => group && group.type === "group" && typeof group.id === "string")
     .map((group) => ({
       id: group.id,
       type: "group",
       title: String(group.title || "Sección").slice(0, 60),
-      items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map((item) => ({
-        ...known.get(item.id), label: item.id === "home" ? "Inicio" : String(item.label || known.get(item.id).label).slice(0, 60),
-        icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
-      })) : []
+      items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;
+
+  // Migra el antiguo menú predeterminado de una sola sección a las nuevas categorías.
+  // Conserva iconos y nombres modificados por el propietario.
+  if (groups.length === 1 && (groups[0].id === "business" || groups[0].title.toUpperCase() === "TU NEGOCIO")) {
+    const savedItems = new Map(groups[0].items.map((item) => [item.id, item]));
+    return fallback.map((group) => ({
+      ...group,
+      items: group.items.map((item) => savedItems.get(item.id) || item)
+    })).filter((group) => group.items.length > 0);
+  }
+
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
-  const orderedItems = fallback[0].items;
   const missing = orderedItems.filter((item) => !placed.has(item.id));
   for (const item of missing) {
-    const orderIndex = orderedItems.findIndex((candidate) => candidate.id === item.id);
-    let insertAt = -1;
-    for (let index = orderIndex - 1; index >= 0; index -= 1) {
-      const previousIndex = groups[0].items.findIndex((candidate) => candidate.id === orderedItems[index].id);
-      if (previousIndex >= 0) { insertAt = previousIndex + 1; break; }
-    }
-    if (insertAt < 0) {
-      for (let index = orderIndex + 1; index < orderedItems.length; index += 1) {
-        const nextIndex = groups[0].items.findIndex((candidate) => candidate.id === orderedItems[index].id);
-        if (nextIndex >= 0) { insertAt = nextIndex; break; }
-      }
-    }
-    if (insertAt < 0) insertAt = groups[0].items.length;
-    groups[0].items.splice(insertAt, 0, item);
+    const defaultGroup = fallback.find((group) => group.items.some((candidate) => candidate.id === item.id));
+    const target = groups.find((group) => group.id === defaultGroup?.id) || groups[0];
+    target.items.push(item);
     placed.add(item.id);
   }
   return groups;
@@ -3878,7 +3911,7 @@ export default function App() {
         </div>
 
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
-          {sidebarLayout.map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
+          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
             onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
             <div className="sidebar-group-heading">

@@ -5012,3 +5012,61 @@ body { background: #F5F7FC; color: #19243A; }
     min-height:100px!important;
   }
 }
+
+
+/* Desktop sales list: compact ledger-like rows; the same data reflows into cards on phones. */
+@media(min-width:1000px) {
+  .sales-list .sale-record {
+    display:grid!important;
+    grid-template-columns:minmax(170px,1.15fr) minmax(105px,.7fr) minmax(235px,1.45fr) minmax(125px,.8fr);
+    align-items:center;
+    gap:8px 16px!important;
+    padding:10px 14px!important;
+  }
+  .sales-list .sale-record-top { grid-column:1; grid-row:1; }
+  .sales-list .sale-record-customer { grid-column:2; grid-row:1; }
+  .sales-list .sale-record-bottom { grid-column:3; grid-row:1; padding:0!important; margin:0!important; border:0!important; }
+  .sales-list .sale-record-disclosure-bar { grid-column:4; grid-row:1; border-top:0!important; border-left:1px solid var(--line); padding:0 0 0 12px!important; min-width:0; }
+  .sales-list .sale-record-details { grid-column:1/-1; width:100%; padding-top:10px; border-top:1px solid var(--line); }
+  .sales-list .sale-record-top>div { flex-direction:column!important; align-items:flex-start!important; gap:3px!important; }
+  .sales-list .sale-record-top>.status-pill { align-self:flex-start; }
+  .sales-list .sale-record-bottom>div>strong { font-size:12px!important; }
+}
+@media(min-width:1000px) and (max-width:1190px) {
+  .sales-list .sale-record {
+    grid-template-columns:minmax(145px,1fr) minmax(90px,.7fr) minmax(210px,1.4fr) minmax(110px,.8fr);
+    gap:8px 10px!important;
+  }
+  .sales-list .sale-record-bottom { gap:6px!important; }
+  .sales-list .sale-record-bottom>div>strong { font-size:11px!important; }
+}
+/* Give the company logo its own generous area below the treseiscinco mark. */
+.app-shell > .sidebar .business-logo-stage {
+  margin:2px 0 12px!important;
+  padding:8px 0 10px!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar {
+  width:min(100%,144px)!important;
+  flex-basis:min(100%,144px)!important;
+  height:132px!important;
+  min-height:118px!important;
+  border-radius:22px!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar img {
+  padding:5px!important;
+}
+@media(max-width:760px) {
+  .app-shell > .sidebar .business-logo-stage { margin:2px 0 8px!important; }
+  .app-shell > .sidebar .business-logo-stage .business-avatar {
+    width:min(100%,132px)!important;
+    flex-basis:min(100%,132px)!important;
+    height:120px!important;
+    min-height:112px!important;
+  }
+}
+@media(max-height:800px) and (min-width:761px) {
+  .app-shell > .sidebar .business-logo-stage .business-avatar {
+    height:116px!important;
+    min-height:108px!important;
+  }
+}

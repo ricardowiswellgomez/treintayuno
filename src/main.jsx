@@ -8,3 +8,11 @@ createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>
 );
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
+      // La app puede seguir utilizándose aunque el navegador no admita el registro del service worker.
+    });
+  });
+}

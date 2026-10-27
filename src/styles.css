@@ -6611,3 +6611,8 @@ body { background: #F5F7FC; color: #19243A; }
   background:var(--soft-green,#DDF7F2)!important;
   color:var(--ink,#19243A)!important;
 }
+
+@media (min-width:601px) {
+  .sidebar .nav-item .nav-icon { width:16px; flex:0 0 16px; }
+  .sidebar .nav-item .nav-label-text { width:auto; flex:1 1 auto; min-width:0; font-size:inherit; text-align:left; }
+}

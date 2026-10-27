@@ -468,7 +468,11 @@ Object.assign(ENGLISH_TEXT, {
 
 
 Object.assign(ENGLISH_TEXT, {
-  "accesos": "shortcuts"
+  "accesos": "shortcuts",
+  "Mostrar consejos junto a los campos": "Show tips beside fields",
+  "El botón flotante «Ayuda» muestra la guía de la sección actual. Los consejos junto a los campos se pueden ocultar por separado.": "The floating Help button opens the guide for the current section. Field tips can be hidden separately.",
+  "Activa o desactiva los iconos de ayuda breve junto a los campos. El botón general «Ayuda» permanece visible.": "Show or hide brief help icons beside fields. The main Help button remains visible.",
+  "Esta opción solo controla los iconos junto a los campos. El botón flotante «Ayuda» siempre permanece disponible.": "This option controls only field-help icons. The floating Help button is always available."
 });
 
 export function applyAppLanguage(language) {

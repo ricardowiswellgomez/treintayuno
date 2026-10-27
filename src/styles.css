@@ -5730,3 +5730,6 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell .products-page .inventory-metric-card strong { font-size:17px!important; }
   .app-shell .catalog-admin-list.catalog-admin-cards { grid-template-columns:minmax(0,1fr)!important; }
 }
+
+/* Contextual help removed from the application UI per owner request. */
+.context-help-layer{display:none!important}

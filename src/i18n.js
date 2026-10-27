@@ -245,7 +245,17 @@ Object.assign(ENGLISH_TEXT, {
 "Cédula de extranjería": "Foreign resident ID",
 "Tarjeta de identidad": "Identity card",
 "Pasaporte": "Passport",
-"Otro": "Other"
+"Otro": "Other",
+"Personaliza el aspecto de tu negocio con cualquier color. El texto, los enlaces y los botones ajustan automáticamente su contraste para mantenerse legibles.":"Customize your business appearance with any color. Text, links, and buttons automatically adjust contrast to stay readable.",
+"Color de acento":"Accent color",
+"Color principal para botones, enlaces, iconos e indicadores. Puedes elegir cualquier tono.":"Main color for buttons, links, icons, and indicators. You can choose any shade.",
+"Fondo de la aplicación":"App background",
+"Cambia el fondo general de las pantallas. El texto se adapta automáticamente a este color.":"Change the overall screen background. Text automatically adapts to this color.",
+"Fondo de tarjetas y paneles":"Cards and panels background",
+"Color de las tarjetas, formularios y paneles. El texto se ajusta automáticamente para mantener el contraste.":"Color of cards, forms, and panels. Text automatically adjusts to maintain contrast.",
+"Fondo del menú lateral":"Sidebar background",
+"Cambia únicamente el fondo del menú lateral. El sistema selecciona un color de texto legible automáticamente.":"Change only the sidebar background. The system automatically selects a readable text color.",
+"Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.":"Automatic contrast is enabled: you do not need to choose text colors or button hover text colors manually."
 });
 
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();

@@ -430,6 +430,11 @@ function readableAccent(accent, background) {
   if (!hexRgb(accent) || !hexRgb(background)) return accent || defaultBusinessTheme.primary;
   return contrastRatio(accent, background) >= 4.5 ? accent : readableText(background, accent);
 }
+function shadeHex(value, amount = 0.12) {
+  const rgb = hexRgb(value);
+  if (!rgb) return "#334155";
+  return "#" + rgb.map((channel) => Math.max(0, Math.min(255, Math.round(channel * (1 - amount)))).toString(16).padStart(2, "0")).join("");
+}
 
 const compareInventoryProducts = (a, b, sort) => {
   const nameCompare = String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" });
@@ -1000,10 +1005,23 @@ function PublicCatalog({ businessId }) {
   const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
   const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
   const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
+  const catalogPrimaryHover = shadeHex(catalogTheme.primary);
   const catalogThemeStyle = {
-    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--muted": readableText(catalogTheme.surface,"#69758A"), "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
-    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
-    background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
+    "--green": catalogPrimary,
+    "--brand-teal": catalogPrimary,
+    "--brand-blue": catalogPrimary,
+    "--brand-yellow": catalogPrimary,
+    "--paper": catalogTheme.surface,
+    "--ink": catalogSurfaceText,
+    "--muted": readableText(catalogTheme.surface, "#69758A"),
+    "--primary-button-bg": catalogTheme.primary,
+    "--primary-button-text": readableText(catalogTheme.primary, "#FFFFFF"),
+    "--button-hover": catalogPrimaryHover,
+    "--button-hover-text": readableText(catalogPrimaryHover, "#FFFFFF"),
+    "--app-background": catalogTheme.background,
+    "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%," + catalogTheme.surface + ")",
+    background: catalogTheme.background,
+    color: readableText(catalogTheme.background, catalogTheme.text)
   };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);
@@ -4999,7 +5017,30 @@ export default function App() {
   const safeSuccessText = readableText(activeTheme.surface, "#16824B");
   const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
   const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
-  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--muted": safeMutedText, "--danger-text": safeDangerText, "--success-text": safeSuccessText, "--primary-button-text": readableText(safeAccent, "#FFFFFF"), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
+  const primaryHover = shadeHex(activeTheme.primary);
+  const primaryButtonText = readableText(activeTheme.primary, "#FFFFFF");
+  const primaryHoverText = readableText(primaryHover, "#FFFFFF");
+  const appThemeStyle = {
+    "--green": safeAccent,
+    "--brand-teal": safeAccent,
+    "--brand-blue": safeAccent,
+    "--brand-yellow": safeAccent,
+    "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, ${activeTheme.surface})`,
+    "--paper": activeTheme.surface,
+    "--ink": readableText(activeTheme.surface, activeTheme.text),
+    "--muted": safeMutedText,
+    "--danger-text": safeDangerText,
+    "--success-text": safeSuccessText,
+    "--primary-button-bg": activeTheme.primary,
+    "--primary-button-text": primaryButtonText,
+    "--sidebar-background": activeTheme.sidebarBackground,
+    "--sidebar-text": safeSidebarText,
+    "--button-hover": primaryHover,
+    "--button-hover-text": primaryHoverText,
+    "--app-background": activeTheme.background,
+    background: activeTheme.background,
+    color: safeAppText
+  };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"
@@ -5955,18 +5996,15 @@ export default function App() {
 
               <div className="settings-section-divider" />
               <h3>Colores y apariencia</h3>
-              <p>Elige una paleta que se aplique a las pantallas del negocio y se conserve al volver a entrar.</p>
+              <p>Personaliza el aspecto de tu negocio con cualquier color. El texto, los enlaces y los botones ajustan automáticamente su contraste para mantenerse legibles.</p>
               <div className="settings-color-grid">
-                <label className="settings-color-field"><span className="field-label-heading"><span>Color principal (elige cualquier color)</span><FieldHelp enabled={contextualHelpEnabled} text="Elige cualquier color. Se aplicará a botones, enlaces, indicadores y elementos activos; no estás obligado a usar la paleta de treseiscinco." /></span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de pantalla</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo general de las pantallas." /></span><input type="color" aria-label="Color de fondo" value={settingsTheme.background} onChange={(e) => setSettingsTheme((current) => ({ ...current, background: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.background.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de tarjetas</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo de tarjetas y paneles." /></span><input type="color" aria-label="Color de tarjetas" value={settingsTheme.surface} onChange={(e) => setSettingsTheme((current) => ({ ...current, surface: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.surface.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span className="field-label-heading"><span>Color del texto</span><FieldHelp enabled={contextualHelpEnabled} text="Color usado para los textos principales de la interfaz." /></span><input type="color" aria-label="Color del texto" value={settingsTheme.text} onChange={(e) => setSettingsTheme((current) => ({ ...current, text: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.text.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo del sidebar</span><FieldHelp enabled={contextualHelpEnabled} text="Cambia solo el fondo del menú lateral, sin modificar el fondo de las pantallas ni las tarjetas." /></span><input type="color" aria-label="Fondo del sidebar" value={settingsTheme.sidebarBackground} onChange={(e) => setSettingsTheme((current) => ({ ...current, sidebarBackground: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.sidebarBackground.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span className="field-label-heading"><span>Texto del sidebar</span><FieldHelp enabled={contextualHelpEnabled} text="Cambia por separado los textos del menú lateral para que puedas mantener un contraste legible con su fondo." /></span><input type="color" aria-label="Texto del sidebar" value={settingsTheme.sidebarText} onChange={(e) => setSettingsTheme((current) => ({ ...current, sidebarText: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.sidebarText.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span>Color del botón al pasar el cursor<FieldHelp enabled={contextualHelpEnabled} text="Color de fondo que toman los botones cuando pasas el cursor por encima." /></span><input type="color" aria-label="Color del botón al pasar el cursor" value={settingsTheme.buttonHover} onChange={(e) => setSettingsTheme((current) => ({ ...current, buttonHover: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.buttonHover.toUpperCase()}</code></label>
-                <label className="settings-color-field"><span>Color del texto del botón al pasar el cursor<FieldHelp enabled={contextualHelpEnabled} text="Color de la letra de los botones mientras el cursor está encima." /></span><input type="color" aria-label="Color del texto del botón al pasar el cursor" value={settingsTheme.buttonHoverText} onChange={(e) => setSettingsTheme((current) => ({ ...current, buttonHoverText: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.buttonHoverText.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Color de acento</span><FieldHelp enabled={contextualHelpEnabled} text="Color principal para botones, enlaces, iconos e indicadores. Puedes elegir cualquier tono." /></span><input type="color" aria-label="Color de acento" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de la aplicación</span><FieldHelp enabled={contextualHelpEnabled} text="Cambia el fondo general de las pantallas. El texto se adapta automáticamente a este color." /></span><input type="color" aria-label="Fondo de la aplicación" value={settingsTheme.background} onChange={(e) => setSettingsTheme((current) => ({ ...current, background: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.background.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de tarjetas y paneles</span><FieldHelp enabled={contextualHelpEnabled} text="Color de las tarjetas, formularios y paneles. El texto se ajusta automáticamente para mantener el contraste." /></span><input type="color" aria-label="Fondo de tarjetas y paneles" value={settingsTheme.surface} onChange={(e) => setSettingsTheme((current) => ({ ...current, surface: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.surface.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Fondo del menú lateral</span><FieldHelp enabled={contextualHelpEnabled} text="Cambia únicamente el fondo del menú lateral. El sistema selecciona un color de texto legible automáticamente." /></span><input type="color" aria-label="Fondo del menú lateral" value={settingsTheme.sidebarBackground} onChange={(e) => setSettingsTheme((current) => ({ ...current, sidebarBackground: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.sidebarBackground.toUpperCase()}</code></label>
               </div>
-              <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": settingsTheme.text, "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": settingsTheme.sidebarText, "--button-hover": settingsTheme.buttonHover, "--button-hover-text": settingsTheme.buttonHoverText }}>
+              <p className="settings-contrast-note"><span aria-hidden="true">✓</span> Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.</p>
+              <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-button-text": readableText(settingsTheme.primary, "#FFFFFF"), "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": readableText(settingsTheme.background, settingsTheme.text), "--preview-surface-text": readableText(settingsTheme.surface, settingsTheme.text), "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": readableText(settingsTheme.sidebarBackground, settingsTheme.sidebarText), "--button-hover": shadeHex(settingsTheme.primary), "--button-hover-text": readableText(shadeHex(settingsTheme.primary), "#FFFFFF") }}>
                 <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>31</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>

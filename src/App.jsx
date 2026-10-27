@@ -3715,7 +3715,7 @@ export default function App() {
       }
       const { error: detailsError } = await supabase.rpc("update_business_employee_details", { p_business_id: activeBusiness.id, p_user_id: targetUserId, p_phone: teamPhone.trim() || null, p_hourly_rate_minor: editingOwnOwnerPhone ? null : (teamHourlyRate.trim() === "" ? null : Number(teamHourlyRate)), p_work_schedule: editingOwnOwnerPhone ? null : { days: teamWorkDays, start: teamWorkStart, end: teamWorkEnd, notes: teamWorkNotes.trim() } });
       if (detailsError) throw detailsError;
-      setNotice(teamEditingUserId ? "Datos laborales y permisos actualizados." : "Colaborador agregado con sus datos laborales.");
+      setNotice(editingOwnOwnerPhone ? "Tu celular se actualizó correctamente." : teamEditingUserId ? "Datos laborales y permisos actualizados." : "Colaborador agregado con sus datos laborales.");
       clearTeamForm();
       await loadTeamModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -5376,7 +5376,7 @@ export default function App() {
               <div><h2>Personas y accesos</h2><p>Invita a tu equipo y asigna a cada persona únicamente los módulos y acciones que necesita.</p></div>
               <button type="button" className="primary-button compact-button" onClick={() => {
                 if (teamFormOpen && !teamEditingUserId) clearTeamForm();
-                else { setTeamEmail(""); setTeamPhone(""); setTeamHourlyRate(""); setTeamWorkDays([]); setTeamWorkStart("09:00"); setTeamWorkEnd("17:00"); setTeamWorkNotes(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
+                else { setTeamEmail(""); setTeamPhone(""); setTeamHourlyRate(""); setTeamWorkDays([]); setTeamWorkStart("09:00"); setTeamWorkEnd("17:00"); setTeamWorkNotes(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamEditingRole(null); setTeamFormOpen(true); setError(""); setNotice(""); }
               }}>{teamFormOpen && !teamEditingUserId ? "Cancelar" : "+ Añadir colaborador"}</button>
             </div>
             <div className="team-info-panel panel">

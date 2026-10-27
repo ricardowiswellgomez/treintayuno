@@ -268,6 +268,17 @@ Object.assign(ENGLISH_TEXT, {
 "Este número pertenece a tu cuenta personal. Es independiente del teléfono público de tu empresa.": "This number belongs to your personal account. It is separate from your business's public phone number.",
 "Guardar celular": "Save mobile number",
 "Número de celular del propietario guardado.": "Owner's mobile number saved.",
+"Barras": "Bars",
+"Pastel": "Pie",
+"Distribución": "Distribution",
+"Distribución del balance": "Balance distribution",
+"Composición del resultado": "Result composition",
+"Comparación de ingresos y salidas en el periodo seleccionado.": "Comparison of income and outflows in the selected period.",
+"Distribución de ingresos, costo de lo vendido y gastos del periodo.": "Distribution of income, cost of goods sold, and expenses for the period.",
+"Importes del periodo seleccionado.": "Amounts for the selected period.",
+"Hay información sin guardar. ¿De verdad deseas salir y descartar los cambios?": "You have unsaved information. Do you really want to leave and discard your changes?",
+"Cerrar módulos": "Close modules",
+"Módulos": "Modules",
 "Escribe un número de celular válido o deja el campo vacío.": "Enter a valid mobile number or leave the field empty."
 });
 

@@ -941,11 +941,28 @@ function PublicCatalog({ businessId }) {
 
   const business = payload?.business;
   const catalogTheme = normalizeBusinessTheme(business?.theme);
+  const openingInfo = (() => {
+    const schedule=business?.commercial_profile?.hoursSchedule;
+    if (!schedule || typeof schedule!=="object") return null;
+    const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Bogota",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+    const values=Object.fromEntries(parts.map((part)=>[part.type,part.value]));
+    const dayKey=({Mon:"mon",Tue:"tue",Wed:"wed",Thu:"thu",Fri:"fri",Sat:"sat",Sun:"sun"})[values.weekday];
+    const dayLabel=({mon:"Lunes",tue:"Martes",wed:"Miércoles",thu:"Jueves",fri:"Viernes",sat:"Sábado",sun:"Domingo"})[dayKey]||"Hoy";
+    const day=schedule[dayKey];
+    const periods=(Array.isArray(day?.periods)?day.periods:[]).filter((p)=>p&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(p.open||"")&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(p.close||""));
+    const fmt=(time)=>{const [hour,minute]=time.split(":").map(Number);const d=new Date(Date.UTC(2020,0,1,hour,minute));return new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",hour:"numeric",minute:"2-digit",hour12:true}).format(d).replace(/\\./g,"").replace(/\\s+/g," ").trim();};
+    const nowMinute=Number(values.hour)*60+Number(values.minute);
+    const isOpen=Boolean(day?.enabled)&&periods.some((p)=>{const [sh,sm]=p.open.split(":").map(Number);const [eh,em]=p.close.split(":").map(Number);const from=sh*60+sm,to=eh*60+em;return from<=to?(nowMinute>=from&&nowMinute<to):(nowMinute>=from||nowMinute<to);});
+    const hours=day?.enabled&&periods.length?periods.map((p)=>fmt(p.open)+"–"+fmt(p.close)).join(" · "):"Sin atención programada";
+    return {dayKey,dayLabel,isOpen,hours,configured:Boolean(day?.enabled&&periods.length)};
+  })();
   const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
+  const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
+  const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
   const catalogThemeStyle = {
-    "--green": catalogTheme.primary, "--paper": catalogTheme.surface, "--ink": catalogTheme.text, "--button-hover": catalogTheme.buttonHover, "--button-hover-text": catalogTheme.buttonHoverText,
-    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogTheme.primary + " 12%,white)",
-    background: catalogTheme.background, color: catalogTheme.text
+    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
+    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
+    background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
   };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);
@@ -1078,7 +1095,7 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span>{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -5096,10 +5113,10 @@ export default function App() {
             </div>
             <div className="catalog-filter-row">
               <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => { setCatalogSearch(e.target.value); setCatalogPage(1); }} placeholder="Buscar producto o categoría…" />
-              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><label className="catalog-sort-control"><span>Ordenar</span><select value={catalogSort} onChange={(e)=>{setCatalogSort(e.target.value);setCatalogPage(1);}} aria-label="Ordenar productos del catálogo"><option value="name">Nombre A–Z</option><option value="code">Código</option><option value="price">Precio</option></select></label><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Lista</button></div></div>
+              <div className="catalog-filter-actions"><span>{filteredCatalogProducts.length} {filteredCatalogProducts.length === 1 ? "producto" : "productos"}</span><label className="catalog-sort-control"><span>Ordenar</span><select value={catalogSort} onChange={(e)=>{setCatalogSort(e.target.value);setCatalogPage(1);}} aria-label="Ordenar productos del catálogo"><option value="name">Nombre A–Z</option><option value="code">Código</option><option value="price">Precio</option></select></label><div className="view-switch" role="group" aria-label="Vista del catálogo"><button type="button" className={catalogViewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("rows")} aria-pressed={catalogViewMode === "rows"}><AppIcon name="list" size={16} /> Filas</button><button type="button" className={catalogViewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("cards")} aria-pressed={catalogViewMode === "cards"}><AppIcon name="grid" size={16} /> Tarjetas</button><button type="button" className={catalogViewMode === "compact" ? "view-option active" : "view-option"} onClick={() => setCatalogViewMode("compact")} aria-pressed={catalogViewMode === "compact"}><AppIcon name="list" size={16} /> Compacta</button></div></div>
             </div>
             {catalogLoading ? <div className="empty-state">Cargando productos reales…</div>
-              : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {
+              : filteredCatalogProducts.length ? <div className={catalogViewMode === "cards" ? "catalog-admin-list catalog-admin-cards" : catalogViewMode === "compact" ? "catalog-admin-list catalog-admin-compact" : "catalog-admin-list"}>{catalogPageProducts.map((product) => {
                 const category = catalogCategories.find((item) => item.id === product.category_id)?.name || "Sin categoría";
                 return <article className="catalog-admin-row panel" key={product.id}>
                   <div className="catalog-admin-product"><CatalogAdminImage businessId={activeBusiness.id} product={product} /><div><strong>{product.name}</strong><span>{category}</span>{product.description && <small>{product.description}</small>}</div></div>

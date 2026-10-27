@@ -1124,6 +1124,15 @@ export default function App() {
   const [productPageSize, setProductPageSize] = useState(12);
   const [showArchivedProducts, setShowArchivedProducts] = useState(false);
   const [viewMode, setViewMode] = useState("rows");
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkProductRows, setBulkProductRows] = useState([]);
+  const [bulkProductsLoading, setBulkProductsLoading] = useState(false);
+  const [bulkProductsSaving, setBulkProductsSaving] = useState(false);
+  const [bulkHistoryProduct, setBulkHistoryProduct] = useState(null);
+  const [bulkHistoryRows, setBulkHistoryRows] = useState([]);
+  const [bulkHistoryLoading, setBulkHistoryLoading] = useState(false);
+  const [bulkHistoryCount, setBulkHistoryCount] = useState(0);
+  const [bulkHistoryPage, setBulkHistoryPage] = useState(1);
   const [productSort, setProductSort] = useState("name");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
@@ -1398,6 +1407,12 @@ export default function App() {
   const [stockMovementPage, setStockMovementPage] = useState(1);
   const [stockMovementRefresh, setStockMovementRefresh] = useState(0);
   const currencyCode = activeBusiness?.currency_code || "COP";
+  const bulkEditHasChanges = bulkProductRows.some((row) =>
+    String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+    Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
+    Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
+    (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
+  );
 
   useEffect(() => {
     if (!activeBusiness?.id || !editingProductId) {
@@ -1524,6 +1539,149 @@ export default function App() {
     });
     return () => { alive = false; subscription.unsubscribe(); };
   }, [loadBusinesses]);
+
+  async function loadBulkProducts() {
+    if (!activeBusiness?.id) return;
+    setBulkProductsLoading(true); setError(""); setNotice("");
+    try {
+      const allRows = [];
+      const chunkSize = 500;
+      for (let offset = 0; offset < 50000; offset += chunkSize) {
+        let query = supabase.from("products")
+          .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at")
+          .eq("business_id", activeBusiness.id).order("name").range(offset, offset + chunkSize - 1);
+        query = showArchivedProducts ? query.not("archived_at", "is", null) : query.is("archived_at", null);
+        if (search.trim()) query = query.ilike("name", "%" + search.trim() + "%");
+        const { data, error: queryError } = await query;
+        if (queryError) throw queryError;
+        const batch = data || [];
+        allRows.push(...batch);
+        if (batch.length < chunkSize) break;
+        if (offset + chunkSize >= 50000) throw new Error("El inventario supera los 50.000 artículos. Filtra por nombre para editar un grupo de artículos.");
+      }
+      const digits = currencyDigits(currencyCode);
+      setBulkProductRows(allRows.map((product) => ({
+        ...product,
+        _draftName: product.name || "",
+        _draftSalePrice: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
+        _draftCostPrice: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
+        _draftStock: String(product.stock_on_hand ?? 0)
+      })));
+      setBulkEditMode(true);
+      setShowProductForm(false);
+      setEditingProductId(null);
+      setSelectedRecordDetail(null);
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setBulkProductsLoading(false);
+    }
+  }
+
+  async function saveBulkProductChanges() {
+    if (!activeBusiness?.id || bulkProductsSaving) return;
+    const digits = currencyDigits(currencyCode);
+    const changedRows = bulkProductRows.filter((row) =>
+      String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+      toMinorUnits(row._draftSalePrice || 0, currencyCode) !== Number(row.sale_price_minor || 0) ||
+      toMinorUnits(row._draftCostPrice || 0, currencyCode) !== Number(row.cost_price_minor || 0) ||
+      (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
+    );
+    if (!changedRows.length) { setNotice("No hay cambios pendientes por guardar."); return; }
+    const invalid = changedRows.find((row) =>
+      !String(row._draftName ?? "").trim() ||
+      !Number.isFinite(Number(row._draftSalePrice)) || Number(row._draftSalePrice) < 0 ||
+      !Number.isFinite(Number(row._draftCostPrice)) || Number(row._draftCostPrice) < 0 ||
+      (row.track_inventory && (!Number.isFinite(Number(row._draftStock)) || Number(row._draftStock) < 0))
+    );
+    if (invalid) { setError("Revisa el nombre, los precios, el costo y las existencias de «" + (invalid.name || "este artículo") + "». No se admiten valores negativos ni nombres vacíos."); return; }
+
+    setBulkProductsSaving(true); setError(""); setNotice("");
+    let savedCount = 0;
+    try {
+      for (const row of changedRows) {
+        const nextName = String(row._draftName).trim();
+        const nextSale = toMinorUnits(row._draftSalePrice, currencyCode);
+        const nextCost = toMinorUnits(row._draftCostPrice, currencyCode);
+        const nextStock = Number(row._draftStock || 0);
+        const productChanges = {};
+        if (nextName !== String(row.name || "")) productChanges.name = nextName;
+        if (nextSale !== Number(row.sale_price_minor || 0)) productChanges.sale_price_minor = nextSale;
+        if (nextCost !== Number(row.cost_price_minor || 0)) productChanges.cost_price_minor = nextCost;
+
+        if (Object.keys(productChanges).length) {
+          const { data: updated, error: updateError } = await supabase.from("products")
+            .update(productChanges).eq("business_id", activeBusiness.id).eq("id", row.id)
+            .select("id").maybeSingle();
+          if (updateError) throw updateError;
+          if (!updated) throw new Error("No se pudieron guardar los datos de «" + row.name + "». Comprueba tus permisos.");
+        }
+        if (row.track_inventory && Math.abs(nextStock - Number(row.stock_on_hand || 0)) > 0.000001) {
+          const delta = nextStock - Number(row.stock_on_hand || 0);
+          const { error: stockError } = await supabase.rpc("adjust_product_stock", {
+            p_business_id: activeBusiness.id,
+            p_product_id: row.id,
+            p_quantity_delta: delta,
+            p_notes: "Ajuste desde la edición masiva del inventario"
+          });
+          if (stockError) throw stockError;
+        }
+        setBulkProductRows((current) => current.map((item) => item.id !== row.id ? item : ({
+          ...item,
+          name: nextName,
+          sale_price_minor: nextSale,
+          cost_price_minor: nextCost,
+          stock_on_hand: row.track_inventory ? nextStock : item.stock_on_hand,
+          _draftName: nextName,
+          _draftSalePrice: String(nextSale / (10 ** digits)),
+          _draftCostPrice: String(nextCost / (10 ** digits)),
+          _draftStock: String(row.track_inventory ? nextStock : item.stock_on_hand)
+        })));
+        savedCount += 1;
+      }
+      await loadProducts();
+      setNotice(savedCount + (savedCount === 1 ? " artículo actualizado. El historial de existencias se conserva." : " artículos actualizados. El historial de existencias se conserva."));
+    } catch (e) {
+      await loadProducts();
+      setError("Se guardaron " + savedCount + " de " + changedRows.length + " artículos antes de encontrar un error. Revisa el inventario y los cambios pendientes. " + friendlyError(e));
+    } finally {
+      setBulkProductsSaving(false);
+    }
+  }
+
+  function updateBulkDraft(productId, field, value) {
+    setBulkProductRows((current) => current.map((product) => product.id === productId ? { ...product, [field]: value } : product));
+  }
+
+  function openBulkHistory(product) {
+    setBulkHistoryProduct(product);
+    setBulkHistoryPage(1);
+  }
+
+  useEffect(() => {
+    if (screen !== "products" || !activeBusiness?.id || !bulkHistoryProduct?.id) {
+      setBulkHistoryRows([]);
+      setBulkHistoryCount(0);
+      setBulkHistoryLoading(false);
+      return;
+    }
+    let active = true;
+    setBulkHistoryLoading(true);
+    const from = (bulkHistoryPage - 1) * 10;
+    supabase.from("stock_movements")
+      .select("id,product_id,movement_type,quantity_delta,reference_type,notes,created_at", { count: "exact" })
+      .eq("business_id", activeBusiness.id).eq("product_id", bulkHistoryProduct.id)
+      .order("created_at", { ascending: false }).range(from, from + 9)
+      .then(({ data, error: movementError, count }) => {
+        if (!active) return;
+        if (movementError) throw movementError;
+        setBulkHistoryRows(data || []);
+        setBulkHistoryCount(count || 0);
+      })
+      .catch((e) => { if (active) { setBulkHistoryRows([]); setBulkHistoryCount(0); setError(friendlyError(e)); } })
+      .finally(() => { if (active) setBulkHistoryLoading(false); });
+    return () => { active = false; };
+  }, [screen, activeBusiness?.id, bulkHistoryProduct?.id, bulkHistoryPage]);
 
   useEffect(() => { if (screen === "products" && activeBusiness?.id) loadProducts(); }, [screen, activeBusiness?.id, loadProducts]);
 
@@ -4559,6 +4717,7 @@ export default function App() {
               <label className="search-box"><span className="field-label-heading"><span>⌕</span><FieldHelp enabled={contextualHelpEnabled} text="Busca productos por su nombre dentro del inventario." /></span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
               <div className="product-tools-actions">
                 {canManageProducts && <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>}
+                {canManageProducts && <button type="button" className="secondary-button action-small bulk-edit-toggle" disabled={bulkProductsLoading || bulkProductsSaving} onClick={() => { if (bulkEditMode) { if (bulkEditHasChanges && !window.confirm("Hay cambios sin guardar. ¿Quieres salir sin guardarlos?")) return; setBulkEditMode(false); } else { loadBulkProducts(); } }}>{bulkEditMode ? "Salir de edición masiva" : bulkProductsLoading ? "Cargando inventario…" : "Editar todos"}</button>}
                 <div className="view-switch" role="group" aria-label="Vista de productos">
                   <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>
                   <button type="button" className={viewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setViewMode("cards")} aria-pressed={viewMode === "cards"}><span>▦</span> Tarjetas</button>
@@ -4566,6 +4725,62 @@ export default function App() {
                 <span className="count-label">{productsCount} {productsCount === 1 ? "producto" : "productos"}</span>
               </div>
             </div>
+            {bulkEditMode && <section className="bulk-inventory-editor">
+              <div className="bulk-inventory-heading">
+                <div><span className="eyebrow">INVENTARIO · EDICIÓN EN LOTE</span><h3>Edita varios artículos en una sola vista</h3><p>Los cambios se guardan solo cuando pulses «Guardar cambios». La ganancia y el margen se recalculan automáticamente.</p></div>
+                <div className="bulk-inventory-summary"><strong>{bulkProductRows.length.toLocaleString("es-CO")}</strong><span>{bulkProductRows.length === 1 ? "artículo cargado" : "artículos cargados"}</span></div>
+              </div>
+              {bulkProductsLoading ? <div className="empty-state">Cargando todos los artículos del inventario…</div> : bulkProductRows.length ? <div className="bulk-inventory-grid">
+                {bulkProductRows.map((row) => {
+                  const saleMinor = Number.isFinite(Number(row._draftSalePrice)) ? toMinorUnits(row._draftSalePrice || 0, currencyCode) : 0;
+                  const costMinor = Number.isFinite(Number(row._draftCostPrice)) ? toMinorUnits(row._draftCostPrice || 0, currencyCode) : 0;
+                  const profitMinor = saleMinor - costMinor;
+                  const margin = saleMinor > 0 ? (profitMinor / saleMinor) * 100 : 0;
+                  const changed = String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+                    Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
+                    Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
+                    (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0));
+                  return <article className={"bulk-inventory-card" + (changed ? " has-changes" : "")} key={row.id}>
+                    <div className="bulk-card-heading">
+                      <div className="product-symbol">{row.product_type === "service" ? "◷" : row.product_type === "digital" ? "◇" : "▦"}</div>
+                      <span className={row.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{row.is_sellable ? "Activo" : "Inactivo"}</span>
+                    </div>
+                    <label className="bulk-card-name"><span>Producto</span><input value={row._draftName} maxLength={160} onChange={(event) => updateBulkDraft(row.id, "_draftName", event.target.value)} aria-label={"Nombre de " + row.name} /></label>
+                    <div className="bulk-card-meta"><span>{categories.find((category) => category.id === row.category_id)?.name || "Sin categoría"}</span><code>{row.sku || "Sin código"}</code></div>
+                    <div className="bulk-card-edit-fields">
+                      <label><span>Precio</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftSalePrice} onChange={(event) => updateBulkDraft(row.id, "_draftSalePrice", event.target.value)} /></label>
+                      <label><span>Costo</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftCostPrice} onChange={(event) => updateBulkDraft(row.id, "_draftCostPrice", event.target.value)} /></label>
+                      <label className="bulk-card-stock-field"><span>Cantidad disponible</span><input type="number" min="0" step="0.001" disabled={!row.track_inventory} value={row.track_inventory ? row._draftStock : ""} placeholder="No aplica" onChange={(event) => updateBulkDraft(row.id, "_draftStock", event.target.value)} /></label>
+                    </div>
+                    <div className="bulk-card-profit">
+                      <div><span>Ganancia por unidad</span><strong className={profitMinor < 0 ? "negative-value" : ""}>{money(profitMinor, currencyCode)}</strong></div>
+                      <div><span>Margen</span><strong className={margin < 0 ? "negative-value" : ""}>{margin.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%</strong></div>
+                    </div>
+                    <div className="bulk-card-footer">
+                      <span className={changed ? "bulk-change-status pending" : "bulk-change-status"}>{changed ? "Sin guardar" : "Al día"}</span>
+                      <button type="button" className="text-button" onClick={() => openBulkHistory(row)}>Historial</button>
+                    </div>
+                  </article>;
+                })}
+              </div> : <div className="empty-state"><h3>No hay artículos para editar</h3><p>Prueba otra búsqueda o revisa el filtro de archivados.</p></div>}
+              <div className="bulk-inventory-footer">
+                <span>{bulkEditHasChanges ? "Tienes cambios pendientes." : "Todos los artículos están al día."} Las variaciones de stock se registran en el historial.</span>
+                <button type="button" className="primary-button" disabled={bulkProductsSaving || bulkProductsLoading || !bulkEditHasChanges} onClick={saveBulkProductChanges}>{bulkProductsSaving ? "Guardando cambios…" : "Guardar cambios"}</button>
+              </div>
+            </section>}
+
+            {bulkHistoryProduct && <div className="bulk-history-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setBulkHistoryProduct(null); }}>
+              <section className="bulk-history-dialog panel" role="dialog" aria-modal="true" aria-label={"Historial de " + bulkHistoryProduct.name}>
+                <div className="bulk-history-heading"><div><span className="eyebrow">MOVIMIENTOS DE STOCK</span><h3>{bulkHistoryProduct.name}</h3><p>Consulta las entradas, salidas y ajustes registrados de este artículo.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar historial" onClick={() => setBulkHistoryProduct(null)}>×</button></div>
+                {bulkHistoryLoading ? <div className="empty-state">Cargando historial…</div> : bulkHistoryRows.length ? <div className="bulk-history-list">{bulkHistoryRows.map((movement) => {
+                  const quantity = Number(movement.quantity_delta || 0);
+                  const label = ({ opening: "Existencias iniciales", sale: "Venta", purchase: "Compra", adjustment_in: "Ajuste de entrada", adjustment_out: "Ajuste de salida", return: "Devolución", return_in: "Devolución", damage: "Daño o pérdida" })[movement.movement_type] || (movement.movement_type ? movement.movement_type.replaceAll("_", " ") : "Movimiento");
+                  return <article className="bulk-history-row" key={movement.id}><strong className={quantity < 0 ? "negative-value" : ""}>{quantity > 0 ? "+" : ""}{quantity.toLocaleString("es-CO")}</strong><div><b>{label}</b><span>{new Date(movement.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" })}</span>{movement.notes && <small>{movement.notes}</small>}</div></article>;
+                })}</div> : <div className="empty-state"><h3>Sin movimientos</h3><p>Este artículo aún no tiene movimientos de existencias registrados.</p></div>}
+                {bulkHistoryCount > 10 && <div className="bulk-history-pagination"><button type="button" className="secondary-button" disabled={bulkHistoryPage <= 1 || bulkHistoryLoading} onClick={() => setBulkHistoryPage((page) => Math.max(1, page - 1))}>Anterior</button><span>Página {bulkHistoryPage} de {Math.ceil(bulkHistoryCount / 10)}</span><button type="button" className="secondary-button" disabled={bulkHistoryPage >= Math.ceil(bulkHistoryCount / 10) || bulkHistoryLoading} onClick={() => setBulkHistoryPage((page) => Math.min(Math.ceil(bulkHistoryCount / 10), page + 1))}>Siguiente</button></div>}
+              </section>
+            </div>}
+
             {viewingVariantsFor && (() => {
               const variantProduct = products.find((product) => product.id === viewingVariantsFor);
               if (!variantProduct) return null;
@@ -4592,7 +4807,7 @@ export default function App() {
                 </section>
               </div>;
             })()}
-            {productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? (
+            {!bulkEditMode && (productsLoading ? <div className="empty-state">Cargando tus productos…</div> : filteredProducts.length ? (
               viewMode === "rows" ? (
                 <div className="product-table-wrap panel">
                   <table className="product-table">
@@ -4623,6 +4838,8 @@ export default function App() {
               ) : (
                 <div className="product-list product-list-cards">{filteredProducts.map((p) => {
   const productVariants = variantsByProduct[p.id] || [];
+  const productProfitMinor = Number(p.sale_price_minor || 0) - Number(p.cost_price_minor || 0);
+  const productMargin = Number(p.sale_price_minor || 0) > 0 ? (productProfitMinor / Number(p.sale_price_minor)) * 100 : 0;
   return <article className="product-card panel product-card-wa mobile-detail-trigger" key={p.id} onClick={(event) => { if (!window.matchMedia("(max-width: 640px)").matches || event.target.closest("button,a,input,select,textarea")) return; openProductDetail(p); }}>
     <div className="product-card-wa-top">
       <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
@@ -4641,16 +4858,17 @@ export default function App() {
       <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
       {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
     </div>
+    <div className="product-card-profit-row"><div><span>Ganancia por unidad</span><strong className={productProfitMinor < 0 ? "negative-value" : ""}>{money(productProfitMinor, currencyCode)}</strong></div><div><span>Margen</span><strong className={productMargin < 0 ? "negative-value" : ""}>{productMargin.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%</strong></div></div>
     <div className="product-card-actions">
-      <div className="product-card-variants"><div><span>Variantes</span><strong>{productVariants.length} {productVariants.length === 1 ? "variante" : "variantes"}</strong></div><button type="button" className="text-button" onClick={() => openProductVariants(p)}>Ver variantes</button></div>
+      <div className="product-card-variants"><div><span>Variantes</span><strong>{productVariants.length} {productVariants.length === 1 ? "variante" : "variantes"}</strong></div><button type="button" className="text-button" onClick={() => openProductVariants(p)}>Ver variantes</button><button type="button" className="text-button product-history-button" onClick={() => openBulkHistory(p)}>Historial</button></div>
       <div className="product-card-action-buttons"><button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}>✎</button>}{canManageProducts && <button type="button" className="text-button" disabled={busy} onClick={() => archiveProduct(p)}>{p.archived_at ? "Restaurar" : "Archivar"}</button>}</div>
     </div>
   </article>;
 })}</div>
               )
-            ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>}
+            ) : <div className="empty-state"><span className="empty-icon">▦</span><h3>{search ? "No encontramos coincidencias" : "Todavía no hay productos"}</h3><p>{search ? "Prueba con otro nombre." : "Añade tu primer producto. Solo mostraremos lo que guardes de verdad."}</p>{!search && <button className="primary-button" onClick={() => setShowProductForm(true)}>+ Crear primer producto</button>}</div>)}
 
-            {!productsLoading && productsCount > 0 && <div className="pagination-bar">
+            {!bulkEditMode && !productsLoading && productsCount > 0 && <div className="pagination-bar">
               <label className="page-size-control"><span className="field-label-heading">Mostrar
                 <FieldHelp enabled={contextualHelpEnabled} text="Elige cuántos productos mostrar por página." /></span><select value={productPageSize} onChange={(e) => { setProductPageSize(Number(e.target.value)); setProductPage(1); }}>
                   <option value={12}>12</option><option value={24}>24</option><option value={48}>48</option>

@@ -225,6 +225,20 @@ Object.assign(ENGLISH_TEXT, {
   "Nuevo proveedor": "New supplier",
   "Nuevo cliente": "New customer",
   "Se creará y quedará seleccionado en esta venta. El registro completo lo puedes ampliar después desde Productos.": "It will be created and selected for this sale. You can complete its full record later in Products.",
+"Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.": "To create a category, use the Category dropdown in the product form. Here you can rename or delete existing categories.",
+"＋ Nuevo cliente…": "+ New customer…",
+"＋ Nuevo proveedor…": "+ New supplier…",
+"Resumen operativo y accesos directos para registrar ventas, crear artículos, preparar cotizaciones y revisar qué necesita atención.": "An operational overview with shortcuts to record sales, create items, prepare quotes, and review what needs attention.",
+"Gestionar categorías": "Manage categories",
+"Categorías": "Categories",
+"Lo esencial para vender, organizar y tomar decisiones, sin ruido ni pasos innecesarios.": "Everything you need to sell, organize, and make decisions without unnecessary steps.",
+"Se guardará como contacto y quedará seleccionado en este gasto, sin borrar los datos del formulario.": "The supplier will be saved as a contact and selected for this expense without losing your current entries.",
+"Productos e inventario": "Products & inventory",
+"Catálogo para compartir": "Shareable catalog",
+"Productos": "Products",
+"Catálogo": "Catalog",
+"Inicio": "Home",
+"INICIO": "HOME"
 });
 
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();

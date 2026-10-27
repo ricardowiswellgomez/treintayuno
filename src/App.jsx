@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabasePublishableKey } from "./lib/supabase.js";
 import { applyAppLanguage } from "./i18n.js";
+import { getSidebarItemLabel } from "./lib/sidebar-menu.js";
 
 function AppIcon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, focusable: "false" };
@@ -8,6 +9,7 @@ function AppIcon({ name, size = 20 }) {
     home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
     products: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z" /><path d="m3.4 7.6 8.6 4.7 8.6-4.7M12 12.3V21" /></>,
     sales: <><path d="M4 4.5h16v15H4z" /><path d="M8 9h8M8 13h4M8 16h8" /></>,
+    accounts: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
     stats: <><path d="M4 20V11h4v9M10 20V4h4v16M16 20v-7h4v7" /></>,
     quotes: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h4M10 12h6M10 16h6" /></>,
     customers: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 2.5 3.7V20" /></>,
@@ -129,7 +131,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -5504,8 +5506,8 @@ function AuthenticatedApp() {
                 {sidebarEditing ? <>
                   <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
-                  <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
+                  <input className="sidebar-label-edit" aria-label={"Nombre de " + getSidebarItemLabel(item)} value={getSidebarItemLabel(item)} readOnly={item.id === "accounts" || item.screen === "accounts"} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span><span className="nav-label-text">{getSidebarItemLabel(item)}</span></button></>}
               </div>
             ))}
           </section>)}

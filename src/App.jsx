@@ -1461,6 +1461,12 @@ export default function App() {
   const [teamLoading, setTeamLoading] = useState(false);
   const [teamFormOpen, setTeamFormOpen] = useState(false);
   const [teamEmail, setTeamEmail] = useState("");
+  const [teamPhone, setTeamPhone] = useState("");
+  const [teamHourlyRate, setTeamHourlyRate] = useState("");
+  const [teamWorkDays, setTeamWorkDays] = useState([]);
+  const [teamWorkStart, setTeamWorkStart] = useState("09:00");
+  const [teamWorkEnd, setTeamWorkEnd] = useState("17:00");
+  const [teamWorkNotes, setTeamWorkNotes] = useState("");
   const [teamPermissionDraft, setTeamPermissionDraft] = useState(blankTeamPermissions);
   const [teamPermissionProfile, setTeamPermissionProfile] = useState("vendedor");
   const [teamEditingUserId, setTeamEditingUserId] = useState(null);
@@ -3630,6 +3636,12 @@ export default function App() {
   function clearTeamForm() {
     setTeamFormOpen(false);
     setTeamEmail("");
+    setTeamPhone("");
+    setTeamHourlyRate("");
+    setTeamWorkDays([]);
+    setTeamWorkStart("09:00");
+    setTeamWorkEnd("17:00");
+    setTeamWorkNotes("");
     setTeamPermissionDraft(blankTeamPermissions);
     setTeamPermissionProfile("vendedor");
     setTeamEditingUserId(null);
@@ -3645,6 +3657,14 @@ export default function App() {
       draft[group.manage] = Boolean(requested[group.manage]);
     }
     setTeamEmail(member.email || "");
+    setTeamPhone(member.phone || "");
+    const employment = (member.permissions || {})._employment || {};
+    const workSchedule = employment.work_schedule || {};
+    setTeamHourlyRate(employment.hourly_rate_minor == null ? "" : String(employment.hourly_rate_minor));
+    setTeamWorkDays(Array.isArray(workSchedule.days) ? workSchedule.days : []);
+    setTeamWorkStart(workSchedule.start || "09:00");
+    setTeamWorkEnd(workSchedule.end || "17:00");
+    setTeamWorkNotes(workSchedule.notes || "");
     setTeamPermissionDraft(draft);
     setTeamPermissionProfile("personalizado");
     setTeamEditingUserId(member.user_id);
@@ -3668,15 +3688,20 @@ export default function App() {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     if (!teamEmail.trim()) { setError("Escribe el correo de la persona."); return; }
+    if (teamHourlyRate.trim() !== "" && (!Number.isSafeInteger(Number(teamHourlyRate)) || Number(teamHourlyRate) < 0)) { setError("El valor de la hora debe ser un número entero igual o superior a cero."); return; }
+    if (teamPhone.trim() && (teamPhone.trim().length < 5 || teamPhone.trim().length > 40)) { setError("Revisa el número de celular."); return; }
+    if (teamWorkEnd <= teamWorkStart) { setError("La hora de salida debe ser posterior a la hora de entrada."); return; }
     setTeamSaving(true); setError(""); setNotice("");
     try {
-      const { error: saveError } = await supabase.rpc("upsert_business_employee", {
-        p_business_id: activeBusiness.id,
-        p_email: teamEmail.trim(),
-        p_permissions: teamPermissionDraft
-      });
-      if (saveError) throw saveError;
-      setNotice(teamEditingUserId ? "Permisos actualizados." : "Colaborador agregado al equipo.");
+      let targetUserId = teamEditingUserId;
+      if (!teamEditingUserId) {
+        const { data, error: saveError } = await supabase.rpc("upsert_business_employee", { p_business_id: activeBusiness.id, p_email: teamEmail.trim(), p_permissions: teamPermissionDraft });
+        if (saveError) throw saveError;
+        targetUserId = data;
+      }
+      const { error: detailsError } = await supabase.rpc("update_business_employee_details", { p_business_id: activeBusiness.id, p_user_id: targetUserId, p_phone: teamPhone.trim() || null, p_hourly_rate_minor: teamHourlyRate.trim() === "" ? null : Number(teamHourlyRate), p_work_schedule: { days: teamWorkDays, start: teamWorkStart, end: teamWorkEnd, notes: teamWorkNotes.trim() } });
+      if (detailsError) throw detailsError;
+      setNotice(teamEditingUserId ? "Datos laborales y permisos actualizados." : "Colaborador agregado con sus datos laborales.");
       clearTeamForm();
       await loadTeamModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -5337,7 +5362,7 @@ export default function App() {
               <div><h2>Personas y accesos</h2><p>Invita a tu equipo y asigna a cada persona únicamente los módulos y acciones que necesita.</p></div>
               <button type="button" className="primary-button compact-button" onClick={() => {
                 if (teamFormOpen && !teamEditingUserId) clearTeamForm();
-                else { setTeamEmail(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
+                else { setTeamEmail(""); setTeamPhone(""); setTeamHourlyRate(""); setTeamWorkDays([]); setTeamWorkStart("09:00"); setTeamWorkEnd("17:00"); setTeamWorkNotes(""); setTeamPermissionDraft({ ...blankTeamPermissions, ...employeePermissionProfiles.vendedor.permissions }); setTeamPermissionProfile("vendedor"); setTeamEditingUserId(null); setTeamFormOpen(true); setError(""); setNotice(""); }
               }}>{teamFormOpen && !teamEditingUserId ? "Cancelar" : "+ Añadir colaborador"}</button>
             </div>
             <div className="team-info-panel panel">
@@ -5350,6 +5375,16 @@ export default function App() {
               <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de treseiscinco *
                 <FieldHelp enabled={contextualHelpEnabled} text="Escribe el correo de la cuenta de treseiscinco de la persona que invitarás al equipo." /></span><input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
               </label>
+              <section className="team-employment-fields" aria-label="Datos laborales">
+                <div className="team-employment-heading"><h4>Datos laborales</h4><p>Guarda el contacto, el valor de la hora y el horario habitual. Estos datos no cambian los permisos de acceso.</p></div>
+                <div className="team-employment-grid">
+                  <label><span className="field-label-heading">Celular</span><input type="tel" inputMode="tel" autoComplete="tel" value={teamPhone} onChange={(e) => setTeamPhone(e.target.value)} maxLength={40} placeholder="+57 300 000 0000" /></label>
+                  <label><span className="field-label-heading">Valor por hora (COP)</span><input type="number" min="0" step="1" inputMode="numeric" value={teamHourlyRate} onChange={(e) => setTeamHourlyRate(e.target.value)} placeholder="Ej. 12000" /><span className="helper-text">Déjalo vacío si aún no está definido.</span></label>
+                  <fieldset className="team-workdays-field"><legend>Días de trabajo</legend><div className="team-workday-options">{[["mon","Lun"],["tue","Mar"],["wed","Mié"],["thu","Jue"],["fri","Vie"],["sat","Sáb"],["sun","Dom"]].map(([day,label]) => <label key={day} className="team-workday-option"><input type="checkbox" checked={teamWorkDays.includes(day)} onChange={(e) => setTeamWorkDays((current) => e.target.checked ? [...current,day] : current.filter((value) => value !== day))} /><span>{label}</span></label>)}</div></fieldset>
+                  <div className="team-worktime-grid"><label><span className="field-label-heading">Hora de entrada</span><input type="time" value={teamWorkStart} onChange={(e) => setTeamWorkStart(e.target.value)} required /></label><label><span className="field-label-heading">Hora de salida</span><input type="time" value={teamWorkEnd} onChange={(e) => setTeamWorkEnd(e.target.value)} required /></label></div>
+                  <label className="team-work-notes"><span className="field-label-heading">Notas del horario (opcional)</span><textarea rows="2" value={teamWorkNotes} onChange={(e) => setTeamWorkNotes(e.target.value)} maxLength={500} placeholder="Ej. descanso de 12:00 a 13:00; sábados alternos" /></label>
+                </div>
+              </section>
               <div className="team-permission-header"><span>Módulo</span><span>Consultar</span><span>Crear y modificar</span></div>
               <div className="team-permission-list">{teamPermissionGroups.map((group) => <div className="team-permission-row" key={group.view}>
                 <strong>{group.label}</strong>
@@ -5371,6 +5406,8 @@ export default function App() {
                     <div className="team-member-details">
                       <div className="team-member-detail"><span>Rol</span><strong>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</strong></div>
                       <div className="team-member-detail"><span>Celular</span>{member.phone ? <a href={"tel:" + String(member.phone).replace(/[^+\d]/g, "")}>{member.phone}</a> : <strong className="muted-value">Sin registrar</strong>}</div>
+                      {isEmployee && <div className="team-member-detail"><span>Valor por hora</span><strong>{(member.permissions || {})._employment?.hourly_rate_minor == null ? "Sin definir" : formatMoney((member.permissions || {})._employment.hourly_rate_minor)}</strong></div>}
+                      {isEmployee && <div className="team-member-detail"><span>Horario</span><strong>{(() => { const schedule = (member.permissions || {})._employment?.work_schedule || {}; const days = Array.isArray(schedule.days) ? schedule.days : []; const labels = {mon:"Lun",tue:"Mar",wed:"Mié",thu:"Jue",fri:"Vie",sat:"Sáb",sun:"Dom"}; return (days.length ? days.map((day) => labels[day] || day).join(", ") : "Días sin definir") + " · " + (schedule.start || "09:00") + "–" + (schedule.end || "17:00"); })()}</strong>{(member.permissions || {})._employment?.work_schedule?.notes && <span>{(member.permissions || {})._employment.work_schedule.notes}</span>}</div>}
                       <div className="team-member-detail"><span>Desde</span><strong>{member.joined_at ? new Intl.DateTimeFormat(uiLanguage === "en" ? "en-US" : "es-CO", { year: "numeric", month: "short", day: "numeric" }).format(new Date(member.joined_at)) : "—"}</strong></div>
                     </div>
                     <p className="team-member-permissions"><strong>Accesos:</strong> {isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>

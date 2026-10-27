@@ -1371,6 +1371,10 @@ export default function App() {
   const [saleProductChoice, setSaleProductChoice] = useState("");
   const [showQuickSaleProductForm, setShowQuickSaleProductForm] = useState(false);
   const [quickSaleProductName, setQuickSaleProductName] = useState("");
+  const [quickSaleProductCategoryId, setQuickSaleProductCategoryId] = useState("");
+  const [showQuickSaleCategoryForm, setShowQuickSaleCategoryForm] = useState(false);
+  const [quickSaleCategoryName, setQuickSaleCategoryName] = useState("");
+  const [quickSaleCategorySaving, setQuickSaleCategorySaving] = useState(false);
   const [quickSaleProductType, setQuickSaleProductType] = useState("physical");
   const [quickSaleProductPrice, setQuickSaleProductPrice] = useState("");
   const [quickSaleProductCost, setQuickSaleProductCost] = useState("");
@@ -1494,6 +1498,20 @@ export default function App() {
   const [stockMovementPage, setStockMovementPage] = useState(1);
   const [stockMovementRefresh, setStockMovementRefresh] = useState(0);
   const currencyCode = activeBusiness?.currency_code || "COP";
+  useEffect(() => {
+    if (screen !== "sales" || !showQuickSaleProductForm || !activeBusiness?.id) return;
+    let active = true;
+    supabase.from("product_categories").select("id,name,description,sort_order")
+      .eq("business_id", activeBusiness.id).order("name")
+      .then(({ data, error: categoryError }) => {
+        if (!active) return;
+        if (categoryError) throw categoryError;
+        setCategories(data || []);
+      })
+      .catch((e) => { if (active) setError(friendlyError(e)); });
+    return () => { active = false; };
+  }, [screen, showQuickSaleProductForm, activeBusiness?.id]);
+
   const bulkEditHasChanges = bulkProductRows.some((row) =>
     String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
     String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
@@ -3783,6 +3801,22 @@ export default function App() {
     finally { setQuickCustomerSaving(false); }
   }
 
+  async function addQuickSaleCategory() {
+    if (!activeBusiness?.id || !quickSaleCategoryName.trim() || quickSaleCategorySaving) return;
+    setQuickSaleCategorySaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: createError } = await supabase.from("product_categories")
+        .insert({ business_id: activeBusiness.id, name: quickSaleCategoryName.trim() })
+        .select("id,name,description,sort_order").single();
+      if (createError) throw createError;
+      setCategories((current) => [...current.filter((item) => item.id !== data.id), data].sort((a, b) => a.name.localeCompare(b.name, "es")));
+      setQuickSaleProductCategoryId(data.id);
+      setQuickSaleCategoryName(""); setShowQuickSaleCategoryForm(false);
+      setNotice("Categoría creada y seleccionada.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setQuickSaleCategorySaving(false); }
+  }
+
   async function addQuickSaleProduct() {
     if (!activeBusiness?.id || !canManageProducts || quickSaleProductSaving) return;
     const name = quickSaleProductName.trim();
@@ -3795,7 +3829,7 @@ export default function App() {
     setQuickSaleProductSaving(true); setError(""); setNotice("");
     try {
       const { data: productId, error: createError } = await supabase.rpc("create_product_with_opening_stock", {
-        p_business_id: activeBusiness.id, p_name: name, p_category_id: null, p_sku: null,
+        p_business_id: activeBusiness.id, p_name: name, p_category_id: quickSaleProductCategoryId || null, p_sku: null,
         p_description: null, p_product_type: quickSaleProductType, p_unit_name: "unidad",
         p_sale_price_minor: toMinorUnits(salePrice, currencyCode), p_cost_price_minor: toMinorUnits(costPrice, currencyCode),
         p_opening_stock: openingStock, p_low_stock_threshold: null, p_commercial_presentation: null
@@ -3807,7 +3841,7 @@ export default function App() {
       if (readError) throw readError;
       setSaleProducts((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setSaleProductChoice(created.id); setSaleQuantity("1");
-      setQuickSaleProductName(""); setQuickSaleProductType("physical"); setQuickSaleProductPrice(""); setQuickSaleProductCost(""); setQuickSaleProductStock("1");
+      setQuickSaleProductName(""); setQuickSaleProductCategoryId(""); setShowQuickSaleCategoryForm(false); setQuickSaleCategoryName(""); setQuickSaleProductType("physical"); setQuickSaleProductPrice(""); setQuickSaleProductCost(""); setQuickSaleProductStock("1");
       setShowQuickSaleProductForm(false);
       setNotice("Artículo creado y seleccionado para esta venta. Completa los demás datos antes de guardar.");
     } catch (e) { setError(friendlyError(e)); }
@@ -4477,6 +4511,7 @@ export default function App() {
   <strong>Nuevo artículo</strong><p className="inline-create-hint">Se creará y quedará seleccionado en esta venta. El registro completo lo puedes ampliar después desde Productos.</p>
   <div className="sale-builder quick-product-fields">
     <label><span className="field-label-heading">Nombre *</span><input value={quickSaleProductName} onChange={(event) => setQuickSaleProductName(event.target.value)} maxLength={160} /></label>
+    <label><span className="field-label-heading">Categoría</span><select value={quickSaleProductCategoryId} onChange={(event) => { if (event.target.value === "__create_sale_category__") { setShowQuickSaleCategoryForm(true); return; } setQuickSaleProductCategoryId(event.target.value); }}><option value="">Sin categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}<option value="__create_sale_category__">＋ Nueva categoría…</option></select>{showQuickSaleCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={quickSaleCategoryName} onChange={(event) => setQuickSaleCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={quickSaleCategorySaving || !quickSaleCategoryName.trim()} onClick={addQuickSaleCategory}>{quickSaleCategorySaving ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickSaleCategoryForm(false); setQuickSaleCategoryName(""); }}>Cancelar</button></div></div>}</label>
     <label><span className="field-label-heading">Tipo</span><select value={quickSaleProductType} onChange={(event) => setQuickSaleProductType(event.target.value)}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Digital</option></select></label>
     <label><span className="field-label-heading">Precio de venta *</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={quickSaleProductPrice} onChange={(event) => setQuickSaleProductPrice(event.target.value)} /></label>
     <label><span className="field-label-heading">Costo por unidad *</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={quickSaleProductCost} onChange={(event) => setQuickSaleProductCost(event.target.value)} /></label>

@@ -1251,7 +1251,6 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
-  const activityRecordedUserRef = useRef(null);
   const [homeCreateMenuOpen, setHomeCreateMenuOpen] = useState(false);
   const homeCreateMenuRef = useRef(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -1293,18 +1292,6 @@ export default function App() {
       window.removeEventListener("appinstalled", onAppInstalled);
     };
   }, [session?.user?.id]);
-
-  useEffect(() => {
-    if (!authReady) return;
-    const userId = session?.user?.id;
-    if (!userId) { activityRecordedUserRef.current = null; return; }
-    if (activityRecordedUserRef.current === userId) return;
-    activityRecordedUserRef.current = userId;
-    const standalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
-    const userAgent = window.navigator.userAgent || "";
-    const platform = /android/i.test(userAgent) ? "android" : /iphone|ipad|ipod/i.test(userAgent) ? "ios" : /windows/i.test(userAgent) ? "windows" : /macintosh|mac os/i.test(userAgent) ? "macos" : "web";
-    supabase.rpc("record_platform_activity", { p_event: "app_open", p_is_standalone: standalone, p_platform: platform }).then(({ error: activityError }) => { if (activityError) console.warn("No se pudo registrar la actividad de la plataforma.", activityError); });
-  }, [authReady, session?.user?.id]);
 
   async function requestPwaInstall() {
     if (!installPrompt) {

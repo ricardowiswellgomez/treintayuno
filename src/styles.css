@@ -3536,3 +3536,15 @@ body { background: #F5F7FC; color: #19243A; }
   .inline-create-actions { align-items:stretch; }
   .inline-create-actions .primary-button { flex:1 1 auto; }
 }
+
+
+.install-guide-panel { display:flex; flex-direction:column; gap:15px; padding:18px; border:1px solid var(--line); border-radius:16px; background:var(--paper); }
+.install-guide-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.install-guide-heading>div { min-width:0; }
+.install-guide-heading h3 { margin:5px 0 6px; color:var(--ink); font:800 18px Manrope,sans-serif; }
+.install-guide-heading p { margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
+.install-guide-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
+.install-guide-steps>div { min-width:0; padding:13px; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb,var(--paper) 94%,var(--green) 2%); }
+.install-guide-steps strong { color:var(--ink); font-size:13px; }
+.install-guide-steps p { margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.55; overflow-wrap:anywhere; }
+@media(max-width:760px) { .install-guide-steps { grid-template-columns:minmax(0,1fr); } .install-guide-panel { padding:14px; } }

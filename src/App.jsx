@@ -20,11 +20,17 @@ function AppIcon({ name, size = 20 }) {
     team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
+    receivables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2 2 3-4" /></>,
+    payables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2-2 3 4" /></>,
     coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,
     edit: <><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></>,
     trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1-3.3-.9-.1-.2a1.7 1.7 0 0 0-1.3-1.2h-.2l-1.1-3.2.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.2.9-3.2.2-.1a1.7 1.7 0 0 0 1.2-1.3v-.2l3.2-1.1.2.1a1.7 1.7 0 0 0 1.8-.4l.2-.1 3.2.9.1.2a1.7 1.7 0 0 0 1.3 1.2h.2l1.1 3.2-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.2-.9 3.2-.2.1" transform="translate(-2 -2) scale(1.08)" /></>,
-    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.6 2.6 0 1 1 4.5 1.8c-1.1 1-2 1.3-2 3M12 17h.01" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
+    "chevron-down": <><path d="m6 9 6 6 6-6" /></>,
+    card: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h4" /></>,
+    expenses: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h3M16 15v3" /></>
   };
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }
@@ -483,10 +489,43 @@ const getBusinessLogoUrl = (path) => {
 };
 function FieldHelp({ text, enabled = true }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  useEffect(() => {
+    const onOtherHelpOpen = (event) => {
+      if (event.detail?.source !== rootRef.current) setOpen(false);
+    };
+    document.addEventListener("treseiscinco:field-help-open", onOtherHelpOpen);
+    return () => document.removeEventListener("treseiscinco:field-help-open", onOtherHelpOpen);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onOutsidePointer = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const onEscape = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onOutsidePointer, true);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", onOutsidePointer, true);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [open]);
   if (!enabled || !text) return null;
+  const toggleHelp = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: rootRef.current } }));
+    setOpen(true);
+  };
   return (
-    <span className="field-help-wrap">
-      <button type="button" className="field-help-trigger" title="¿Para qué sirve?" aria-label="¿Para qué sirve?" aria-expanded={open} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen((current) => !current); }}>?</button>
+    <span className="field-help-wrap" ref={rootRef}>
+      <button type="button" className="field-help-trigger" title="¿Para qué sirve?" aria-label="¿Para qué sirve?" aria-expanded={open} onClick={toggleHelp}>?</button>
       {open && <span className="field-help-popover" role="tooltip">
         <strong>¿Para qué sirve?</strong>
         <span>{text}</span>
@@ -1210,7 +1249,22 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [homeCreateMenuOpen, setHomeCreateMenuOpen] = useState(false);
+  const homeCreateMenuRef = useRef(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    if (!homeCreateMenuOpen) return;
+    const closeOnOutside = (event) => {
+      if (!homeCreateMenuRef.current?.contains(event.target)) setHomeCreateMenuOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setHomeCreateMenuOpen(false); };
+    document.addEventListener("pointerdown", closeOnOutside, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [homeCreateMenuOpen]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const checkInstalled = () => Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
@@ -2180,7 +2234,7 @@ export default function App() {
     }).then(({error:activityError})=>{
       if(activityError) console.warn("No se pudo registrar la actividad de plataforma.");
     }).catch(()=>{});
-  }, [session?.user?.id]);
+  }, [session?.user?.id, screen]);
 
   useEffect(() => {
     if (!activeBusiness?.id || !["owner","admin"].includes(activeBusiness.role)) {
@@ -4607,6 +4661,8 @@ export default function App() {
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
+  const homeShortcutOrder = ["products","sales","customers","stats","quotes","purchases"];
+  const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
@@ -5925,18 +5981,24 @@ export default function App() {
           </section>
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
-            <div className="home-workspace-copy"><h2>¿Qué necesitas poner en marcha hoy?</h2><p>Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.</p></div>
+            <div className="home-workspace-copy">
+              <h2>Tu negocio, en marcha</h2>
+              <p>Lo esencial para vender, organizar y tomar decisiones, sin ruido ni pasos innecesarios.</p>
+            </div>
             <div className="home-workspace-actions">
-              {isBusinessOwner && <button className="secondary-button" onClick={()=>{setSettingsTab("company");navigate("settings");}}>Tarjeta de presentación ↗</button>}
-              {canAccessScreen("sales") && <button className="primary-button" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}>＋ Registrar venta</button>}
-              {canManageProducts && <button className="secondary-button" onClick={() => { navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}>＋ Agregar artículo</button>}
-              {canAccessScreen("quotes") && <button className="secondary-button" onClick={() => navigate("quotes")}>Crear cotización ↗</button>}
-              {canManagePurchases && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}>＋ Registrar compra</button>}
-              {canManageExpenses && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}>＋ Registrar gasto</button>}
-              {canManageCustomers && <button className="secondary-button" onClick={() => { setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}>＋ Nuevo cliente</button>}
-              {canAccessScreen("receivables") && <button className="secondary-button" onClick={() => navigate("receivables")}>↗ Cuentas por cobrar</button>}
-              {(canViewPurchases || canViewExpenses) && <button className="secondary-button" onClick={() => navigate("payables")}>↙ Cuentas por pagar</button>}
-              {!appInstalled && <button className="secondary-button install-app-button" onClick={requestPwaInstall}>{installPrompt ? "＋ Instalar aplicación" : "＋ Cómo instalar"}</button>}
+              {canAccessScreen("sales") && <button className="primary-button home-primary-action" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}><AppIcon name="sales" size={17}/> Registrar venta</button>}
+              {(canManageProducts || canManageSales || canManagePurchases || canManageExpenses || canManageCustomers) && <div className="home-create-menu" ref={homeCreateMenuRef}>
+                <button type="button" className={"secondary-button home-create-trigger"+(homeCreateMenuOpen?" is-open":"")} aria-haspopup="true" aria-expanded={homeCreateMenuOpen} onClick={() => setHomeCreateMenuOpen((open) => !open)}><AppIcon name="plus" size={17}/> Crear <AppIcon name="chevron-down" size={16}/></button>
+                {homeCreateMenuOpen && <div className="home-create-dropdown" role="group" aria-label="Acciones para crear">
+                  {canManageProducts && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}><span className="home-create-item-icon"><AppIcon name="products" size={18}/></span><span><strong>Crear artículo</strong><small>Producto, servicio o artículo digital</small></span></button>}
+                  {canManageSales && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); clearQuoteDraft(); setError(""); setNotice(""); navigate("quotes"); setShowQuoteForm(true); }}><span className="home-create-item-icon"><AppIcon name="quotes" size={18}/></span><span><strong>Crear cotización</strong><small>Preparar una propuesta para un cliente</small></span></button>}
+                  {canManagePurchases && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}><span className="home-create-item-icon"><AppIcon name="purchases" size={18}/></span><span><strong>Registrar compra</strong><small>Ingresar una compra de proveedor</small></span></button>}
+                  {canManageExpenses && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}><span className="home-create-item-icon"><AppIcon name="expenses" size={18}/></span><span><strong>Registrar gasto</strong><small>Registrar una salida de dinero</small></span></button>}
+                  {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
+                </div>}
+              </div>}
+              {isBusinessOwner && <button type="button" className="home-utility-action" onClick={()=>{setSettingsTab("company");navigate("settings");}}><AppIcon name="card" size={17}/> Tarjeta de presentación</button>}
+              {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>
           {showInstallGuide && !appInstalled && <section className="install-guide-panel panel">
@@ -5949,7 +6011,7 @@ export default function App() {
           </section>}
           {businessSubscription && ["trialing","expired"].includes(businessSubscription.status) && <section className={"trial-status-banner panel"+(businessSubscription.status==="expired"?" trial-expired":"")}><div><strong>{businessSubscription.status==="expired"?"Tu prueba gratuita terminó":"Prueba gratuita de treseiscinco"}</strong><p>{businessSubscription.status==="expired"?"Tu periodo de prueba ha terminado. Revisa con treseiscinco las opciones para continuar.":("Te quedan "+Math.max(0,Math.ceil((new Date(businessSubscription.current_period_end).getTime()-Date.now())/86400000))+" días de prueba. Finaliza el "+new Date(businessSubscription.current_period_end).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})+".")}</p></div><span>{businessSubscription.status==="expired"?"Periodo vencido":"Acceso de prueba"}</span></section>}
           <section className="home-operating-summary">
-            <div className="home-section-heading"><div><h2>Resumen operativo</h2><p>Cifras calculadas con los registros actuales del negocio</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
+            <div className="home-section-heading"><div><h2>Cifras clave</h2><p>Indicadores actualizados desde tus movimientos registrados.</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos reales"}</span></div>
             <div className="home-operating-metrics">
               {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Referencias</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><small>Artículos en inventario</small></button>}
               {canAccessScreen("products") && <button type="button" className={"home-operating-metric" + (inventoryOverview.outOfStockCount ? " home-metric-alert" : "")} onClick={() => { setProductStockFilter("out_of_stock"); setProductPage(1); navigate("products"); }}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><small>{inventoryOverview.outOfStockCount ? "Revisar agotados" : "Sin agotados registrados"}</small></button>}
@@ -5962,8 +6024,8 @@ export default function App() {
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
           <section className="home-work-modules">
-            <div className="home-section-heading"><div><h2>Accesos de trabajo</h2><p>Abre el área que necesitas para continuar tu operación</p></div><span className="count-label">{visibleAreas.length} módulos</span></div>
-            <section className="area-grid">{visibleAreas.map((area) => <button className="area-card area-card-button" key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={25} /></span><span className="area-arrow">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
+            <div className="home-section-heading home-modules-heading"><div><h2>Accesos principales</h2><p>Las tareas más habituales, en su sitio. El resto de módulos está en el menú lateral.</p></div><span className="count-label">{homeShortcutAreas.length} accesos</span></div>
+            <section className="area-grid home-area-grid">{homeShortcutAreas.map((area) => <button type="button" className={"area-card area-card-button home-area-card home-area-card-"+area.screen} key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={22} /></span><span className="area-arrow" aria-hidden="true">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>

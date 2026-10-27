@@ -365,7 +365,7 @@ begin
   insert into public.platform_subscription_payments(business_id,subscription_id,billing_interval,amount_minor,currency_code,
     payment_method,external_reference,status,received_at,recorded_by,notes)
   values(p_business_id,v_sub.id,p_billing_interval,p_amount_minor,p_currency_code,p_payment_method,
-    v_reference,'confirmed',coalesce(p_received_at,now()),(select auth.uid()),nullif(trim(coalesce(p_notes,''),'')))
+    v_reference,'confirmed',coalesce(p_received_at,now()),(select auth.uid()),nullif(trim(coalesce(p_notes,'')),''))
   returning id into v_payment_id;
   return jsonb_build_object('ok',true,'payment_id',v_payment_id,'period_start',v_start,'period_end',v_end);
 end;

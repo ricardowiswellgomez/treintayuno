@@ -1122,7 +1122,52 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("sales");
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [appInstalled, setAppInstalled] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkInstalled = () => Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
+    setAppInstalled(checkInstalled());
+    const onBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onAppInstalled = () => {
+      setAppInstalled(true);
+      setInstallPrompt(null);
+      setShowInstallGuide(false);
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, []);
+
+  async function requestPwaInstall() {
+    if (!installPrompt) {
+      setShowInstallGuide((open) => !open);
+      return;
+    }
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === "accepted") {
+        setAppInstalled(true);
+        setShowInstallGuide(false);
+      } else {
+        setShowInstallGuide(true);
+      }
+    } catch {
+      setShowInstallGuide(true);
+    } finally {
+      setInstallPrompt(null);
+    }
+  }
+
   const [sidebarEditing, setSidebarEditing] = useState(false);
   const [sidebarSaving, setSidebarSaving] = useState(false);
   const [sidebarConfirmSave, setSidebarConfirmSave] = useState(false);
@@ -5314,8 +5359,17 @@ export default function App() {
               {canManagePurchases && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}>＋ Registrar compra</button>}
               {canManageExpenses && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}>＋ Registrar gasto</button>}
               {canManageCustomers && <button className="secondary-button" onClick={() => { setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}>＋ Nuevo cliente</button>}
+              {!appInstalled && <button className="secondary-button install-app-button" onClick={requestPwaInstall}>{installPrompt ? "＋ Instalar aplicación" : "＋ Cómo instalar"}</button>}
             </div>
           </section>
+          {showInstallGuide && !appInstalled && <section className="install-guide-panel panel">
+            <div className="install-guide-heading"><div><span className="eyebrow">TRESEISCCINCO · APP INSTALABLE</span><h3>Usa treseiscinco desde tu pantalla de inicio</h3><p>La instalación crea un acceso directo con aspecto de aplicación. Necesitas conexión a internet para consultar y guardar los datos del negocio.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar instrucciones" onClick={() => setShowInstallGuide(false)}>×</button></div>
+            <div className="install-guide-steps">
+              <div><strong>Android · Chrome</strong><p>Abre el menú ⋮ del navegador y elige «Instalar aplicación» o «Agregar a pantalla principal».</p></div>
+              <div><strong>iPhone · Safari</strong><p>Toca Compartir y selecciona «Agregar a pantalla de inicio»; después confirma «Agregar».</p></div>
+              <div><strong>Computador · Chrome o Edge</strong><p>Busca el icono Instalar en la barra de direcciones o abre el menú del navegador y selecciona «Instalar treseiscinco».</p></div>
+            </div>
+          </section>}
           <section className="home-operating-summary">
             <div className="home-section-heading"><div><h2>Resumen operativo</h2><p>Cifras calculadas con los registros actuales del negocio</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
             <div className="home-operating-metrics">

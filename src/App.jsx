@@ -1792,8 +1792,10 @@ export default function App() {
         savedCount += 1;
       }
       await loadProducts();
+      setInventoryOverviewRefresh((current) => current + 1);
       setNotice(savedCount + (savedCount === 1 ? " artículo actualizado. El historial de existencias se conserva." : " artículos actualizados. El historial de existencias se conserva."));
     } catch (e) {
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
       setError("Se guardaron " + savedCount + " de " + changedRows.length + " artículos antes de encontrar un error. Revisa el inventario y los cambios pendientes. " + friendlyError(e));
     } finally {
@@ -2409,6 +2411,7 @@ export default function App() {
       if (!data) throw new Error("No se pudo actualizar el producto. Comprueba tus permisos.");
       setNotice(restoring ? "Producto restaurado." : "Producto archivado. Puedes encontrarlo en «Archivados».");
       if (viewingVariantsFor === product.id) setViewingVariantsFor(null);
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -2441,6 +2444,7 @@ export default function App() {
         setEditingProductId(null);
         setStagedImages([]);
         pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
+        setInventoryOverviewRefresh((current) => current + 1);
         await loadProducts();
         setNotice("Producto actualizado. El historial de existencias se conservó.");
         return;
@@ -2469,6 +2473,7 @@ export default function App() {
         try { await uploadProductImage(newProductId, image.file, activeBusiness.id); uploaded += 1; }
         catch { imageFailures += 1; }
       }
+      setInventoryOverviewRefresh((current) => current + 1);
       setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
       if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
       setSearch(""); setProductPage(1);
@@ -2494,6 +2499,7 @@ export default function App() {
       setAdjustDelta(""); setAdjustNote("");
       setNotice("Existencias actualizadas. El movimiento quedó guardado en el historial.");
       setStockMovementPage(1); setStockMovementRefresh((value) => value + 1);
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -5102,7 +5108,7 @@ export default function App() {
               <h3>Colores y apariencia</h3>
               <p>Elige una paleta que se aplique a las pantallas del negocio y se conserve al volver a entrar.</p>
               <div className="settings-color-grid">
-                <label className="settings-color-field"><span className="field-label-heading"><span>Color principal</span><FieldHelp enabled={contextualHelpEnabled} text="Color principal de la interfaz, usado en acciones y elementos destacados." /></span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Color principal (elige cualquier color)</span><FieldHelp enabled={contextualHelpEnabled} text="Elige cualquier color. Se aplicará a botones, enlaces, indicadores y elementos activos; no estás obligado a usar la paleta de treseiscinco." /></span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de pantalla</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo general de las pantallas." /></span><input type="color" aria-label="Color de fondo" value={settingsTheme.background} onChange={(e) => setSettingsTheme((current) => ({ ...current, background: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.background.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de tarjetas</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo de tarjetas y paneles." /></span><input type="color" aria-label="Color de tarjetas" value={settingsTheme.surface} onChange={(e) => setSettingsTheme((current) => ({ ...current, surface: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.surface.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Color del texto</span><FieldHelp enabled={contextualHelpEnabled} text="Color usado para los textos principales de la interfaz." /></span><input type="color" aria-label="Color del texto" value={settingsTheme.text} onChange={(e) => setSettingsTheme((current) => ({ ...current, text: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.text.toUpperCase()}</code></label>
@@ -5116,7 +5122,7 @@ export default function App() {
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
-              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
+              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Usar paleta de treseiscinco</button><p>Recupera la paleta habitual de treseiscinco. También puedes elegir cualquier color con los controles anteriores. Tu logo no se modifica; guarda para aplicar los cambios.</p></div>}
               </div>
               <div hidden={settingsTab !== "help"} className="settings-tab-content">
               <div className="settings-section-divider" />

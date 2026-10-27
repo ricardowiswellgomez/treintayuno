@@ -4423,3 +4423,91 @@ body { background: #F5F7FC; color: #19243A; }
   .settings-color-field { padding:12px; }
   .settings-color-field input[type=color] { height:46px; }
 }
+
+
+/* Last-mile contrast enforcement: theme colors are user-selected, so foregrounds cannot stay hardcoded white. */
+.app-shell .primary-button,
+.app-shell .brand-mark,
+.app-shell .context-help-trigger,
+.app-shell .ai-assistant-trigger,
+.app-shell .ai-assistant-form button,
+.app-shell .settings-theme-preview-brand>span,
+.app-shell .settings-theme-preview>button,
+.app-shell .sales-date-toolbar .stats-period-button.active,
+.app-shell .audit-toolbar .stats-period-button.active,
+.app-shell .customer-detail-header,
+.public-catalog-shell .public-catalog-cart-trigger,
+.public-catalog-shell .public-catalog-add-button,
+.public-catalog-shell .public-checkout-pay-button,
+.public-catalog-shell .public-business-info-done,
+.public-catalog-shell .public-catalog-bottom-tab>b {
+  background: var(--primary-button-bg, var(--green, #475569));
+  color: var(--primary-button-text, #FFFFFF);
+}
+.app-shell .primary-button:hover,
+.app-shell .context-help-trigger:hover,
+.app-shell .ai-assistant-trigger:hover,
+.app-shell .ai-assistant-form button:hover,
+.app-shell .settings-theme-preview>button:hover,
+.public-catalog-shell .public-catalog-cart-trigger:hover,
+.public-catalog-shell .public-catalog-add-button:hover,
+.public-catalog-shell .public-checkout-pay-button:hover,
+.public-catalog-shell .public-business-info-done:hover {
+  background: var(--button-hover, var(--primary-button-bg, var(--green, #475569)));
+  color: var(--button-hover-text, var(--primary-button-text, #FFFFFF));
+}
+.app-shell .settings-reset-theme {
+  background: var(--primary-button-bg, var(--green, #475569)) !important;
+  border-color: var(--primary-button-bg, var(--green, #475569)) !important;
+  color: var(--primary-button-text, #FFFFFF) !important;
+}
+.app-shell .settings-theme-preview-brand>span {
+  color: var(--preview-button-text, #FFFFFF);
+}
+
+/* Surface cards use the surface foreground, not the overall page foreground. */
+.app-shell .panel,
+.app-shell .area-card,
+.app-shell .inventory-metric-card,
+.app-shell .home-operating-metric,
+.app-shell .home-workspace-hero,
+.app-shell .home-area-card,
+.app-shell .settings-card,
+.app-shell .product-card,
+.app-shell .product-form,
+.app-shell .team-member,
+.app-shell .quote-record,
+.app-shell .sale-record,
+.app-shell .purchase-record,
+.app-shell .expense-record,
+.app-shell .customer-row,
+.app-shell .supplier-record {
+  color: var(--ink, #19243A);
+}
+.app-shell .panel label,
+.app-shell .area-card label,
+.app-shell .settings-card label,
+.app-shell .product-form label {
+  color: var(--ink, #19243A);
+}
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.app-shell select,
+.app-shell textarea {
+  color: var(--ink, #19243A);
+  background-color: var(--paper, #FFFFFF);
+}
+.app-shell input::placeholder,
+.app-shell textarea::placeholder {
+  color: var(--muted, #69758A);
+  opacity: 1;
+}
+
+/* Keep the global help and AI layers accessible regardless of which section is open. */
+.context-help-trigger {
+  background: var(--primary-button-bg, var(--green, #475569));
+  color: var(--primary-button-text, #FFFFFF);
+}
+.context-help-trigger:hover {
+  background: var(--button-hover, var(--primary-button-bg, var(--green, #475569)));
+  color: var(--button-hover-text, var(--primary-button-text, #FFFFFF));
+}

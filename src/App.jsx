@@ -5363,7 +5363,7 @@ export default function App() {
             </div>
           </section>
           {showInstallGuide && !appInstalled && <section className="install-guide-panel panel">
-            <div className="install-guide-heading"><div><span className="eyebrow">TRESEISCCINCO · APP INSTALABLE</span><h3>Usa treseiscinco desde tu pantalla de inicio</h3><p>La instalación crea un acceso directo con aspecto de aplicación. Necesitas conexión a internet para consultar y guardar los datos del negocio.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar instrucciones" onClick={() => setShowInstallGuide(false)}>×</button></div>
+            <div className="install-guide-heading"><div><span className="eyebrow">TRESEISCINCO · APP INSTALABLE</span><h3>Usa treseiscinco desde tu pantalla de inicio</h3><p>La instalación crea un acceso directo con aspecto de aplicación. Necesitas conexión a internet para consultar y guardar los datos del negocio.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar instrucciones" onClick={() => setShowInstallGuide(false)}>×</button></div>
             <div className="install-guide-steps">
               <div><strong>Android · Chrome</strong><p>Abre el menú ⋮ del navegador y elige «Instalar aplicación» o «Agregar a pantalla principal».</p></div>
               <div><strong>iPhone · Safari</strong><p>Toca Compartir y selecciona «Agregar a pantalla de inicio»; después confirma «Agregar».</p></div>

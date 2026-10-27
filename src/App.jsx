@@ -1324,6 +1324,13 @@ export default function App() {
   const [quickCustomerEmail, setQuickCustomerEmail] = useState("");
   const [quickCustomerSaving, setQuickCustomerSaving] = useState(false);
   const [saleProductChoice, setSaleProductChoice] = useState("");
+  const [showQuickSaleProductForm, setShowQuickSaleProductForm] = useState(false);
+  const [quickSaleProductName, setQuickSaleProductName] = useState("");
+  const [quickSaleProductType, setQuickSaleProductType] = useState("physical");
+  const [quickSaleProductPrice, setQuickSaleProductPrice] = useState("");
+  const [quickSaleProductCost, setQuickSaleProductCost] = useState("");
+  const [quickSaleProductStock, setQuickSaleProductStock] = useState("1");
+  const [quickSaleProductSaving, setQuickSaleProductSaving] = useState(false);
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleItems, setSaleItems] = useState([]);
   const [saleSaving, setSaleSaving] = useState(false);
@@ -3731,6 +3738,37 @@ export default function App() {
     finally { setQuickCustomerSaving(false); }
   }
 
+  async function addQuickSaleProduct() {
+    if (!activeBusiness?.id || !canManageProducts || quickSaleProductSaving) return;
+    const name = quickSaleProductName.trim();
+    const salePrice = Number(quickSaleProductPrice);
+    const costPrice = Number(quickSaleProductCost);
+    const openingStock = quickSaleProductType === "physical" ? Number(quickSaleProductStock) : 0;
+    if (!name) { setError("Escribe el nombre del artículo."); return; }
+    if (quickSaleProductPrice === "" || quickSaleProductCost === "" || !Number.isFinite(salePrice) || salePrice < 0 || !Number.isFinite(costPrice) || costPrice < 0) { setError("Escribe un precio y un costo válidos, sin valores negativos."); return; }
+    if (quickSaleProductType === "physical" && (!Number.isFinite(openingStock) || openingStock < 0)) { setError("Escribe una cantidad inicial válida."); return; }
+    setQuickSaleProductSaving(true); setError(""); setNotice("");
+    try {
+      const { data: productId, error: createError } = await supabase.rpc("create_product_with_opening_stock", {
+        p_business_id: activeBusiness.id, p_name: name, p_category_id: null, p_sku: null,
+        p_description: null, p_product_type: quickSaleProductType, p_unit_name: "unidad",
+        p_sale_price_minor: toMinorUnits(salePrice, currencyCode), p_cost_price_minor: toMinorUnits(costPrice, currencyCode),
+        p_opening_stock: openingStock, p_low_stock_threshold: null, p_commercial_presentation: null
+      });
+      if (createError) throw createError;
+      const { data: created, error: readError } = await supabase.from("products")
+        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at")
+        .eq("business_id", activeBusiness.id).eq("id", productId).single();
+      if (readError) throw readError;
+      setSaleProducts((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setSaleProductChoice(created.id); setSaleQuantity("1");
+      setQuickSaleProductName(""); setQuickSaleProductType("physical"); setQuickSaleProductPrice(""); setQuickSaleProductCost(""); setQuickSaleProductStock("1");
+      setShowQuickSaleProductForm(false);
+      setNotice("Artículo creado y seleccionado para esta venta. Completa los demás datos antes de guardar.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setQuickSaleProductSaving(false); }
+  }
+
   function addSaleLine() {
     const product = saleProducts.find((item) => item.id === saleProductChoice);
     const quantity = Number(saleQuantity);
@@ -4387,9 +4425,20 @@ export default function App() {
 <h3>Nueva venta</h3>
 <div className="sale-builder">
 <label><span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span><select value={saleCustomerId} onChange={e=>setSaleCustomerId(e.target.value)}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}</select>{canManageCustomers && <button type="button" className="text-button" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}> {showQuickCustomerForm?"Cancelar":"＋ Crear cliente"} </button>}</label>
-<label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select></label>
+<label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select>{canManageProducts && <button type="button" className="text-button" onClick={() => setShowQuickSaleProductForm((open) => !open)}>{showQuickSaleProductForm ? "Cancelar nuevo artículo" : "＋ Nuevo artículo"}</button>}</label>
 <label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
 </div>
+{showQuickSaleProductForm && canManageProducts && <div className="panel quick-customer-form quick-sale-product-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
+  <strong>Nuevo artículo</strong><p className="inline-create-hint">Se creará y quedará seleccionado en esta venta. El registro completo lo puedes ampliar después desde Productos.</p>
+  <div className="sale-builder quick-product-fields">
+    <label><span className="field-label-heading">Nombre *</span><input value={quickSaleProductName} onChange={(event) => setQuickSaleProductName(event.target.value)} maxLength={160} /></label>
+    <label><span className="field-label-heading">Tipo</span><select value={quickSaleProductType} onChange={(event) => setQuickSaleProductType(event.target.value)}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Digital</option></select></label>
+    <label><span className="field-label-heading">Precio de venta *</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={quickSaleProductPrice} onChange={(event) => setQuickSaleProductPrice(event.target.value)} /></label>
+    <label><span className="field-label-heading">Costo por unidad *</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={quickSaleProductCost} onChange={(event) => setQuickSaleProductCost(event.target.value)} /></label>
+    {quickSaleProductType === "physical" && <label><span className="field-label-heading">Existencias iniciales</span><input type="number" min="0" step="0.001" value={quickSaleProductStock} onChange={(event) => setQuickSaleProductStock(event.target.value)} /></label>}
+    <button type="button" className="primary-button" disabled={quickSaleProductSaving || !quickSaleProductName.trim() || quickSaleProductPrice === "" || quickSaleProductCost === ""} onClick={addQuickSaleProduct}>{quickSaleProductSaving ? "Guardando…" : "Crear y seleccionar"}</button>
+  </div>
+</div>}
 {showQuickCustomerForm && canManageCustomers && <div className="panel quick-customer-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
   <strong>Nuevo cliente</strong><p className="inline-create-hint">Se agregará a la venta actual sin cerrar este formulario.</p>
   <div className="sale-builder">
@@ -4904,7 +4953,7 @@ export default function App() {
               <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
             </div>
-            {canManageProducts && <div className="category-manager">
+            {canManageProducts && !showProductForm && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
                 <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
               </button>
@@ -5257,18 +5306,23 @@ export default function App() {
           </section>
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
-            <div className="home-workspace-copy"><p className="eyebrow">TU NEGOCIO, A LA VISTA</p><h2>¿Qué vamos a mover hoy?</h2><p>Revisa las cifras importantes y entra directamente a la tarea que necesitas hacer. Todo se calcula con los registros de tu negocio.</p></div>
+            <div className="home-workspace-copy"><p className="eyebrow">INICIO · RESUMEN OPERATIVO</p><h2>¿Qué necesitas poner en marcha hoy?</h2><p>Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.</p></div>
             <div className="home-workspace-actions">
               {canAccessScreen("sales") && <button className="primary-button" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}>＋ Registrar venta</button>}
               {canManageProducts && <button className="secondary-button" onClick={() => { navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}>＋ Agregar artículo</button>}
               {canAccessScreen("quotes") && <button className="secondary-button" onClick={() => navigate("quotes")}>Crear cotización ↗</button>}
+              {canManagePurchases && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}>＋ Registrar compra</button>}
+              {canManageExpenses && <button className="secondary-button" onClick={() => { setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}>＋ Registrar gasto</button>}
+              {canManageCustomers && <button className="secondary-button" onClick={() => { setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}>＋ Nuevo cliente</button>}
             </div>
           </section>
           <section className="home-operating-summary">
-            <div className="home-section-heading"><div><h2>Estado del negocio</h2><p>Indicadores de tus operaciones reales</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
+            <div className="home-section-heading"><div><h2>Resumen operativo</h2><p>Cifras calculadas con los registros actuales del negocio</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
             <div className="home-operating-metrics">
               {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Referencias</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><small>Artículos en inventario</small></button>}
               {canAccessScreen("products") && <button type="button" className={"home-operating-metric" + (inventoryOverview.outOfStockCount ? " home-metric-alert" : "")} onClick={() => { setProductStockFilter("out_of_stock"); setProductPage(1); navigate("products"); }}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><small>{inventoryOverview.outOfStockCount ? "Revisar agotados" : "Sin agotados registrados"}</small></button>}
+              {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Costo del inventario</span><strong>{inventoryOverviewLoading ? "…" : money(inventoryOverview.costMinor, currencyCode)}</strong><small>Capital registrado en existencias</small></button>}
+              {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Valor de venta estimado</span><strong>{inventoryOverviewLoading ? "…" : money(inventoryOverview.retailMinor, currencyCode)}</strong><small>Si vendes todo el stock actual</small></button>}
               {canAccessScreen("sales") && <button type="button" className="home-operating-metric" onClick={() => navigate("sales")}><span>Ventas de hoy</span><strong>{homeSummary.loading ? "…" : money(homeSummary.todaySalesMinor, currencyCode)}</strong><small>{homeSummary.loading ? "Consultando operaciones" : homeSummary.todaySalesCount.toLocaleString("es-CO") + (homeSummary.todaySalesCount === 1 ? " venta registrada" : " ventas registradas")}</small></button>}
               {canAccessScreen("quotes") && <button type="button" className={"home-operating-metric" + (homeSummary.openQuotesCount ? " home-metric-attention" : "")} onClick={() => navigate("quotes")}><span>Cotizaciones por revisar</span><strong>{homeSummary.loading ? "…" : homeSummary.openQuotesCount.toLocaleString("es-CO")}</strong><small>{homeSummary.openQuotesCount ? "Borradores y enviadas" : "No hay cotizaciones abiertas"}</small></button>}
             </div>
@@ -5276,7 +5330,7 @@ export default function App() {
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
           <section className="home-work-modules">
-            <div className="home-section-heading"><div><h2>Ir a un módulo</h2><p>Acceso directo a las herramientas de tu negocio</p></div><span className="count-label">{visibleAreas.length} módulos</span></div>
+            <div className="home-section-heading"><div><h2>Accesos de trabajo</h2><p>Abre el área que necesitas para continuar tu operación</p></div><span className="count-label">{visibleAreas.length} módulos</span></div>
             <section className="area-grid">{visibleAreas.map((area) => <button className="area-card area-card-button" key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={25} /></span><span className="area-arrow">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}

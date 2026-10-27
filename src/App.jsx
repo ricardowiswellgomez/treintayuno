@@ -99,7 +99,7 @@ const sidebarAreaItem = (screen, label = null) => {
 };
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
-  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
@@ -1262,10 +1262,79 @@ function PublicCatalog({ businessId }) {
   </main>;
 }
 
+
+function PublicLanding({ onLogin, onSignup }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
+  return <main className="public-landing">
+    <header className="landing-header">
+      <a className="landing-brand" href="#inicio" aria-label="treseiscinco, inicio"><img src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
+      <nav className={"landing-nav" + (menuOpen ? " is-open" : "")} aria-label="Navegación principal">
+        <a href="#beneficios" onClick={() => setMenuOpen(false)}>Qué puedes hacer</a>
+        <a href="#planes" onClick={() => setMenuOpen(false)}>Planes y precios</a>
+        <a href="#importar" onClick={() => setMenuOpen(false)}>Importar inventario</a>
+        <a href="mailto:ricardowiswellgomez@gmail.com?subject=Hola%2C%20treseiscinco" onClick={() => setMenuOpen(false)}>Soporte</a>
+      </nav>
+      <div className="landing-header-actions"><button type="button" className="landing-login-link" onClick={onLogin}>Iniciar sesión</button><button type="button" className="landing-primary-button" onClick={onSignup}>Probar gratis <span aria-hidden="true">↗</span></button></div>
+      <button type="button" className="landing-menu-toggle" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span></button>
+    </header>
+
+    <section className="landing-hero" id="inicio">
+      <div className="landing-hero-copy">
+        <span className="landing-kicker"><span className="landing-kicker-dot"></span> PARA EL DÍA A DÍA DE TU NEGOCIO</span>
+        <h1>Menos enredos.<br /><em>Más negocio.</em></h1>
+        <p>Tu negocio, todos los días. Organiza productos, ventas, gastos y clientes en un solo espacio, con información clara para decidir mejor y trabajar con tranquilidad.</p>
+        <div className="landing-hero-actions"><button type="button" className="landing-primary-button landing-hero-cta" onClick={onSignup}>Crear mi cuenta gratis <span aria-hidden="true">→</span></button><button type="button" className="landing-secondary-button" onClick={() => document.getElementById("beneficios")?.scrollIntoView({behavior:"smooth"})}>Conocer treseiscinco <span aria-hidden="true">↓</span></button></div>
+        <div className="landing-trust-line"><span className="landing-trust-icon"><AppIcon name="shield-check" size={17}/></span><span>Tu información, tu negocio y tus decisiones.</span><span className="landing-trust-separator"></span><span>Empieza a organizarte desde hoy.</span></div>
+      </div>
+      <div className="landing-hero-art" aria-label="Ilustración de un negocio con indicadores, inventario y equipo de trabajo">
+        <div className="landing-orbit landing-orbit-one"></div><div className="landing-orbit landing-orbit-two"></div>
+        <div className="landing-number-mark" aria-hidden="true"><span>3</span><span>6</span><span>5</span></div>
+        <div className="landing-dashboard-mock">
+          <div className="landing-dashboard-top"><div className="landing-dashboard-brand"><img src="/symbol-treseiscinco.svg" alt="" /><div><strong>Tu negocio</strong><small>Resumen de actividad</small></div></div><span className="landing-dashboard-date">Esta semana <AppIcon name="chevron-down" size={13}/></span></div>
+          <div className="landing-dashboard-metrics"><div><span>Ventas registradas</span><strong>$ 2,48 M</strong><small className="landing-metric-positive">↑ Actividad comercial</small></div><div><span>Inventario</span><strong>128</strong><small>Referencias</small></div><div><span>Rentabilidad</span><strong>32%</strong><small>Margen ilustrativo</small></div></div>
+          <div className="landing-dashboard-chart"><div className="landing-chart-heading"><div><strong>Así se mueve tu negocio</strong><small>Gráfico ilustrativo, no son datos reales</small></div><span>7 días</span></div><div className="landing-chart-area"><div className="landing-chart-grid"><i></i><i></i><i></i><i></i></div><svg viewBox="0 0 420 114" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="landing-area-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#8F78D8" stopOpacity=".30"/><stop offset="100%" stopColor="#8F78D8" stopOpacity=".02"/></linearGradient></defs><path d="M0 88 C25 82 31 61 60 70 S100 86 125 60 S162 63 185 45 S225 65 250 40 S290 30 310 45 S350 23 375 29 S400 11 420 8 L420 114 L0 114Z" fill="url(#landing-area-fill)"/><path d="M0 88 C25 82 31 61 60 70 S100 86 125 60 S162 63 185 45 S225 65 250 40 S290 30 310 45 S350 23 375 29 S400 11 420 8" fill="none" stroke="#7664BE" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round"/></svg></div><div className="landing-chart-days"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div></div>
+          <div className="landing-dashboard-bottom"><span><i className="landing-led"></i> Productos y movimientos en un solo lugar</span><span>treseiscinco</span></div>
+        </div>
+        <div className="landing-person landing-person-left" aria-hidden="true"><svg viewBox="0 0 140 170"><ellipse cx="69" cy="156" rx="53" ry="8" fill="#22263A" opacity=".10"/><path d="M34 78 Q18 103 22 135 L16 157 L53 157 L60 116 L67 158 L103 158 L99 110 Q91 80 77 77Z" fill="#C3B5F4"/><path d="M39 85 Q15 101 23 125 L48 128 L60 102Z" fill="#9F8BE6"/><path d="M68 84 Q88 86 97 109 L109 134 L95 140 L76 113Z" fill="#B7A6EF"/><circle cx="61" cy="51" r="26" fill="#A96D4E"/><path d="M36 50 Q24 30 41 18 Q60 5 80 20 Q94 32 84 53 L76 38 Q59 44 42 34Z" fill="#2D2A37"/><path d="M51 57 Q61 64 71 57" fill="none" stroke="#6A3E32" strokeWidth="2" strokeLinecap="round"/><path d="M48 45h1M70 45h1" stroke="#24232D" strokeWidth="4" strokeLinecap="round"/><path d="M79 91 Q104 91 116 109 L128 127" fill="none" stroke="#A96D4E" strokeWidth="10" strokeLinecap="round"/><rect x="91" y="112" width="37" height="28" rx="4" fill="#fff" stroke="#D9D5E7" strokeWidth="2"/><path d="M98 120h22M98 126h16M98 132h19" stroke="#8C7BC6" strokeWidth="2" strokeLinecap="round"/></svg></div>
+        <div className="landing-person landing-person-right" aria-hidden="true"><svg viewBox="0 0 140 170"><ellipse cx="73" cy="156" rx="53" ry="8" fill="#22263A" opacity=".10"/><path d="M39 82 Q22 89 22 114 L19 157 L55 157 L64 116 L74 157 L112 157 L105 107 Q96 84 77 81Z" fill="#6A9C8B"/><path d="M40 91 Q16 105 21 127 L47 132 L60 106Z" fill="#477B6A"/><circle cx="74" cy="53" r="25" fill="#E3A77A"/><path d="M50 48 Q44 24 64 15 Q91 10 100 31 L97 47 L87 34 Q70 42 53 33Z" fill="#4A3529"/><path d="M64 60 Q74 68 84 60" fill="none" stroke="#9A5A42" strokeWidth="2" strokeLinecap="round"/><path d="M60 48h1M80 48h1" stroke="#2D2730" strokeWidth="4" strokeLinecap="round"/><path d="M46 95 Q61 99 67 119 L72 136" fill="none" stroke="#E3A77A" strokeWidth="10" strokeLinecap="round"/><rect x="56" y="119" width="50" height="29" rx="4" fill="#FFF" stroke="#D9D5E7" strokeWidth="2"/><path d="M64 127h33M64 134h24M64 141h17" stroke="#7BAA9A" strokeWidth="2" strokeLinecap="round"/></svg></div>
+        <div className="landing-float-chip landing-chip-stock"><span className="landing-chip-icon"><AppIcon name="products" size={17}/></span><span><strong>Inventario organizado</strong><small>Artículos y existencias</small></span><AppIcon name="check" size={16}/></div>
+        <div className="landing-float-chip landing-chip-flow"><span className="landing-chip-icon"><AppIcon name="sales" size={17}/></span><span><strong>Todo conectado</strong><small>Ventas · gastos · clientes</small></span></div>
+      </div>
+      <div className="landing-hero-spark landing-spark-one" aria-hidden="true">✳</div><div className="landing-hero-spark landing-spark-two" aria-hidden="true">✳</div>
+    </section>
+
+    <section className="landing-proof-strip" aria-label="Funciones de treseiscinco"><div><AppIcon name="package" size={20}/><span>Inventario y costos</span></div><div><AppIcon name="receipt" size={20}/><span>Ventas y cuentas</span></div><div><AppIcon name="chart-no-axes-combined" size={20}/><span>Estadísticas útiles</span></div><div><AppIcon name="users" size={20}/><span>Clientes y equipo</span></div></section>
+
+    <section className="landing-benefits section-wrap" id="beneficios"><div className="landing-section-intro"><span className="landing-kicker">MENOS TAREAS SUELTAS</span><h2>Todo lo importante,<br /><em>en su lugar.</em></h2><p>Para trabajar con claridad, incluso cuando tu negocio no deja de moverse.</p></div>
+      <div className="landing-feature-grid">
+        <article className="landing-feature-card feature-lilac"><span className="landing-feature-icon"><AppIcon name="package" size={24}/></span><h3>Controla tus productos</h3><p>Organiza referencias, precios, costos, cantidades y niveles de existencias desde una misma vista.</p><span className="landing-feature-foot">Inventario vivo, no hojas sueltas</span></article>
+        <article className="landing-feature-card feature-peach"><span className="landing-feature-icon"><AppIcon name="receipt" size={24}/></span><h3>Registra cada movimiento</h3><p>Registra ventas, abonos, compras y gastos. Mantén los saldos visibles y el historial a mano.</p><span className="landing-feature-foot">Lo que pasa queda registrado</span></article>
+        <article className="landing-feature-card feature-mint"><span className="landing-feature-icon"><AppIcon name="chart-no-axes-combined" size={24}/></span><h3>Entiende tus números</h3><p>Consulta costos, márgenes, rentabilidad y gráficos basados en los movimientos registrados.</p><span className="landing-feature-foot">Decisiones con más contexto</span></article>
+        <article className="landing-feature-card feature-sand"><span className="landing-feature-icon"><AppIcon name="users" size={24}/></span><h3>Trabaja con otras personas</h3><p>Organiza clientes, proveedores y permisos de equipo para que cada persona vea lo que necesita.</p><span className="landing-feature-foot">Cada negocio, con su espacio</span></article>
+      </div>
+    </section>
+
+    <section className="landing-how section-wrap"><div className="landing-how-visual"><div className="landing-how-screen"><div className="landing-how-screen-top"><img src="/symbol-treseiscinco.svg" alt=""/><span>Vista ilustrativa</span></div><div className="landing-how-product-row"><i className="landing-product-swatch"></i><span><b>Artículo de ejemplo</b><small>Precio · costo · existencias</small></span><strong>$ 45.000</strong></div><div className="landing-how-product-row"><i className="landing-product-swatch swatch-two"></i><span><b>Otro artículo</b><small>Ganancia y margen calculados</small></span><strong>$ 28.000</strong></div><div className="landing-how-mini-chart"><span>Así avanza tu semana</span><div className="landing-mini-bars"><i style={{height:"32%"}}></i><i style={{height:"52%"}}></i><i style={{height:"44%"}}></i><i style={{height:"75%"}}></i><i style={{height:"60%"}}></i><i style={{height:"94%"}}></i><i style={{height:"79%"}}></i></div></div></div><div className="landing-how-person"><svg viewBox="0 0 130 166" aria-hidden="true"><ellipse cx="66" cy="154" rx="44" ry="7" fill="#22263A" opacity=".12"/><path d="M34 77 Q18 97 25 130 L27 155 L57 155 L65 115 L73 155 L104 155 L100 108 Q92 82 75 77Z" fill="#D99B63"/><circle cx="64" cy="50" r="25" fill="#8F553F"/><path d="M40 47 Q31 24 50 14 Q75 4 89 27 L87 42 L75 29 Q62 40 41 34Z" fill="#2E2832"/><path d="M51 57 Q63 65 74 57" fill="none" stroke="#5F382F" strokeWidth="2" strokeLinecap="round"/><path d="M47 45h1M70 45h1" stroke="#24232D" strokeWidth="4" strokeLinecap="round"/><path d="M48 91Q78 97 94 119" fill="none" stroke="#8F553F" strokeWidth="10" strokeLinecap="round"/><rect x="77" y="114" width="35" height="24" rx="4" fill="#FFF" stroke="#E3D8CC" strokeWidth="2"/></svg></div></div><div className="landing-how-copy"><span className="landing-kicker">HECHO PARA USARLO</span><h2>Menos vueltas.<br /><em>Más tiempo para tu negocio.</em></h2><p>No necesitas ser experto en contabilidad o tecnología para empezar. Registra tus operaciones y consulta la información cuando te haga falta.</p><div className="landing-how-list"><div><span><AppIcon name="check" size={15}/></span><p><strong>Empieza por lo esencial</strong><small>Crea tus productos y registra tu primera venta.</small></p></div><div><span><AppIcon name="check" size={15}/></span><p><strong>Crece a tu ritmo</strong><small>Agrega clientes, equipo, cotizaciones y más control.</small></p></div><div><span><AppIcon name="check" size={15}/></span><p><strong>Úsala en computador o celular</strong><small>La aplicación web también se puede instalar en dispositivos compatibles.</small></p></div></div><button type="button" className="landing-secondary-button" onClick={onSignup}>Crear mi espacio <span aria-hidden="true">→</span></button></div></section>
+
+    <section className="landing-pricing section-wrap" id="planes"><div className="landing-section-intro"><span className="landing-kicker">PLANES CLAROS</span><h2>Un espacio para empezar.<br /><em>Otro para crecer.</em></h2><p>Dos opciones sencillas; puedes comenzar con lo esencial y elegir la que mejor encaje contigo.</p></div><div className="landing-plan-grid">
+      <article className="landing-plan-card"><div className="landing-plan-icon"><AppIcon name="sprout" size={25}/></div><span className="landing-plan-label">PARA EMPEZAR</span><h3>Emprende</h3><p>Ordena el día a día de tu negocio y gana claridad sobre lo que entra, sale y tienes disponible.</p><ul><li><AppIcon name="check" size={16}/> Productos e inventario</li><li><AppIcon name="check" size={16}/> Ventas, gastos y cuentas</li><li><AppIcon name="check" size={16}/> Clientes y proveedores</li><li><AppIcon name="check" size={16}/> Acceso desde computador o celular</li></ul><button type="button" className="landing-secondary-button" onClick={onSignup}>Empezar con Emprende <span>→</span></button></article>
+      <article className="landing-plan-card landing-plan-featured"><div className="landing-plan-icon"><AppIcon name="chart-no-axes-combined" size={25}/></div><span className="landing-plan-label">PARA DAR EL SIGUIENTE PASO</span><h3>Negocio</h3><p>Más visibilidad sobre tu operación para crecer con un equipo y tomar decisiones con contexto.</p><ul><li><AppIcon name="check" size={16}/> Todo lo de Emprende</li><li><AppIcon name="check" size={16}/> Cotizaciones y catálogo compartible</li><li><AppIcon name="check" size={16}/> Estadísticas y rentabilidad</li><li><AppIcon name="check" size={16}/> Equipo, permisos y controles</li></ul><button type="button" className="landing-primary-button" onClick={onSignup}>Elegir Negocio <span>→</span></button></article>
+    </div><p className="landing-pricing-note">Estamos preparando el lanzamiento comercial. La prueba y las condiciones del plan se confirmarán antes de activar cualquier cobro; crear la cuenta no supone un pago automático.</p></section>
+
+    <section className="landing-import-section" id="importar"><div className="section-wrap landing-import-inner"><div className="landing-import-icon"><AppIcon name="file-spreadsheet" size={28}/></div><div><span className="landing-kicker">¿YA TIENES TU INVENTARIO?</span><h2>Trae tus datos contigo.</h2><p>Puedes cargar una plantilla Excel/CSV desde la aplicación para empezar con tus referencias, precios, costos y existencias sin digitarlas una por una.</p></div><button type="button" className="landing-secondary-button" onClick={onSignup}>Ver cómo empezar <span>→</span></button></div></section>
+
+    <section className="landing-final-cta"><div className="landing-final-mark"><img src="/symbol-treseiscinco.svg" alt="treseiscinco"/></div><span className="landing-kicker">TU NEGOCIO, TODOS LOS DÍAS</span><h2>Que los números te ayuden.<br /><em>Que no te enreden.</em></h2><p>Empieza con lo que tienes hoy y construye un negocio más ordenado, paso a paso.</p><div className="landing-hero-actions"><button type="button" className="landing-primary-button" onClick={onSignup}>Crear cuenta gratis <span aria-hidden="true">→</span></button><button type="button" className="landing-secondary-button" onClick={onLogin}>Ya tengo cuenta</button></div></section>
+
+    <footer className="landing-footer"><a className="landing-footer-brand" href="#inicio"><img src="/symbol-treseiscinco.svg" alt=""/><strong>treseiscinco</strong></a><span>Tu negocio, todos los días.</span><nav><a href="#planes">Planes y precios</a><a href="#importar">Importar inventario</a><a href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco">Soporte y contacto</a></nav><small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small></footer>
+  </main>;
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [mode, setMode] = useState("login");
+  const [showPublicLanding, setShowPublicLanding] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -1273,6 +1342,7 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
+  const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
   const [profitabilityChartType, setProfitabilityChartType] = useState("bars");
@@ -1626,7 +1696,10 @@ export default function App() {
     try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
     catch { return "es"; }
   });
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", hoursSchedule: {} });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
+  const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
+  const [wompiSaving, setWompiSaving] = useState(false);
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
@@ -2917,6 +2990,9 @@ export default function App() {
       publicDescription: String(profile?.publicDescription || "").trim(),
       hours: String(profile?.hours || "").trim(),
       hoursSchedule: profile?.hoursSchedule && typeof profile.hoursSchedule === "object" ? profile.hoursSchedule : {},
+      cardPrimary: /^#[0-9a-f]{6}$/i.test(String(profile?.cardPrimary || "")) ? profile.cardPrimary : "#475569",
+      cardSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.cardSurface || "")) ? profile.cardSurface : "#FFFFFF",
+      cardText: /^#[0-9a-f]{6}$/i.test(String(profile?.cardText || "")) ? profile.cardText : "#1F2937",
       orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
@@ -2930,6 +3006,7 @@ export default function App() {
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:hasConfiguredSchedule ? schedule : (settingsCommercialProfile.hoursSchedule || {}), hours:hoursText});
     if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     if (commercialProfile.orderChannel === "wompi" && settingsCurrency !== "COP") { setError("Wompi solo admite COP. Elige pedidos por WhatsApp o cambia la moneda del negocio a COP."); return; }
+    if (commercialProfile.orderChannel === "wompi" && (!wompiStatus.configured || !wompiStatus.enabled)) { setError("Antes de activar Wompi en el catálogo, completa y guarda las credenciales del comercio en la sección de conexión Wompi."); setSettingsTab("company"); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
@@ -4937,6 +5014,8 @@ export default function App() {
     dirtyFormsRef.current = new WeakSet();
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "quotes") clearQuoteDraft();
+    if (next === "sales") setSalesWorkspaceTab("sales");
+    if (next === "quotes") setSalesWorkspaceTab("quotes");
     if (next === "accounts") setAccountsTab(canPermission("sales_view") ? "receivables" : "payables");
     if (next === "purchases") { setPurchaseModuleTab(purchaseTab); if (purchaseTab !== "suppliers") setShowSupplierForm(false); }
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
@@ -5236,6 +5315,8 @@ export default function App() {
 
   if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
 
+  if (!session && showPublicLanding && mode !== "update-password") return <PublicLanding onLogin={() => { setShowPublicLanding(false); setMode("login"); setPassword(""); setError(""); setNotice(""); }} onSignup={() => { setShowPublicLanding(false); setMode("signup"); setPassword(""); setError(""); setNotice(""); }} />;
+
   if (!session || mode === "update-password") return (
     <main className="auth-shell">
       <section className="auth-brand-panel">
@@ -5310,7 +5391,7 @@ export default function App() {
         <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}

@@ -375,6 +375,27 @@ const employeePermissionProfiles = {
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
+
+const compareInventoryProducts = (a, b, sort) => {
+  const nameCompare = String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" });
+  const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+  let result = 0;
+  const desc = sort.endsWith("_desc");
+  if (sort === "name" || sort === "name_desc") result = nameCompare;
+  else if (sort === "code" || sort === "code_desc") result = String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" });
+  else if (sort === "price" || sort === "price_desc") result = number(a.sale_price_minor) - number(b.sale_price_minor);
+  else if (sort === "cost" || sort === "cost_desc") result = number(a.cost_price_minor) - number(b.cost_price_minor);
+  else if (sort === "stock" || sort === "stock_desc") result = number(a.stock_on_hand) - number(b.stock_on_hand);
+  else if (sort === "profit" || sort === "profit_asc") result = (number(a.sale_price_minor) - number(a.cost_price_minor)) - (number(b.sale_price_minor) - number(b.cost_price_minor));
+  else if (sort === "margin" || sort === "margin_asc") {
+    const marginA = number(a.sale_price_minor) > 0 ? ((number(a.sale_price_minor) - number(a.cost_price_minor)) / number(a.sale_price_minor)) : -Infinity;
+    const marginB = number(b.sale_price_minor) > 0 ? ((number(b.sale_price_minor) - number(b.cost_price_minor)) / number(b.sale_price_minor)) : -Infinity;
+    result = marginA - marginB;
+  } else result = nameCompare;
+  if (sort === "profit" || sort === "margin" || sort === "price_desc" || sort === "cost_desc" || sort === "stock_desc" || sort === "name_desc" || sort === "code_desc") result *= -1;
+  return result || nameCompare;
+};
+
 const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   // Cambia solo los temas predeterminados de versiones anteriores; los colores elegidos por cada negocio se respetan.
@@ -1550,6 +1571,99 @@ export default function App() {
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
   }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort, productStockFilter, productCategoryFilter, productTypeFilter]);
+
+  const loadInventoryOverview = useCallback(async () => {
+    if (!activeBusiness?.id) return;
+    setInventoryOverviewLoading(true);
+    try {
+      const all = [];
+      const chunkSize = 500;
+      for (let offset = 0; offset < 50000; offset += chunkSize) {
+        const { data, error: queryError } = await supabase.from("products")
+          .select("id,cost_price_minor,sale_price_minor,stock_on_hand,track_inventory,low_stock_threshold")
+          .eq("business_id", activeBusiness.id).is("archived_at", null)
+          .order("name").range(offset, offset + chunkSize - 1);
+        if (queryError) throw queryError;
+        const batch = data || [];
+        all.push(...batch);
+        if (batch.length < chunkSize) break;
+        if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos y no se pudo resumir completo.");
+      }
+      const summary = all.reduce((totals, product) => {
+        if (!product.track_inventory) return totals;
+        const stock = Math.max(0, Number(product.stock_on_hand || 0));
+        totals.trackedUnits += stock;
+        totals.costMinor += stock * Number(product.cost_price_minor || 0);
+        totals.retailMinor += stock * Number(product.sale_price_minor || 0);
+        if (stock <= 0) totals.outOfStockCount += 1;
+        else if (product.low_stock_threshold != null && stock <= Number(product.low_stock_threshold)) totals.lowStockCount += 1;
+        return totals;
+      }, { trackedUnits: 0, costMinor: 0, retailMinor: 0, outOfStockCount: 0, lowStockCount: 0 });
+      setInventoryOverview({ productCount: all.length, ...summary });
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setInventoryOverviewLoading(false);
+    }
+  }, [activeBusiness?.id]);
+
+  useEffect(() => {
+    if ((screen === "products" || screen === "home") && activeBusiness?.id) loadInventoryOverview();
+  }, [screen, activeBusiness?.id, inventoryOverviewRefresh, loadInventoryOverview]);
+
+  const loadHomeSummary = useCallback(async () => {
+    if (!activeBusiness?.id || screen !== "home") return;
+    setHomeSummary((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const today = todayInBogota();
+      const tomorrowDate = new Date(today + "T12:00:00Z");
+      tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+      const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+      const requests = [];
+      if (canAccessScreen("sales")) {
+        requests.push((async () => {
+          const rows = [];
+          for (let offset = 0; offset < 5000; offset += 500) {
+            const { data, error: salesError } = await supabase.from("sales")
+              .select("id,total_minor,status,sold_at").eq("business_id", activeBusiness.id)
+              .gte("sold_at", today + "T00:00:00-05:00").lt("sold_at", tomorrow + "T00:00:00-05:00")
+              .order("sold_at", { ascending: false }).range(offset, offset + 499);
+            if (salesError) throw salesError;
+            const batch = data || [];
+            rows.push(...batch);
+            if (batch.length < 500) break;
+          }
+          return { key: "sales", rows };
+        })());
+      }
+      if (canAccessScreen("quotes")) {
+        requests.push((async () => {
+          const { count, error: quotesError } = await supabase.from("quotes")
+            .select("id", { count: "exact", head: true }).eq("business_id", activeBusiness.id).in("status", ["draft", "sent"]);
+          if (quotesError) throw quotesError;
+          return { key: "quotes", count: Number(count || 0) };
+        })());
+      }
+      const results = await Promise.all(requests);
+      const salesResult = results.find((item) => item.key === "sales");
+      const quoteResult = results.find((item) => item.key === "quotes");
+      const realSales = (salesResult?.rows || []).filter((sale) => !["cancelled", "canceled", "refunded"].includes(sale.status));
+      setHomeSummary({
+        loading: false,
+        todaySalesCount: realSales.length,
+        todaySalesMinor: realSales.reduce((total, sale) => total + Number(sale.total_minor || 0), 0),
+        openQuotesCount: quoteResult?.count || 0,
+        error: ""
+      });
+    } catch (e) {
+      setHomeSummary((current) => ({ ...current, loading: false, error: friendlyError(e) }));
+    }
+  }, [activeBusiness?.id, screen]);
+
+  useEffect(() => {
+    if (screen === "home" && activeBusiness?.id) loadHomeSummary();
+  }, [screen, activeBusiness?.id, loadHomeSummary]);
+
 
   useEffect(() => {
     let alive = true;

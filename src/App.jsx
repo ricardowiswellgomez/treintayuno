@@ -87,6 +87,15 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+const toPublicCatalogSlug = (value) => String(value || "")
+  .normalize("NFD")
+  .replace(/[\\u0300-\\u036f]/g, "")
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-+|-+$/g, "");
+const reservedPublicPaths = new Set(["api", "assets", "auth", "login", "signup", "forgot-password", "reset-password", "admin", "sw", "service-worker"]);
+
 const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
@@ -1269,6 +1278,37 @@ function PublicCatalog({ businessId }) {
           </>}
       </section>
     </div>}
+  </main>;
+}
+
+
+function PublicCatalogSlugRoute({ slug }) {
+  const [state, setState] = useState({ loading: true, businessId: "", error: "" });
+
+  useEffect(() => {
+    let active = true;
+    setState({ loading: true, businessId: "", error: "" });
+    const resolveCatalog = async () => {
+      try {
+        const { data, error } = await supabase.rpc("resolve_public_catalog_slug", { p_slug: slug });
+        if (error) throw error;
+        if (typeof data !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data)) {
+          if (active) setState({ loading: false, businessId: "", error: "No encontramos un catálogo público con ese nombre." });
+          return;
+        }
+        if (active) setState({ loading: false, businessId: data, error: "" });
+      } catch {
+        if (active) setState({ loading: false, businessId: "", error: "No pudimos abrir este catálogo. Prueba con el enlace completo o vuelve a intentarlo." });
+      }
+    };
+    void resolveCatalog();
+    return () => { active = false; };
+  }, [slug]);
+
+  if (state.businessId) return <PublicCatalog businessId={state.businessId} />;
+  return <main className="public-catalog-route-state">
+    <img src="/brand-treseiscinco.svg" alt="treseiscinco" />
+    {state.loading ? <p role="status">Buscando catálogo…</p> : <><h1>Catálogo no disponible</h1><p role="alert">{state.error}</p><a href="/">Ir a treseiscinco</a></>}
   </main>;
 }
 
@@ -3823,12 +3863,22 @@ function AuthenticatedApp() {
 
   async function copyPublicCatalogLink() {
     if (!activeBusiness?.id) return;
-    const link = window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
+    let catalogLink = window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
+    const profile = activeBusiness.settings?.commercial_profile || {};
+    const slug = toPublicCatalogSlug(profile.tradeName || activeBusiness.name);
+    if (slug.length >= 2 && slug.length <= 60 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && !reservedPublicPaths.has(slug)) {
+      try {
+        const { data, error: resolveError } = await supabase.rpc("resolve_public_catalog_slug", { p_slug: slug });
+        if (!resolveError && data === activeBusiness.id) catalogLink = window.location.origin + "/" + slug;
+      } catch {
+        // The stable UUID link remains the safe fallback if slug resolution is unavailable.
+      }
+    }
     try {
-      await navigator.clipboard.writeText(link);
-      setNotice("Enlace del catálogo copiado. Ya puedes compartirlo.");
+      await navigator.clipboard.writeText(catalogLink);
+      setNotice(catalogLink.includes("?catalog=") ? "Copiamos el enlace completo del catálogo porque el nombre no tiene una ruta exclusiva." : "Enlace corto del catálogo copiado. Ya puedes compartirlo.");
     } catch {
-      window.prompt("Copia este enlace para compartir tu catálogo:", link);
+      window.prompt("Copia este enlace para compartir tu catálogo:", catalogLink);
     }
   }
 
@@ -6582,9 +6632,22 @@ export default function App() {
     requestedPublicCatalog &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)
   );
+  const isValidSlugQuery = Boolean(
+    requestedPublicCatalog &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedPublicCatalog) &&
+    !reservedPublicPaths.has(requestedPublicCatalog)
+  );
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+  const pathParts = pathname.split("/").filter(Boolean);
+  const pathSlug = pathParts.length === 1 ? pathParts[0].toLowerCase() : "";
+  const isShortCatalogPath = Boolean(
+    pathSlug &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathSlug) &&
+    !reservedPublicPaths.has(pathSlug)
+  );
 
-  if (isValidCatalogId) {
-    return <PublicCatalog businessId={requestedPublicCatalog} />;
-  }
+  if (isValidCatalogId) return <PublicCatalog businessId={requestedPublicCatalog} />;
+  if (isValidSlugQuery) return <PublicCatalogSlugRoute slug={requestedPublicCatalog} />;
+  if (isShortCatalogPath) return <PublicCatalogSlugRoute slug={pathSlug} />;
   return <AuthenticatedApp />;
 }

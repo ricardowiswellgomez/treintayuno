@@ -1395,6 +1395,8 @@ export default function App() {
   const [statsExpenses, setStatsExpenses] = useState([]);
   const [statsPurchases, setStatsPurchases] = useState([]);
   const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
+  const [balanceTrendRows, setBalanceTrendRows] = useState({payments:[],expenses:[],purchasePayments:[]});
+  const [balanceTrendLoading, setBalanceTrendLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsPeriod, setStatsPeriod] = useState("day");
   const [statsDateFrom, setStatsDateFrom] = useState(() => todayInBogota().slice(0, 7) + "-01");
@@ -4368,10 +4370,36 @@ export default function App() {
   }
 
   const filteredProducts = [...products].sort((a, b) => compareInventoryProducts(a, b, productSort));
+  useEffect(() => {
+    if (!activeBusiness?.id || screen !== "stats") return;
+    let alive=true;
+    setBalanceTrendLoading(true);
+    const dateKey=(date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+    const today=todayInBogota();
+    const start=new Date(today+"T12:00:00-05:00");start.setDate(start.getDate()-6);
+    const startKey=dateKey(start);
+    const tomorrow=new Date(today+"T12:00:00-05:00");tomorrow.setDate(tomorrow.getDate()+1);
+    const tomorrowKey=dateKey(tomorrow);
+    const startAt=startKey+"T00:00:00-05:00",endAt=tomorrowKey+"T00:00:00-05:00";
+    Promise.all([
+      supabase.from("sale_payments").select("paid_at,amount_minor").eq("business_id",activeBusiness.id).gte("paid_at",startAt).lt("paid_at",endAt),
+      supabase.from("expenses").select("expense_date,amount_minor").eq("business_id",activeBusiness.id).gte("expense_date",startKey).lte("expense_date",today),
+      supabase.from("purchase_payments").select("paid_at,amount_minor").eq("business_id",activeBusiness.id).gte("paid_at",startAt).lt("paid_at",endAt)
+    ]).then(([sales,expenses,purchases])=>{
+      if(!alive)return;
+      const firstError=sales.error||expenses.error||purchases.error;
+      if(firstError)throw firstError;
+      setBalanceTrendRows({payments:sales.data||[],expenses:expenses.data||[],purchasePayments:purchases.data||[]});
+    }).catch((e)=>{if(alive)setError(friendlyError(e));})
+      .finally(()=>{if(alive)setBalanceTrendLoading(false);});
+    return ()=>{alive=false;};
+  },[activeBusiness?.id,screen]);
+
   const balanceChartData = useMemo(() => {
     const today = new Date(todayInBogota() + "T12:00:00-05:00");
     const keyFor = (value) => {
       if (!value) return "";
+      if (typeof value==="string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value).slice(0,10);
       return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
@@ -4382,11 +4410,11 @@ export default function App() {
       const key = keyFor(date);
       buckets.set(key,{key,label:new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",day:"2-digit",month:"short"}).format(date),income:0,outgoing:0,value:0});
     }
-    for (const row of statsPayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.income+=Number(row.amount_minor||0); }
-    for (const row of statsExpenses) { const b=buckets.get(keyFor(row.expense_date)); if (b) b.outgoing+=Number(row.amount_minor||0); }
-    for (const row of statsPurchasePayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    for (const row of balanceTrendRows.payments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.income+=Number(row.amount_minor||0); }
+    for (const row of balanceTrendRows.expenses) { const b=buckets.get(keyFor(row.expense_date)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    for (const row of balanceTrendRows.purchasePayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.outgoing+=Number(row.amount_minor||0); }
     return [...buckets.values()].map((b)=>({...b,value:b.income-b.outgoing}));
-  },[statsPayments,statsExpenses,statsPurchasePayments]);
+  },[balanceTrendRows]);
   const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row._draftSku, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");

@@ -445,6 +445,11 @@ Object.assign(ENGLISH_TEXT, {
   "6 accesos": "6 shortcuts"
 });
 
+
+Object.assign(ENGLISH_TEXT, {
+  "accesos": "shortcuts"
+});
+
 export function applyAppLanguage(language) {
   if (typeof document === "undefined") return () => {};
   const lang = language === "en" ? "en" : "es";

@@ -30,7 +30,15 @@ function AppIcon({ name, size = 20 }) {
     plus: <><path d="M12 5v14M5 12h14" /></>,
     "chevron-down": <><path d="m6 9 6 6 6-6" /></>,
     card: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h4" /></>,
-    expenses: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h3M16 15v3" /></>
+    expenses: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h3M16 15v3" /></>,
+    check: <><path d="m5 12 4 4L19 6" /></>,
+    "shield-check": <><path d="M12 3 20 6v5c0 5-3.3 8.4-8 10-4.7-1.6-8-5-8-10V6l8-3Z" /><path d="m8 12 2.5 2.5L16 9" /></>,
+    package: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z" /><path d="m3.5 7.6 8.5 4.7 8.5-4.7M12 12.3V21" /></>,
+    receipt: <><path d="M5 3 7.5 5 10 3l2.5 2L15 3l2.5 2L20 3v18l-2.5-2L15 21l-2.5-2L10 21l-2.5-2L5 21V3Z" /><path d="M9 9h7M9 13h7M9 17h4" /></>,
+    "chart-no-axes-combined": <><path d="M3 3v18h18" /><path d="m7 14 4-4 3 3 6-7" /></>,
+    users: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
+    sprout: <><path d="M12 21v-9" /><path d="M12 12C5 12 4 7 4 4c5 0 9 2 8 8Z" /><path d="M12 16c0-6 4-9 8-9 0 5-2 9-8 9Z" /></>,
+    "file-spreadsheet": <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 12h7M9 16h7M12 10v8" /></>
   };
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }
@@ -1704,6 +1712,26 @@ export default function App() {
   const aiRecognitionRef = useRef(null);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
+    let active = true;
+    setWompiStatus({ loading: true, configured: false, enabled: false, environment: null });
+    setWompiDraft({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
+    if (!activeBusiness?.id) {
+      setWompiStatus({ loading: false, configured: false, enabled: false, environment: null });
+      return () => { active = false; };
+    }
+    supabase.functions.invoke("public-checkout", { body: { action: "status", business_id: activeBusiness.id } })
+      .then(({ data, error: statusError }) => {
+        if (!active) return;
+        if (statusError) throw statusError;
+        setWompiStatus({ loading: false, configured: data?.configured === true, enabled: data?.enabled === true, environment: data?.environment || null });
+        setWompiDraft((current) => ({ ...current, environment: data?.environment === "production" ? "production" : "sandbox", enabled: data?.enabled === true }));
+      })
+      .catch(() => {
+        if (active) setWompiStatus({ loading: false, configured: false, enabled: false, environment: null });
+      });
+    return () => { active = false; };
+  }, [activeBusiness?.id]);
+  useEffect(() => {
     let cancelled = false;
     if (!session?.user?.id) { setOwnerPhone(""); return; }
     supabase.from("profiles").select("phone").eq("user_id", session.user.id).maybeSingle()
@@ -2387,9 +2415,9 @@ export default function App() {
     const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
     const website=String(profile.website||"").trim();
     const safeWebsite=/^https?:\/\//i.test(website)?website:(website?"https://"+website:"");
-    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsTheme.primary||"")?settingsTheme.primary:"#475569";
-    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsTheme.surface||"")?settingsTheme.surface:"#FFFFFF";
-    const cardText=/^#[0-9a-f]{6}$/i.test(settingsTheme.text||"")?settingsTheme.text:"#1F2937";
+    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardPrimary||"")?settingsCommercialProfile.cardPrimary:"#475569";
+    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardSurface||"")?settingsCommercialProfile.cardSurface:"#FFFFFF";
+    const cardText=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardText||"")?settingsCommercialProfile.cardText:"#1F2937";
     const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface};color:${cardText};border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}}.details{min-width:0;flex:1}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary};margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:#fff}.card{box-shadow:none;border:0;border-radius:0;max-width:none;page-break-inside:avoid}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
     const printWindow=window.open("","_blank");
     if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
@@ -2963,6 +2991,36 @@ export default function App() {
     } catch (e) {
       setError(friendlyError(e));
     } finally { setOwnerPhoneSaving(false); }
+  }
+
+  async function saveWompiConfiguration() {
+    if (!activeBusiness?.id || wompiSaving) return;
+    if (!["owner", "admin"].includes(activeBusiness.role)) { setError("Solo el propietario o un administrador puede configurar Wompi."); return; }
+    setWompiSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke("public-checkout", {
+        body: {
+          action: "configure",
+          business_id: activeBusiness.id,
+          environment: wompiDraft.environment,
+          public_key: wompiDraft.public_key.trim(),
+          private_key: wompiDraft.private_key.trim(),
+          integrity_secret: wompiDraft.integrity_secret.trim(),
+          events_secret: wompiDraft.events_secret.trim(),
+          enabled: Boolean(wompiDraft.enabled)
+        }
+      });
+      if (functionError) throw functionError;
+      if (data?.error) throw new Error(data.error);
+      if (data?.saved !== true) throw new Error("No se pudo confirmar el guardado de las credenciales de Wompi.");
+      setWompiStatus({ loading: false, configured: true, enabled: data.enabled === true, environment: data.environment || wompiDraft.environment });
+      setWompiDraft({ environment: data.environment || "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: data.enabled === true });
+      setNotice(data.enabled ? "Conexión con Wompi guardada. Usa el entorno de pruebas hasta verificar todo el flujo antes de recibir pagos reales." : "Credenciales guardadas; Wompi está desactivado para este negocio.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setWompiSaving(false);
+    }
   }
 
   async function saveSettings(event) {
@@ -5527,12 +5585,12 @@ export default function App() {
 <div className="form-actions"><button type="button" className="secondary-button" onClick={resetCustomerForm}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy?"Guardando…":editingCustomerId?"Guardar cambios":"Guardar cliente"}</button></div>
 </form>}
 {salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
-<div className="customer-list-heading"><span>Cliente / empresa</span><span>Contacto</span><span>Documento</span><span>Ciudad</span><span></span></div>
+<div className="customer-list-heading"><span>Cliente / empresa</span><span>Celular</span><span>E-mail</span><span>Documento</span><span>Ciudad</span><span></span></div>
 {customers.map(customer=><article className="customer-row" key={customer.id} tabIndex={0} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedCustomer(customer); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCustomer(customer); } }}>
 <div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
-<div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
+<span>{customer.phone||customer.whatsapp||"Sin celular"}</span><span>{customer.email||"Sin correo"}</span>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
-{canManageCustomers && <button type="button" className="text-button" onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}>Editar</button>}
+{canManageCustomers && <button type="button" className="icon-action-button customer-edit-icon" title="Editar cliente" aria-label={"Editar "+(customer.full_name||customer.company_name)} onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}><AppIcon name="edit" size={16}/></button>}
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
 {!salesLoading && customersCount > customersPageSize && <div className="pagination-bar customer-pagination"><span className="count-label">Mostrando {(customersPage-1)*customersPageSize+1}–{Math.min(customersPage*customersPageSize,customersCount)} de {customersCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={customersPage<=1} onClick={()=>setCustomersPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{customersPage} / {Math.ceil(customersCount/customersPageSize)}</span><button type="button" className="secondary-button" disabled={customersPage>=Math.ceil(customersCount/customersPageSize)} onClick={()=>setCustomersPage((page)=>page+1)}>Siguiente</button></div></div>}
@@ -6006,23 +6064,7 @@ export default function App() {
               <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
             </div>
-            {canManageProducts && !showProductForm && <div className="category-manager">
-              <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
-                <span>{showCategoryManager ? "▾" : "▸"} Gestionar categorías</span><span className="category-toggle-count">{categories.length}</span>
-              </button>
-              {showCategoryManager && <section className="category-panel panel">
-                <p className="category-management-hint">Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.</p>
-                {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
-                  {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
-                    <span className="category-admin-name">{category.name}</span>
-                    <div className="category-admin-actions"><button type="button" className="icon-action-button" title="Editar categoría" aria-label="Editar categoría" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={15}/></button>
-                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title="Eliminar categoría" aria-label="Eliminar categoría" onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={15}/></button>}
-                    </div>
-                  </>}
-                </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
-              </section>}
-            </div>}
-            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
+            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>            {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               {!editingProductId && <div className="product-photo-uploader full-span">
                 <span className="photo-section-label">Fotos del producto (máximo 3)</span>
@@ -6352,11 +6394,16 @@ export default function App() {
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
                 <div className="business-card-preview-wrap">
-                  <div className="business-card-preview" style={{ background: settingsTheme.surface, color: settingsTheme.text, borderColor: settingsTheme.primary, borderTop: "4px solid " + settingsTheme.primary }}>
+                  <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569") }}>
                     <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
                     <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
                   </div>
                   <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
+                </div>
+                <div className="business-card-color-controls">
+                  <label className="settings-color-field"><span className="field-label-heading">Color de acento de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardPrimary || "#475569"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardPrimary: e.target.value }))}/><code>{(settingsCommercialProfile.cardPrimary || "#475569").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Fondo de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardSurface || "#FFFFFF"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardSurface: e.target.value }))}/><code>{(settingsCommercialProfile.cardSurface || "#FFFFFF").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Texto de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardText || "#1F2937"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardText: e.target.value }))}/><code>{(settingsCommercialProfile.cardText || "#1F2937").toUpperCase()}</code></label>
                 </div>
                 <div className="settings-section-divider" />
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
@@ -6365,7 +6412,19 @@ export default function App() {
                     {dayHours.enabled && periods.length<2 && <button type="button" className="settings-hours-add" disabled={activeBusiness?.role!=="owner"} onClick={()=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:[{...periods[0],close:periods[0].open==="09:00"&&periods[0].close==="18:00"?"12:00":periods[0].close},{open:periods[0].open==="09:00"&&periods[0].close==="18:00"?"13:00":periods[0].close,close:"17:00"}]}} }))}>＋ Agregar segundo turno</button>}{dayHours.enabled && periods.length>1 && <button type="button" className="settings-hours-add remove" disabled={activeBusiness?.role!=="owner"} onClick={()=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:periods.slice(0,1)}} }))}>− Quitar segundo turno</button>}</div>})}
                 </div>
                 <div className="settings-section-divider" /><h3>Cómo quieres recibir pedidos</h3><p>Elige un canal para el catálogo público. No necesitas activar Wompi si prefieres coordinar el pedido por WhatsApp.</p>
-                <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>El cliente va al checkout seguro si los cobros están configurados.</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
+                <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>{wompiStatus.loading?"Comprobando conexión…":wompiStatus.enabled?"Conexión activa · "+(wompiStatus.environment==="production"?"Producción":"Pruebas"):"Requiere credenciales de tu cuenta Wompi antes de recibir pagos."}</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
+                {settingsCommercialProfile.orderChannel==="wompi" && <section className="wompi-setup-panel">
+                  <div className="wompi-setup-heading"><div><span className="wompi-status-dot" data-connected={wompiStatus.enabled && wompiStatus.configured ? "true" : "false"}></span><div><strong>{wompiStatus.enabled && wompiStatus.configured ? "Wompi conectado" : "Conecta tu cuenta Wompi"}</strong><p>{wompiStatus.loading ? "Consultando el estado de la conexión." : wompiStatus.enabled && wompiStatus.configured ? "El checkout está habilitado. Verifica el flujo completo antes de usarlo en producción." : "Las credenciales se guardan en el servidor y no se muestran de nuevo. Nunca las pegues en el catálogo ni en el nombre o descripción del negocio."}</p></div></div><span className={"status-pill "+(wompiStatus.enabled&&wompiStatus.configured?"status-active":"status-unpublished")}>{wompiStatus.loading?"Revisando":wompiStatus.enabled&&wompiStatus.configured?"Activa":"Sin configurar"}</span></div>
+                  <div className="wompi-setup-fields">
+                    <label><span>Entorno de Wompi</span><select value={wompiDraft.environment} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,environment:e.target.value}))}><option value="sandbox">Pruebas (sandbox)</option><option value="production">Producción</option></select></label>
+                    <label><span>Llave pública</span><input autoComplete="off" spellCheck="false" value={wompiDraft.public_key} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,public_key:e.target.value}))} placeholder={wompiStatus.configured?"Dejar vacío para conservarla":"pub_test_… o pub_prod_…"}/></label>
+                    <label><span>Llave privada</span><input type="password" autoComplete="new-password" value={wompiDraft.private_key} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,private_key:e.target.value}))} placeholder={wompiStatus.configured?"Guardada · dejar vacío para conservarla":"prv_test_… o prv_prod_…"}/></label>
+                    <label><span>Secreto de integridad</span><input type="password" autoComplete="new-password" value={wompiDraft.integrity_secret} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,integrity_secret:e.target.value}))} placeholder={wompiStatus.configured?"Guardado · dejar vacío para conservarlo":"Secreto de integridad"}/></label>
+                    <label><span>Secreto de eventos (webhook)</span><input type="password" autoComplete="new-password" value={wompiDraft.events_secret} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,events_secret:e.target.value}))} placeholder={wompiStatus.configured?"Guardado · dejar vacío para conservarlo":"Secreto de eventos"}/></label>
+                    <label className="wompi-enabled-switch"><input type="checkbox" checked={wompiDraft.enabled} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,enabled:e.target.checked}))}/><span><strong>Habilitar cobros con Wompi</strong><small>El catálogo solo ofrecerá el pago cuando las cuatro credenciales estén configuradas.</small></span></label>
+                  </div>
+                  <div className="wompi-setup-footer"><p>Recomendación: prueba primero con las llaves de sandbox. Cambia a Producción únicamente cuando hayas verificado monto, referencia, retorno y confirmación del pago.</p><button type="button" className="primary-button" disabled={wompiSaving||activeBusiness?.role!=="owner"||wompiStatus.loading} onClick={saveWompiConfiguration}>{wompiSaving?"Guardando conexión…":"Guardar conexión Wompi"}</button></div>
+                </section>}
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>

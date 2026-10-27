@@ -38,7 +38,9 @@ function AppIcon({ name, size = 20 }) {
     "chart-no-axes-combined": <><path d="M3 3v18h18" /><path d="m7 14 4-4 3 3 6-7" /></>,
     users: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
     sprout: <><path d="M12 21v-9" /><path d="M12 12C5 12 4 7 4 4c5 0 9 2 8 8Z" /><path d="M12 16c0-6 4-9 8-9 0 5-2 9-8 9Z" /></>,
-    "file-spreadsheet": <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 12h7M9 16h7M12 10v8" /></>
+    "file-spreadsheet": <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 12h7M9 16h7M12 10v8" /></>,
+    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></>,
+    sliders: <><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="2" fill="var(--paper,#fff)" /><circle cx="15" cy="12" r="2" fill="var(--paper,#fff)" /><circle cx="10" cy="18" r="2" fill="var(--paper,#fff)" /></>
   };
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }

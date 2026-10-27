@@ -5746,7 +5746,7 @@ body { background: #F5F7FC; color: #19243A; }
 .landing-nav a:hover,.landing-login-link:hover{color:var(--landing-purple)}
 .landing-header-actions{display:flex;align-items:center;gap:16px;flex:0 0 auto}
 .landing-login-link{border:0;background:transparent;padding:10px 0;color:var(--landing-ink);font-size:13px;font-weight:750;white-space:nowrap}
-.landing-primary-button,.landing-secondary-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:45px;padding:12px 18px;border-radius:12px;border:1px solid transparent;font-size:13px;font-weight:800;line-height:1.2;transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease;border-color .18s ease;white-space:normal}
+.landing-primary-button,.landing-secondary-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:45px;padding:12px 18px;border-radius:12px;border:1px solid transparent;font-size:13px;font-weight:800;line-height:1.2;transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease,border-color .18s ease;white-space:normal}
 .landing-primary-button{background:#6C59A8;color:#fff;box-shadow:0 7px 18px #62509A25}
 .landing-primary-button:hover{background:#57458F;transform:translateY(-1px);box-shadow:0 10px 25px #62509A32}
 .landing-secondary-button{background:#fff;color:var(--landing-ink);border-color:#DED9E8}

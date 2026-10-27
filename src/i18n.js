@@ -415,6 +415,36 @@ Object.assign(ENGLISH_TEXT, {
   "Los nombres y datos escritos por ti no se traducen.": "Names and data you enter are not translated."
 });
 
+
+Object.assign(ENGLISH_TEXT, {
+  "Tu negocio, en marcha": "Your business, in motion",
+  "Lo esencial para vender, organizar y tomar decisiones, sin ruido ni pasos innecesarios.": "What you need to sell, stay organized, and make decisions — without clutter or extra steps.",
+  "Crear": "Create",
+  "Crear artículo": "Create item",
+  "Producto, servicio o artículo digital": "Product, service, or digital item",
+  "Crear cotización": "Create quote",
+  "Preparar una propuesta para un cliente": "Prepare a proposal for a customer",
+  "Registrar compra": "Record purchase",
+  "Ingresar una compra de proveedor": "Add a supplier purchase",
+  "Registrar gasto": "Record expense",
+  "Registrar una salida de dinero": "Record an outgoing expense",
+  "Crear cliente": "Create customer",
+  "Guardar los datos de un cliente": "Save a customer's details",
+  "Instalar aplicación": "Install app",
+  "Cómo instalar": "How to install",
+  "Cifras clave": "Key figures",
+  "Indicadores actualizados desde tus movimientos registrados.": "Metrics based on your recorded transactions.",
+  "Datos reales": "Live data",
+  "Accesos principales": "Main shortcuts",
+  "Las tareas más habituales, en su sitio. El resto de módulos está en el menú lateral.": "Your most common tasks, neatly arranged. Other modules remain available in the sidebar.",
+  "Acciones para crear": "Creation actions",
+  "Tarjeta de presentación": "Business card",
+  "Cada herramienta en su lugar, conectada con tus datos reales.": "Every tool in its place, connected to your real business data.",
+  "Abre el área que necesitas para continuar tu operación": "Open the area you need to keep work moving",
+  "Áreas de tu negocio": "Your business areas",
+  "6 accesos": "6 shortcuts"
+});
+
 export function applyAppLanguage(language) {
   if (typeof document === "undefined") return () => {};
   const lang = language === "en" ? "en" : "es";

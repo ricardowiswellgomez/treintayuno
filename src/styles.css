@@ -4233,3 +4233,23 @@ body { background: #F5F7FC; color: #19243A; }
   .sidebar .business-logo-stage .business-avatar { height:112px!important; min-height:105px!important; }
   .category-management-hint { font-size:12px; }
 }
+
+
+/* Keep inline-create forms readable as they grow, especially on tablets. */
+.quick-customer-form .sale-builder { grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:12px; }
+.quick-customer-form .sale-builder>label { min-width:0; }
+.quick-customer-form .sale-builder>label input,
+.quick-customer-form .sale-builder>label select { width:100%; min-width:0; }
+.quick-customer-form .sale-builder>.primary-button { min-width:0; width:100%; align-self:end; }
+.inline-create-fields-grid { min-width:0; }
+.inline-create-fields-grid>label { min-width:0; }
+.inline-create-fields-grid input,
+.inline-create-fields-grid select { min-width:0; max-width:100%; }
+@media(max-width:1000px) {
+  .quick-customer-form .sale-builder { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:600px) {
+  .quick-customer-form .sale-builder { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .quick-customer-form .sale-builder>.primary-button { width:100%; }
+  .quick-expense-supplier { padding:12px; }
+}

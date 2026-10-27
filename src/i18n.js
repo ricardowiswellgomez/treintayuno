@@ -161,6 +161,18 @@ const ENGLISH_TEXT = {
 "Color principal":"Primary color"
 };
 
+Object.assign(ENGLISH_TEXT, {
+  "Código del artículo": "Item code",
+  "Ej. SKU-001": "E.g. SKU-001",
+  "reposición": "restocking",
+  "reposiciones": "restocking",
+  "Revisar agotados": "Review out-of-stock items",
+  "Restocking": "Restocking",
+  "Agregar artículo": "Add item",
+  "Registrar venta": "Record sale",
+  "Crear cotización": "Create quote"
+});
+
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const sourceRecords = new WeakMap();
 const attributeRecords = new WeakMap();

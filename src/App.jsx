@@ -29,6 +29,21 @@ function AppIcon({ name, size = 20 }) {
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }
 
+function SimpleBars({ title, description, data, formatValue }) {
+  const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
+  return <section className="simple-chart panel">
+    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">7 días</span></div>
+    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title}>
+      {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
+        <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
+        <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%"}} /></div>
+        <span className="simple-chart-label">{item.label}</span>
+      </div>)}
+    </div> : <p className="simple-chart-empty">Aún no hay datos suficientes para formar el gráfico.</p>}
+    <div className="simple-chart-footnote">Valores calculados a partir de movimientos registrados, no de estimaciones.</div>
+  </section>;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -1171,6 +1186,7 @@ export default function App() {
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsSearch, setAccountsSearch] = useState("");
   const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
+  const [accountsSort, setAccountsSort] = useState("newest");
   const [backupBusy, setBackupBusy] = useState(false);
   const [inventoryImportBusy, setInventoryImportBusy] = useState(false);
   const [inventoryImportProgress, setInventoryImportProgress] = useState("");
@@ -1847,7 +1863,7 @@ export default function App() {
           supabase.from("customers").select("id,full_name,company_name,phone,whatsapp,email").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
         ]);
         const byId = new Map(customers.map((x)=>[x.id,x]));
-        setReceivableRows(sales.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status)&&Number(x.total_minor||0)>Number(x.amount_paid_minor||0))
+        setReceivableRows(sales.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status))
           .map((x)=>({...x,customer:byId.get(x.customer_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
       } else {
         const [purchases, suppliers] = await Promise.all([
@@ -1855,7 +1871,7 @@ export default function App() {
           supabase.from("suppliers").select("id,name,phone,email,tax_id").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
         ]);
         const byId = new Map(suppliers.map((x)=>[x.id,x]));
-        setPayableRows(purchases.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status)&&Number(x.total_minor||0)>Number(x.amount_paid_minor||0))
+        setPayableRows(purchases.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status))
           .map((x)=>({...x,supplier:byId.get(x.supplier_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
       }
     } catch (e) {
@@ -4314,6 +4330,25 @@ export default function App() {
   }
 
   const filteredProducts = [...products].sort((a, b) => compareInventoryProducts(a, b, productSort));
+  const balanceChartData = useMemo(() => {
+    const today = new Date(todayInBogota() + "T12:00:00-05:00");
+    const keyFor = (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0,10);
+      return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+    };
+    const buckets = new Map();
+    for (let offset=6; offset>=0; offset--) {
+      const date = new Date(today); date.setDate(date.getDate()-offset);
+      const key = keyFor(date);
+      buckets.set(key,{key,label:new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",day:"2-digit",month:"short"}).format(date),income:0,outgoing:0,value:0});
+    }
+    for (const row of statsPayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.income+=Number(row.amount_minor||0); }
+    for (const row of statsExpenses) { const b=buckets.get(keyFor(row.expense_date)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    for (const row of statsPurchasePayments) { const b=buckets.get(keyFor(row.paid_at)); if (b) b.outgoing+=Number(row.amount_minor||0); }
+    return [...buckets.values()].map((b)=>({...b,value:b.income-b.outgoing}));
+  },[statsPayments,statsExpenses,statsPurchasePayments]);
   const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row._draftSku, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");

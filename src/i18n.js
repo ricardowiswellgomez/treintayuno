@@ -14,7 +14,7 @@ const ENGLISH_TEXT = {
   "Dírham de Emiratos Árabes Unidos":"United Arab Emirates dirham","Peso argentino":"Argentine peso","Dólar australiano":"Australian dollar","Taka bangladesí":"Bangladeshi taka","Dinar bareiní":"Bahraini dinar","Real brasileño":"Brazilian real","Dólar canadiense":"Canadian dollar","Franco suizo":"Swiss franc","Peso chileno":"Chilean peso","Yuan chino":"Chinese yuan","Peso colombiano":"Colombian peso","Colón costarricense":"Costa Rican colón","Corona checa":"Czech koruna","Corona danesa":"Danish krone","Peso dominicano":"Dominican peso","Libra egipcia":"Egyptian pound","Libra esterlina":"British pound","Quetzal guatemalteco":"Guatemalan quetzal","Dólar de Hong Kong":"Hong Kong dollar","Forinto húngaro":"Hungarian forint","Rupia indonesia":"Indonesian rupiah","Nuevo séquel israelí":"Israeli new shekel","Rupia india":"Indian rupee","Dinar iraquí":"Iraqi dinar","Corona islandesa":"Icelandic krona","Dólar jamaiquino":"Jamaican dollar","Dinar jordano":"Jordanian dinar","Yen japonés":"Japanese yen","Chelín keniano":"Kenyan shilling","Won surcoreano":"South Korean won","Dinar kuwaití":"Kuwaiti dinar","Peso mexicano":"Mexican peso","Ringgit malasio":"Malaysian ringgit","Naira nigeriana":"Nigerian naira","Corona noruega":"Norwegian krone","Dólar neozelandés":"New Zealand dollar","Rial omaní":"Omani rial","Sol peruano":"Peruvian sol","Peso filipino":"Philippine peso","Rupia pakistaní":"Pakistani rupee","Zloty polaco":"Polish zloty","Guaraní paraguayo":"Paraguayan guarani","Riyal catarí":"Qatari riyal","Riyal saudí":"Saudi riyal","Corona sueca":"Swedish krona","Dólar de Singapur":"Singapore dollar","Baht tailandés":"Thai baht","Lira turca":"Turkish lira","Dólar de Trinidad y Tobago":"Trinidad and Tobago dollar","Grivna ucraniana":"Ukrainian hryvnia","Dólar estadounidense":"US dollar","Peso uruguayo":"Uruguayan peso","Dong vietnamita":"Vietnamese dong","Franco CFA de África Central":"Central African CFA franc","Dólar del Caribe Oriental":"Eastern Caribbean dollar","Franco CFA de África Occidental":"West African CFA franc","Franco CFP":"CFP franc","Rand sudafricano":"South African rand"
 };
 
-const normalizeText = (value) => String(value ?? "").replace(/\\s+/g, " ").trim();
+const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const sourceRecords = new WeakMap();
 const attributeRecords = new WeakMap();
 const translatedAttrs = ["placeholder", "title", "aria-label", "alt"];
@@ -30,8 +30,8 @@ function translateTextNode(node, language) {
     const replacement = ENGLISH_TEXT[normalizeText(source)];
     if (replacement && replacement !== current) {
       sourceRecords.set(node, { original: source, translated: replacement });
-      node.nodeValue = source.replace(/^\\s*/, "") === source ? replacement : source.replace(normalizeText(source), replacement);
-    } else {
+      node.nodeValue = source.replace(/^\s*/, "") === source ? replacement : source.replace(normalizeText(source), replacement);
+    } else if (!(record?.translated && current === record.translated)) {
       sourceRecords.set(node, { original: source, translated: null });
     }
   } else if (record?.translated && current === record.translated) {
@@ -53,7 +53,7 @@ function translateAttribute(element, attribute, language) {
     if (replacement && replacement !== current) {
       byName[attribute] = { original: source, translated: replacement };
       element.setAttribute(attribute, replacement);
-    } else {
+    } else if (!(record?.translated && current === record.translated)) {
       byName[attribute] = { original: source, translated: null };
     }
   } else if (record?.translated && current === record.translated) {

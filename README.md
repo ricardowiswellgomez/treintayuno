@@ -26,7 +26,7 @@ Cloudflare Workers sirve el contenido de `dist/`; `/api/health` permite comproba
 
 ## Estado de preparación comercial
 
-El workflow `Build treseiscinco` de [GitHub Actions](https://github.com/ricardowiswellgomez/treseiscinco/actions) audita dependencias con `npm audit`, verifica la sintaxis del Worker, compila producción y ejecuta `wrangler deploy --dry-run`. Revisa allí el resultado del commit actual. Un build verde **no** demuestra por sí solo que ventas, pagos reales, permisos y aislamiento entre negocios funcionen de extremo a extremo.
+El workflow `Build treseiscinco` de [GitHub Actions](https://github.com/ricardowiswellgomez/treintayuno/actions) audita dependencias con `npm audit`, verifica la sintaxis del Worker, compila producción y ejecuta `wrangler deploy --dry-run`. Revisa allí el resultado del commit actual. Un build verde **no** demuestra por sí solo que ventas, pagos reales, permisos y aislamiento entre negocios funcionen de extremo a extremo.
 
 La re-auditoría del 26 de octubre de 2026 añadió límite de frecuencia al checkout, revocó el acceso directo a la RPC de creación de pedidos y exige configurar explícitamente la URL HTTPS de retorno de Wompi. La función de pagos activa está en la versión 7. Cloudflare registra la versión 352 del Worker con el 100 % del tráfico desde las 19:50:39 UTC; aún falta una prueba funcional independiente contra la URL en vivo.
 

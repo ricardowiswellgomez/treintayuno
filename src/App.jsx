@@ -2851,7 +2851,7 @@ export default function App() {
   async function saveOwnerPhone() {
     if (!session?.user?.id || ownerPhoneSaving) return;
     const phone = ownerPhone.trim();
-    if (phone && phone.replace(/\\D/g, "").length < 7) {
+    if (phone && phone.replace(/\D/g, "").length < 7) {
       setError("Escribe un número de celular válido o deja el campo vacío.");
       return;
     }

@@ -2093,6 +2093,19 @@ export default function App() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
+  function printBusinessCard() {
+    if (!activeBusiness) return;
+    const profile=settingsCommercialProfile||{};
+    const name=profile.tradeName||settingsBusinessName||activeBusiness.name||"Mi negocio";
+    const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
+    const website=String(profile.website||"").trim();
+    const safeWebsite=/^https?:\\/\\//i.test(website)?website:(website?"https://"+website:"");
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:#fff;border:1px solid #d9dee5;border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:#174580}.details{min-width:0;flex:1}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:#667085;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:#fff}.card{box-shadow:none;border:0;border-radius:0;max-width:none;page-break-inside:avoid}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
+    const printWindow=window.open("","_blank");
+    if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
+    printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
+  }
+
   async function downloadBusinessBackup() {
     if (!activeBusiness?.id || backupBusy) return;
     setBackupBusy(true); setError(""); setNotice("");
@@ -5457,6 +5470,7 @@ export default function App() {
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
+            <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
             <div className="inventory-controls panel">
               <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
@@ -5705,11 +5719,12 @@ export default function App() {
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
-                ["taxes", "Impuestos"]
+                ["taxes", "Impuestos"],
+                ["data", "Datos y copias"]
               ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={!["general", "customization", "help", "language", "taxes"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["general", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
@@ -5786,6 +5801,14 @@ export default function App() {
                 </div>
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar estos ajustes.</p>}
               </div>
+              <div hidden={settingsTab !== "data"} className="settings-tab-content settings-data-panel">
+                <div className="settings-icon"><AppIcon name="settings" size={23}/></div>
+                <h3>Copias de seguridad</h3>
+                <p>Descarga una copia de los registros accesibles de este negocio. El archivo incluye las filas que tus permisos permiten consultar y señala cualquier tabla que no se haya podido exportar.</p>
+                <div className="settings-data-card"><div><strong>Copia de seguridad del negocio</strong><p>Productos, categorías, clientes, proveedores, ventas, pagos, compras, gastos, movimientos, cotizaciones, cupones y auditoría cuando los permisos lo permitan.</p></div><button type="button" className="primary-button" onClick={downloadBusinessBackup} disabled={backupBusy||!activeBusiness?.id||activeBusiness?.role!=="owner"}>{backupBusy?"Preparando copia…":"Descargar copia"}</button></div>
+                {activeBusiness?.role!=="owner"&&<p className="helper-text">Solo el propietario puede descargar una copia completa del negocio.</p>}
+                <div className="tax-guidance-note"><strong>Importante</strong><p>La descarga no incluye contraseñas, credenciales privadas de pasarelas ni cuentas de acceso. Guarda el archivo en un lugar seguro; contiene información comercial y datos de clientes.</p></div>
+              </div>
               </div>
               <div hidden={settingsTab !== "company"} className="settings-tab-panel company-profile-panel">
                 <div className="settings-icon"><AppIcon name="team" size={23} /></div>
@@ -5803,6 +5826,13 @@ export default function App() {
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
+                <div className="business-card-preview-wrap">
+                  <div className="business-card-preview">
+                    <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
+                    <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
+                  </div>
+                  <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
+                </div>
                 <div className="settings-section-divider" />
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
                   {([{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}]).map((day) => { const dayHours=settingsCommercialProfile.hoursSchedule?.[day.key] || {enabled:false,periods:[{open:"09:00",close:"18:00"}]}; const periods=Array.isArray(dayHours.periods)&&dayHours.periods.length?dayHours.periods:[{open:"09:00",close:"18:00"}]; return <div className={"settings-hours-day"+(dayHours.enabled?" is-enabled":"")} key={day.key}><label className="settings-hours-day-check"><input type="checkbox" checked={Boolean(dayHours.enabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current, hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{enabled:e.target.checked,periods:(current.hoursSchedule?.[day.key]?.periods?.length?current.hoursSchedule[day.key].periods:[{open:"09:00",close:"18:00"}])}} }))}/><strong>{day.label}</strong></label>

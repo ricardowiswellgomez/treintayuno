@@ -4052,7 +4052,7 @@ body { background: #F5F7FC; color: #19243A; }
   min-height:0!important;
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
   gap:9px!important;
   align-content:stretch!important;
 }

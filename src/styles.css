@@ -6288,3 +6288,6 @@ body { background: #F5F7FC; color: #19243A; }
 .public-catalog-route-state h1{font:800 clamp(23px,4vw,32px)/1.2 Manrope,sans-serif;letter-spacing:-.7px;margin:0}
 .public-catalog-route-state p{max-width:440px;margin:0;color:#69758A;line-height:1.65}
 .public-catalog-route-state a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;margin-top:8px;padding:10px 16px;border-radius:10px;background:#475569;color:#fff;font-weight:750}
+
+/* Hide inline contextual-help triggers as requested; keep the AI assistant available. */
+.field-help-wrap{display:none!important}

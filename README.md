@@ -2,6 +2,10 @@
 
 treseiscinco es una aplicación web para la operación diaria de pequeños negocios. El frontend usa React + Vite; la autenticación y los datos se gestionan en Supabase; el Worker de Cloudflare sirve la aplicación y la ruta de IA.
 
+## Dirección pública
+
+La URL de producción de la marca es <https://treseiscinco.ricardowiswellgomez.workers.dev>. El nombre del Worker se define en `wrangler.jsonc`; si se cambia, debe verificarse que el despliegue de Cloudflare publique también la aplicación completa bajo esa ruta.
+
 ## Desarrollo local
 
 Requiere Node.js 22.12 o posterior y npm.

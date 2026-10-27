@@ -4332,3 +4332,94 @@ body { background: #F5F7FC; color: #19243A; }
     z-index: 2147483646 !important;
   }
 }
+
+
+/* Accessible, user-defined colors. All controls share contrast-safe foregrounds. */
+:root {
+  --brand-yellow: #475569;
+  --brand-teal: #475569;
+  --brand-blue: #475569;
+  --green: #475569;
+  --soft-green: #EEF2F6;
+  --app-background: #F5F7FC;
+}
+.primary-button {
+  background: var(--primary-button-bg, var(--brand-teal));
+  color: var(--primary-button-text, #FFFFFF);
+}
+.primary-button:hover {
+  background: var(--button-hover, var(--brand-teal));
+  color: var(--button-hover-text, var(--primary-button-text, #FFFFFF));
+  filter: none;
+}
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.logout-button:focus-visible,
+.nav-item:focus-visible {
+  outline-color: color-mix(in srgb, var(--green, #475569) 72%, white);
+}
+.settings-color-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 900px;
+}
+.settings-color-field {
+  background: var(--paper, #FFFFFF);
+}
+.settings-contrast-note {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin:8px 0 14px;
+  padding:12px 14px;
+  border:1px solid color-mix(in srgb,var(--green,#475569) 24%,var(--line,#E1E7F0));
+  border-radius:11px;
+  background:color-mix(in srgb,var(--paper,#FFFFFF) 88%,var(--green,#475569) 12%);
+  color:var(--ink,#19243A);
+  font-size:13px;
+  line-height:1.55;
+}
+.settings-contrast-note>span {
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:var(--green,#475569);
+  color:var(--paper,#FFFFFF);
+  font-weight:900;
+}
+.settings-theme-preview-brand { color:var(--preview-surface-text,var(--preview-text)); }
+.settings-theme-preview>button {
+  background:var(--preview-primary);
+  color:var(--preview-button-text,#FFFFFF);
+}
+.settings-theme-preview>button:hover {
+  background:var(--button-hover,var(--preview-primary));
+  color:var(--button-hover-text,var(--preview-button-text,#FFFFFF));
+}
+
+/* Move the business logo nearer to the treseiscinco mark and recover vertical room for navigation. */
+.sidebar .brand { margin-bottom:0; padding-top:0; }
+.sidebar .business-logo-stage {
+  margin:2px 0 8px;
+  justify-content:center;
+  align-items:flex-start;
+}
+.sidebar .business-logo-stage .business-avatar {
+  height:clamp(132px,18vh,184px);
+}
+.sidebar .business-logo-stage .business-avatar.has-business-logo img {
+  object-position:center top;
+}
+.sidebar .business-switcher { margin-bottom:10px !important; }
+@media(max-width:900px) {
+  .sidebar .business-logo-stage { margin:0 0 7px; }
+  .sidebar .business-logo-stage .business-avatar { height:clamp(116px,16vh,145px) !important; }
+  .settings-color-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:520px) {
+  .settings-color-grid { grid-template-columns:minmax(0,1fr); }
+  .settings-color-field { padding:12px; }
+  .settings-color-field input[type=color] { height:46px; }
+}

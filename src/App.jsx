@@ -79,7 +79,7 @@ const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "receivables", "payables", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
@@ -88,7 +88,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras y gastos", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -96,7 +96,7 @@ const normalizeSidebarLayout = (layout) => {
     .map((group) => ({
       id: group.id,
       type: "group",
-      title: group.id === "inicio" || (Array.isArray(group.items) && group.items.some((item) => item?.id === "home")) ? "" : String(group.title || "Sección").slice(0, 60),
+      title: group.id === "inicio" || (Array.isArray(group.items) && group.items.some((item) => item?.id === "home")) ? "" : ({ comercial: "COMERCIAL", finanzas: "FINANZAS", personal: "PERSONAL", administracion: "ADMINISTRACIÓN" })[group.id] || String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;

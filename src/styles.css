@@ -2613,3 +2613,151 @@ body { background: #F5F7FC; color: #19243A; }
   .sidebar .brand { flex-direction:row; align-items:center; justify-content:flex-start; gap:10px; }
   .sidebar .brand .brand-logo-full { width:min(210px, 70vw); }
 }
+
+
+/* Aplicación intencional de la identidad treseiscinco: azul base, verde turquesa y amarillo distintivo. */
+:root {
+  --brand-yellow: #F5C928;
+  --brand-teal: #159F92;
+  --brand-blue: #174580;
+  --green: #159F92;
+  --soft-green: #DDF7F2;
+  --app-background: #F5F7FC;
+}
+.eyebrow { color: var(--brand-teal); }
+.primary-button {
+  background: var(--brand-teal);
+  color: #FFFFFF;
+  box-shadow: 0 2px 0 #17458012;
+}
+.primary-button:hover { background: #0D7E75; }
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.logout-button:focus-visible,
+.nav-item:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand-yellow) 82%, white);
+  outline-offset: 2px;
+}
+.form-stack input:focus,
+.form-stack select:focus,
+.form-stack textarea:focus,
+.settings-card input:focus,
+.settings-card select:focus,
+.settings-card textarea:focus {
+  border-color: var(--brand-teal);
+  box-shadow: 0 0 0 3px #159F9225;
+}
+.app-shell .nav-item:hover:not(.active) {
+  background: color-mix(in srgb, var(--brand-teal) 8%, white);
+}
+.app-shell > .sidebar .nav-item.active {
+  background: color-mix(in srgb, var(--green, var(--brand-teal)) 12%, white);
+  color: var(--green, var(--brand-teal));
+  box-shadow: inset 4px 0 0 var(--brand-yellow);
+  font-weight: 800;
+}
+.sidebar-edit-toggle.active {
+  background: #FFF7D4;
+  border-color: var(--brand-yellow);
+  color: var(--brand-blue);
+}
+.home-dashboard .welcome-card {
+  border-left: 5px solid var(--brand-yellow);
+}
+.home-dashboard .welcome-card .eyebrow { color: var(--brand-teal); }
+.home-dashboard .count-label {
+  color: #584500;
+  background: #FFF4B8;
+  border: 1px solid #F1D96B;
+}
+.home-dashboard .area-card {
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.home-dashboard .area-card:hover {
+  border-color: color-mix(in srgb, var(--brand-teal) 42%, var(--line));
+  box-shadow: 0 8px 22px #17458012;
+  transform: translateY(-1px);
+}
+.home-dashboard .area-card:nth-child(3n + 1) .area-icon {
+  color: #087F75;
+  background: #DDF7F2;
+  box-shadow: inset 0 0 0 1px #B6EAE1;
+}
+.home-dashboard .area-card:nth-child(3n + 2) .area-icon {
+  color: #174580;
+  background: #FFF4B8;
+  box-shadow: inset 0 0 0 1px #F1D96B;
+}
+.home-dashboard .area-card:nth-child(3n) .area-icon {
+  color: #174580;
+  background: #E4ECFC;
+  box-shadow: inset 0 0 0 1px #C8D8F4;
+}
+.sidebar .business-switcher {
+  border-color: color-mix(in srgb, var(--brand-teal) 26%, var(--line));
+}
+.settings-theme-preview-sidebar strong.settings-app-brand { color: var(--brand-blue); }
+
+/* Escritorio y tabletas: el sidebar ocupa la pantalla completa; solo sus módulos se desplazan.
+   La identidad y el cierre de sesión quedan fuera del área de scroll. */
+@media (min-width: 601px) {
+  .app-shell > .sidebar {
+    box-sizing: border-box;
+    align-self: start;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .app-shell > .sidebar > .brand,
+  .app-shell > .sidebar > .business-switcher {
+    flex: 0 0 auto;
+  }
+  .app-shell > .sidebar > .nav-list {
+    flex: 1 1 0%;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--brand-teal) 42%, transparent) transparent;
+    padding: 0 3px 8px 0;
+    margin-bottom: 0;
+  }
+  .app-shell > .sidebar > .sidebar-bottom {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--sidebar-background, var(--paper, #FFFFFF));
+    border-top-color: color-mix(in srgb, var(--brand-blue) 18%, transparent);
+  }
+  .app-shell > .sidebar .logout-button {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    min-height: 40px;
+    margin-top: 6px;
+    padding: 9px 10px;
+    border: 1px solid #F1D96B;
+    border-left: 4px solid var(--brand-yellow);
+    border-radius: 9px;
+    background: #FFF7D4;
+    color: #17335B;
+    font-weight: 800;
+    opacity: 1;
+    white-space: nowrap;
+  }
+  .app-shell > .sidebar .logout-button:hover:not(:disabled) {
+    background: #FFF0A6;
+  }
+}

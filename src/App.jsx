@@ -36,6 +36,8 @@ function escapeHtml(value) {
 const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
+  { icon: "↗", title: "Cuentas por cobrar", description: "Controla las ventas pendientes y registra abonos de tus clientes.", screen: "receivables" },
+  { icon: "↙", title: "Cuentas por pagar", description: "Controla las compras pendientes y registra pagos a proveedores.", screen: "payables" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
@@ -55,9 +57,9 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "receivables", "payables", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
-  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -65,7 +67,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -90,6 +92,8 @@ const normalizeSidebarLayout = (layout) => {
   // Reconcile prior layouts with the agreed categories without discarding item labels/icons.
   const requiredDestinations = {
     products: "comercial",
+    receivables: "finanzas",
+    payables: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
     customers: "personal",
@@ -375,6 +379,35 @@ const employeePermissionProfiles = {
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
+
+function hexRgb(value) {
+  const match = String(value || "").trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return null;
+  let hex = match[1];
+  if (hex.length === 3) hex = hex.split("").map((x) => x + x).join("");
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function luminance(rgb) {
+  const channel = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+}
+function contrastRatio(a, b) {
+  const ca = hexRgb(a), cb = hexRgb(b);
+  if (!ca || !cb) return 0;
+  const la = luminance(ca), lb = luminance(cb);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+function readableText(background, preferred) {
+  if (!hexRgb(background)) return preferred || "#19243A";
+  if (preferred && contrastRatio(background, preferred) >= 4.5) return preferred;
+  const black = "#111827", white = "#FFFFFF";
+  return contrastRatio(background, black) >= contrastRatio(background, white) ? black : white;
+}
+function readableAccent(accent, background) {
+  if (!hexRgb(accent) || !hexRgb(background)) return accent || "#174580";
+  return contrastRatio(accent, background) >= 3 ? accent : readableText(background, accent);
+}
 
 const compareInventoryProducts = (a, b, sort) => {
   const nameCompare = String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" });
@@ -1122,6 +1155,25 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("sales");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [platformAdminData, setPlatformAdminData] = useState(null);
+  const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
+  const [platformAdminSaving, setPlatformAdminSaving] = useState(false);
+  const [platformAdminSearch, setPlatformAdminSearch] = useState("");
+  const [platformPaymentBusiness, setPlatformPaymentBusiness] = useState("");
+  const [platformPaymentDraft, setPlatformPaymentDraft] = useState({ interval: "month", amount: "", method: "Nequi", reference: "", notes: "" });
+  const [platformAdminNote, setPlatformAdminNote] = useState("");
+  const [platformAdminStatusDrafts, setPlatformAdminStatusDrafts] = useState({});
+  const [platformAdminPeriodDrafts, setPlatformAdminPeriodDrafts] = useState({});
+  const [businessSubscription, setBusinessSubscription] = useState(null);
+  const [receivableRows, setReceivableRows] = useState([]);
+  const [payableRows, setPayableRows] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsSearch, setAccountsSearch] = useState("");
+  const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [inventoryImportBusy, setInventoryImportBusy] = useState(false);
+  const [inventoryImportProgress, setInventoryImportProgress] = useState("");
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -4114,6 +4166,9 @@ export default function App() {
         : "expenses";
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
+    if (next === "platform_admin") return isPlatformAdmin;
+    if (next === "receivables") return canPermission("sales_view");
+    if (next === "payables") return canViewPurchases || canViewExpenses;
     if (next === "settings") return isBusinessOwner;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
@@ -4362,7 +4417,10 @@ export default function App() {
 
   const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
-  const appThemeStyle = { "--green": activeTheme.primary, "--brand-teal": activeTheme.primary, "--brand-blue": activeTheme.primary, "--brand-yellow": activeTheme.primary, "--soft-green": `color-mix(in srgb, ${activeTheme.primary} 12%, white)`, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
+  const safeAppText = readableText(activeTheme.background, activeTheme.text);
+  const safeSidebarText = readableText(activeTheme.sidebarBackground, activeTheme.sidebarText);
+  const safeAccent = readableAccent(activeTheme.primary, activeTheme.surface);
+  const appThemeStyle = { "--green": safeAccent, "--brand-teal": safeAccent, "--brand-blue": safeAccent, "--brand-yellow": safeAccent, "--soft-green": `color-mix(in srgb, ${safeAccent} 12%, white)`, "--paper": activeTheme.surface, "--ink": readableText(activeTheme.surface, activeTheme.text), "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": safeSidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": readableText(activeTheme.buttonHover, activeTheme.buttonHoverText), "--app-background": activeTheme.background, background: activeTheme.background, color: safeAppText };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"

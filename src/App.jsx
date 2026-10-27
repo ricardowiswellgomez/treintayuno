@@ -96,7 +96,7 @@ const normalizeSidebarLayout = (layout) => {
     .map((group) => ({
       id: group.id,
       type: "group",
-      title: group.id === "inicio" ? "" : String(group.title || "Sección").slice(0, 60),
+      title: group.id === "inicio" || (Array.isArray(group.items) && group.items.some((item) => item?.id === "home")) ? "" : String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;
@@ -399,7 +399,8 @@ const employeePermissionProfiles = {
 };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
-const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
+const defaultBusinessTheme = Object.freeze({ primary: "#475569", background: "#F6F7F9", surface: "#FFFFFF", text: "#1F2937", sidebarBackground: "#FFFFFF", sidebarText: "#1F2937", buttonHover: "#334155", buttonHoverText: "#FFFFFF" });
+const treseiscincoTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
 
 function hexRgb(value) {
   const match = String(value || "").trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -426,7 +427,7 @@ function readableText(background, preferred) {
   return contrastRatio(background, black) >= contrastRatio(background, white) ? black : white;
 }
 function readableAccent(accent, background) {
-  if (!hexRgb(accent) || !hexRgb(background)) return accent || "#174580";
+  if (!hexRgb(accent) || !hexRgb(background)) return accent || defaultBusinessTheme.primary;
   return contrastRatio(accent, background) >= 4.5 ? accent : readableText(background, accent);
 }
 
@@ -455,8 +456,9 @@ const normalizeBusinessTheme = (theme) => {
   // Cambia solo los temas predeterminados de versiones anteriores; los colores elegidos por cada negocio se respetan.
   const legacyDefault = { primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f", sidebarBackground: "#fffefa", sidebarText: "#20251f", buttonHover: "#234635", buttonHoverText: "#ffffff" };
   const previousBrandDefault = { primary: "#174580", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#102F60", buttonHoverText: "#FFFFFF" };
+  const previousTealDefault = { primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" };
   const matchesDefault = (candidate) => Boolean(theme) && Object.entries(candidate).every(([key, value]) => !theme[key] || String(theme[key]).toLowerCase() === value.toLowerCase());
-  const source = matchesDefault(legacyDefault) || matchesDefault(previousBrandDefault) ? null : theme;
+  const source = matchesDefault(legacyDefault) || matchesDefault(previousBrandDefault) || matchesDefault(previousTealDefault) ? null : theme;
   return { primary: valid(source?.primary, defaultBusinessTheme.primary), background: valid(source?.background, defaultBusinessTheme.background), surface: valid(source?.surface, defaultBusinessTheme.surface), text: valid(source?.text, defaultBusinessTheme.text), sidebarBackground: valid(source?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(source?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(source?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(source?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
 const DEFAULT_TAX_PROFILE = Object.freeze({
@@ -537,7 +539,7 @@ function FieldHelp({ text, enabled = true }) {
 
 const contextualHelpContent = {
   home: { title: "Inicio", intro: "Este es el punto de partida de treseiscinco. Cada módulo trabaja con la información real de tu negocio.", steps: ["En Productos registra lo que vendes y confirma su precio y existencias.", "En Ventas registra cada operación: el sistema calcula el total y descuenta inventario cuando corresponde.", "En Compras y gastos registra entradas y egresos para consultar la rentabilidad."], tip: "Mantén los productos y las existencias al día: las demás secciones dependen de esos datos." },
-  products: { title: "Productos e inventario", intro: "Aquí defines el catálogo interno que se usa en ventas, compras y rentabilidad.", steps: ["Crea o edita un producto con nombre, unidad, precio y costo.", "Activa «Se puede vender» para que aparezca en el formulario de ventas.", "Indica si controla inventario y registra las entradas o ajustes de existencias."], tip: "Antes de vender, revisa el precio, el estado de venta y las existencias." },
+  products: { title: "Productos", intro: "Aquí defines el catálogo interno que se usa en ventas, compras y rentabilidad.", steps: ["Crea o edita un producto con nombre, unidad, precio y costo.", "Activa «Se puede vender» para que aparezca en el formulario de ventas.", "Indica si controla inventario y registra las entradas o ajustes de existencias."], tip: "Antes de vender, revisa el precio, el estado de venta y las existencias." },
   productForm: { title: "Crear o editar producto", intro: "Guarda la información comercial con la que se calcularán las ventas.", steps: ["Usa un nombre fácil de reconocer; el código es un identificador.", "Define precio de venta, costo, unidad y control de inventario.", "Revisa los campos y pulsa Guardar. Las fotos se optimizan antes de almacenarse."], tip: "Para servicios o productos digitales, desactiva el control de inventario si no corresponde." },
   sales: { title: "Ventas", intro: "Registra ventas reales, consulta su estado de pago y registra abonos posteriores.", steps: ["Pulsa «Nueva venta». El cliente es opcional.", "Elige un producto, revisa cantidad y pulsa «+ Agregar» para incluirlo.", "Revisa el total, indica el abono si recibiste dinero y guarda."], tip: "Guardar requiere al menos un artículo agregado. Venta y salida de inventario se registran juntas." },
   saleForm: { title: "Registrar una venta", intro: "El formulario solo vende productos activos. El inventario se descuenta al confirmar el registro.", steps: ["Elige un producto en la lista desplegable.", "Escribe la cantidad y pulsa «+ Agregar». Repite para otros productos.", "Revisa el carrito y el total; puedes dejar el cliente vacío.", "Registra el abono inicial, selecciona su forma de pago y pulsa Guardar venta."], tip: "Si el producto no aparece, revisa que esté activo para la venta. Si no hay existencias suficientes, el sistema explica el motivo." },
@@ -552,7 +554,7 @@ const contextualHelpContent = {
   expenses: { title: "Gastos", intro: "Registra salidas de dinero que no forman parte de la entrada de mercancía de una compra.", steps: ["Pulsa «Nuevo gasto».", "Describe el gasto, categoría, fecha e importe.", "Añade proveedor, método de pago o nota si aplica.", "Guarda y revisa el registro."], tip: "Registra cada gasto una sola vez. Los artículos de inventario corresponden a Compras." },
   expenseForm: { title: "Registrar un gasto", intro: "Un gasto afecta los resultados de rentabilidad del período.", steps: ["Escribe una descripción concreta y un importe mayor que cero.", "Confirma la fecha y la categoría.", "Guarda cuando la información esté correcta."], tip: "Incluye la referencia o el soporte en Notas para facilitar una revisión posterior." },
   profitability: { title: "Rentabilidad", intro: "Este módulo resume valores a partir de ventas, costos registrados y gastos.", steps: ["Elige el período que quieres revisar.", "Compara ventas con el costo de los productos vendidos.", "Revisa los gastos asociados antes de interpretar la utilidad."], tip: "Los resultados dependen de que hayas registrado los costos y gastos de forma completa." },
-  catalog: { title: "Catálogo para compartir", intro: "Controla qué productos activos quieres mostrar a tus clientes en el catálogo público.", steps: ["Revisa nombre, precio, fotos y descripción en Productos.", "Publica solo los artículos que quieres mostrar.", "Abre el enlace público para comprobar lo que verá un cliente."], tip: "El catálogo muestra productos publicados y disponibles para vender; no sustituye el registro interno." },
+  catalog: { title: "Catálogo", intro: "Controla qué productos activos quieres mostrar a tus clientes en el catálogo público.", steps: ["Revisa nombre, precio, fotos y descripción en Productos.", "Publica solo los artículos que quieres mostrar.", "Abre el enlace público para comprobar lo que verá un cliente."], tip: "El catálogo muestra productos publicados y disponibles para vender; no sustituye el registro interno." },
   team: { title: "Equipo y permisos", intro: "Permite que cada colaborador vea o gestione solo los módulos que necesita.", steps: ["La persona debe tener primero una cuenta de treseiscinco.", "Escribe el mismo correo que usa para iniciar sesión.", "Marca los permisos necesarios y guarda los cambios."], tip: "Otorga solo los accesos que la persona necesita para trabajar." },
   teamForm: { title: "Configurar acceso de un colaborador", intro: "Los permisos definen qué módulos puede consultar o administrar otra cuenta.", steps: ["Escribe el correo exacto de la cuenta de treseiscinco.", "Activa solo los permisos necesarios.", "Revisa la selección y guarda el acceso."], tip: "El colaborador debe haber creado su cuenta antes de poder ser vinculado al negocio." },
   settings: { title: "Configuración y personalización", intro: "Los ajustes se conservan en el negocio y se aplican cuando vuelvas a entrar.", steps: ["Actualiza nombre y moneda si el negocio aún no tiene importes que impidan cambiarla.", "Carga un logo y elige colores para personalizar las pantallas.", "Activa o desactiva el panel en «Ayudas contextuales».", "Pulsa Guardar configuración al terminar."], tip: "Los cambios visuales no alteran las operaciones. La moneda se protege cuando ya existen datos financieros." }
@@ -1249,6 +1251,7 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const activityRecordedUserRef = useRef(null);
   const [homeCreateMenuOpen, setHomeCreateMenuOpen] = useState(false);
   const homeCreateMenuRef = useRef(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -1277,6 +1280,11 @@ export default function App() {
       setAppInstalled(true);
       setInstallPrompt(null);
       setShowInstallGuide(false);
+      if (session?.user?.id) {
+        const userAgent = window.navigator.userAgent || "";
+        const platform = /android/i.test(userAgent) ? "android" : /iphone|ipad|ipod/i.test(userAgent) ? "ios" : /windows/i.test(userAgent) ? "windows" : /macintosh|mac os/i.test(userAgent) ? "macos" : "web";
+        supabase.rpc("record_platform_activity", { p_event: "pwa_installed", p_is_standalone: true, p_platform: platform }).then(({ error: activityError }) => { if (activityError) console.warn("No se pudo registrar la instalación PWA.", activityError); });
+      }
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
@@ -1284,11 +1292,29 @@ export default function App() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onAppInstalled);
     };
-  }, []);
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const userId = session?.user?.id;
+    if (!userId) { activityRecordedUserRef.current = null; return; }
+    if (activityRecordedUserRef.current === userId) return;
+    activityRecordedUserRef.current = userId;
+    const standalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
+    const userAgent = window.navigator.userAgent || "";
+    const platform = /android/i.test(userAgent) ? "android" : /iphone|ipad|ipod/i.test(userAgent) ? "ios" : /windows/i.test(userAgent) ? "windows" : /macintosh|mac os/i.test(userAgent) ? "macos" : "web";
+    supabase.rpc("record_platform_activity", { p_event: "app_open", p_is_standalone: standalone, p_platform: platform }).then(({ error: activityError }) => { if (activityError) console.warn("No se pudo registrar la actividad de la plataforma.", activityError); });
+  }, [authReady, session?.user?.id]);
 
   async function requestPwaInstall() {
     if (!installPrompt) {
       setShowInstallGuide((open) => !open);
+      if (session?.user?.id) {
+        const standalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
+        const userAgent = window.navigator.userAgent || "";
+        const platform = /android/i.test(userAgent) ? "android" : /iphone|ipad|ipod/i.test(userAgent) ? "ios" : /windows/i.test(userAgent) ? "windows" : /macintosh|mac os/i.test(userAgent) ? "macos" : "web";
+        supabase.rpc("record_platform_activity", { p_event: "install_help_opened", p_is_standalone: standalone, p_platform: platform }).then(({ error: activityError }) => { if (activityError) console.warn("No se pudo registrar la ayuda de instalación.", activityError); });
+      }
       return;
     }
     try {
@@ -1379,6 +1405,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState([]);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showQuickPurchaseSupplierForm, setShowQuickPurchaseSupplierForm] = useState(false);
+  const [showQuickExpenseSupplierForm, setShowQuickExpenseSupplierForm] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState(blankSupplier);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
   const [purchasePeriod, setPurchasePeriod] = useState("day");
@@ -2655,7 +2682,7 @@ export default function App() {
       const { error: insertError } = await supabase.from("businesses").insert({
         id: crypto.randomUUID(), owner_user_id: session.user.id, name: businessName.trim(),
         country_code: "CO", currency_code: "COP", timezone: "America/Bogota",
-        theme: { primary: "#159F92", background: "#F5F7FC" }
+        theme: { ...defaultBusinessTheme }
       });
       if (insertError) throw insertError;
       const list = await loadBusinesses(session.user.id);
@@ -4158,7 +4185,9 @@ export default function App() {
         }).select("id,business_id,name,email,phone,tax_id,address,notes").single();
       if (supplierError) throw supplierError;
       setSuppliers((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name, "es")));
-      setPurchaseSupplierId(data.id); setSupplierDraft(blankSupplier); setShowSupplierForm(false); setShowQuickPurchaseSupplierForm(false);
+      if (showQuickExpenseSupplierForm) setExpenseDraft((current) => ({ ...current, supplier_id: data.id }));
+      else setPurchaseSupplierId(data.id);
+      setSupplierDraft(blankSupplier); setShowSupplierForm(false); setShowQuickPurchaseSupplierForm(false); setShowQuickExpenseSupplierForm(false);
       setNotice("Proveedor guardado y seleccionado para la compra: " + data.name + ".");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -4980,10 +5009,10 @@ export default function App() {
           {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
             onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
-            <div className="sidebar-group-heading">
+            {!group.items.some((navItem) => navItem.id === "home") && <div className="sidebar-group-heading">
               {sidebarEditing ? <><span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span>}<p className="nav-label">{group.title}</p></>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
-            </div>
+            </div>}
             {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
               <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row"
                 onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
@@ -5045,7 +5074,7 @@ export default function App() {
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>
 <div className="sale-builder">
-<label><span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span><select value={saleCustomerId} onChange={e=>setSaleCustomerId(e.target.value)}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}</select>{canManageCustomers && <button type="button" className="text-button" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}> {showQuickCustomerForm?"Cancelar":"＋ Crear cliente"} </button>}</label>
+<label><span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span><select value={saleCustomerId} onChange={e=>{if(e.target.value==="__create_sale_customer__"){setShowQuickCustomerForm(true);setError("");return;}setSaleCustomerId(e.target.value);}}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}{canManageCustomers&&<option value="__create_sale_customer__">＋ Nuevo cliente…</option>}</select>{canManageCustomers && <button type="button" className="text-button" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}> {showQuickCustomerForm?"Cancelar":"＋ Crear cliente"} </button>}</label>
 <label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select>{canManageProducts && <button type="button" className="text-button" onClick={() => setShowQuickSaleProductForm((open) => !open)}>{showQuickSaleProductForm ? "Cancelar nuevo artículo" : "＋ Nuevo artículo"}</button>}</label>
 <label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
 </div>
@@ -5250,7 +5279,7 @@ export default function App() {
             {showQuoteForm && canManageSales && <form className="quote-form panel" onSubmit={createQuote}>
               <h3>{editingQuoteId ? "Ajustar cotización" : "Nueva cotización"}</h3>
               <div className="quote-customer-fields">
-                <label><span className="field-label-heading">Seleccionar cliente registrado</span><select value={quoteCustomerId} onChange={(e) => { const id = e.target.value; setQuoteCustomerId(id); const customer = quoteCustomers.find((item) => item.id === id); if (customer) { setQuoteCustomerName(customer.company_name || customer.full_name || ""); setQuoteCustomerEmail(customer.email || ""); setQuoteCustomerPhone(customer.phone || customer.whatsapp || ""); } }}><option value="">Cliente nuevo / escribir manualmente</option>{quoteCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name && customer.company_name !== customer.full_name ? customer.company_name + " · " + customer.full_name : customer.full_name || customer.company_name}</option>)}</select></label>{canManageCustomers && <button type="button" className="secondary-button inline-customer-toggle" onClick={() => setShowQuickQuoteCustomerForm((open) => !open)}>{showQuickQuoteCustomerForm ? "Cancelar nuevo cliente" : "＋ Nuevo cliente"}</button>}
+                <label><span className="field-label-heading">Seleccionar cliente registrado</span><select value={quoteCustomerId} onChange={(e) => { const id = e.target.value; if (id === "__create_quote_customer__") { setShowQuickQuoteCustomerForm(true); setError(""); return; } setQuoteCustomerId(id); const customer = quoteCustomers.find((item) => item.id === id); if (customer) { setQuoteCustomerName(customer.company_name || customer.full_name || ""); setQuoteCustomerEmail(customer.email || ""); setQuoteCustomerPhone(customer.phone || customer.whatsapp || ""); } }}><option value="">Cliente nuevo / escribir manualmente</option>{quoteCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name && customer.company_name !== customer.full_name ? customer.company_name + " · " + customer.full_name : customer.full_name || customer.company_name}</option>)}{canManageCustomers&&<option value="__create_quote_customer__">＋ Nuevo cliente…</option>}</select></label>{canManageCustomers && <button type="button" className="secondary-button inline-customer-toggle" onClick={() => setShowQuickQuoteCustomerForm((open) => !open)}>{showQuickQuoteCustomerForm ? "Cancelar nuevo cliente" : "＋ Nuevo cliente"}</button>}
                 <label><span className="field-label-heading">Cliente o empresa *</span><input value={quoteCustomerName} onChange={(e) => { setQuoteCustomerName(e.target.value); if (quoteCustomerId) setQuoteCustomerId(""); }} maxLength={200} required placeholder="Nombre del cliente" /></label>
                 <label><span className="field-label-heading">Correo</span><input type="email" value={quoteCustomerEmail} onChange={(e) => setQuoteCustomerEmail(e.target.value)} maxLength={254} placeholder="cliente@correo.com" /></label>
                 <label><span className="field-label-heading">Teléfono / WhatsApp</span><input value={quoteCustomerPhone} onChange={(e) => setQuoteCustomerPhone(e.target.value)} maxLength={60} placeholder="Número de contacto" /></label>
@@ -5536,7 +5565,8 @@ export default function App() {
                   <label><span className="field-label-heading">Valor *<FieldHelp enabled={contextualHelpEnabled} text="Monto del gasto. Queda registrado como salida de dinero y se considera en el cálculo de rentabilidad." /></span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={expenseDraft.amount} onChange={(e) => setExpenseDraft((d) => ({ ...d, amount: e.target.value }))} required placeholder="0" /></label>
                   <label><span className="field-label-heading">Fecha *<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha en que se realizó el gasto." /></span><input type="date" value={expenseDraft.expense_date} onChange={(e) => setExpenseDraft((d) => ({ ...d, expense_date: e.target.value }))} required /></label>
                   <label><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio utilizado para pagar este gasto." /></span><select value={expenseDraft.payment_method} onChange={(e) => setExpenseDraft((d) => ({ ...d, payment_method: e.target.value }))}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label>
-                  <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Vincula el gasto con un proveedor si corresponde." /></span><select value={expenseDraft.supplier_id} onChange={(e) => setExpenseDraft((d) => ({ ...d, supplier_id: e.target.value }))}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
+                  <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Vincula el gasto con un proveedor si corresponde." /></span><select value={expenseDraft.supplier_id} onChange={(e) => { if (e.target.value === "__create_expense_supplier__") { setShowQuickExpenseSupplierForm(true); setError(""); return; } setExpenseDraft((d) => ({ ...d, supplier_id: e.target.value })); }}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}{canPermission("suppliers_manage")&&<option value="__create_expense_supplier__">＋ Nuevo proveedor…</option>}</select></label>
+                  {showQuickExpenseSupplierForm && canPermission("suppliers_manage") && <div className="inline-create-panel quick-expense-supplier full-span"><strong>Nuevo proveedor</strong><p className="inline-create-hint">Se guardará como contacto y quedará seleccionado en este gasto, sin borrar los datos del formulario.</p><div className="inline-create-fields-grid"><label><span>Nombre *</span><input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required /></label><label><span>NIT o documento</span><input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} /></label><label><span>Teléfono</span><input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} /></label><label><span>Correo</span><input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} /></label><label className="inline-create-span-two"><span>Dirección</span><input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} /></label></div><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !supplierDraft.name.trim()} onClick={() => addSupplier()}>{busy ? "Guardando…" : "Guardar y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickExpenseSupplierForm(false); setSupplierDraft(blankSupplier); }}>Cancelar</button></div></div>}
                   <label className="purchase-span-two"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Guarda una referencia, factura o detalle útil para reconocer este gasto después." /></span><input value={expenseDraft.notes} onChange={(e) => setExpenseDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1500} placeholder="Factura, referencia o detalle" /></label>
                 </div>
                 <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowExpenseForm(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? "Guardando…" : "Guardar gasto"}</button></div>
@@ -5582,10 +5612,7 @@ export default function App() {
                 <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
               </button>
               {showCategoryManager && <section className="category-panel panel">
-                <form className="category-create-form" onSubmit={addCategory}>
-                  <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} maxLength={80} placeholder="Nombre de la categoría" required aria-label="Nombre de la nueva categoría" />
-                  <button className="secondary-button" disabled={busy}>{busy ? "Guardando…" : "Añadir"}</button>
-                </form>
+                <p className="category-management-hint">Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.</p>
                 {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
                   {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
                     <span className="category-admin-name">{category.name}</span>
@@ -5866,7 +5893,7 @@ export default function App() {
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
-              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Usar paleta de treseiscinco</button><p>Recupera la paleta habitual de treseiscinco. También puedes elegir cualquier color con los controles anteriores. Tu logo no se modifica; guarda para aplicar los cambios.</p></div>}
+              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...treseiscincoTheme })}><span aria-hidden="true">↺</span> Usar paleta de treseiscinco</button><p>Recupera la paleta habitual de treseiscinco. También puedes elegir cualquier color con los controles anteriores. Tu logo no se modifica; guarda para aplicar los cambios.</p></div>}
               </div>
               <div hidden={settingsTab !== "help"} className="settings-tab-content">
               <div className="settings-section-divider" />
@@ -5982,8 +6009,8 @@ export default function App() {
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
             <div className="home-workspace-copy">
-              <h2>Tu negocio, en marcha</h2>
-              <p>Lo esencial para vender, organizar y tomar decisiones, sin ruido ni pasos innecesarios.</p>
+              <h2>Inicio</h2>
+              <p>Resumen operativo y accesos directos para registrar ventas, crear artículos, preparar cotizaciones y revisar qué necesita atención.</p>
             </div>
             <div className="home-workspace-actions">
               {canAccessScreen("sales") && <button className="primary-button home-primary-action" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}><AppIcon name="sales" size={17}/> Registrar venta</button>}

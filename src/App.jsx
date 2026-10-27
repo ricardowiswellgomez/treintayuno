@@ -942,7 +942,7 @@ function PublicCatalog({ businessId }) {
 
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
-      <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="" />}</a>
+      <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
         <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
@@ -1709,7 +1709,7 @@ export default function App() {
       const { error: insertError } = await supabase.from("businesses").insert({
         id: crypto.randomUUID(), owner_user_id: session.user.id, name: businessName.trim(),
         country_code: "CO", currency_code: "COP", timezone: "America/Bogota",
-        theme: { primary: "#2d5947", background: "#f7f6f1" }
+        theme: { primary: "#174580", background: "#F5F7FC" }
       });
       if (insertError) throw insertError;
       const list = await loadBusinesses(session.user.id);
@@ -2905,7 +2905,7 @@ export default function App() {
     const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, quote.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, quote.currency_code || currencyCode)) + "</td></tr>").join("");
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(quote.quote_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #2d5947;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#2d5947}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#697369}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #dde4dc;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #dde4dc;padding-top:12px;color:#697369;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Cotización ${escapeHtml(quote.quote_number)}</h2><small>Fecha: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</small>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name)}</p><p>${escapeHtml(quote.customer_email || "")}</p><p>${escapeHtml(quote.customer_phone || "")}</p></div><div><strong>Válida hasta</strong><p>${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
@@ -2930,8 +2930,8 @@ export default function App() {
     const ctx = canvas.getContext("2d");
     if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / imprimir para compartir la cotización."); return; }
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height);
-    ctx.strokeStyle = "#d9e2d7"; ctx.lineWidth = 2; ctx.strokeRect(26,26,width-52,height-52);
-    ctx.fillStyle = "#2d5947"; ctx.fillRect(27,27,width-54,12);
+    ctx.strokeStyle = "#DCE6F3"; ctx.lineWidth = 2; ctx.strokeRect(26,26,width-52,height-52);
+    ctx.fillStyle = "#174580"; ctx.fillRect(27,27,width-54,12);
     let y = 86;
     if (logoUrl) {
       try {
@@ -2940,12 +2940,12 @@ export default function App() {
         ctx.drawImage(image, 60, 60, 128, 96);
       } catch { /* Se conserva el documento aunque el navegador no permita incrustar el logo. */ }
     }
-    ctx.fillStyle = "#2d5947"; ctx.font = "bold 32px Arial"; ctx.fillText(brand, 220, y);
-    ctx.fillStyle = "#4f5b51"; ctx.font = "18px Arial";
+    ctx.fillStyle = "#174580"; ctx.font = "bold 32px Arial"; ctx.fillText(brand, 220, y);
+    ctx.fillStyle = "#19243A"; ctx.font = "18px Arial";
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
     y = 260;
-    ctx.strokeStyle = "#d9e2d7"; ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(width-60,y); ctx.stroke();
+    ctx.strokeStyle = "#DCE6F3"; ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(width-60,y); ctx.stroke();
     y += 54; ctx.fillStyle = "#202820"; ctx.font = "bold 30px Arial"; ctx.fillText("COTIZACIÓN " + quote.quote_number,60,y);
     y += 38; ctx.font = "19px Arial"; ctx.fillText("Cliente: " + String(quote.customer_name || "").slice(0,70),60,y);
     y += 32; ctx.fillText("Válida hasta: " + (quote.valid_until || "Sin fecha límite"),60,y);
@@ -2958,10 +2958,10 @@ export default function App() {
       ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);
       ctx.fillText(money(item.unit_price_minor, quote.currency_code || currencyCode),830,y);
       ctx.fillText(money(item.line_total_minor, quote.currency_code || currencyCode),1010,y);
-      y += 60; ctx.strokeStyle = "#e5e9e2"; ctx.beginPath(); ctx.moveTo(60,y-23); ctx.lineTo(width-60,y-23); ctx.stroke();
+      y += 60; ctx.strokeStyle = "#E1E7F0"; ctx.beginPath(); ctx.moveTo(60,y-23); ctx.lineTo(width-60,y-23); ctx.stroke();
     }
-    y += 12; ctx.fillStyle = "#2d5947"; ctx.font = "bold 30px Arial"; ctx.textAlign = "right"; ctx.fillText("TOTAL: " + money(quote.total_minor, quote.currency_code || currencyCode),width-60,y); ctx.textAlign = "left";
-    if (quote.notes) { y += 48; ctx.fillStyle = "#4f5b51"; ctx.font = "17px Arial"; ctx.fillText("Notas: " + String(quote.notes).replace(/\s+/g," ").slice(0,130),60,y); }
+    y += 12; ctx.fillStyle = "#174580"; ctx.font = "bold 30px Arial"; ctx.textAlign = "right"; ctx.fillText("TOTAL: " + money(quote.total_minor, quote.currency_code || currencyCode),width-60,y); ctx.textAlign = "left";
+    if (quote.notes) { y += 48; ctx.fillStyle = "#19243A"; ctx.font = "17px Arial"; ctx.fillText("Notas: " + String(quote.notes).replace(/\s+/g," ").slice(0,130),60,y); }
     try {
       const blob = await new Promise((resolve, reject) => { try { canvas.toBlob((value) => value ? resolve(value) : reject(new Error("No se pudo crear la imagen.")), "image/png"); } catch (e) { reject(e); } });
       const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi,"-") + ".png";
@@ -2994,7 +2994,7 @@ export default function App() {
     const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #2d5947;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#2d5947}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#697369}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #dde4dc;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #e5e9e2}.summary .balance{font-weight:700;color:#2d5947}.footer{margin-top:42px;border-top:1px solid #dde4dc;padding-top:12px;color:#697369;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:#174580}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
@@ -3019,17 +3019,17 @@ export default function App() {
     const canvas = document.createElement("canvas"); canvas.width=width; canvas.height=height;
     const ctx = canvas.getContext("2d");
     if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / Imprimir para compartir la venta."); return; }
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#d9e2d7"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle="#2d5947"; ctx.fillRect(27,27,width-54,12);
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#DCE6F3"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle="#174580"; ctx.fillRect(27,27,width-54,12);
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     let y=86;
     if (logoUrl) { try { const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl; await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject}); ctx.drawImage(image,60,60,128,96); } catch { /* El comprobante sigue visible si el logo no puede cargarse. */ } }
-    ctx.fillStyle="#2d5947";ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#4f5b51";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
-    y=260;ctx.strokeStyle="#d9e2d7";ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(width-60,y);ctx.stroke();y+=54;ctx.fillStyle="#202820";ctx.font="bold 30px Arial";ctx.fillText("FACTURA / VENTA "+String(sale.sale_number||""),60,y);
+    ctx.fillStyle="#174580";ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#19243A";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
+    y=260;ctx.strokeStyle="#DCE6F3";ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(width-60,y);ctx.stroke();y+=54;ctx.fillStyle="#202820";ctx.font="bold 30px Arial";ctx.fillText("FACTURA / VENTA "+String(sale.sale_number||""),60,y);
     y+=42;ctx.font="19px Arial";ctx.fillText("Cliente: "+String(sale.customer_name||"Venta sin cliente").slice(0,65),60,y);
     y+=32;ctx.fillText("Fecha: "+new Date(sale.sold_at||sale.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"}),60,y);
     y+=42;ctx.fillStyle="#f0f4ed";ctx.fillRect(60,y,width-120,44);ctx.fillStyle="#314236";ctx.font="bold 17px Arial";ctx.fillText("ARTÍCULO",72,y+28);ctx.fillText("CANT.",700,y+28);ctx.fillText("VALOR",830,y+28);ctx.fillText("TOTAL",1010,y+28);y+=54;ctx.font="17px Arial";
-    for (const item of rows){ctx.fillStyle="#202820";ctx.fillText(String(item.item_name||"").slice(0,52),72,y);ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);ctx.fillText(money(item.unit_price_minor,sale.currency_code||currencyCode),830,y);ctx.fillText(money(item.line_total_minor,sale.currency_code||currencyCode),1010,y);y+=58;ctx.strokeStyle="#e5e9e2";ctx.beginPath();ctx.moveTo(60,y-22);ctx.lineTo(width-60,y-22);ctx.stroke();}
-    y+=8;ctx.fillStyle="#2d5947";ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
+    for (const item of rows){ctx.fillStyle="#202820";ctx.fillText(String(item.item_name||"").slice(0,52),72,y);ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);ctx.fillText(money(item.unit_price_minor,sale.currency_code||currencyCode),830,y);ctx.fillText(money(item.line_total_minor,sale.currency_code||currencyCode),1010,y);y+=58;ctx.strokeStyle="#E1E7F0";ctx.beginPath();ctx.moveTo(60,y-22);ctx.lineTo(width-60,y-22);ctx.stroke();}
+    y+=8;ctx.fillStyle="#174580";ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
     try {
       const blob = await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png")}catch(e){reject(e)}});
       const filename=String(sale.sale_number||"venta").replace(/[^a-z0-9_-]/gi,"-")+".png";const file=new File([blob],filename,{type:"image/png"});
@@ -3807,7 +3807,6 @@ export default function App() {
   }
 
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
-  const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const appThemeStyle = { "--green": activeTheme.primary, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
@@ -3833,7 +3832,7 @@ export default function App() {
   if (!session || mode === "update-password") return (
     <main className="auth-shell">
       <section className="auth-brand-panel">
-        <a className="brand" href="/"><span className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a>
+        <a className="brand" href="/"><img className="brand-logo-full" src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
         <div className="auth-pitch"><p className="eyebrow">TU NEGOCIO, CON CLARIDAD</p><h1>Menos enredos.<br /><em>Más negocio.</em></h1><p>Productos, ventas, costos y clientes en un solo lugar, fácil de entender y usar.</p></div>
         <span className="panel-footnote">Un espacio independiente para cada negocio.</span>
       </section>
@@ -3857,7 +3856,7 @@ export default function App() {
   );
 
   if (!businesses.length || screen === "setup") return (
-    <main className="setup-shell"><header className="topbar"><a className="brand" href="/"><span className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a><button className="text-button" onClick={signOut}>Cerrar sesión</button></header>
+    <main className="setup-shell"><header className="topbar"><a className="brand" href="/"><img className="brand-logo-full" src="/brand-treseiscinco.svg" alt="treseiscinco" /></a><button className="text-button" onClick={signOut}>Cerrar sesión</button></header>
       <section className="setup-card"><p className="eyebrow">PASO 1 DE 1</p><h1>¿Cómo se llama<br /><em>tu negocio?</em></h1><p>Este nombre identifica tu espacio. Más adelante podrás configurar tu logo, colores y equipo.</p>
         <form className="form-stack" onSubmit={createBusiness}><label><span className="field-label-heading">Nombre del negocio<FieldHelp text="Este nombre identifica el espacio de tu negocio dentro de treseiscinco." /></span><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ej. Mi tienda" maxLength={120} required autoFocus /></label>
           {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
@@ -3870,7 +3869,7 @@ export default function App() {
   return (
     <main className="app-shell" style={appThemeStyle}>
       <aside className="sidebar">
-        <a className="brand" href="/"><span className="brand-mark">{activeBusinessLogoUrl ? <img className="brand-logo-image" src={activeBusinessLogoUrl} alt="" /> : "31"}</span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a>
+        <a className="brand" href="/"><img className="brand-logo-full" src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
         <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
           <span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>
           {businesses.length > 1

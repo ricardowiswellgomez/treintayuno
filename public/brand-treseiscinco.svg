@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" role="img" aria-labelledby="title">
+  <title id="title">treseiscinco</title>
+  <defs>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#29C6A8"/><stop offset="1" stop-color="#0A9D9F"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#159C9C"/><stop offset="1" stop-color="#174580"/></linearGradient>
+  </defs>
+  <g transform="translate(0 0)" fill="none" stroke-width="15" stroke-linecap="butt">
+    <path d="M 22 36 A 42 42 0 0 1 79 20" stroke="#F5C928"/>
+    <path d="M 89 28 A 42 42 0 0 1 92 88" stroke="url(#teal)"/>
+    <path d="M 82 97 A 42 42 0 0 1 19 52" stroke="url(#blue)"/>
+  </g>
+  <circle cx="60" cy="60" r="24" fill="#fff"/>
+  <text x="126" y="79" font-family="Manrope, 'DM Sans', Arial, sans-serif" font-size="51" font-weight="800" letter-spacing="-1.5">
+    <tspan fill="#C59708">tre</tspan><tspan fill="#159F92">seis</tspan><tspan fill="#174580">cinco</tspan>
+  </text>
+</svg>

@@ -4321,3 +4321,14 @@ body { background: #F5F7FC; color: #19243A; }
   .home-work-modules .area-grid,.home-area-grid { grid-template-columns:minmax(0,1fr); grid-auto-rows:auto; }
   .home-work-modules .area-card,.home-area-card { min-height:96px; }
 }
+
+
+/* Keep the global Help control reachable even when inline field tips are disabled. */
+.context-help-layer {
+  z-index: 2147483646 !important;
+}
+@media (max-width: 600px) {
+  .context-help-layer {
+    z-index: 2147483646 !important;
+  }
+}

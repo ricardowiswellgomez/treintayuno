@@ -5351,3 +5351,5 @@ body { background: #F5F7FC; color: #19243A; }
   .mobile-module-navigation .mobile-module-card { flex:0 0 auto; width:100%; min-height:66px; background:var(--surface,#fff)!important; opacity:1!important; }
   .mobile-module-navigation .mobile-module-card.active { background:var(--surface-secondary,#f4f6f4)!important; }
 }
+
+.team-employment-fields[hidden], .team-form .helper-text[hidden] { display:none!important; }

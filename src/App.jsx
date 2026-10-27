@@ -57,8 +57,7 @@ function escapeHtml(value) {
 const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
-  { icon: "↗", title: "Cuentas por cobrar", description: "Controla las ventas pendientes y registra abonos de tus clientes.", screen: "receivables" },
-  { icon: "↙", title: "Cuentas por pagar", description: "Controla las compras pendientes y registra pagos a proveedores.", screen: "payables" },
+  { icon: "▣", title: "Cuentas", description: "Revisa y gestiona el dinero pendiente de cobrar y pagar.", screen: "accounts" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
@@ -78,7 +77,7 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "receivables", "payables", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
@@ -88,7 +87,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras y gastos", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", receivables: "Cuentas por cobrar", payables: "Cuentas por pagar", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", accounts: "Cuentas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -113,8 +112,7 @@ const normalizeSidebarLayout = (layout) => {
   // Reconcile prior layouts with the agreed categories without discarding item labels/icons.
   const requiredDestinations = {
     products: "comercial",
-    receivables: "finanzas",
-    payables: "finanzas",
+    accounts: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
     customers: "personal",
@@ -359,7 +357,7 @@ const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Americ
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
 const teamPermissionGroups = [
-  { label: "Productos e inventario", view: "products_view", manage: "products_manage" },
+  { label: "Productos", view: "products_view", manage: "products_manage" },
   { label: "Ventas", view: "sales_view", manage: "sales_manage" },
   { label: "Clientes", view: "customers_view", manage: "customers_manage" },
   { label: "Compras", view: "purchases_view", manage: "purchases_manage" },
@@ -1266,6 +1264,7 @@ export default function App() {
   const [receivableRows, setReceivableRows] = useState([]);
   const [payableRows, setPayableRows] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsTab, setAccountsTab] = useState("receivables");
   const [accountsSearch, setAccountsSearch] = useState("");
   const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
   const [accountsSort, setAccountsSort] = useState("newest");
@@ -1577,6 +1576,7 @@ export default function App() {
   const [salePayment, setSalePayment] = useState("");
   const [saleInitialPaymentMethod, setSaleInitialPaymentMethod] = useState("Efectivo");
   const [salePaymentFormFor, setSalePaymentFormFor] = useState(null);
+  const [expandedSaleId, setExpandedSaleId] = useState(null);
   const [salePaymentAmount, setSalePaymentAmount] = useState("");
   const [salePaymentMethod, setSalePaymentMethod] = useState("Efectivo");
   const [salePaymentDate, setSalePaymentDate] = useState(todayInBogota());
@@ -2014,7 +2014,7 @@ export default function App() {
 
 
   async function loadOutstandingAccounts() {
-    if (!activeBusiness?.id || !["receivables","payables"].includes(screen)) return;
+    if (!activeBusiness?.id || !["accounts","receivables","payables"].includes(screen)) return;
     setAccountsLoading(true);
     try {
       async function fetchAll(table, columns, orderColumn) {
@@ -2030,7 +2030,7 @@ export default function App() {
         }
         return all;
       }
-      if (screen === "receivables") {
+      if (screen === "receivables" || (screen === "accounts" && accountsTab === "receivables")) {
         const [sales, customers] = await Promise.all([
           fetchAll("sales","id,sale_number,customer_id,status,total_minor,amount_paid_minor,currency_code,sold_at,created_at,notes","sold_at"),
           supabase.from("customers").select("id,full_name,company_name,phone,whatsapp,email").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
@@ -2350,8 +2350,8 @@ export default function App() {
   }, [activeBusiness?.id,activeBusiness?.role]);
 
   useEffect(() => {
-    if ((screen==="receivables" || screen==="payables") && activeBusiness?.id) loadOutstandingAccounts();
-  }, [screen,activeBusiness?.id]);
+    if ((screen === "accounts" || screen === "receivables" || screen === "payables") && activeBusiness?.id) loadOutstandingAccounts();
+  }, [screen, accountsTab, activeBusiness?.id]);
 
   useEffect(() => {
     if (screen==="platform_admin" && isPlatformAdmin) loadPlatformAdminDashboard();
@@ -4524,6 +4524,7 @@ export default function App() {
   function openSalePaymentForm(sale) {
     const outstanding = Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0));
     setSalePaymentFormFor(sale.id);
+    setExpandedSaleId(sale.id);
     setSalePaymentAmount(String(outstanding / (10 ** currencyDigits(currencyCode))));
     setSalePaymentMethod("Efectivo");
     setSalePaymentDate(todayInBogota());
@@ -4760,6 +4761,7 @@ export default function App() {
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "platform_admin") return isPlatformAdmin;
+    if (next === "accounts") return canPermission("sales_view") || canViewPurchases;
     if (next === "receivables") return canPermission("sales_view");
     if (next === "payables") return canViewPurchases;
     if (next === "settings") return isBusinessOwner;
@@ -4775,13 +4777,14 @@ export default function App() {
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
-  const homeShortcutOrder = ["products","sales","customers","stats","quotes","purchases"];
+  const homeShortcutOrder = ["products","sales","accounts","customers","stats","quotes","purchases"];
   const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "quotes") clearQuoteDraft();
+    if (next === "accounts") setAccountsTab(canPermission("sales_view") ? "receivables" : "payables");
     if (next === "purchases") { setPurchaseModuleTab(purchaseTab); if (purchaseTab !== "suppliers") setShowSupplierForm(false); }
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
     if (next !== "products") { setAdjustingId(null); }
@@ -5154,7 +5157,7 @@ export default function App() {
         <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
@@ -5243,8 +5246,15 @@ export default function App() {
 {salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel mobile-detail-trigger" key={sale.id} onClick={(event) => { if (!window.matchMedia("(max-width: 640px)").matches || event.target.closest("button,a,input,select,textarea")) return; setSelectedRecordDetail({type:"Venta",title:sale.sale_number || "Venta",fields:[{label:"Cliente",value:sale.customer_name},{label:"Fecha",value:new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})},{label:"Estado",value:saleStatusLabel(sale.status)},{label:"Total",value:money(sale.total_minor,sale.currency_code||currencyCode)},{label:"Abonado",value:money(sale.amount_paid_minor,sale.currency_code||currencyCode)},{label:"Pendiente",value:money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)},{label:"Artículos",value:(sale.items||[]).map(item=>item.item_name+" × "+Number(item.quantity).toLocaleString("es-CO")+" — "+money(item.line_total_minor,sale.currency_code||currencyCode)).join("\n")||"Sin artículos"},{label:"Historial de abonos",value:(sale.payments||[]).map(p=>money(p.amount_minor,sale.currency_code||currencyCode)+" · "+p.payment_method+" · "+new Date(p.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})+(p.notes?" · "+p.notes:"")).join("\n")||"Sin abonos"}],notes:sale.notes}); }}>
 <div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
 <div className="sale-record-customer">{sale.customer_name}</div>
-{sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
+
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
+<div className="sale-record-disclosure-bar">
+  <span>{(sale.items||[]).length} {(sale.items||[]).length===1?"artículo":"artículos"} · {(sale.payments||[]).length} {(sale.payments||[]).length===1?"abono":"abonos"}</span>
+  <button type="button" className="text-button" aria-expanded={expandedSaleId===sale.id} onClick={() => setExpandedSaleId((current) => current === sale.id ? null : sale.id)}>{expandedSaleId===sale.id ? "Ocultar detalles" : "Ver detalles y abonos"}</button>
+</div>
+<div className="sale-record-details" hidden={expandedSaleId!==sale.id}>
+  {sale.items.length>0&&<div className="sale-record-items">{sale.items.map(item=><div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor,sale.currency_code||currencyCode)}</strong></div>)}</div>}
+
 {canPermission("sales_view") && <div className="quote-share-actions sale-document-actions"><button type="button" className="secondary-button action-small" onClick={() => printSaleDocument(sale)}>Factura / PDF / Imprimir</button><button type="button" className="primary-button action-small" onClick={() => shareSaleImage(sale)}>Compartir imagen</button></div>}
 <div className="sale-payment-history"><div className="sale-payment-history-heading"><strong>Historial de abonos</strong><span>{(sale.payments||[]).length} {(sale.payments||[]).length===1?"pago":"pagos"}</span></div>
 {(sale.payments||[]).length ? <div className="sale-payment-list">{sale.payments.map((paymentRow)=><div className="sale-payment-row" key={paymentRow.id}><div><strong>{money(paymentRow.amount_minor,sale.currency_code||currencyCode)}</strong><span>{paymentRow.payment_method} · {new Date(paymentRow.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span>{paymentRow.notes&&<small>{paymentRow.notes}</small>}</div></div>)}</div> : <p className="sale-payment-empty">No hay abonos registrados.</p>}
@@ -5257,7 +5267,8 @@ export default function App() {
 <div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={salePaymentSaving}>{salePaymentSaving?"Registrando…":"Guardar abono"}</button></div>
 </form>}
 </div>
-{sale.notes&&<p className="sale-record-note">{sale.notes}</p>}</article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>No hay ventas en este periodo</h3><p>Prueba otra fecha o elige «Todo» para consultar el historial completo. No mostramos ventas de ejemplo.</p>{canManageSales && <button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button>}</div>}
+{sale.notes&&<p className="sale-record-note">{sale.notes}</p>}
+</div></article>)}</div>:<div className="empty-state"><span className="empty-icon">↗</span><h3>No hay ventas en este periodo</h3><p>Prueba otra fecha o elige «Todo» para consultar el historial completo. No mostramos ventas de ejemplo.</p>{canManageSales && <button className="primary-button" onClick={()=>{setShowSaleForm(true);setError("");}}>+ Registrar primera venta</button>}</div>}
 {!salesLoading && salesCount > salesPageSize && <div className="pagination-bar sales-pagination"><span className="count-label">Mostrando {(salesPage-1)*salesPageSize+1}–{Math.min(salesPage*salesPageSize,salesCount)} de {salesCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={salesPage<=1} onClick={()=>setSalesPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{salesPage} / {Math.ceil(salesCount/salesPageSize)}</span><button type="button" className="secondary-button" disabled={salesPage>=Math.ceil(salesCount/salesPageSize)} onClick={()=>setSalesPage((page)=>page+1)}>Siguiente</button></div></div>}
 </section>
 ) : screen === "customers" ? (
@@ -5735,7 +5746,10 @@ export default function App() {
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
-            <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
+            <details className="inventory-import-disclosure">
+              <summary><strong>Importar inventario</strong><span>Plantilla Excel / CSV · hasta 500 artículos por archivo</span></summary>
+              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
+            </details>
             <div className="inventory-controls panel">
               <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
@@ -6106,16 +6120,24 @@ export default function App() {
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
 
-        ) : screen === "receivables" ? (
+        ) : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
           <section className="accounts-page">
             <div className="products-intro"><div><h2>Cuentas por cobrar</h2><p>Controla las ventas pendientes y registra abonos sin perder el registro actual.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>
+            <div className="accounts-tabs" role="tablist" aria-label="Tipo de cuenta">
+              {canPermission("sales_view") && <button type="button" role="tab" aria-selected={accountsTab === "receivables"} className={accountsTab === "receivables" ? "accounts-tab active" : "accounts-tab"} onClick={() => { setScreen("accounts"); setAccountsTab("receivables"); setAccountsSearch(""); setAccountsStatusFilter("pending"); setMobileNavOpen(false); }}>Por cobrar</button>}
+              {canViewPurchases && <button type="button" role="tab" aria-selected={accountsTab === "payables"} className={accountsTab === "payables" ? "accounts-tab active" : "accounts-tab"} onClick={() => { setScreen("accounts"); setAccountsTab("payables"); setAccountsSearch(""); setAccountsStatusFilter("pending"); setMobileNavOpen(false); }}>Por pagar</button>}
+            </div>
             <div className="accounts-metrics"><article className="accounts-metric panel"><span>Ventas con saldo</span><strong>{receivableRows.filter(x=>x.balance_minor>0).length}</strong></article><article className="accounts-metric panel"><span>Total por cobrar</span><strong>{money(receivableRows.reduce((n,x)=>n+x.balance_minor,0),currencyCode)}</strong></article><article className="accounts-metric panel"><span>Ventas saldadas</span><strong>{receivableRows.filter(x=>x.balance_minor<=0).length}</strong></article></div>
             <div className="accounts-toolbar"><label><span>Buscar cliente o venta</span><input value={accountsSearch} onChange={e=>setAccountsSearch(e.target.value)} placeholder="Nombre, número o celular"/></label><label><span>Estado</span><select value={accountsStatusFilter} onChange={e=>setAccountsStatusFilter(e.target.value)}><option value="pending">Con saldo pendiente</option><option value="all">Todas las ventas</option></select></label><label><span>Ordenar por</span><select value={accountsSort} onChange={e=>setAccountsSort(e.target.value)}><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option><option value="balance_desc">Mayor saldo</option><option value="balance_asc">Menor saldo</option><option value="name">Nombre del cliente</option></select></label></div>
             {accountsLoading?<div className="empty-state">Consultando saldos…</div>:(()=>{const q=accountsSearch.trim().toLocaleLowerCase("es");const rows=receivableRows.filter(x=>(accountsStatusFilter==="all"||x.balance_minor>0)&&(!q||[x.sale_number,x.customer?.full_name,x.customer?.company_name,x.customer?.phone,x.customer?.whatsapp].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(q)));rows.sort((a,b)=>accountsSort==="oldest"?new Date(a.sold_at||a.created_at)-new Date(b.sold_at||b.created_at):accountsSort==="balance_desc"?b.balance_minor-a.balance_minor:accountsSort==="balance_asc"?a.balance_minor-b.balance_minor:accountsSort==="name"?String(a.customer?.company_name||a.customer?.full_name||"").localeCompare(String(b.customer?.company_name||b.customer?.full_name||""),"es"):new Date(b.sold_at||b.created_at)-new Date(a.sold_at||a.created_at));return rows.length?<div className="account-record-list">{rows.slice(0,250).map(x=><article className="account-record panel" key={x.id}><div className="account-record-heading"><div><span className="account-record-kicker">{x.sale_number||"Venta"}</span><h3>{x.customer?.company_name||x.customer?.full_name||"Cliente sin ficha"}</h3><span>{new Date(x.sold_at||x.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span></div><span className={"status-pill "+(x.balance_minor>0?"status-unpublished":"status-active")}>{x.balance_minor>0?"Pendiente":"Saldada"}</span></div><div className="account-record-amounts"><div><span>Total</span><strong>{money(x.total_minor,x.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(x.amount_paid_minor,x.currency_code||currencyCode)}</strong></div><div className={x.balance_minor>0?"account-balance-open":""}><span>Saldo</span><strong>{money(x.balance_minor,x.currency_code||currencyCode)}</strong></div></div>{x.balance_minor>0&&canManageSales&&<button type="button" className="primary-button compact-button" onClick={()=>openSalePaymentForm(x)}>＋ Registrar abono</button>}{salePaymentFormFor===x.id&&x.balance_minor>0&&<form className="account-payment-form" onSubmit={e=>registerSalePayment(e,x)}><div className="account-payment-grid"><label><span>Valor del abono</span><input type="number" min="1" max={x.balance_minor/(10**currencyDigits(x.currency_code||currencyCode))} value={salePaymentAmount} onChange={e=>setSalePaymentAmount(e.target.value)} required/></label><label><span>Forma de pago</span><select value={salePaymentMethod} onChange={e=>setSalePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Tarjeta</option><option>Otro</option></select></label><label><span>Fecha</span><input type="date" max={todayInBogota()} value={salePaymentDate} onChange={e=>setSalePaymentDate(e.target.value)} required/></label><label><span>Nota</span><input value={salePaymentNotes} onChange={e=>setSalePaymentNotes(e.target.value)} maxLength={1000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button className="primary-button" disabled={salePaymentSaving}>Guardar abono</button></div></form>}</article>)}</div>:<div className="empty-state"><h3>No hay resultados</h3><p>Prueba otro filtro o registra una venta con saldo pendiente.</p><button className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>})()}
           </section>
-        ) : screen === "payables" ? (
+        ) : ((screen === "accounts" && accountsTab === "payables") || screen === "payables") ? (
           <section className="accounts-page">
             <div className="products-intro"><div><h2>Cuentas por pagar</h2><p>Consulta saldos de proveedores y registra pagos vinculados a cada compra.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("purchases")}>Ir a compras</button></div>
+            <div className="accounts-tabs" role="tablist" aria-label="Tipo de cuenta">
+              {canPermission("sales_view") && <button type="button" role="tab" aria-selected={accountsTab === "receivables"} className={accountsTab === "receivables" ? "accounts-tab active" : "accounts-tab"} onClick={() => { setScreen("accounts"); setAccountsTab("receivables"); setAccountsSearch(""); setAccountsStatusFilter("pending"); setMobileNavOpen(false); }}>Por cobrar</button>}
+              {canViewPurchases && <button type="button" role="tab" aria-selected={accountsTab === "payables"} className={accountsTab === "payables" ? "accounts-tab active" : "accounts-tab"} onClick={() => { setScreen("accounts"); setAccountsTab("payables"); setAccountsSearch(""); setAccountsStatusFilter("pending"); setMobileNavOpen(false); }}>Por pagar</button>}
+            </div>
             <div className="accounts-metrics"><article className="accounts-metric panel"><span>Compras con saldo</span><strong>{payableRows.filter(x=>x.balance_minor>0).length}</strong></article><article className="accounts-metric panel"><span>Total por pagar</span><strong>{money(payableRows.reduce((n,x)=>n+x.balance_minor,0),currencyCode)}</strong></article><article className="accounts-metric panel"><span>Compras saldadas</span><strong>{payableRows.filter(x=>x.balance_minor<=0).length}</strong></article></div>
             <div className="accounts-toolbar"><label><span>Buscar proveedor o compra</span><input value={accountsSearch} onChange={e=>setAccountsSearch(e.target.value)} placeholder="Proveedor, número o correo"/></label><label><span>Estado</span><select value={accountsStatusFilter} onChange={e=>setAccountsStatusFilter(e.target.value)}><option value="pending">Con saldo pendiente</option><option value="all">Todas las compras</option></select></label><label><span>Ordenar por</span><select value={accountsSort} onChange={e=>setAccountsSort(e.target.value)}><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option><option value="balance_desc">Mayor saldo</option><option value="balance_asc">Menor saldo</option><option value="name">Nombre del proveedor</option></select></label></div>
             {accountsLoading?<div className="empty-state">Consultando pagos…</div>:(()=>{const q=accountsSearch.trim().toLocaleLowerCase("es");const rows=payableRows.filter(x=>(accountsStatusFilter==="all"||x.balance_minor>0)&&(!q||[x.purchase_number,x.supplier?.name,x.supplier?.phone,x.supplier?.email,x.supplier?.tax_id].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(q)));rows.sort((a,b)=>accountsSort==="oldest"?new Date(a.purchased_at||a.created_at)-new Date(b.purchased_at||b.created_at):accountsSort==="balance_desc"?b.balance_minor-a.balance_minor:accountsSort==="balance_asc"?a.balance_minor-b.balance_minor:accountsSort==="name"?String(a.supplier?.name||"").localeCompare(String(b.supplier?.name||""),"es"):new Date(b.purchased_at||b.created_at)-new Date(a.purchased_at||a.created_at));return rows.length?<div className="account-record-list">{rows.slice(0,250).map(x=><article className="account-record panel" key={x.id}><div className="account-record-heading"><div><span className="account-record-kicker">{x.purchase_number||"Compra"}</span><h3>{x.supplier?.name||"Proveedor sin ficha"}</h3><span>{new Date(x.purchased_at||x.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})}</span></div><span className={"status-pill "+(x.balance_minor>0?"status-unpublished":"status-active")}>{x.balance_minor>0?"Pendiente":"Saldada"}</span></div><div className="account-record-amounts"><div><span>Total</span><strong>{money(x.total_minor,x.currency_code||currencyCode)}</strong></div><div><span>Pagado</span><strong>{money(x.amount_paid_minor,x.currency_code||currencyCode)}</strong></div><div className={x.balance_minor>0?"account-balance-open":""}><span>Saldo</span><strong>{money(x.balance_minor,x.currency_code||currencyCode)}</strong></div></div>{x.balance_minor>0&&canManagePurchases&&<button type="button" className="primary-button compact-button" onClick={()=>openPurchasePaymentForm(x)}>＋ Registrar pago</button>}{purchasePaymentFormFor===x.id&&x.balance_minor>0&&<form className="account-payment-form" onSubmit={e=>recordPurchasePayment(e,x)}><div className="account-payment-grid"><label><span>Valor del pago</span><input type="number" min="1" max={x.balance_minor/(10**currencyDigits(x.currency_code||currencyCode))} value={purchasePaymentAmount} onChange={e=>setPurchasePaymentAmount(e.target.value)} required/></label><label><span>Forma de pago</span><select value={purchasePaymentMethod} onChange={e=>setPurchasePaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Tarjeta</option><option>Otro</option></select></label><label><span>Fecha</span><input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={e=>setPurchasePaymentDate(e.target.value)} required/></label><label><span>Nota</span><input value={purchasePaymentNotes} onChange={e=>setPurchasePaymentNotes(e.target.value)} maxLength={1000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPurchasePaymentFormFor(null)}>Cancelar</button><button className="primary-button" disabled={purchasePaymentSaving}>Guardar pago</button></div></form>}</article>)}</div>:<div className="empty-state"><h3>No hay resultados</h3><p>Prueba otro filtro o registra una compra con saldo pendiente.</p><button className="secondary-button" onClick={()=>navigate("purchases")}>Ir a compras</button></div>})()}

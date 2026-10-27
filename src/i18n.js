@@ -491,6 +491,27 @@ Object.assign(ENGLISH_TEXT, {
   "No pudimos comprobar tu sesión. Comprueba tu conexión e inténtalo de nuevo.": "We couldn't check your session. Check your connection and try again."
 });
 
+
+Object.assign(ENGLISH_TEXT, {
+  "Cuentas": "Accounts",
+  "CUENTAS POR COBRAR Y PAGAR": "RECEIVABLES AND PAYABLES",
+  "Por cobrar": "Receivables",
+  "Por pagar": "Payables",
+  "Tipo de cuenta": "Account type",
+  "Ver detalles y abonos": "View details and payments",
+  "Ocultar detalles": "Hide details",
+  "Importar inventario": "Import inventory",
+  "Plantilla Excel / CSV · hasta 500 artículos por archivo": "Excel template / CSV · up to 500 items per file",
+  "Carga inicial del inventario": "Initial inventory import",
+  "Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.": "Download an Excel-compatible template and import up to 500 items per CSV file. Duplicate codes and invalid rows are skipped and reported.",
+  "Total por cobrar": "Total receivable",
+  "Total por pagar": "Total payable",
+  "Compras con saldo": "Purchases with a balance",
+  "Ventas con saldo": "Sales with a balance",
+  "Ventas saldadas": "Settled sales",
+  "Compras saldadas": "Settled purchases"
+});
+
 export function applyAppLanguage(language) {
   if (typeof document === "undefined") return () => {};
   const lang = language === "en" ? "en" : "es";

@@ -34,14 +34,14 @@ function escapeHtml(value) {
 }
 
 const areas = [
-  { icon: "▦", title: "Productos e inventario", description: "Productos, fotos, precios y existencias.", screen: "products" },
+  { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
   { icon: "◷", title: "Rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras y gastos", description: "Compras, proveedores y gastos.", screen: "purchases" },
-  { icon: "◉", title: "Catálogo para compartir", description: "Un catálogo público para tus clientes.", screen: "catalog" },
+  { icon: "◉", title: "Catálogo", description: "Un catálogo público para tus clientes.", screen: "catalog" },
   { icon: "%", title: "Cupones de descuento", description: "Crea promociones y controla sus usos.", screen: "coupons" },
   { icon: "₱", title: "Pagos verificados", description: "Conecta la cuenta de cobro de este negocio.", screen: "payments" },
   { icon: "⌘", title: "Equipo y permisos", description: "Accesos para empleados según su función.", screen: "team" },
@@ -53,7 +53,7 @@ const sidebarAreaItem = (screen, label = null) => {
   return area ? { id: area.screen, screen: area.screen, label: label || area.title, icon: area.icon } : null;
 };
 const defaultSidebarLayout = () => [
-  { id: "inicio", type: "group", title: "INICIO", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
+  { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Personal")].filter(Boolean) },
@@ -65,7 +65,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "home" ? "Inicio" : item.id === "team" ? "Personal" : String(item.label || known.get(item.id).label).slice(0, 60),
+    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", team: "Personal" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -73,7 +73,7 @@ const normalizeSidebarLayout = (layout) => {
     .map((group) => ({
       id: group.id,
       type: "group",
-      title: String(group.title || "Sección").slice(0, 60),
+      title: group.id === "inicio" ? "" : String(group.title || "Sección").slice(0, 60),
       items: Array.isArray(group.items) ? group.items.filter((item) => item && known.has(item.id)).map(normalizeItem) : []
     }));
   if (!groups.length) return fallback;
@@ -328,7 +328,7 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
 const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
@@ -375,6 +375,27 @@ const employeePermissionProfiles = {
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
+
+const compareInventoryProducts = (a, b, sort) => {
+  const nameCompare = String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" });
+  const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+  let result = 0;
+  const desc = sort.endsWith("_desc");
+  if (sort === "name" || sort === "name_desc") result = nameCompare;
+  else if (sort === "code" || sort === "code_desc") result = String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" });
+  else if (sort === "price" || sort === "price_desc") result = number(a.sale_price_minor) - number(b.sale_price_minor);
+  else if (sort === "cost" || sort === "cost_desc") result = number(a.cost_price_minor) - number(b.cost_price_minor);
+  else if (sort === "stock" || sort === "stock_desc") result = number(a.stock_on_hand) - number(b.stock_on_hand);
+  else if (sort === "profit" || sort === "profit_asc") result = (number(a.sale_price_minor) - number(a.cost_price_minor)) - (number(b.sale_price_minor) - number(b.cost_price_minor));
+  else if (sort === "margin" || sort === "margin_asc") {
+    const marginA = number(a.sale_price_minor) > 0 ? ((number(a.sale_price_minor) - number(a.cost_price_minor)) / number(a.sale_price_minor)) : -Infinity;
+    const marginB = number(b.sale_price_minor) > 0 ? ((number(b.sale_price_minor) - number(b.cost_price_minor)) / number(b.sale_price_minor)) : -Infinity;
+    result = marginA - marginB;
+  } else result = nameCompare;
+  if (sort === "profit" || sort === "margin" || sort === "price_desc" || sort === "cost_desc" || sort === "stock_desc" || sort === "name_desc" || sort === "code_desc") result *= -1;
+  return result || nameCompare;
+};
+
 const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   // Cambia solo los temas predeterminados de versiones anteriores; los colores elegidos por cada negocio se respetan.
@@ -1123,6 +1144,13 @@ export default function App() {
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(12);
   const [showArchivedProducts, setShowArchivedProducts] = useState(false);
+  const [productStockFilter, setProductStockFilter] = useState("all");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  const [productTypeFilter, setProductTypeFilter] = useState("all");
+  const [inventoryOverview, setInventoryOverview] = useState({ productCount: 0, trackedUnits: 0, costMinor: 0, retailMinor: 0, outOfStockCount: 0, lowStockCount: 0 });
+  const [inventoryOverviewLoading, setInventoryOverviewLoading] = useState(false);
+  const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
+  const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);
@@ -1409,6 +1437,7 @@ export default function App() {
   const currencyCode = activeBusiness?.currency_code || "COP";
   const bulkEditHasChanges = bulkProductRows.some((row) =>
     String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+    String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
     Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
     Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
     (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
@@ -1474,17 +1503,49 @@ export default function App() {
   const loadProducts = useCallback(async () => {
     if (!activeBusiness?.id) return;
     setProductsLoading(true); setError("");
+    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at";
+    const safeTerm = search.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
+    const sortColumn = ({ name: "name", name_desc: "name", code: "sku", code_desc: "sku", price: "sale_price_minor", price_desc: "sale_price_minor", cost: "cost_price_minor", cost_desc: "cost_price_minor", stock: "stock_on_hand", stock_desc: "stock_on_hand" })[productSort] || "name";
+    const descending = productSort.endsWith("_desc");
+    const needsClientRanking = productStockFilter === "low_stock" || ["profit", "profit_asc", "margin", "margin_asc"].includes(productSort);
     try {
-      const from = (productPage - 1) * productPageSize;
-      const to = from + productPageSize - 1;
-      let productsQuery = supabase.from("products")
-        .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at", { count: "exact" })
-        .eq("business_id", activeBusiness.id).order(productSort === "code" ? "sku" : productSort === "price" ? "sale_price_minor" : "name").order("name").range(from, to);
-      productsQuery = showArchivedProducts ? productsQuery.not("archived_at", "is", null) : productsQuery.is("archived_at", null);
-      if (search.trim()) productsQuery = productsQuery.ilike("name", "%" + search.trim() + "%");
-      const [productResult, categoryResult] = await Promise.all([
-        productsQuery,
-        supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name")
+      const makeBaseQuery = () => {
+        let query = supabase.from("products").select(columns, { count: "exact" }).eq("business_id", activeBusiness.id);
+        query = showArchivedProducts ? query.not("archived_at", "is", null) : query.is("archived_at", null);
+        if (safeTerm) {
+          const term = safeTerm.replace(/"/g, '\\"');
+          query = query.or("name.ilike.%" + term + "%,sku.ilike.%" + term + "%,description.ilike.%" + term + "%");
+        }
+        if (productCategoryFilter !== "all") query = query.eq("category_id", productCategoryFilter);
+        if (productTypeFilter !== "all") query = query.eq("product_type", productTypeFilter);
+        if (productStockFilter === "out_of_stock") query = query.eq("track_inventory", true).lte("stock_on_hand", 0);
+        if (productStockFilter === "in_stock") query = query.eq("track_inventory", true).gt("stock_on_hand", 0);
+        return query;
+      };
+      const [categoryResult, productResult] = await Promise.all([
+        supabase.from("product_categories").select("id,name,description,sort_order").eq("business_id", activeBusiness.id).order("name"),
+        (async () => {
+          if (!needsClientRanking) {
+            let query = makeBaseQuery().order(sortColumn, { ascending: !descending, nullsFirst: false });
+            if (sortColumn !== "name") query = query.order("name", { ascending: true });
+            return query.range((productPage - 1) * productPageSize, productPage * productPageSize - 1);
+          }
+          const all = [];
+          const chunkSize = 500;
+          for (let offset = 0; offset < 50000; offset += chunkSize) {
+            const { data, error: chunkError } = await makeBaseQuery().order("name").range(offset, offset + chunkSize - 1);
+            if (chunkError) throw chunkError;
+            const batch = data || [];
+            all.push(...batch);
+            if (batch.length < chunkSize) break;
+            if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos. Usa la búsqueda para limitar los resultados.");
+          }
+          const filtered = productStockFilter === "low_stock"
+            ? all.filter((product) => product.track_inventory && Number(product.stock_on_hand || 0) > 0 && product.low_stock_threshold != null && Number(product.stock_on_hand || 0) <= Number(product.low_stock_threshold))
+            : all;
+          filtered.sort((a, b) => compareInventoryProducts(a, b, productSort));
+          return { data: filtered.slice((productPage - 1) * productPageSize, productPage * productPageSize), count: filtered.length, error: null };
+        })()
       ]);
       if (productResult.error) throw productResult.error;
       if (categoryResult.error) throw categoryResult.error;
@@ -1510,7 +1571,100 @@ export default function App() {
       setCategories(categoryResult.data || []);
     } catch (e) { setError(friendlyError(e)); }
     finally { setProductsLoading(false); }
-  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort]);
+  }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort, productStockFilter, productCategoryFilter, productTypeFilter]);
+
+  const loadInventoryOverview = useCallback(async () => {
+    if (!activeBusiness?.id || !canAccessScreen("products")) return;
+    setInventoryOverviewLoading(true);
+    try {
+      const all = [];
+      const chunkSize = 500;
+      for (let offset = 0; offset < 50000; offset += chunkSize) {
+        const { data, error: queryError } = await supabase.from("products")
+          .select("id,cost_price_minor,sale_price_minor,stock_on_hand,track_inventory,low_stock_threshold")
+          .eq("business_id", activeBusiness.id).is("archived_at", null)
+          .order("name").range(offset, offset + chunkSize - 1);
+        if (queryError) throw queryError;
+        const batch = data || [];
+        all.push(...batch);
+        if (batch.length < chunkSize) break;
+        if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos y no se pudo resumir completo.");
+      }
+      const summary = all.reduce((totals, product) => {
+        if (!product.track_inventory) return totals;
+        const stock = Math.max(0, Number(product.stock_on_hand || 0));
+        totals.trackedUnits += stock;
+        totals.costMinor += stock * Number(product.cost_price_minor || 0);
+        totals.retailMinor += stock * Number(product.sale_price_minor || 0);
+        if (stock <= 0) totals.outOfStockCount += 1;
+        else if (product.low_stock_threshold != null && stock <= Number(product.low_stock_threshold)) totals.lowStockCount += 1;
+        return totals;
+      }, { trackedUnits: 0, costMinor: 0, retailMinor: 0, outOfStockCount: 0, lowStockCount: 0 });
+      setInventoryOverview({ productCount: all.length, ...summary });
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setInventoryOverviewLoading(false);
+    }
+  }, [activeBusiness?.id]);
+
+  useEffect(() => {
+    if ((screen === "products" || screen === "home") && activeBusiness?.id && canAccessScreen("products")) loadInventoryOverview();
+  }, [screen, activeBusiness?.id, inventoryOverviewRefresh, loadInventoryOverview]);
+
+  const loadHomeSummary = useCallback(async () => {
+    if (!activeBusiness?.id || screen !== "home") return;
+    setHomeSummary((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const today = todayInBogota();
+      const tomorrowDate = new Date(today + "T12:00:00Z");
+      tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+      const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+      const requests = [];
+      if (canAccessScreen("sales")) {
+        requests.push((async () => {
+          const rows = [];
+          for (let offset = 0; offset < 5000; offset += 500) {
+            const { data, error: salesError } = await supabase.from("sales")
+              .select("id,total_minor,status,sold_at").eq("business_id", activeBusiness.id)
+              .gte("sold_at", today + "T00:00:00-05:00").lt("sold_at", tomorrow + "T00:00:00-05:00")
+              .order("sold_at", { ascending: false }).range(offset, offset + 499);
+            if (salesError) throw salesError;
+            const batch = data || [];
+            rows.push(...batch);
+            if (batch.length < 500) break;
+          }
+          return { key: "sales", rows };
+        })());
+      }
+      if (canAccessScreen("quotes")) {
+        requests.push((async () => {
+          const { count, error: quotesError } = await supabase.from("quotes")
+            .select("id", { count: "exact", head: true }).eq("business_id", activeBusiness.id).in("status", ["draft", "sent"]);
+          if (quotesError) throw quotesError;
+          return { key: "quotes", count: Number(count || 0) };
+        })());
+      }
+      const results = await Promise.all(requests);
+      const salesResult = results.find((item) => item.key === "sales");
+      const quoteResult = results.find((item) => item.key === "quotes");
+      const realSales = (salesResult?.rows || []).filter((sale) => !["cancelled", "canceled", "refunded"].includes(sale.status));
+      setHomeSummary({
+        loading: false,
+        todaySalesCount: realSales.length,
+        todaySalesMinor: realSales.reduce((total, sale) => total + Number(sale.total_minor || 0), 0),
+        openQuotesCount: quoteResult?.count || 0,
+        error: ""
+      });
+    } catch (e) {
+      setHomeSummary((current) => ({ ...current, loading: false, error: friendlyError(e) }));
+    }
+  }, [activeBusiness?.id, screen]);
+
+  useEffect(() => {
+    if (screen === "home" && activeBusiness?.id) loadHomeSummary();
+  }, [screen, activeBusiness?.id, loadHomeSummary]);
+
 
   useEffect(() => {
     let alive = true;
@@ -1562,6 +1716,7 @@ export default function App() {
       setBulkProductRows(allRows.map((product) => ({
         ...product,
         _draftName: product.name || "",
+        _draftSku: product.sku || "",
         _draftSalePrice: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
         _draftCostPrice: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
         _draftStock: String(product.stock_on_hand ?? 0)
@@ -1582,6 +1737,7 @@ export default function App() {
     const digits = currencyDigits(currencyCode);
     const changedRows = bulkProductRows.filter((row) =>
       String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+      String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
       toMinorUnits(row._draftSalePrice || 0, currencyCode) !== Number(row.sale_price_minor || 0) ||
       toMinorUnits(row._draftCostPrice || 0, currencyCode) !== Number(row.cost_price_minor || 0) ||
       (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0))
@@ -1600,11 +1756,13 @@ export default function App() {
     try {
       for (const row of changedRows) {
         const nextName = String(row._draftName).trim();
+        const nextSku = String(row._draftSku || "").trim() || null;
         const nextSale = toMinorUnits(row._draftSalePrice, currencyCode);
         const nextCost = toMinorUnits(row._draftCostPrice, currencyCode);
         const nextStock = Number(row._draftStock || 0);
         const productChanges = {};
         if (nextName !== String(row.name || "")) productChanges.name = nextName;
+        if (nextSku !== (row.sku || null)) productChanges.sku = nextSku;
         if (nextSale !== Number(row.sale_price_minor || 0)) productChanges.sale_price_minor = nextSale;
         if (nextCost !== Number(row.cost_price_minor || 0)) productChanges.cost_price_minor = nextCost;
 
@@ -1628,10 +1786,12 @@ export default function App() {
         setBulkProductRows((current) => current.map((item) => item.id !== row.id ? item : ({
           ...item,
           name: nextName,
+          sku: nextSku,
           sale_price_minor: nextSale,
           cost_price_minor: nextCost,
           stock_on_hand: row.track_inventory ? nextStock : item.stock_on_hand,
           _draftName: nextName,
+          _draftSku: nextSku || "",
           _draftSalePrice: String(nextSale / (10 ** digits)),
           _draftCostPrice: String(nextCost / (10 ** digits)),
           _draftStock: String(row.track_inventory ? nextStock : item.stock_on_hand)
@@ -1639,8 +1799,10 @@ export default function App() {
         savedCount += 1;
       }
       await loadProducts();
+      setInventoryOverviewRefresh((current) => current + 1);
       setNotice(savedCount + (savedCount === 1 ? " artículo actualizado. El historial de existencias se conserva." : " artículos actualizados. El historial de existencias se conserva."));
     } catch (e) {
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
       setError("Se guardaron " + savedCount + " de " + changedRows.length + " artículos antes de encontrar un error. Revisa el inventario y los cambios pendientes. " + friendlyError(e));
     } finally {
@@ -2130,6 +2292,7 @@ export default function App() {
     setShowProductForm(true);
     setProductForm({
       name: product.name || "",
+      sku: product.sku || "",
       category_id: product.category_id || "",
       description: product.description || "",
       commercial_presentation: product.commercial_presentation || "",
@@ -2256,6 +2419,7 @@ export default function App() {
       if (!data) throw new Error("No se pudo actualizar el producto. Comprueba tus permisos.");
       setNotice(restoring ? "Producto restaurado." : "Producto archivado. Puedes encontrarlo en «Archivados».");
       if (viewingVariantsFor === product.id) setViewingVariantsFor(null);
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -2271,6 +2435,7 @@ export default function App() {
         const { data: updated, error: updateError } = await supabase.from("products")
           .update({
             name: productForm.name.trim(),
+            sku: productForm.sku.trim() || null,
             category_id: productForm.category_id || null,
             description: productForm.description.trim() || null,
             commercial_presentation: productForm.commercial_presentation.trim() || null,
@@ -2288,6 +2453,7 @@ export default function App() {
         setEditingProductId(null);
         setStagedImages([]);
         pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
+        setInventoryOverviewRefresh((current) => current + 1);
         await loadProducts();
         setNotice("Producto actualizado. El historial de existencias se conservó.");
         return;
@@ -2296,7 +2462,7 @@ export default function App() {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
         p_category_id: productForm.category_id || null,
-        p_sku: null,
+        p_sku: productForm.sku.trim() || null,
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
         p_unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
@@ -2316,6 +2482,7 @@ export default function App() {
         try { await uploadProductImage(newProductId, image.file, activeBusiness.id); uploaded += 1; }
         catch { imageFailures += 1; }
       }
+      setInventoryOverviewRefresh((current) => current + 1);
       setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
       if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
       setSearch(""); setProductPage(1);
@@ -2341,6 +2508,7 @@ export default function App() {
       setAdjustDelta(""); setAdjustNote("");
       setNotice("Existencias actualizadas. El movimiento quedó guardado en el historial.");
       setStockMovementPage(1); setStockMovementRefresh((value) => value + 1);
+      setInventoryOverviewRefresh((current) => current + 1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
@@ -3618,8 +3786,8 @@ export default function App() {
     return ({ paid: "Pagada", partially_paid: "Con abono", pending: "Por cobrar", draft: "Borrador", canceled: "Anulada", refunded: "Devuelta" })[status] || status || "—";
   }
 
-  const filteredProducts = [...products].sort((a, b) => productSort === "code" ? String(a.sku || "").localeCompare(String(b.sku || ""), "es", { numeric: true, sensitivity: "base" }) || String(a.name || "").localeCompare(String(b.name || ""), "es") : productSort === "price" ? Number(a.sale_price_minor || 0) - Number(b.sale_price_minor || 0) : String(a.name || "").localeCompare(String(b.name || ""), "es", { numeric: true, sensitivity: "base" }));
-  const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
+  const filteredProducts = [...products].sort((a, b) => compareInventoryProducts(a, b, productSort));
+  const visibleBulkProductRows = bulkProductRows.filter((row) => !search.trim() || [row._draftName, row.name, row._draftSku, row.sku, row.description, categories.find((category) => category.id === row.category_id)?.name].filter(Boolean).join(" ").toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
   const totalProductPages = Math.max(1, Math.ceil(productsCount / productPageSize));
   const normalizedCatalogSearch = catalogSearch.trim().toLocaleLowerCase("es");
   const filteredCatalogProducts = [...catalogProducts].filter((product) => {
@@ -4030,6 +4198,7 @@ export default function App() {
     setScreen("sales");
     setShowPurchaseForm(false); setShowSupplierForm(false); setShowExpenseForm(false);
     setShowArchivedProducts(false); setSearch(""); setCustomerSearch("");
+    setProductStockFilter("all"); setProductCategoryFilter("all"); setProductTypeFilter("all"); setProductSort("name"); setBulkEditMode(false); setBulkProductRows([]);
     setSalePaymentFormFor(null); setPurchasePaymentFormFor(null);
     setViewingVariantsFor(null); setVariantDraft(blankVariantDraft); setEditingVariantId(null);
     setProductPage(1); setSalesPage(1); setCustomersPage(1); setPurchasesPage(1); setExpensesPage(1);
@@ -4039,7 +4208,7 @@ export default function App() {
 
   const activeBusinessLogoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
   const activeTheme = normalizeBusinessTheme(activeBusiness?.theme);
-  const appThemeStyle = { "--green": activeTheme.primary, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
+  const appThemeStyle = { "--green": activeTheme.primary, "--brand-teal": activeTheme.primary, "--brand-blue": activeTheme.primary, "--brand-yellow": activeTheme.primary, "--soft-green": `color-mix(in srgb, ${activeTheme.primary} 12%, white)`, "--paper": activeTheme.surface, "--ink": activeTheme.text, "--sidebar-background": activeTheme.sidebarBackground, "--sidebar-text": activeTheme.sidebarText, "--button-hover": activeTheme.buttonHover, "--button-hover-text": activeTheme.buttonHoverText, "--app-background": activeTheme.background, background: activeTheme.background, color: activeTheme.text };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
   const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
     : screen === "sales" && salePaymentFormFor ? "salePaymentForm"
@@ -4110,7 +4279,7 @@ export default function App() {
         </div>
 
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
-          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className="sidebar-nav-group"
+          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
             onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
             <div className="sidebar-group-heading">
@@ -4133,7 +4302,7 @@ export default function App() {
         <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(session.user.email || "U").slice(0,1).toUpperCase()}</span><span className="user-email">{session.user.email}</span></div><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div><p className="eyebrow">{screen === "home" ? "PANORAMA DEL NEGOCIO" : screen === "products" ? "INVENTARIO Y PRODUCTOS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "SALUD FINANCIERA" : screen === "purchases" ? "COMPRAS Y EGRESOS" : screen === "suppliers" ? "CONTACTOS DE ABASTECIMIENTO" : screen === "catalog" ? "VITRINA COMERCIAL" : screen === "team" ? "PERSONAS Y ACCESOS" : screen === "settings" ? "PREFERENCIAS DEL NEGOCIO" : "TU ESPACIO DE TRABAJO"}</p><h1>{screen === "products" ? "Productos e inventario" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
         {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
@@ -4656,8 +4825,28 @@ export default function App() {
         ) : screen === "products" ? (
 
           <section className="products-page">
-            <div className="products-intro"><div><h2>Tus productos, sin enredos</h2><p>Guarda el nombre, la categoría, los precios y las existencias reales.</p></div>{canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "+ Nuevo producto"}</button>}</div>
-            <div className="product-sort-toolbar panel"><label><span>Ordenar por</span><select value={productSort} onChange={(e)=>setProductSort(e.target.value)}><option value="name">Nombre (A–Z)</option><option value="code">Código</option><option value="price">Precio (menor a mayor)</option></select></label><span>{filteredProducts.length} productos en esta página</span></div>
+            <section className="inventory-overview">
+              <div className="inventory-page-heading">
+                <div><p className="eyebrow">CATÁLOGO Y EXISTENCIAS</p><h2>Inventario</h2><p>Controla tus artículos, revisa el valor de las existencias y encuentra rápidamente lo que necesitas reponer.</p></div>
+                {canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "＋ Agregar artículo"}</button>}
+              </div>
+              <div className="inventory-metric-grid">
+                <article className="inventory-metric-card"><span>Referencias en inventario</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><p>Artículos guardados en tu tienda</p></article>
+                <article className="inventory-metric-card"><span>Unidades disponibles</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.trackedUnits.toLocaleString("es-CO", { maximumFractionDigits: 3 })}</strong><p>Existencias físicas registradas</p></article>
+                <article className="inventory-metric-card"><span>Costo total del inventario</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.costMinor, currencyCode)}</strong><p>Costo de las unidades en stock</p></article>
+                <article className="inventory-metric-card"><span>Valor de venta estimado</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.retailMinor, currencyCode)}</strong><p>Si se vende todo el stock disponible</p></article>
+                <button type="button" className={"inventory-metric-card inventory-metric-action" + (productStockFilter === "out_of_stock" ? " selected" : "")} onClick={() => { setProductStockFilter((current) => current === "out_of_stock" ? "all" : "out_of_stock"); setProductPage(1); }} aria-pressed={productStockFilter === "out_of_stock"}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><p>{productStockFilter === "out_of_stock" ? "Mostrar todos los artículos" : "Ver artículos agotados"}</p></button>
+              </div>
+              {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
+            </section>
+            <div className="inventory-controls panel">
+              <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
+              <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
+              <label><span>Categoría</span><select value={productCategoryFilter} onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}><option value="all">Todas las categorías</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
+              <label><span>Tipo</span><select value={productTypeFilter} onChange={(e) => { setProductTypeFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los tipos</option><option value="physical">Físicos</option><option value="service">Servicios</option><option value="digital">Digitales</option></select></label>
+              <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
+              <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
+            </div>
             {canManageProducts && <div className="category-manager">
               <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
                 <span>{showCategoryManager ? "▾" : "▸"} Categorías</span><span className="category-toggle-count">{categories.length}</span>
@@ -4695,6 +4884,7 @@ export default function App() {
               </div>}
               <div className="form-grid">
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
+                <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
                 <label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
@@ -4713,16 +4903,14 @@ export default function App() {
               <p className="helper-text">{editingProductId ? "Las existencias se ajustan aquí y las fotos se administran dentro de esta ficha." : "La presentación comercial es opcional. El inventario inicial queda guardado en el historial; luego puedes completar los datos desde Editar."}</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={cancelProductForm}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : editingProductId ? "Guardar cambios" : "Guardar producto"}</button></div>
             </form>}
-            <div className="product-tools">
-              <label className="search-box"><span className="field-label-heading"><span>⌕</span><FieldHelp enabled={contextualHelpEnabled} text="Busca productos por su nombre dentro del inventario." /></span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Buscar producto por nombre…" /></label>
-              <div className="product-tools-actions">
+            <div className="product-tools"><div className="product-tools-actions">
                 {canManageProducts && <button type="button" className="secondary-button action-small" onClick={() => { setShowArchivedProducts((show) => !show); setProductPage(1); }} disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving}>{showArchivedProducts ? "Ver activos" : "Archivados"}</button>}
                 {canManageProducts && <button type="button" className="secondary-button action-small bulk-edit-toggle" disabled={bulkProductsLoading || bulkProductsSaving} onClick={() => { if (bulkEditMode) { if (bulkEditHasChanges && !window.confirm("Hay cambios sin guardar. ¿Quieres salir sin guardarlos?")) return; setBulkEditMode(false); } else { loadBulkProducts(); } }}>{bulkEditMode ? "Salir de edición masiva" : bulkProductsLoading ? "Cargando inventario…" : "Editar todos"}</button>}
                 <div className="view-switch" role="group" aria-label="Vista de productos">
                   <button type="button" className={viewMode === "rows" ? "view-option active" : "view-option"} onClick={() => setViewMode("rows")} aria-pressed={viewMode === "rows"}><span>☷</span> Filas</button>
                   <button type="button" className={viewMode === "cards" ? "view-option active" : "view-option"} onClick={() => setViewMode("cards")} aria-pressed={viewMode === "cards"}><span>▦</span> Tarjetas</button>
                 </div>
-                <span className="count-label">{productsCount} {productsCount === 1 ? "producto" : "productos"}</span>
+                <span className="count-label">{productsCount} {productsCount === 1 ? "artículo" : "artículos"}</span>
               </div>
             </div>
             {bulkEditMode && <section className="bulk-inventory-editor">
@@ -4737,6 +4925,7 @@ export default function App() {
                   const profitMinor = saleMinor - costMinor;
                   const margin = saleMinor > 0 ? (profitMinor / saleMinor) * 100 : 0;
                   const changed = String(row._draftName ?? "").trim() !== String(row.name ?? "").trim() ||
+                    String(row._draftSku ?? "").trim() !== String(row.sku ?? "").trim() ||
                     Number(row._draftSalePrice || 0) !== Number(row.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
                     Number(row._draftCostPrice || 0) !== Number(row.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)) ||
                     (row.track_inventory && Number(row._draftStock || 0) !== Number(row.stock_on_hand || 0));
@@ -4746,7 +4935,8 @@ export default function App() {
                       <span className={row.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{row.is_sellable ? "Activo" : "Inactivo"}</span>
                     </div>
                     <label className="bulk-card-name"><span>Producto</span><input value={row._draftName} maxLength={160} onChange={(event) => updateBulkDraft(row.id, "_draftName", event.target.value)} aria-label={"Nombre de " + row.name} /></label>
-                    <div className="bulk-card-meta"><span>{categories.find((category) => category.id === row.category_id)?.name || "Sin categoría"}</span><code>{row.sku || "Sin código"}</code></div>
+                    <div className="bulk-card-meta"><span>{categories.find((category) => category.id === row.category_id)?.name || "Sin categoría"}</span></div>
+                    <label className="bulk-card-sku-field"><span>Código del artículo</span><input value={row._draftSku} maxLength={100} onChange={(event) => updateBulkDraft(row.id, "_draftSku", event.target.value)} aria-label={"Código de " + row.name} placeholder="Opcional" /></label>
                     <div className="bulk-card-edit-fields">
                       <label><span>Precio</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftSalePrice} onChange={(event) => updateBulkDraft(row.id, "_draftSalePrice", event.target.value)} /></label>
                       <label><span>Costo</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={row._draftCostPrice} onChange={(event) => updateBulkDraft(row.id, "_draftCostPrice", event.target.value)} /></label>
@@ -4931,7 +5121,7 @@ export default function App() {
               <h3>Colores y apariencia</h3>
               <p>Elige una paleta que se aplique a las pantallas del negocio y se conserve al volver a entrar.</p>
               <div className="settings-color-grid">
-                <label className="settings-color-field"><span className="field-label-heading"><span>Color principal</span><FieldHelp enabled={contextualHelpEnabled} text="Color principal de la interfaz, usado en acciones y elementos destacados." /></span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
+                <label className="settings-color-field"><span className="field-label-heading"><span>Color principal (elige cualquier color)</span><FieldHelp enabled={contextualHelpEnabled} text="Elige cualquier color. Se aplicará a botones, enlaces, indicadores y elementos activos; no estás obligado a usar la paleta de treseiscinco." /></span><input type="color" aria-label="Color principal" value={settingsTheme.primary} onChange={(e) => setSettingsTheme((current) => ({ ...current, primary: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.primary.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de pantalla</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo general de las pantallas." /></span><input type="color" aria-label="Color de fondo" value={settingsTheme.background} onChange={(e) => setSettingsTheme((current) => ({ ...current, background: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.background.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Fondo de tarjetas</span><FieldHelp enabled={contextualHelpEnabled} text="Color de fondo de tarjetas y paneles." /></span><input type="color" aria-label="Color de tarjetas" value={settingsTheme.surface} onChange={(e) => setSettingsTheme((current) => ({ ...current, surface: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.surface.toUpperCase()}</code></label>
                 <label className="settings-color-field"><span className="field-label-heading"><span>Color del texto</span><FieldHelp enabled={contextualHelpEnabled} text="Color usado para los textos principales de la interfaz." /></span><input type="color" aria-label="Color del texto" value={settingsTheme.text} onChange={(e) => setSettingsTheme((current) => ({ ...current, text: e.target.value }))} disabled={activeBusiness?.role !== "owner"} /><code>{settingsTheme.text.toUpperCase()}</code></label>
@@ -4945,7 +5135,7 @@ export default function App() {
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
-              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
+              {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Usar paleta de treseiscinco</button><p>Recupera la paleta habitual de treseiscinco. También puedes elegir cualquier color con los controles anteriores. Tu logo no se modifica; guarda para aplicar los cambios.</p></div>}
               </div>
               <div hidden={settingsTab !== "help"} className="settings-tab-content">
               <div className="settings-section-divider" />
@@ -5009,9 +5199,29 @@ export default function App() {
             <p className="settings-footnote">Negocio: <strong>{activeBusiness?.name}</strong> · Zona horaria: America/Bogota</p>
           </section>
         ) : screen === "home" ? <div className="home-dashboard">
-          <section className="welcome-card"><div><p className="eyebrow">BIENVENIDO A TREINTAYUNO</p><h2>Vamos a poner tu negocio en orden.</h2><p>Tu espacio privado ya existe. Productos, ventas, compras, gastos y rentabilidad se conectan con tus registros reales.</p><button className="primary-button" onClick={() => navigate("products")}>Ir a productos</button></div><div className="welcome-symbol">31</div></section>
-          <div className="section-title-row"><div><h2>Tu negocio, por partes</h2><p>Todo estará en su lugar y con permisos claros.</p></div><span className="count-label">{visibleAreas.length} áreas</span></div>
-          <section className="area-grid">{visibleAreas.map((area, index) => { const ready = ["products", "sales", "stats", "quotes", "customers", "purchases", "profitability", "catalog", "team"].includes(area.screen); return <button className="area-card area-card-button" key={area.title} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={25} /></span><span className="area-number">{String(index + 1).padStart(2,"0")}</span></div><h3>{area.title}</h3><p>{area.description}</p></button>; })}</section>
+          <section className="home-workspace-hero">
+            <div className="home-workspace-copy"><p className="eyebrow">TU NEGOCIO, A LA VISTA</p><h2>¿Qué vamos a mover hoy?</h2><p>Revisa las cifras importantes y entra directamente a la tarea que necesitas hacer. Todo se calcula con los registros de tu negocio.</p></div>
+            <div className="home-workspace-actions">
+              {canAccessScreen("sales") && <button className="primary-button" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}>＋ Registrar venta</button>}
+              {canManageProducts && <button className="secondary-button" onClick={() => { navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}>＋ Agregar artículo</button>}
+              {canAccessScreen("quotes") && <button className="secondary-button" onClick={() => navigate("quotes")}>Crear cotización ↗</button>}
+            </div>
+          </section>
+          <section className="home-operating-summary">
+            <div className="home-section-heading"><div><h2>Estado del negocio</h2><p>Indicadores de tus operaciones reales</p></div><span className="home-updated-label">{homeSummary.loading || inventoryOverviewLoading ? "Actualizando…" : "Datos registrados"}</span></div>
+            <div className="home-operating-metrics">
+              {canAccessScreen("products") && <button type="button" className="home-operating-metric" onClick={() => navigate("products")}><span>Referencias</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><small>Artículos en inventario</small></button>}
+              {canAccessScreen("products") && <button type="button" className={"home-operating-metric" + (inventoryOverview.outOfStockCount ? " home-metric-alert" : "")} onClick={() => { setProductStockFilter("out_of_stock"); setProductPage(1); navigate("products"); }}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><small>{inventoryOverview.outOfStockCount ? "Revisar agotados" : "Sin agotados registrados"}</small></button>}
+              {canAccessScreen("sales") && <button type="button" className="home-operating-metric" onClick={() => navigate("sales")}><span>Ventas de hoy</span><strong>{homeSummary.loading ? "…" : money(homeSummary.todaySalesMinor, currencyCode)}</strong><small>{homeSummary.loading ? "Consultando operaciones" : homeSummary.todaySalesCount.toLocaleString("es-CO") + (homeSummary.todaySalesCount === 1 ? " venta registrada" : " ventas registradas")}</small></button>}
+              {canAccessScreen("quotes") && <button type="button" className={"home-operating-metric" + (homeSummary.openQuotesCount ? " home-metric-attention" : "")} onClick={() => navigate("quotes")}><span>Cotizaciones por revisar</span><strong>{homeSummary.loading ? "…" : homeSummary.openQuotesCount.toLocaleString("es-CO")}</strong><small>{homeSummary.openQuotesCount ? "Borradores y enviadas" : "No hay cotizaciones abiertas"}</small></button>}
+            </div>
+            {inventoryOverview.lowStockCount > 0 && canAccessScreen("products") && <button type="button" className="home-stock-warning" onClick={() => { setProductStockFilter("low_stock"); setProductPage(1); navigate("products"); }}><span><strong>{inventoryOverview.lowStockCount} artículos están en su mínimo o por debajo</strong><small>Abre el filtro y revisa qué necesitas reponer.</small></span><b>Ver inventario ↗</b></button>}
+            {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
+          </section>
+          <section className="home-work-modules">
+            <div className="home-section-heading"><div><h2>Ir a un módulo</h2><p>Acceso directo a las herramientas de tu negocio</p></div><span className="count-label">{visibleAreas.length} módulos</span></div>
+            <section className="area-grid">{visibleAreas.map((area) => <button className="area-card area-card-button" key={area.screen} onClick={() => navigate(area.screen)}><div className="area-card-top"><span className="area-icon"><AppIcon name={area.screen} size={25} /></span><span className="area-arrow">↗</span></div><h3>{area.title}</h3><p>{area.description}</p></button>)}</section>
+          </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>

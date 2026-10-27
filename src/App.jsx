@@ -5442,12 +5442,13 @@ function AuthenticatedApp() {
 <div className="form-actions"><button type="button" className="secondary-button" onClick={resetCustomerForm}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy?"Guardando…":editingCustomerId?"Guardar cambios":"Guardar cliente"}</button></div>
 </form>}
 {salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
-<div className="customer-list-heading"><span>Cliente / empresa</span><span>Contacto</span><span>Documento</span><span>Ciudad</span><span></span></div>
+<div className="customer-list-heading"><span>Cliente / empresa</span><span>Celular</span><span>E-mail</span><span>Documento</span><span>Ciudad</span><span></span></div>
 {customers.map(customer=><article className="customer-row" key={customer.id} tabIndex={0} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedCustomer(customer); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCustomer(customer); } }}>
 <div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
-<div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
+<span>{(customer.phone||customer.whatsapp) ? <a href={"tel:"+(customer.phone||customer.whatsapp)}>{customer.phone||customer.whatsapp}</a> : "Sin teléfono"}</span>
+<span>{customer.email ? <a href={"mailto:"+customer.email}>{customer.email}</a> : "Sin correo"}</span>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
-{canManageCustomers && <button type="button" className="text-button" onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}>Editar</button>}
+{canManageCustomers && <button type="button" className="icon-action-button" title="Editar cliente" aria-label="Editar cliente" onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}><AppIcon name="edit" size={16}/></button>}
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
 {!salesLoading && customersCount > customersPageSize && <div className="pagination-bar customer-pagination"><span className="count-label">Mostrando {(customersPage-1)*customersPageSize+1}–{Math.min(customersPage*customersPageSize,customersCount)} de {customersCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={customersPage<=1} onClick={()=>setCustomersPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{customersPage} / {Math.ceil(customersCount/customersPageSize)}</span><button type="button" className="secondary-button" disabled={customersPage>=Math.ceil(customersCount/customersPageSize)} onClick={()=>setCustomersPage((page)=>page+1)}>Siguiente</button></div></div>}
@@ -5922,22 +5923,6 @@ function AuthenticatedApp() {
               <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
             </div>
-            {canManageProducts && !showProductForm && <div className="category-manager">
-              <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
-                <span>{showCategoryManager ? "▾" : "▸"} Gestionar categorías</span><span className="category-toggle-count">{categories.length}</span>
-              </button>
-              {showCategoryManager && <section className="category-panel panel">
-                <p className="category-management-hint">Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.</p>
-                {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
-                  {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
-                    <span className="category-admin-name">{category.name}</span>
-                    <div className="category-admin-actions"><button type="button" className="icon-action-button" title="Editar categoría" aria-label="Editar categoría" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={15}/></button>
-                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title="Eliminar categoría" aria-label="Eliminar categoría" onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={15}/></button>}
-                    </div>
-                  </>}
-                </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
-              </section>}
-            </div>}
             {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               {!editingProductId && <div className="product-photo-uploader full-span">

@@ -6291,3 +6291,80 @@ body { background: #F5F7FC; color: #19243A; }
 
 /* Hide inline contextual-help triggers as requested; keep the AI assistant available. */
 .field-help-wrap{display:none!important}
+
+/* treseiscinco brand direction: ocean blue + Pacific green, not purple. */
+.public-landing{
+ --landing-ink:#183748;
+ --landing-muted:#617782;
+ --landing-line:#DCE8EA;
+ --landing-paper:#FFFFFF;
+ --landing-lilac:#E9F4F8;
+ --landing-purple:#117D83;
+ --landing-mint:#DFF3E9;
+ --landing-peach:#F5EBDD;
+ --landing-sand:#EAF3F6;
+ background:#FAFCFB;
+ color:#183748;
+}
+.landing-header{background:rgba(250,252,251,.94)}
+.landing-nav a:hover,.landing-login-link:hover,.landing-footer nav a:hover{color:#147DA1}
+.landing-primary-button{background:#167D82;color:#fff;box-shadow:0 7px 18px #167D8228}
+.landing-primary-button:hover{background:#11676D;box-shadow:0 10px 25px #11676D30}
+.landing-secondary-button{border-color:#D3E1E5;background:#fff;color:#183748}
+.landing-secondary-button:hover{background:#EDF7F7;border-color:#A6D0D1}
+.landing-hero:before{background:radial-gradient(circle at 45% 42%,#DDF1F8 0,#E8F6F3 42%,#FAFCFB00 70%)}
+.landing-hero:after{background:#CFEFE3A6}
+.landing-kicker{color:#176E9C}
+.landing-kicker-dot{background:#26A17B;box-shadow:0 0 0 5px #26A17B20}
+.landing-hero h1,.landing-section-intro h2,.landing-how-copy h2,.landing-final-cta h2{color:#183748}
+.landing-hero h1 em,.landing-section-intro h2 em,.landing-how-copy h2 em,.landing-final-cta h2 em{color:#127C82}
+.landing-trust-icon,.landing-how-list>div>span{background:#E0F4EA;color:#208566}
+.landing-orbit-one{border-color:#7DBFCB35}
+.landing-orbit-two{border-color:#75BBAE38}
+.landing-number-mark{color:#B9E1EB50}
+.landing-number-mark span:nth-child(2){color:#8AD1B840}
+.landing-number-mark span:nth-child(3){color:#D5E8A940}
+.landing-dashboard-mock{border-color:#DFEAEC;box-shadow:0 25px 70px #174C5A16,0 3px 12px #174C5A08}
+.landing-dashboard-top{border-bottom-color:#EAF0F1}
+.landing-dashboard-brand strong,.landing-chart-heading strong{color:#203E4C}
+.landing-dashboard-metrics>div{border-color:#E7EFF0;background:#FAFDFC}
+.landing-dashboard-metrics .landing-metric-positive{color:#218766}
+.landing-dashboard-chart{border-color:#E5EFF0}
+.landing-led{background:#2BA77C}
+.landing-float-chip{border-color:#DCE9E9;box-shadow:0 10px 28px #164C5A12}
+.landing-chip-icon{background:#E5F3F7;color:#176E9C}
+.landing-chip-stock>svg{color:#258C70}
+.landing-hero-spark{color:#4E9DB6}
+.landing-spark-two{color:#49A98A}
+.landing-proof-strip{border-top-color:#DCE8EA;border-bottom-color:#DCE8EA;background:#FFFFFFB8}
+.landing-proof-strip>div{color:#526D78}
+.landing-proof-strip svg{color:#137CA0}
+.landing-feature-card{border-color:#E0EAEB;box-shadow:0 6px 20px #1B4D5506}
+.landing-feature-card.feature-lilac{background:linear-gradient(145deg,#EAF5F9 0%,#fff 80%)}
+.landing-feature-card.feature-peach{background:linear-gradient(145deg,#F5EFE2 0%,#fff 80%)}
+.landing-feature-card.feature-mint{background:linear-gradient(145deg,#E5F5ED 0%,#fff 80%)}
+.landing-feature-card.feature-sand{background:linear-gradient(145deg,#F0F5E8 0%,#fff 80%)}
+.landing-feature-icon{color:#157E86;box-shadow:0 4px 12px #174E580B}
+.landing-feature-foot{color:#167D82}
+.landing-how-visual{background:radial-gradient(circle at 42% 31%,#DDF0F6 0,#EDF7F5 48%,#E5F4EB 100%)}
+.landing-how-screen{border-color:#DCE8E9;box-shadow:0 18px 45px #164C5A16}
+.landing-how-product-row>strong{color:#167D82}
+.landing-product-swatch{background:#D4EAF4}
+.landing-product-swatch.swatch-two{background:#D8F0E4}
+.landing-how-mini-chart{background:#F9FCFA;border-color:#E5EFEB}
+.landing-mini-bars i{background:linear-gradient(180deg,#75C4B0,#197B94)}
+.landing-pricing{background:linear-gradient(180deg,#EEF7F8 0%,#FAFCFB 90%)}
+.landing-plan-card{border-color:#DCE8E8;box-shadow:0 10px 30px #173F4A08}
+.landing-plan-featured{border-color:#79BAB9;box-shadow:0 12px 34px #167D8216}
+.landing-plan-featured:before{background:#D8F0E7;color:#126E64}
+.landing-plan-icon{background:#E4F4EF;color:#167D82}
+.landing-plan-label{color:#176E9C}
+.landing-plan-card li svg{color:#268B6D}
+.landing-import-section{background:#E6F4EF;border-top-color:#D2E9DF;border-bottom-color:#D2E9DF}
+.landing-import-icon{color:#167D82;box-shadow:0 5px 16px #167D8212}
+.landing-final-cta{background:radial-gradient(circle at 50% 0,#DFF1F7 0,#FAFCFB 66%)}
+.landing-final-mark{border-color:#DCE9EA;box-shadow:0 9px 24px #174C5A0D}
+.landing-footer{border-top-color:#DCE8EA;color:#72858D}
+.landing-footer-brand{color:#183748!important}
+.landing-footer>small{border-top-color:#E5EEEF}
+.landing-hero-chart{color:#167D82}

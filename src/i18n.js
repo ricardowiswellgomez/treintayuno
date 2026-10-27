@@ -170,7 +170,7 @@ Object.assign(ENGLISH_TEXT, {
   "Restocking": "Restocking",
   "Agregar artículo": "Add item",
   "Registrar venta": "Record sale",
-  "Crear cotización": "Create quote"
+  "Crear cotización": "Create quote",
   "INICIO · RESUMEN OPERATIVO": "HOME · OPERATIONS SUMMARY",
   "¿Qué necesitas poner en marcha hoy?": "What would you like to get started today?",
   "Consulta el estado real de tu negocio y empieza una tarea desde aquí, sin recorrer menús innecesariamente.": "Check the current state of your business and start a task here without navigating through unnecessary menus.",

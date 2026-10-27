@@ -395,6 +395,7 @@ const DEFAULT_TAX_PROFILE = Object.freeze({
 const normalizeTaxProfile = (profile) => {
   const allowed = new Set(["responsible", "not_responsible", "not_applicable", "unsure"]);
   const numberOr = (value, fallback) => {
+    if (String(value ?? "").trim() === "") return fallback;
     const number = Number(String(value ?? "").replace(",", "."));
     return Number.isFinite(number) && number >= 0 && number <= 100 ? number : fallback;
   };
@@ -1842,8 +1843,9 @@ export default function App() {
     if (!businessName) { setError("Escribe el nombre del negocio."); return; }
     const nextTheme = normalizeBusinessTheme(settingsTheme);
     const nextTaxProfile = normalizeTaxProfile(settingsTaxProfile);
-    const effectiveTaxRate = nextTaxProfile.defaultRateMode === "custom" ? Number(nextTaxProfile.customRate) : Number(nextTaxProfile.defaultRate);
-    if (nextTaxProfile.vatStatus === "responsible" && (!Number.isFinite(effectiveTaxRate) || effectiveTaxRate < 0 || effectiveTaxRate > 100)) {
+    const rawTaxRate = nextTaxProfile.defaultRateMode === "custom" ? String(settingsTaxProfile.customRate ?? "").trim() : String(nextTaxProfile.defaultRate);
+    const effectiveTaxRate = Number(String(rawTaxRate).replace(",", "."));
+    if (nextTaxProfile.vatStatus === "responsible" && (!rawTaxRate || !Number.isFinite(effectiveTaxRate) || effectiveTaxRate < 0 || effectiveTaxRate > 100)) {
       setError("Indica una tarifa de IVA válida entre 0 y 100.");
       return;
     }
@@ -4160,7 +4162,7 @@ export default function App() {
                     <span className="team-member-email">{member.email}</span>
                     <div className="team-member-details">
                       <div className="team-member-detail"><span>Rol</span><strong>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</strong></div>
-                      <div className="team-member-detail"><span>Celular</span>{member.phone ? <a href={"tel:" + String(member.phone).replace(/[^+\\d]/g, "")}>{member.phone}</a> : <strong className="muted-value">Sin registrar</strong>}</div>
+                      <div className="team-member-detail"><span>Celular</span>{member.phone ? <a href={"tel:" + String(member.phone).replace(/[^+\d]/g, "")}>{member.phone}</a> : <strong className="muted-value">Sin registrar</strong>}</div>
                       <div className="team-member-detail"><span>Desde</span><strong>{member.joined_at ? new Intl.DateTimeFormat(uiLanguage === "en" ? "en-US" : "es-CO", { year: "numeric", month: "short", day: "numeric" }).format(new Date(member.joined_at)) : "—"}</strong></div>
                     </div>
                     <p className="team-member-permissions"><strong>Accesos:</strong> {isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>

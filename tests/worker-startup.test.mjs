@@ -120,3 +120,8 @@ test("service worker cache version is incremented to evict stale sidebar bundles
   const swSource = readSource(new URL("../public/sw.js", import.meta.url), "utf8");
   assert.match(swSource, /treseiscinco-shell-v3/);
 });
+
+test("sidebar text label is not styled as an icon", () => {
+  const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
+});

@@ -1005,10 +1005,23 @@ function PublicCatalog({ businessId }) {
   const catalogLogoUrl = getBusinessLogoUrl(business?.logo_path);
   const catalogPrimary=readableText(catalogTheme.surface,catalogTheme.primary);
   const catalogSurfaceText=readableText(catalogTheme.surface,catalogTheme.text);
+  const catalogPrimaryHover = shadeHex(catalogTheme.primary);
   const catalogThemeStyle = {
-    "--green": catalogPrimary, "--paper": catalogTheme.surface, "--ink": catalogSurfaceText, "--muted": readableText(catalogTheme.surface,"#69758A"), "--primary-button-text": readableText(catalogPrimary,"#FFFFFF"), "--button-hover": catalogTheme.buttonHover, "--button-hover-text": readableText(catalogTheme.buttonHover,catalogTheme.buttonHoverText),
-    "--app-background": catalogTheme.background, "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%,white)",
-    background: catalogTheme.background, color: readableText(catalogTheme.background,catalogTheme.text)
+    "--green": catalogPrimary,
+    "--brand-teal": catalogPrimary,
+    "--brand-blue": catalogPrimary,
+    "--brand-yellow": catalogPrimary,
+    "--paper": catalogTheme.surface,
+    "--ink": catalogSurfaceText,
+    "--muted": readableText(catalogTheme.surface, "#69758A"),
+    "--primary-button-bg": catalogTheme.primary,
+    "--primary-button-text": readableText(catalogTheme.primary, "#FFFFFF"),
+    "--button-hover": catalogPrimaryHover,
+    "--button-hover-text": readableText(catalogPrimaryHover, "#FFFFFF"),
+    "--app-background": catalogTheme.background,
+    "--soft-green": "color-mix(in srgb," + catalogPrimary + " 12%," + catalogTheme.surface + ")",
+    background: catalogTheme.background,
+    color: readableText(catalogTheme.background, catalogTheme.text)
   };
   const items = payload?.products || [];
   const total = Number(payload?.total || 0);

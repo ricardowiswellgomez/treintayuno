@@ -2180,7 +2180,7 @@ export default function App() {
     }).then(({error:activityError})=>{
       if(activityError) console.warn("No se pudo registrar la actividad de plataforma.");
     }).catch(()=>{});
-  }, [session?.user?.id]);
+  }, [session?.user?.id, screen]);
 
   useEffect(() => {
     if (!activeBusiness?.id || !["owner","admin"].includes(activeBusiness.role)) {

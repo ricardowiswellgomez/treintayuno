@@ -6215,3 +6215,54 @@ body { background: #F5F7FC; color: #19243A; }
 
 /* Contextual help removed from the main application screen */
 .context-help-layer{display:none!important}
+
+/* Final desktop/tablet layout pass: use available width, compact inventory, readable customer columns. */
+.main-content{max-width:none;width:100%;min-width:0}
+.sales-list{grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));align-items:stretch}
+.sale-record{height:100%;align-self:stretch;display:flex;flex-direction:column}
+.sale-record-bottom{margin-top:auto}
+.customer-list{overflow:hidden}
+.customer-list-heading,.customer-row{grid-template-columns:minmax(115px,1.2fr) minmax(75px,.72fr) minmax(0,1.15fr) minmax(80px,.85fr) minmax(68px,.65fr) 32px;gap:8px;min-width:0}
+.customer-list-heading{padding:10px 12px;font-size:12px}
+.customer-row{padding:11px 12px}
+.customer-row>span{min-width:0;overflow-wrap:anywhere}
+.customer-row>span>a{color:var(--ink);text-decoration:none;overflow-wrap:anywhere}
+.customer-row>span>a:hover{text-decoration:underline}
+.customer-edit-icon{justify-self:end}
+.inventory-controls{grid-template-columns:minmax(160px,1.25fr) repeat(4,minmax(0,1fr));gap:8px;padding:10px}
+.inventory-controls label{gap:4px}
+.inventory-controls label>span{font-size:10.5px}
+.inventory-controls input,.inventory-controls select{height:36px;padding:6px 8px;font-size:12px}
+.inventory-result-count{text-align:left;font-size:11px}
+.inventory-import-disclosure summary{gap:8px}
+.inventory-import-disclosure summary span{font-size:12px}
+.business-card-preview-logo{display:grid;place-items:center;overflow:hidden}
+.business-card-preview-logo img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
+.business-card-preview{min-width:0;overflow:hidden}
+.business-card-preview-copy{min-width:0;overflow-wrap:anywhere}
+@media(max-width:1050px){
+  .main-content{max-width:none;width:100%;padding-left:16px;padding-right:16px}
+  .sales-list{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+  .inventory-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .inventory-search{grid-column:span 2}
+  .customer-list-heading,.customer-row{grid-template-columns:minmax(100px,1.15fr) minmax(68px,.72fr) minmax(0,1fr) minmax(72px,.8fr) minmax(60px,.62fr) 30px;gap:6px}
+  .customer-list-heading{font-size:11px;padding:9px}
+  .customer-row{padding:10px 9px}
+}
+@media(max-width:600px){
+  .main-content{padding-left:12px;padding-right:12px}
+  .sales-list{grid-template-columns:minmax(0,1fr)}
+  .customer-list-heading{display:none}
+  .customer-list{overflow:visible}
+  .customer-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px 12px;min-width:0;padding:13px}
+  .customer-name-cell{grid-column:1/-1}
+  .customer-row>span{font-size:13px}
+  .customer-row>span:nth-of-type(1)::before{content:"CELULAR";display:block;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+  .customer-row>span:nth-of-type(2)::before{content:"E-MAIL";display:block;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+  .customer-row>span:nth-of-type(3)::before{content:"DOCUMENTO";display:block;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+  .customer-row>span:nth-of-type(4)::before{content:"CIUDAD";display:block;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+  .customer-row>.customer-edit-icon{grid-column:2;justify-self:end}
+  .inventory-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+  .inventory-search{grid-column:1/-1}
+  .inventory-result-count{grid-column:1/-1}
+}

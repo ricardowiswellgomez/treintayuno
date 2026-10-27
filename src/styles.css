@@ -4511,3 +4511,23 @@ body { background: #F5F7FC; color: #19243A; }
   background: var(--button-hover, var(--primary-button-bg, var(--green, #475569)));
   color: var(--button-hover-text, var(--primary-button-text, #FFFFFF));
 }
+
+
+/* Keep preview colors tied to the unsaved selection rather than the active app theme. */
+.app-shell .settings-theme-preview>button {
+  background: var(--preview-primary);
+  color: var(--preview-button-text, #FFFFFF);
+}
+.app-shell .settings-theme-preview>button:hover {
+  background: var(--button-hover, var(--preview-primary));
+  color: var(--button-hover-text, var(--preview-button-text, #FFFFFF));
+}
+.app-shell .ai-assistant-header {
+  background: var(--primary-button-bg, var(--green, #475569));
+  color: var(--primary-button-text, #FFFFFF);
+}
+.app-shell .customer-detail-close {
+  color: var(--primary-button-text, #FFFFFF);
+  border-color: color-mix(in srgb,var(--primary-button-text,#FFFFFF) 35%,transparent);
+  background: color-mix(in srgb,var(--primary-button-text,#FFFFFF) 12%,transparent);
+}

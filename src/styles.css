@@ -2768,7 +2768,7 @@ body { background: #F5F7FC; color: #19243A; }
     overflow: visible;
   }
   .app-shell > .sidebar .sidebar-group-heading {
-    min-height: 12px;
+    min-height: 11px;
     padding: 0 4px 1px;
     margin: 0;
     gap: 4px;
@@ -2790,7 +2790,7 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell > .sidebar .nav-item {
     box-sizing: border-box;
     min-width: 0;
-    min-height: clamp(23px, calc((100dvh - 245px) / 12), 38px);
+    min-height: clamp(20px, calc((100dvh - 280px) / 15), 34px);
     height: auto;
     flex: 1 1 auto;
     gap: 7px;
@@ -2885,7 +2885,7 @@ body { background: #F5F7FC; color: #19243A; }
     display: none;
   }
   .app-shell > .sidebar .nav-item {
-    min-height: clamp(22px, calc((100dvh - 170px) / 12), 28px);
+    min-height: clamp(17px, calc((100dvh - 165px) / 15), 26px);
     padding: 1px 5px;
     font-size: 11px;
   }
@@ -2893,4 +2893,38 @@ body { background: #F5F7FC; color: #19243A; }
     margin-top: 1px;
     padding-top: 2px;
   }
+}
+
+
+/* Las categorías deben leerse de un vistazo sin añadir scroll al sidebar. */
+@media (min-width: 601px) {
+  .app-shell > .sidebar .sidebar-nav-group { gap: 0; }
+  .app-shell > .sidebar .sidebar-group-heading .nav-label {
+    font-size: 9px;
+    line-height: 1.1;
+    letter-spacing: .9px;
+    color: var(--brand-teal);
+    font-weight: 850;
+  }
+  .app-shell > .sidebar .sidebar-nav-group[data-sidebar-group-id="finanzas"] .sidebar-group-heading .nav-label,
+  .app-shell > .sidebar .sidebar-nav-group[data-sidebar-group-id="personal"] .sidebar-group-heading .nav-label {
+    color: var(--brand-blue);
+  }
+  .app-shell > .sidebar .sidebar-nav-group[data-sidebar-group-id="finanzas"] .nav-item .nav-icon {
+    color: var(--brand-teal);
+  }
+  .app-shell > .sidebar .sidebar-nav-group[data-sidebar-group-id="personal"] .nav-item .nav-icon {
+    color: var(--brand-blue);
+  }
+}
+@media (min-width: 601px) and (max-height: 620px) {
+  .app-shell > .sidebar .sidebar-group-heading {
+    min-height: 9px;
+    padding-bottom: 0;
+  }
+  .app-shell > .sidebar .sidebar-group-heading .nav-label {
+    font-size: 8px;
+    letter-spacing: .65px;
+  }
+  .app-shell > .sidebar .sidebar-nav-group { gap: 0; }
 }

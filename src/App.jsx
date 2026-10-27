@@ -1582,6 +1582,26 @@ export default function App() {
   const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  useEffect(() => {
+    const closeGlobalHelpWhenFieldHelpOpens = () => setHelpOpen(false);
+    document.addEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
+    return () => document.removeEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
+  }, []);
+  useEffect(() => {
+    if (!helpOpen) return;
+    const closeOnOutsidePointer = (event) => {
+      const panel = document.getElementById("contextual-help-panel");
+      if (panel?.contains(event.target) || event.target?.closest?.(".context-help-trigger")) return;
+      setHelpOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setHelpOpen(false); };
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [helpOpen]);
   const [aiMessage, setAiMessage] = useState("");
   const [aiHistory, setAiHistory] = useState([]);
   const aiMessagesRef = useRef(null);
@@ -4718,6 +4738,11 @@ export default function App() {
     setSidebarEditing(false);
   }, [activeBusiness?.id]);
 
+  useEffect(() => {
+    setHelpOpen(false);
+    document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } }));
+  }, [screen, activeBusiness?.id]);
+
   function updateSidebarDraft(updater) {
     setSidebarLayout((current) => normalizeSidebarLayout(typeof updater === "function" ? updater(current) : updater));
   }
@@ -6032,8 +6057,7 @@ export default function App() {
         ) : screen === "home" ? <div className="home-dashboard">
           <section className="home-workspace-hero">
             <div className="home-workspace-copy">
-              <h2>Inicio</h2>
-              <p>Resumen operativo y accesos directos para registrar ventas, crear artículos, preparar cotizaciones y revisar qué necesita atención.</p>
+              <p>Tu negocio en un vistazo. Registra una operación o entra directamente al área en la que necesitas trabajar.</p>
             </div>
             <div className="home-workspace-actions">
               {canAccessScreen("sales") && <button className="primary-button home-primary-action" onClick={() => { clearSaleDraft(); navigate("sales"); setShowSaleForm(true); }}><AppIcon name="sales" size={17}/> Registrar venta</button>}
@@ -6047,7 +6071,6 @@ export default function App() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
-              {isBusinessOwner && <button type="button" className="home-utility-action" onClick={()=>{setSettingsTab("company");navigate("settings");}}><AppIcon name="card" size={17}/> Tarjeta de presentación</button>}
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>
@@ -6091,10 +6114,10 @@ export default function App() {
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Uso la información registrada en este negocio y no invento cifras. Si algún dato no está disponible, te lo diré con claridad.</p>
         </section>}
-        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { setHelpOpen(false); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
+        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { setHelpOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
       {contextualHelpEnabled && <div className="context-help-layer">
-        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
+        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
         {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>
           <header className="context-help-header"><div><p>AYUDA CONTEXTUAL</p><h2>{contextualHelp.title}</h2></div><button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button></header>
           <p className="context-help-intro">{contextualHelp.intro}</p>

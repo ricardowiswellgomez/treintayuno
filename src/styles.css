@@ -5312,3 +5312,42 @@ body { background: #F5F7FC; color: #19243A; }
   .purchase-record-list .purchase-record-totals>div { grid-template-columns:1fr; gap:2px; }
   .purchase-record-list .purchase-record-totals strong { text-align:left; }
 }
+
+
+/* Mobile usability fixes: obvious edit action, focused form, opaque full-screen module chooser. */
+.team-form { scroll-margin-top: 18px; }
+.team-edit-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+.team-edit-button .team-edit-button-label { display:inline; }
+@media(max-width:700px) {
+  .team-member-actions { align-items:center; }
+  .team-edit-button { width:42px; min-width:42px; height:42px; min-height:42px; padding:0!important; border-radius:12px; }
+  .team-edit-button .team-edit-button-label { display:none; }
+  .team-edit-button svg,.team-edit-button .app-icon { width:18px; height:18px; }
+  .team-form { width:100%; max-width:100%; }
+  .mobile-module-navigation {
+    position:fixed!important;
+    inset:0!important;
+    z-index:100000!important;
+    display:flex!important;
+    flex-direction:column;
+    gap:10px;
+    width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    padding:calc(16px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom))!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:var(--paper,#fff)!important;
+    color:var(--ink,#17231c)!important;
+    box-shadow:none!important;
+    opacity:1!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  .mobile-module-menu-heading { position:sticky; top:0; z-index:2; background:var(--paper,#fff)!important; padding:5px 0 13px!important; }
+  .mobile-module-navigation .mobile-module-card { flex:0 0 auto; width:100%; min-height:66px; background:var(--surface,#fff)!important; opacity:1!important; }
+  .mobile-module-navigation .mobile-module-card.active { background:var(--surface-secondary,#f4f6f4)!important; }
+}

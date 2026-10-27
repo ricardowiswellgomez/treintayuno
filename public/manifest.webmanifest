@@ -4,8 +4,8 @@
   "description": "Organiza las ventas, gastos, inventario y rentabilidad de tu negocio.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F7FC",
-  "theme_color": "#F5F7FC",
+  "background_color": "#FAFCFB",
+  "theme_color": "#167D82",
   "icons": [
     {
       "src": "/icon-treseiscinco-192.png",

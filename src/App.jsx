@@ -2937,6 +2937,7 @@ export default function App() {
     setBusy(true); setError("");
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) setError(friendlyError(signOutError));
+    else { setShowPublicLanding(true); setMode("login"); setPassword(""); setNotice(""); setError(""); }
     setBusy(false);
   }
 
@@ -5084,7 +5085,8 @@ export default function App() {
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
-    if (next !== screen && !confirmLeaveForm()) return;
+    const switchingWithinSales = ["sales", "quotes"].includes(next) && ["sales", "quotes"].includes(screen);
+    if (next !== screen && !switchingWithinSales && !confirmLeaveForm()) return;
     if (next !== screen) window.history.pushState({ treseiscinco: true, screen: next }, "", window.location.href);
     dirtyFormsRef.current = new WeakSet();
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);

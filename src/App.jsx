@@ -1470,6 +1470,8 @@ export default function App() {
   const [teamPermissionDraft, setTeamPermissionDraft] = useState(blankTeamPermissions);
   const [teamPermissionProfile, setTeamPermissionProfile] = useState("vendedor");
   const [teamEditingUserId, setTeamEditingUserId] = useState(null);
+  const [teamEditingRole, setTeamEditingRole] = useState(null);
+  const teamFormRef = useRef(null);
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
@@ -3648,11 +3650,18 @@ export default function App() {
     setTeamPermissionDraft(blankTeamPermissions);
     setTeamPermissionProfile("vendedor");
     setTeamEditingUserId(null);
+    setTeamEditingRole(null);
   }
+
+  useEffect(() => {
+    if (!teamFormOpen) return;
+    const frame = window.requestAnimationFrame(() => teamFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [teamFormOpen, teamEditingUserId]);
 
   function startEditTeamMember(member) {
     const role = member.role;
-    if (["owner", "admin"].includes(role)) return;
+    if (["owner", "admin"].includes(role) && !(role === "owner" && member.user_id === session?.user?.id)) return;
     const requested = (member.permissions || {})._modules_requested || member.permissions || {};
     const draft = { ...blankTeamPermissions };
     for (const group of teamPermissionGroups) {
@@ -3671,6 +3680,7 @@ export default function App() {
     setTeamPermissionDraft(draft);
     setTeamPermissionProfile("personalizado");
     setTeamEditingUserId(member.user_id);
+    setTeamEditingRole(role);
     setTeamFormOpen(true);
     setError(""); setNotice("");
   }
@@ -3690,15 +3700,20 @@ export default function App() {
   async function saveTeamMember(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
-    if (!teamEmail.trim()) { setError("Escribe el correo de la persona."); return; }
-    if (teamHourlyRate.trim() !== "" && (!Number.isSafeInteger(Number(teamHourlyRate)) || Number(teamHourlyRate) < 0)) { setError("El valor de la hora debe ser un número entero igual o superior a cero."); return; }
+    const editingOwnOwnerPhone = teamEditingRole === "owner" && teamEditingUserId === session?.user?.id;
+    if (!editingOwnOwnerPhone && !teamEmail.trim()) { setError("Escribe el correo de la persona."); return; }
+    if (!editingOwnOwnerPhone && teamHourlyRate.trim() !== "" && (!Number.isSafeInteger(Number(teamHourlyRate)) || Number(teamHourlyRate) < 0)) { setError("El valor de la hora debe ser un número entero igual o superior a cero."); return; }
     if (teamPhone.trim() && (teamPhone.trim().length < 5 || teamPhone.trim().length > 40)) { setError("Revisa el número de celular."); return; }
-    if (teamWorkEnd <= teamWorkStart) { setError("La hora de salida debe ser posterior a la hora de entrada."); return; }
+    if (!editingOwnOwnerPhone && teamWorkEnd <= teamWorkStart) { setError("La hora de salida debe ser posterior a la hora de entrada."); return; }
     setTeamSaving(true); setError(""); setNotice("");
     try {
-      const { data: targetUserId, error: saveError } = await supabase.rpc("upsert_business_employee", { p_business_id: activeBusiness.id, p_email: teamEmail.trim(), p_permissions: teamPermissionDraft });
-      if (saveError) throw saveError;
-      const { error: detailsError } = await supabase.rpc("update_business_employee_details", { p_business_id: activeBusiness.id, p_user_id: targetUserId, p_phone: teamPhone.trim() || null, p_hourly_rate_minor: teamHourlyRate.trim() === "" ? null : Number(teamHourlyRate), p_work_schedule: { days: teamWorkDays, start: teamWorkStart, end: teamWorkEnd, notes: teamWorkNotes.trim() } });
+      let targetUserId = teamEditingUserId;
+      if (!editingOwnOwnerPhone) {
+        const { data, error: saveError } = await supabase.rpc("upsert_business_employee", { p_business_id: activeBusiness.id, p_email: teamEmail.trim(), p_permissions: teamPermissionDraft });
+        if (saveError) throw saveError;
+        targetUserId = data;
+      }
+      const { error: detailsError } = await supabase.rpc("update_business_employee_details", { p_business_id: activeBusiness.id, p_user_id: targetUserId, p_phone: teamPhone.trim() || null, p_hourly_rate_minor: editingOwnOwnerPhone ? null : (teamHourlyRate.trim() === "" ? null : Number(teamHourlyRate)), p_work_schedule: editingOwnOwnerPhone ? null : { days: teamWorkDays, start: teamWorkStart, end: teamWorkEnd, notes: teamWorkNotes.trim() } });
       if (detailsError) throw detailsError;
       setNotice(teamEditingUserId ? "Datos laborales y permisos actualizados." : "Colaborador agregado con sus datos laborales.");
       clearTeamForm();
@@ -5368,13 +5383,13 @@ export default function App() {
               <span className="team-info-icon">♙</span>
               <div><strong>¿Cómo agregar a alguien?</strong><p>La persona debe crear primero su cuenta en treseiscinco. Después, escribe aquí el mismo correo y elige sus permisos. Este formulario no envía correos.</p></div>
             </div>
-            {teamFormOpen && <form className="team-form panel" onSubmit={saveTeamMember}>
-              <div className="team-form-heading"><div><p className="eyebrow">{teamEditingUserId ? "PERMISOS DEL COLABORADOR" : "NUEVO ACCESO"}</p><h3>{teamEditingUserId ? "Editar permisos" : "Añadir colaborador"}</h3><p>Marca solo lo que esa persona necesita para trabajar.</p></div></div>
+            {teamFormOpen && <form ref={teamFormRef} className="team-form panel" onSubmit={saveTeamMember}>
+              <div className="team-form-heading"><div><p className="eyebrow">{teamEditingRole === "owner" ? "DATOS DE CONTACTO" : teamEditingUserId ? "PERMISOS DEL COLABORADOR" : "NUEVO ACCESO"}</p><h3>{teamEditingRole === "owner" ? "Editar mi celular" : teamEditingUserId ? "Editar permisos" : "Añadir colaborador"}</h3><p>{teamEditingRole === "owner" ? "Actualiza tu número de contacto sin modificar los permisos de propietario." : "Marca solo lo que esa persona necesita para trabajar."}</p></div></div>
               {!teamEditingUserId && <label className="team-email-field"><span className="field-label-heading">Perfil inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona una función como punto de partida. Puedes ajustar los permisos manualmente antes de guardar." /></span><select value={teamPermissionProfile} onChange={(e) => { const profile = employeePermissionProfiles[e.target.value] || employeePermissionProfiles.personalizado; setTeamPermissionProfile(e.target.value); setTeamPermissionDraft({ ...blankTeamPermissions, ...profile.permissions }); }}><option value="vendedor">Vendedor</option><option value="atencion">Atención al cliente</option><option value="inventario">Inventario</option><option value="compras">Compras y proveedores</option><option value="personalizado">Personalizado</option></select><span className="helper-text">{employeePermissionProfiles[teamPermissionProfile]?.description}</span></label>}
-              <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de treseiscinco *
+              {teamEditingRole !== "owner" && <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de treseiscinco *
                 <FieldHelp enabled={contextualHelpEnabled} text="Escribe el correo de la cuenta de treseiscinco de la persona que invitarás al equipo." /></span><input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
-              </label>
-              <section className="team-employment-fields" aria-label="Datos laborales">
+              </label>}
+              <section className="team-employment-fields" aria-label="Datos laborales" hidden={teamEditingRole === "owner"}>
                 <div className="team-employment-heading"><h4>Datos laborales</h4><p>Guarda el contacto, el valor de la hora y el horario habitual. Estos datos no cambian los permisos de acceso.</p></div>
                 <div className="team-employment-grid">
                   <label><span className="field-label-heading">Celular</span><input type="tel" inputMode="tel" autoComplete="tel" value={teamPhone} onChange={(e) => setTeamPhone(e.target.value)} maxLength={40} placeholder="+57 300 000 0000" /></label>
@@ -5384,14 +5399,14 @@ export default function App() {
                   <label className="team-work-notes"><span className="field-label-heading">Notas del horario (opcional)</span><textarea rows="2" value={teamWorkNotes} onChange={(e) => setTeamWorkNotes(e.target.value)} maxLength={500} placeholder="Ej. descanso de 12:00 a 13:00; sábados alternos" /></label>
                 </div>
               </section>
-              <div className="team-permission-header"><span>Módulo</span><span>Consultar</span><span>Crear y modificar</span></div>
+              {teamEditingRole !== "owner" && <><div className="team-permission-header"><span>Módulo</span><span>Consultar</span><span>Crear y modificar</span></div>
               <div className="team-permission-list">{teamPermissionGroups.map((group) => <div className="team-permission-row" key={group.view}>
                 <strong>{group.label}</strong>
                 <label className="team-check"><input type="checkbox" checked={Boolean(teamPermissionDraft[group.view])} onChange={(e) => changeTeamPermission(group.view, e.target.checked)} /><span className="field-label-heading">Ver<FieldHelp enabled={contextualHelpEnabled} text="Permite que esta persona consulte información de esta sección sin cambiarla." /></span></label>
                 <label className="team-check"><input type="checkbox" checked={Boolean(teamPermissionDraft[group.manage])} onChange={(e) => changeTeamPermission(group.manage, e.target.checked)} /><span className="field-label-heading">Administrar<FieldHelp enabled={contextualHelpEnabled} text="Permite que esta persona cree o modifique registros de esta sección." /></span></label>
               </div>)}</div>
-              <p className="helper-text">Para que una tarea funcione, algunos datos relacionados también deben poder leerse. Por ejemplo, ventas necesita consultar productos y clientes; compras puede actualizar existencias y costos.</p>
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={clearTeamForm}>Cancelar</button><button type="submit" className="primary-button" disabled={teamSaving}>{teamSaving ? "Guardando…" : teamEditingUserId ? "Guardar permisos" : "Añadir al equipo"}</button></div>
+              <p className="helper-text" hidden={teamEditingRole === "owner"}>Para que una tarea funcione, algunos datos relacionados también deben poder leerse. Por ejemplo, ventas necesita consultar productos y clientes; compras puede actualizar existencias y costos.</p></>}
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={clearTeamForm}>Cancelar</button><button type="submit" className="primary-button" disabled={teamSaving}>{teamSaving ? "Guardando…" : teamEditingRole === "owner" ? "Guardar celular" : teamEditingUserId ? "Guardar permisos" : "Añadir al equipo"}</button></div>
             </form>}
             {teamLoading ? <div className="empty-state">Cargando el equipo…</div>
               : teamRows.length ? <div className="team-member-list">{teamRows.map((member) => {
@@ -5405,13 +5420,13 @@ export default function App() {
                     <div className="team-member-details">
                       <div className="team-member-detail"><span>Rol</span><strong>{member.role === "owner" ? "Propietario" : member.role === "admin" ? "Administrador" : "Colaborador"}</strong></div>
                       <div className="team-member-detail"><span>Celular</span>{member.phone ? <a href={"tel:" + String(member.phone).replace(/[^+\d]/g, "")}>{member.phone}</a> : <strong className="muted-value">Sin registrar</strong>}</div>
-                      {isEmployee && <div className="team-member-detail"><span>Valor por hora</span><strong>{(member.permissions || {})._employment?.hourly_rate_minor == null ? "Sin definir" : formatMoney((member.permissions || {})._employment.hourly_rate_minor)}</strong></div>}
+                      {isEmployee && <div className="team-member-detail"><span>Valor por hora</span><strong>{(member.permissions || {})._employment?.hourly_rate_minor == null ? "Sin definir" : money((member.permissions || {})._employment.hourly_rate_minor, "COP")}</strong></div>}
                       {isEmployee && <div className="team-member-detail"><span>Horario</span><strong>{(() => { const schedule = (member.permissions || {})._employment?.work_schedule || {}; const days = Array.isArray(schedule.days) ? schedule.days : []; const labels = {mon:"Lun",tue:"Mar",wed:"Mié",thu:"Jue",fri:"Vie",sat:"Sáb",sun:"Dom"}; return (days.length ? days.map((day) => labels[day] || day).join(", ") : "Días sin definir") + " · " + (schedule.start || "09:00") + "–" + (schedule.end || "17:00"); })()}</strong>{(member.permissions || {})._employment?.work_schedule?.notes && <span>{(member.permissions || {})._employment.work_schedule.notes}</span>}</div>}
                       <div className="team-member-detail"><span>Desde</span><strong>{member.joined_at ? new Intl.DateTimeFormat(uiLanguage === "en" ? "en-US" : "es-CO", { year: "numeric", month: "short", day: "numeric" }).format(new Date(member.joined_at)) : "—"}</strong></div>
                     </div>
                     <p className="team-member-permissions"><strong>Accesos:</strong> {isEmployee ? (granted.length ? granted.join(" · ") : "Sin acceso a módulos") : "Acceso completo al negocio"}</p>
                   </div>
-                  {isEmployee && <div className="team-member-actions"><button type="button" className="secondary-button team-edit-button" title="Editar datos laborales y permisos" aria-label={"Editar datos laborales y permisos de " + (member.display_name || member.email)} onClick={() => startEditTeamMember(member)}><AppIcon name="edit" size={15} /> Editar trabajador</button><button type="button" className="text-button danger-text" disabled={teamSaving} onClick={() => removeTeamMember(member)}>Quitar acceso</button></div>}
+                  {(isEmployee || (member.role === "owner" && member.user_id === session?.user?.id)) && <div className="team-member-actions"><button type="button" className="secondary-button team-edit-button" title={isEmployee ? "Editar datos laborales y permisos" : "Editar mi celular"} aria-label={isEmployee ? "Editar datos laborales y permisos de " + (member.display_name || member.email) : "Editar mi celular"} onClick={() => startEditTeamMember(member)}><AppIcon name="edit" size={15} /><span className="team-edit-button-label">{isEmployee ? "Editar trabajador" : "Editar celular"}</span></button>{isEmployee && <button type="button" className="text-button danger-text" disabled={teamSaving} onClick={() => removeTeamMember(member)}>Quitar acceso</button>}</div>}
                 </article>;
               })}</div>
               : <div className="empty-state"><span className="empty-icon">♙</span><h3>El equipo empieza aquí</h3><p>Por ahora solo hay miembros que ya pertenecen al negocio. No se ha creado ningún colaborador de ejemplo.</p><button type="button" className="primary-button" onClick={() => { setTeamEmail(""); setTeamPermissionDraft(blankTeamPermissions); setTeamEditingUserId(null); setTeamFormOpen(true); }}>+ Añadir colaborador</button></div>}

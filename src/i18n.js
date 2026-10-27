@@ -238,7 +238,7 @@ Object.assign(ENGLISH_TEXT, {
 "Productos": "Products",
 "Catálogo": "Catalog",
 "Inicio": "Home",
-"INICIO": "HOME"
+"INICIO": "HOME",
 "Nombre o razón social": "Business / legal name",
 "Sin especificar": "Not specified",
 "Cédula de ciudadanía": "National ID card",

@@ -341,10 +341,15 @@ const employeePermissionProfiles = {
 };
 const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
-const defaultBusinessTheme = Object.freeze({ primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f", sidebarBackground: "#fffefa", sidebarText: "#20251f", buttonHover: "#234635", buttonHoverText: "#ffffff" });
+const defaultBusinessTheme = Object.freeze({ primary: "#174580", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#102F60", buttonHoverText: "#FFFFFF" });
 const normalizeBusinessTheme = (theme) => {
   const valid = (value, fallback) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
-  return { primary: valid(theme?.primary, defaultBusinessTheme.primary), background: valid(theme?.background, defaultBusinessTheme.background), surface: valid(theme?.surface, defaultBusinessTheme.surface), text: valid(theme?.text, defaultBusinessTheme.text), sidebarBackground: valid(theme?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(theme?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(theme?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(theme?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
+  // Migra el tema anterior solo cuando todos sus valores corresponden a los antiguos valores predeterminados.
+  // Los colores personalizados de cada negocio permanecen intactos.
+  const legacyDefault = { primary: "#2d5947", background: "#f7f6f1", surface: "#fffefa", text: "#20251f", sidebarBackground: "#fffefa", sidebarText: "#20251f", buttonHover: "#234635", buttonHoverText: "#ffffff" };
+  const isLegacyDefault = Boolean(theme) && Object.entries(legacyDefault).every(([key, value]) => !theme[key] || String(theme[key]).toLowerCase() === value);
+  const source = isLegacyDefault ? null : theme;
+  return { primary: valid(source?.primary, defaultBusinessTheme.primary), background: valid(source?.background, defaultBusinessTheme.background), surface: valid(source?.surface, defaultBusinessTheme.surface), text: valid(source?.text, defaultBusinessTheme.text), sidebarBackground: valid(source?.sidebarBackground, defaultBusinessTheme.sidebarBackground), sidebarText: valid(source?.sidebarText, defaultBusinessTheme.sidebarText), buttonHover: valid(source?.buttonHover, defaultBusinessTheme.buttonHover), buttonHoverText: valid(source?.buttonHoverText, defaultBusinessTheme.buttonHoverText) };
 };
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
@@ -366,7 +371,7 @@ function FieldHelp({ text, enabled = true }) {
 }
 
 const contextualHelpContent = {
-  home: { title: "Inicio", intro: "Este es el punto de partida de Treintayuno. Cada módulo trabaja con la información real de tu negocio.", steps: ["En Productos registra lo que vendes y confirma su precio y existencias.", "En Ventas registra cada operación: el sistema calcula el total y descuenta inventario cuando corresponde.", "En Compras y gastos registra entradas y egresos para consultar la rentabilidad."], tip: "Mantén los productos y las existencias al día: las demás secciones dependen de esos datos." },
+  home: { title: "Inicio", intro: "Este es el punto de partida de treseiscinco. Cada módulo trabaja con la información real de tu negocio.", steps: ["En Productos registra lo que vendes y confirma su precio y existencias.", "En Ventas registra cada operación: el sistema calcula el total y descuenta inventario cuando corresponde.", "En Compras y gastos registra entradas y egresos para consultar la rentabilidad."], tip: "Mantén los productos y las existencias al día: las demás secciones dependen de esos datos." },
   products: { title: "Productos e inventario", intro: "Aquí defines el catálogo interno que se usa en ventas, compras y rentabilidad.", steps: ["Crea o edita un producto con nombre, unidad, precio y costo.", "Activa «Se puede vender» para que aparezca en el formulario de ventas.", "Indica si controla inventario y registra las entradas o ajustes de existencias."], tip: "Antes de vender, revisa el precio, el estado de venta y las existencias." },
   productForm: { title: "Crear o editar producto", intro: "Guarda la información comercial con la que se calcularán las ventas.", steps: ["Usa un nombre fácil de reconocer; el código es un identificador.", "Define precio de venta, costo, unidad y control de inventario.", "Revisa los campos y pulsa Guardar. Las fotos se optimizan antes de almacenarse."], tip: "Para servicios o productos digitales, desactiva el control de inventario si no corresponde." },
   sales: { title: "Ventas", intro: "Registra ventas reales, consulta su estado de pago y registra abonos posteriores.", steps: ["Pulsa «Nueva venta». El cliente es opcional.", "Elige un producto, revisa cantidad y pulsa «+ Agregar» para incluirlo.", "Revisa el total, indica el abono si recibiste dinero y guarda."], tip: "Guardar requiere al menos un artículo agregado. Venta y salida de inventario se registran juntas." },
@@ -383,8 +388,8 @@ const contextualHelpContent = {
   expenseForm: { title: "Registrar un gasto", intro: "Un gasto afecta los resultados de rentabilidad del período.", steps: ["Escribe una descripción concreta y un importe mayor que cero.", "Confirma la fecha y la categoría.", "Guarda cuando la información esté correcta."], tip: "Incluye la referencia o el soporte en Notas para facilitar una revisión posterior." },
   profitability: { title: "Rentabilidad", intro: "Este módulo resume valores a partir de ventas, costos registrados y gastos.", steps: ["Elige el período que quieres revisar.", "Compara ventas con el costo de los productos vendidos.", "Revisa los gastos asociados antes de interpretar la utilidad."], tip: "Los resultados dependen de que hayas registrado los costos y gastos de forma completa." },
   catalog: { title: "Catálogo para compartir", intro: "Controla qué productos activos quieres mostrar a tus clientes en el catálogo público.", steps: ["Revisa nombre, precio, fotos y descripción en Productos.", "Publica solo los artículos que quieres mostrar.", "Abre el enlace público para comprobar lo que verá un cliente."], tip: "El catálogo muestra productos publicados y disponibles para vender; no sustituye el registro interno." },
-  team: { title: "Equipo y permisos", intro: "Permite que cada colaborador vea o gestione solo los módulos que necesita.", steps: ["La persona debe tener primero una cuenta de Treintayuno.", "Escribe el mismo correo que usa para iniciar sesión.", "Marca los permisos necesarios y guarda los cambios."], tip: "Otorga solo los accesos que la persona necesita para trabajar." },
-  teamForm: { title: "Configurar acceso de un colaborador", intro: "Los permisos definen qué módulos puede consultar o administrar otra cuenta.", steps: ["Escribe el correo exacto de la cuenta de Treintayuno.", "Activa solo los permisos necesarios.", "Revisa la selección y guarda el acceso."], tip: "El colaborador debe haber creado su cuenta antes de poder ser vinculado al negocio." },
+  team: { title: "Equipo y permisos", intro: "Permite que cada colaborador vea o gestione solo los módulos que necesita.", steps: ["La persona debe tener primero una cuenta de treseiscinco.", "Escribe el mismo correo que usa para iniciar sesión.", "Marca los permisos necesarios y guarda los cambios."], tip: "Otorga solo los accesos que la persona necesita para trabajar." },
+  teamForm: { title: "Configurar acceso de un colaborador", intro: "Los permisos definen qué módulos puede consultar o administrar otra cuenta.", steps: ["Escribe el correo exacto de la cuenta de treseiscinco.", "Activa solo los permisos necesarios.", "Revisa la selección y guarda el acceso."], tip: "El colaborador debe haber creado su cuenta antes de poder ser vinculado al negocio." },
   settings: { title: "Configuración y personalización", intro: "Los ajustes se conservan en el negocio y se aplican cuando vuelvas a entrar.", steps: ["Actualiza nombre y moneda si el negocio aún no tiene importes que impidan cambiarla.", "Carga un logo y elige colores para personalizar las pantallas.", "Activa o desactiva el panel en «Ayudas contextuales».", "Pulsa Guardar configuración al terminar."], tip: "Los cambios visuales no alteran las operaciones. La moneda se protege cuando ya existen datos financieros." }
 };
 
@@ -597,7 +602,7 @@ function PaymentsAdmin({ business }) {
     <div className={"panel payment-status-panel " + (status.enabled ? "is-enabled" : "")}>
       <span className={"coupon-status " + (status.enabled ? "active" : "inactive")}>{loading ? "Consultando…" : status.enabled ? "Cobros activos" : status.configured ? "Cobros desactivados" : "Sin configurar"}</span>
       <h3>{status.enabled ? "Tu catálogo puede recibir pagos en línea" : "Configura los cobros de tu negocio"}</h3>
-      <p>{status.enabled ? "Wompi redirige al cliente a su checkout seguro. Treintayuno confirma el pedido solo después de verificar el evento y consultar la transacción con Wompi." : "Mientras no estén configuradas las credenciales, el catálogo no permitirá iniciar un cobro ni mostrará una falsa confirmación."}</p>
+      <p>{status.enabled ? "Wompi redirige al cliente a su checkout seguro. treseiscinco confirma el pedido solo después de verificar el evento y consultar la transacción con Wompi." : "Mientras no estén configuradas las credenciales, el catálogo no permitirá iniciar un cobro ni mostrará una falsa confirmación."}</p>
       {status.configured && <small>Entorno actual: {status.environment === "production" ? "Producción" : "Pruebas (sandbox)"}</small>}
     </div>
     <form className="panel payment-config-form" onSubmit={save}>
@@ -937,7 +942,7 @@ function PublicCatalog({ businessId }) {
 
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
-      <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "Treintayuno"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : "31"}</a>
+      <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
         <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
@@ -991,7 +996,7 @@ function PublicCatalog({ businessId }) {
         <button type="button" className="public-business-info-done" onClick={() => setBusinessInfoOpen(false)}>Volver al catálogo</button>
       </section>
     </div>}
-    <footer className="public-catalog-footer">Catálogo compartido con Treintayuno</footer>
+    <footer className="public-catalog-footer">Catálogo compartido con treseiscinco</footer>
 
     {cartOpen && <div className="public-cart-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCartOpen(false); }}>
       <section className="public-cart-panel" role="dialog" aria-modal="true" aria-labelledby="public-cart-title">
@@ -2905,7 +2910,7 @@ export default function App() {
       <h2>Cotización ${escapeHtml(quote.quote_number)}</h2><small>Fecha: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</small>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name)}</p><p>${escapeHtml(quote.customer_email || "")}</p><p>${escapeHtml(quote.customer_phone || "")}</p></div><div><strong>Válida hasta</strong><p>${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
       <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total: ${escapeHtml(money(quote.total_minor, quote.currency_code || currencyCode))}</div>
-      ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
+      ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde treseiscinco · ${escapeHtml(brand)}</div>
       <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
     const win = window.open(window.location.href, "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }
@@ -2996,7 +3001,7 @@ export default function App() {
       <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table>
       <div class="summary"><div><span>Total</span><strong>${escapeHtml(money(total, sale.currency_code || currencyCode))}</strong></div><div><span>Pagado</span><strong>${escapeHtml(money(paid, sale.currency_code || currencyCode))}</strong></div><div class="balance"><span>Saldo pendiente</span><strong>${escapeHtml(money(outstanding, sale.currency_code || currencyCode))}</strong></div></div>
       ${paymentRows ? "<h3>Historial de pagos</h3><table><thead><tr><th>Fecha</th><th>Medio de pago</th><th class=\"num\">Importe</th></tr></thead><tbody>" + paymentRows + "</tbody></table>" : ""}
-      ${sale.notes ? "<p style=\"margin-top:24px\"><strong>Notas:</strong> " + escapeHtml(sale.notes) + "</p>" : ""}<div class="footer">Documento comercial generado desde Treintayuno · ${escapeHtml(brand)}</div>
+      ${sale.notes ? "<p style=\"margin-top:24px\"><strong>Notas:</strong> " + escapeHtml(sale.notes) + "</p>" : ""}<div class="footer">Documento comercial generado desde treseiscinco · ${escapeHtml(brand)}</div>
       <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
     const win = window.open(window.location.href, "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir el documento e imprimirlo o guardarlo como PDF."); return; }
@@ -3469,7 +3474,7 @@ export default function App() {
   function downloadStatsExcel() {
     const unit = 10 ** currencyDigits(currencyCode);
     const rows = [
-      ["Treintayuno - Estadísticas"],
+      ["treseiscinco - Estadísticas"],
       ["Negocio", activeBusiness?.name || ""],
       ["Periodo", statsRangeLabel],
       [],
@@ -3504,7 +3509,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const downloadLink = document.createElement("a");
     downloadLink.href = url;
-    downloadLink.download = "treintayuno-estadisticas-" + statsRangeStart + "-a-" + statsRangeEnd + ".csv";
+    downloadLink.download = "treseiscinco-estadisticas-" + statsRangeStart + "-a-" + statsRangeEnd + ".csv";
     document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1200);
   }
@@ -3823,12 +3828,12 @@ export default function App() {
     return <PublicCatalog businessId={requestedPublicCatalog} />;
   }
 
-  if (!authReady) return <div className="loading-screen"><div className="brand-mark">31</div><p>Preparando tu espacio…</p></div>;
+  if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
 
   if (!session || mode === "update-password") return (
     <main className="auth-shell">
       <section className="auth-brand-panel">
-        <a className="brand" href="/"><span className="brand-mark">31</span><span className="brand-name">treintayuno</span></a>
+        <a className="brand" href="/"><span className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a>
         <div className="auth-pitch"><p className="eyebrow">TU NEGOCIO, CON CLARIDAD</p><h1>Menos enredos.<br /><em>Más negocio.</em></h1><p>Productos, ventas, costos y clientes en un solo lugar, fácil de entender y usar.</p></div>
         <span className="panel-footnote">Un espacio independiente para cada negocio.</span>
       </section>
@@ -3852,9 +3857,9 @@ export default function App() {
   );
 
   if (!businesses.length || screen === "setup") return (
-    <main className="setup-shell"><header className="topbar"><a className="brand" href="/"><span className="brand-mark">31</span><span className="brand-name">treintayuno</span></a><button className="text-button" onClick={signOut}>Cerrar sesión</button></header>
+    <main className="setup-shell"><header className="topbar"><a className="brand" href="/"><span className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a><button className="text-button" onClick={signOut}>Cerrar sesión</button></header>
       <section className="setup-card"><p className="eyebrow">PASO 1 DE 1</p><h1>¿Cómo se llama<br /><em>tu negocio?</em></h1><p>Este nombre identifica tu espacio. Más adelante podrás configurar tu logo, colores y equipo.</p>
-        <form className="form-stack" onSubmit={createBusiness}><label><span className="field-label-heading">Nombre del negocio<FieldHelp text="Este nombre identifica el espacio de tu negocio dentro de Treintayuno." /></span><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ej. Mi tienda" maxLength={120} required autoFocus /></label>
+        <form className="form-stack" onSubmit={createBusiness}><label><span className="field-label-heading">Nombre del negocio<FieldHelp text="Este nombre identifica el espacio de tu negocio dentro de treseiscinco." /></span><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ej. Mi tienda" maxLength={120} required autoFocus /></label>
           {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
           <button className="primary-button" disabled={busy}>{busy ? "Creando espacio…" : "Crear mi espacio"}</button>
         </form><p className="privacy-note">Cada negocio tiene sus propios datos y permisos.</p>
@@ -3865,7 +3870,7 @@ export default function App() {
   return (
     <main className="app-shell" style={appThemeStyle}>
       <aside className="sidebar">
-        <a className="brand" href="/"><span className="brand-mark">{activeBusinessLogoUrl ? <img className="brand-logo-image" src={activeBusinessLogoUrl} alt="" /> : "31"}</span><span className="brand-name">treintayuno</span></a>
+        <a className="brand" href="/"><span className="brand-mark">{activeBusinessLogoUrl ? <img className="brand-logo-image" src={activeBusinessLogoUrl} alt="" /> : "31"}</span><span className="brand-name"><span className="brand-part-yellow">tre</span><span className="brand-part-teal">seis</span><span className="brand-part-blue">cinco</span></span></a>
         <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
           <span className="business-avatar">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>
           {businesses.length > 1
@@ -4056,13 +4061,13 @@ export default function App() {
             </div>
             <div className="team-info-panel panel">
               <span className="team-info-icon">♙</span>
-              <div><strong>¿Cómo agregar a alguien?</strong><p>La persona debe crear primero su cuenta en Treintayuno. Después, escribe aquí el mismo correo y elige sus permisos. Este formulario no envía correos.</p></div>
+              <div><strong>¿Cómo agregar a alguien?</strong><p>La persona debe crear primero su cuenta en treseiscinco. Después, escribe aquí el mismo correo y elige sus permisos. Este formulario no envía correos.</p></div>
             </div>
             {teamFormOpen && <form className="team-form panel" onSubmit={saveTeamMember}>
               <div className="team-form-heading"><div><p className="eyebrow">{teamEditingUserId ? "PERMISOS DEL COLABORADOR" : "NUEVO ACCESO"}</p><h3>{teamEditingUserId ? "Editar permisos" : "Añadir colaborador"}</h3><p>Marca solo lo que esa persona necesita para trabajar.</p></div></div>
               {!teamEditingUserId && <label className="team-email-field"><span className="field-label-heading">Perfil inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona una función como punto de partida. Puedes ajustar los permisos manualmente antes de guardar." /></span><select value={teamPermissionProfile} onChange={(e) => { const profile = employeePermissionProfiles[e.target.value] || employeePermissionProfiles.personalizado; setTeamPermissionProfile(e.target.value); setTeamPermissionDraft({ ...blankTeamPermissions, ...profile.permissions }); }}><option value="vendedor">Vendedor</option><option value="atencion">Atención al cliente</option><option value="inventario">Inventario</option><option value="compras">Compras y proveedores</option><option value="personalizado">Personalizado</option></select><span className="helper-text">{employeePermissionProfiles[teamPermissionProfile]?.description}</span></label>}
-              <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de Treintayuno *
-                <FieldHelp enabled={contextualHelpEnabled} text="Escribe el correo de la cuenta de Treintayuno de la persona que invitarás al equipo." /></span><input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
+              <label className="team-email-field"><span className="field-label-heading">Correo de la cuenta de treseiscinco *
+                <FieldHelp enabled={contextualHelpEnabled} text="Escribe el correo de la cuenta de treseiscinco de la persona que invitarás al equipo." /></span><input type="email" value={teamEmail} onChange={(e) => setTeamEmail(e.target.value)} required disabled={Boolean(teamEditingUserId)} maxLength={254} autoComplete="email" placeholder="persona@correo.com" />
               </label>
               <div className="team-permission-header"><span>Módulo</span><span>Consultar</span><span>Crear y modificar</span></div>
               <div className="team-permission-list">{teamPermissionGroups.map((group) => <div className="team-permission-row" key={group.view}>
@@ -4596,8 +4601,8 @@ export default function App() {
               <h3>Datos del negocio</h3>
               <p>Actualiza el nombre y la moneda de las operaciones.</p>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
-                <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en Treintayuno." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
-                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de Treintayuno solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y Treintayuno no lo verifica.</p>
+                <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en treseiscinco." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
+                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de treseiscinco solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y treseiscinco no lo verifica.</p>
                 {settingsHasData && settingsCurrency !== currencyCode ? <div className="settings-conversion-box"><p className="helper-text">Se convertirán los precios de venta y costo del catálogo y sus variantes. Las ventas, compras, gastos y cotizaciones existentes conservarán sus importes y moneda históricos.</p><label className="settings-field"><span>Tasa de conversión</span><span className="helper-text">¿Cuántas unidades de {settingsCurrency} equivalen a 1 {currencyCode}?</span><input type="number" min="0.00000001" step="any" inputMode="decimal" value={settingsConversionRate} onChange={(e) => setSettingsConversionRate(e.target.value)} placeholder="Ej. 0,00024" required /></label><p className="helper-text">Confirma la tasa antes de guardar. La conversión se ejecuta en una sola transacción en la base de datos.</p></div> : settingsHasData ? <p className="helper-text">Puedes cambiar la moneda principal. Si eliges otra, te pediremos una tasa para convertir los precios actuales del catálogo sin modificar los movimientos históricos.</p> : <p className="helper-text">Elige la moneda para los precios del catálogo y los próximos movimientos de dinero.</p>}
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos ajustes.</p>}
               </>}
@@ -4630,7 +4635,7 @@ export default function App() {
               </div>
               <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": settingsTheme.text, "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": settingsTheme.sidebarText, "--button-hover": settingsTheme.buttonHover, "--button-hover-text": settingsTheme.buttonHoverText }}>
                 <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>31</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
-                <div className="settings-theme-preview-sidebar"><strong>31&nbsp; treintayuno</strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
+                <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
               {activeBusiness?.role === "owner" && <div className="settings-theme-reset-block"><button type="button" className="settings-reset-theme" onClick={() => setSettingsTheme({ ...defaultBusinessTheme })}><span aria-hidden="true">↺</span> Restaurar tema 31</button><p>Restaura los colores originales de fondos, tarjetas, textos, barra lateral y botones. Tu logo no se modifica. Guarda los cambios para aplicarlos al negocio.</p></div>}
@@ -4678,7 +4683,7 @@ export default function App() {
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
       <div className={"ai-assistant-layer" + (contextualHelpEnabled ? " ai-with-help" : "")}>
-        {aiOpen && <section id="treintayuno-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de Treintayuno">
+        {aiOpen && <section id="treseiscinco-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de treseiscinco">
           <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA avanzada</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · datos según permisos</small></div></div><button type="button" aria-label="Cerrar asistente" onClick={() => setAiOpen(false)}>×</button></header>
           <div ref={aiMessagesRef} className="ai-assistant-messages" aria-live="polite">
             {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
@@ -4688,7 +4693,7 @@ export default function App() {
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Uso la información registrada en este negocio y no invento cifras. Si algún dato no está disponible, te lo diré con claridad.</p>
         </section>}
-        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treintayuno-ai-panel" onClick={() => { setHelpOpen(false); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
+        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { setHelpOpen(false); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
       {contextualHelpEnabled && <div className="context-help-layer">
         <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>

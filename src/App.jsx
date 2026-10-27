@@ -1823,6 +1823,327 @@ export default function App() {
     return () => { alive = false; subscription.unsubscribe(); };
   }, [loadBusinesses]);
 
+
+  async function loadOutstandingAccounts() {
+    if (!activeBusiness?.id || !["receivables","payables"].includes(screen)) return;
+    setAccountsLoading(true);
+    try {
+      async function fetchAll(table, columns, orderColumn) {
+        const all = [];
+        for (let offset = 0; offset < 50000; offset += 500) {
+          const { data, error: queryError } = await supabase.from(table).select(columns)
+            .eq("business_id", activeBusiness.id).order(orderColumn, { ascending: false, nullsFirst: false })
+            .range(offset, offset + 499);
+          if (queryError) throw queryError;
+          const rows = data || []; all.push(...rows);
+          if (rows.length < 500) break;
+          if (offset + 500 >= 50000) throw new Error("Hay demasiados movimientos para mostrar de una sola vez. Usa los filtros del módulo correspondiente.");
+        }
+        return all;
+      }
+      if (screen === "receivables") {
+        const [sales, customers] = await Promise.all([
+          fetchAll("sales","id,sale_number,customer_id,status,total_minor,amount_paid_minor,currency_code,sold_at,created_at,notes","sold_at"),
+          supabase.from("customers").select("id,full_name,company_name,phone,whatsapp,email").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
+        ]);
+        const byId = new Map(customers.map((x)=>[x.id,x]));
+        setReceivableRows(sales.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status)&&Number(x.total_minor||0)>Number(x.amount_paid_minor||0))
+          .map((x)=>({...x,customer:byId.get(x.customer_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
+      } else {
+        const [purchases, suppliers] = await Promise.all([
+          fetchAll("purchases","id,purchase_number,supplier_id,status,total_minor,amount_paid_minor,currency_code,purchased_at,created_at,notes","purchased_at"),
+          supabase.from("suppliers").select("id,name,phone,email,tax_id").eq("business_id",activeBusiness.id).then((r)=>{if(r.error)throw r.error;return r.data||[];})
+        ]);
+        const byId = new Map(suppliers.map((x)=>[x.id,x]));
+        setPayableRows(purchases.filter((x)=>!["draft","canceled","cancelled","refunded"].includes(x.status)&&Number(x.total_minor||0)>Number(x.amount_paid_minor||0))
+          .map((x)=>({...x,supplier:byId.get(x.supplier_id)||null,balance_minor:Math.max(0,Number(x.total_minor||0)-Number(x.amount_paid_minor||0))})));
+      }
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setAccountsLoading(false); }
+  }
+
+  async function loadPlatformAdminDashboard() {
+    if (!isPlatformAdmin) return;
+    setPlatformAdminLoading(true);
+    try {
+      const { data, error: rpcError } = await supabase.rpc("platform_admin_dashboard");
+      if (rpcError) throw rpcError;
+      setPlatformAdminData(data || null);
+      setPlatformAdminStatusDrafts((current)=> {
+        const next={...current};
+        for (const row of data?.subscriptions || []) if (!(row.subscription_id in next)) next[row.subscription_id]=row.status;
+        return next;
+      });
+      setPlatformAdminPeriodDrafts((current)=> {
+        const next={...current};
+        for (const row of data?.subscriptions || []) if (!(row.subscription_id in next)) next[row.subscription_id]=row.current_period_end ? new Date(row.current_period_end).toISOString().slice(0,16) : "";
+        return next;
+      });
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally { setPlatformAdminLoading(false); }
+  }
+
+  async function updatePlatformSubscription(row, statusOverride = null, daysToAdd = 0) {
+    if (!isPlatformAdmin || !row?.business_id || platformAdminSaving) return;
+    const chosenStatus = statusOverride ?? platformAdminStatusDrafts[row.subscription_id] ?? row.status;
+    const draftEnd = platformAdminPeriodDrafts[row.subscription_id];
+    let periodEnd = draftEnd ? new Date(draftEnd).toISOString() : row.current_period_end;
+    if (daysToAdd) {
+      const base = new Date(row.current_period_end || Date.now());
+      base.setDate(base.getDate() + daysToAdd);
+      periodEnd = base.toISOString();
+    }
+    const note = platformAdminNote.trim();
+    setPlatformAdminSaving(true); setError(""); setNotice("");
+    try {
+      const { error: rpcError } = await supabase.rpc("platform_admin_update_subscription", {
+        p_business_id: row.business_id,
+        p_new_status: chosenStatus,
+        p_period_end: periodEnd,
+        p_note: note || null
+      });
+      if (rpcError) throw rpcError;
+      setPlatformAdminNote("");
+      setNotice("Estado y periodo de la suscripción guardados en el historial.");
+      await loadPlatformAdminDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setPlatformAdminSaving(false); }
+  }
+
+  async function submitPlatformPayment(event, row) {
+    event.preventDefault();
+    if (!isPlatformAdmin || !row?.business_id || platformAdminSaving) return;
+    const amountMinor = toMinorUnits(platformPaymentDraft.amount, "COP");
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) { setError("Escribe un valor de pago mayor que cero."); return; }
+    setPlatformAdminSaving(true); setError(""); setNotice("");
+    try {
+      const { error: rpcError } = await supabase.rpc("platform_admin_record_payment", {
+        p_business_id: row.business_id,
+        p_billing_interval: platformPaymentDraft.interval,
+        p_amount_minor: amountMinor,
+        p_currency_code: "COP",
+        p_payment_method: platformPaymentDraft.method,
+        p_external_reference: platformPaymentDraft.reference.trim() || null,
+        p_notes: platformPaymentDraft.notes.trim() || null,
+        p_received_at: new Date().toISOString()
+      });
+      if (rpcError) throw rpcError;
+      setPlatformPaymentBusiness("");
+      setPlatformPaymentDraft({ interval:"month",amount:"",method:"Nequi",reference:"",notes:"" });
+      setNotice("Pago confirmado manualmente; el periodo quedó extendido y el registro no se puede alterar desde la aplicación.");
+      await loadPlatformAdminDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setPlatformAdminSaving(false); }
+  }
+
+  function downloadBlobFile(filename, content, type = "application/octet-stream") {
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = filename; anchor.style.display = "none";
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }
+
+  function downloadInventoryTemplate() {
+    const rows = [
+      ["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"],
+      ["Ejemplo (puedes borrarlo)","REF-001","General","physical","unidad","15000","8000","10","sí","2","Artículo de ejemplo","Unidad individual"]
+    ];
+    const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
+    downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
+    setNotice("Plantilla descargada. Puedes abrirla y editarla en Excel; guarda el resultado como CSV UTF-8 para importarlo.");
+  }
+
+  async function importInventoryFile(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || !activeBusiness?.id || !canManageProducts || inventoryImportBusy) return;
+    if (file.size > 10 * 1024 * 1024) { setError("El archivo no puede superar 10 MB."); return; }
+    if (!/\.csv$/i.test(file.name)) { setError("Para la carga inicial usa la plantilla CSV compatible con Excel."); return; }
+    setInventoryImportBusy(true); setInventoryImportProgress("Leyendo archivo…"); setError(""); setNotice("");
+    const failures = [];
+    let imported = 0, skipped = 0;
+    try {
+      const source = (await file.text()).replace(/^\uFEFF/,"");
+      const firstLine = source.split(/\r?\n/,1)[0] || "";
+      const delimiter = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ";" : ",";
+      const parsed = [];
+      let row=[], cell="", quoted=false;
+      for (let i=0;i<source.length;i++) {
+        const ch=source[i];
+        if (ch === '"' && quoted && source[i+1] === '"') { cell+='"'; i++; }
+        else if (ch === '"') quoted=!quoted;
+        else if (ch === delimiter && !quoted) { row.push(cell); cell=""; }
+        else if ((ch === "\n" || ch === "\r") && !quoted) {
+          if (ch === "\r" && source[i+1] === "\n") i++;
+          row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row);
+          row=[]; cell="";
+        } else cell+=ch;
+      }
+      if (cell.length || row.length) { row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row); }
+      if (parsed.length < 2) throw new Error("La plantilla no contiene filas de artículos.");
+      const normalizeHeader=(value)=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/\s+/g,"_");
+      const headers=parsed[0].map(normalizeHeader);
+      const col=(row,...names)=>{const index=headers.findIndex((h)=>names.includes(h));return index<0?"":String(row[index]??"").trim();};
+      if (!headers.some((h)=>["nombre","producto","name","product"].includes(h))) throw new Error("Falta la columna «Nombre» en la primera fila.");
+      const dataRows=parsed.slice(1);
+      if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios CSV para conservar el control de errores.");
+      const {data:currentProducts,error:currentError}=await supabase.from("products").select("sku,name").eq("business_id",activeBusiness.id).is("archived_at",null);
+      if (currentError) throw currentError;
+      const existingCodes=new Set((currentProducts||[]).map((x)=>String(x.sku||"").trim().toLocaleLowerCase()).filter(Boolean));
+      const fileCodes=new Set();
+      const categoryMap=new Map(categories.map((x)=>[String(x.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),x.id]));
+      const toBool=(v)=>/^(si|sí|s|true|1|yes|y)$/i.test(String(v||"").trim());
+      const parseNumber=(v, fallback=0)=>{
+        const raw=String(v??"").trim().replace(/\s/g,"");
+        if (!raw) return fallback;
+        const cleaned=raw.includes(",") && !raw.includes(".") ? raw.replace(",",".") : raw.replace(/,/g,"");
+        const number=Number(cleaned);
+        return Number.isFinite(number) ? number : NaN;
+      };
+      for (let index=0; index<dataRows.length; index++) {
+        const csvRow=dataRows[index], rowNo=index+2;
+        const name=col(csvRow,"nombre","producto","name","product");
+        if (!name) { skipped++; failures.push("Fila "+rowNo+": falta el nombre."); continue; }
+        const sku=col(csvRow,"codigo","sku","code").slice(0,100) || null;
+        if (sku && (existingCodes.has(sku.toLocaleLowerCase()) || fileCodes.has(sku.toLocaleLowerCase()))) {
+          skipped++; failures.push("Fila "+rowNo+" ("+name+"): el código «"+sku+"» ya existe; se omitió para no duplicar referencias."); continue;
+        }
+        const rawType=normalizeHeader(col(csvRow,"tipo","type")) || "physical";
+        const type=({fisico:"physical",fisica:"physical",physical:"physical",servicio:"service",service:"service",digital:"digital","digital_": "digital"})[rawType] || "physical";
+        const price=parseNumber(col(csvRow,"precio","price")), cost=parseNumber(col(csvRow,"costo","cost"));
+        const stock=parseNumber(col(csvRow,"cantidad","stock","existencias"),0);
+        const thresholdText=col(csvRow,"stock_minimo","stock_bajo","low_stock_threshold");
+        const threshold=thresholdText ? parseNumber(thresholdText) : null;
+        if (![price,cost,stock].every(Number.isFinite) || price<0 || cost<0 || stock<0 || (threshold!==null&&(!Number.isFinite(threshold)||threshold<0))) {
+          skipped++; failures.push("Fila "+rowNo+" ("+name+"): precio, costo, cantidad o mínimo inválido; no se importó."); continue;
+        }
+        let categoryId=null;
+        const categoryName=col(csvRow,"categoria","category");
+        if (categoryName) {
+          const key=categoryName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+          categoryId=categoryMap.get(key)||null;
+          if (!categoryId) {
+            const {data:newCategory,error:categoryError}=await supabase.from("product_categories").insert({business_id:activeBusiness.id,name:categoryName.slice(0,80)}).select("id,name").single();
+            if (categoryError) {
+              const {data:matches}=await supabase.from("product_categories").select("id,name").eq("business_id",activeBusiness.id).ilike("name",categoryName.slice(0,80)).limit(1);
+              if (!matches?.length) { skipped++; failures.push("Fila "+rowNo+" ("+name+"): no se pudo crear la categoría «"+categoryName+"»."); continue; }
+              categoryId=matches[0].id;
+            } else { categoryId=newCategory.id; categoryMap.set(key,categoryId); setCategories((current)=>[...current,newCategory].sort((a,b)=>a.name.localeCompare(b.name,"es"))); }
+          }
+        }
+        setInventoryImportProgress("Importando "+(index+1)+" de "+dataRows.length+" artículos…");
+        try {
+          const {error:insertError}=await supabase.rpc("create_product_with_opening_stock",{
+            p_business_id:activeBusiness.id,p_name:name.slice(0,160),p_category_id:categoryId,p_sku:sku,
+            p_description:col(csvRow,"descripcion","description").slice(0,5000)||null,
+            p_product_type:type,p_unit_name:col(csvRow,"unidad","unit").slice(0,40)||"unidad",
+            p_sale_price_minor:toMinorUnits(price,currencyCode),p_cost_price_minor:toMinorUnits(cost,currencyCode),
+            p_opening_stock:type==="physical"&&toBool(col(csvRow,"controla_inventario","controla_stock","track_inventory")||"si")?stock:0,
+            p_low_stock_threshold:type==="physical"&&threshold!==null?threshold:null,
+            p_commercial_presentation:col(csvRow,"presentacion","presentation").slice(0,200)||null
+          });
+          if (insertError) throw insertError;
+          imported++; if (sku) fileCodes.add(sku.toLocaleLowerCase());
+        } catch (e) { skipped++; failures.push("Fila "+rowNo+" ("+name+"): "+friendlyError(e)); }
+      }
+      setInventoryOverviewRefresh((n)=>n+1);
+      await loadProducts();
+      const firstErrors=failures.slice(0,8);
+      setNotice("Carga completada: "+imported+" artículos importados; "+skipped+" filas omitidas. El stock inicial quedó en el historial."+ (failures.length>8?" Hay "+(failures.length-8)+" errores adicionales.":""));
+      if (firstErrors.length) setError(firstErrors.join("\n"));
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
+  }
+
+  async function downloadBusinessBackup() {
+    if (!activeBusiness?.id || backupBusy) return;
+    setBackupBusy(true); setError(""); setNotice("");
+    try {
+      const tableNames=[
+        "product_categories","products","product_images","product_variants","customers","suppliers",
+        "sales","sale_items","sale_payments","purchases","purchase_items","purchase_payments",
+        "expenses","stock_movements","audit_logs","quotes","quote_items","business_coupons"
+      ];
+      const backup={format:"treseiscinco-business-backup-v1",generated_at:new Date().toISOString(),
+        business:{id:activeBusiness.id,name:activeBusiness.name,currency_code:activeBusiness.currency_code,
+          country_code:activeBusiness.country_code,timezone:activeBusiness.timezone,theme:activeBusiness.theme,settings:activeBusiness.settings},
+        tables:{},not_exported:[]};
+      for (const table of tableNames) {
+        try {
+          const tableRows=[];
+          for (let offset=0;offset<50000;offset+=500) {
+            const {data,error:queryError}=await supabase.from(table).select("*").eq("business_id",activeBusiness.id).range(offset,offset+499);
+            if (queryError) throw queryError;
+            const batch=data||[]; tableRows.push(...batch);
+            if (batch.length<500) break;
+            if (offset+500>=50000) throw new Error("Tabla supera 50.000 filas");
+          }
+          backup.tables[table]=tableRows;
+        } catch (e) { backup.not_exported.push({table,reason:String(e?.message||e).slice(0,180)}); }
+      }
+      downloadBlobFile("treseiscinco-copia-"+String(activeBusiness.name||"negocio").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9_-]+/gi,"-").toLowerCase()+"-"+todayInBogota()+".json",JSON.stringify(backup,null,2),"application/json;charset=utf-8");
+      const complete=backup.not_exported.length===0;
+      setNotice(complete?"Copia de seguridad descargada. Guárdala en un lugar seguro; este archivo no sustituye las copias internas del servicio.":"Copia descargada con "+backup.not_exported.length+" tablas no exportadas por permisos o límites. Revisa el detalle antes de considerarla completa.");
+      if (!complete) setError("Tablas no exportadas: "+backup.not_exported.map((x)=>x.table).join(", ")+". Por seguridad no se incluyeron credenciales privadas de pasarelas.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBackupBusy(false); }
+  }
+
+
+  useEffect(() => {
+    let alive=true;
+    if (!session?.user?.id) {
+      setIsPlatformAdmin(false); setPlatformAdminData(null); setBusinessSubscription(null);
+      return () => { alive=false; };
+    }
+    supabase.rpc("is_platform_admin").then(({data,error:rpcError})=>{
+      if (!alive) return;
+      if (rpcError) { setIsPlatformAdmin(false); return; }
+      setIsPlatformAdmin(Boolean(data));
+    }).catch(()=>{if(alive)setIsPlatformAdmin(false);});
+    return () => { alive=false; };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const standalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true);
+    const ua = navigator.userAgent || "";
+    const platform = /iphone|ipad|ipod/i.test(ua) ? "iOS" : /android/i.test(ua) ? "Android" : /windows/i.test(ua) ? "Windows" : /macintosh|mac os/i.test(ua) ? "macOS" : "Other";
+    supabase.rpc("record_platform_activity", {
+      p_event: standalone ? "pwa_installed" : "app_open",
+      p_is_standalone: standalone,
+      p_platform: platform
+    }).then(({error:activityError})=>{
+      if(activityError) console.warn("No se pudo registrar la actividad de plataforma.");
+    }).catch(()=>{});
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!activeBusiness?.id || !["owner","admin"].includes(activeBusiness.role)) {
+      setBusinessSubscription(null);
+      return;
+    }
+    let alive=true;
+    supabase.from("business_subscriptions").select("id,status,current_period_start,current_period_end,created_at")
+      .eq("business_id",activeBusiness.id).maybeSingle()
+      .then(({data,error:subscriptionError})=>{if(alive)setBusinessSubscription(subscriptionError?null:data||null);})
+      .catch(()=>{if(alive)setBusinessSubscription(null);});
+    return ()=>{alive=false;};
+  }, [activeBusiness?.id,activeBusiness?.role]);
+
+  useEffect(() => {
+    if ((screen==="receivables" || screen==="payables") && activeBusiness?.id) loadOutstandingAccounts();
+  }, [screen,activeBusiness?.id]);
+
+  useEffect(() => {
+    if (screen==="platform_admin" && isPlatformAdmin) loadPlatformAdminDashboard();
+  }, [screen,isPlatformAdmin]);
+
   async function loadBulkProducts() {
     if (!activeBusiness?.id) return;
     setBulkProductsLoading(true); setError(""); setNotice("");

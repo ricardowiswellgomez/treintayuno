@@ -3820,3 +3820,43 @@ body { background: #F5F7FC; color: #19243A; }
   .business-card-preview-copy h3 { font-size:clamp(12px,4vw,18px); }
   .business-card-preview-copy>span,.business-card-preview-copy p { font-size:7px; }
 }
+
+
+/* Contrast floor for tenant-defined themes, including secondary controls and card surfaces. */
+.app-shell .panel:not(.tax-guidance-note):not(.trial-status-banner):not(.inventory-low-stock-notice) {
+  background:var(--paper,#FFFFFF)!important;
+  color:var(--ink,#172033)!important;
+}
+.app-shell input:not([type="color"]),
+.app-shell select,
+.app-shell textarea {
+  background:var(--paper,#FFFFFF)!important;
+  color:var(--ink,#172033)!important;
+  border-color:var(--line,#D6DCE5)!important;
+}
+.app-shell .secondary-button {
+  background:var(--paper,#FFFFFF)!important;
+  color:var(--ink,#172033)!important;
+  border-color:var(--line,#D6DCE5)!important;
+}
+.app-shell .primary-button {
+  background:var(--green,#174580)!important;
+  color:var(--primary-button-text,#FFFFFF)!important;
+}
+.app-shell .field-label-heading,
+.app-shell .nav-label,
+.app-shell .helper-text,
+.app-shell .settings-footnote,
+.app-shell .eyebrow,
+.app-shell .platform-admin-metric span,
+.app-shell .accounts-metric>span {
+  color:var(--muted,#566176);
+}
+.app-shell .negative-value,
+.app-shell .profit-negative,
+.app-shell .danger-text { color:var(--danger-text,#B42318)!important; }
+.app-shell .profit-positive { color:var(--success-text,#16824B)!important; }
+.public-catalog-shell { --muted:var(--ink,#172033); }
+.public-catalog-shell .public-catalog-currency,
+.public-catalog-shell .public-catalog-category,
+.public-catalog-shell .public-catalog-card-copy>p { color:var(--muted,#566176); }

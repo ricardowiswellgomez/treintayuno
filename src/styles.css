@@ -6212,3 +6212,6 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell .inventory-controls.panel{grid-template-columns:minmax(0,1fr) auto!important}
   .app-shell .inventory-result-count{font-size:10px;white-space:normal}
 }
+
+/* Contextual help removed from the main application screen */
+.context-help-layer{display:none!important}

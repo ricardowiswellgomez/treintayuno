@@ -5534,3 +5534,5 @@ body { background: #F5F7FC; color: #19243A; }
   .stats-page .stats-export-actions, .stats-page .stats-period-buttons, .stats-page .stats-custom-dates, .stats-page .stats-pending .secondary-button, .main-header, .sidebar, .ai-assistant-layer, .context-help-layer, .app-footer, .message, .role-pill { display:none!important; }
   .stats-page .stats-filter-toolbar { border:0!important; padding:0 0 10px!important; }
 }
+
+@media (max-width: 760px) { .main-header { position:sticky; top:0; z-index:1100; padding-top:max(8px,env(safe-area-inset-top,0px)); background:var(--paper,#fff); } .mobile-nav-toggle { position:relative; z-index:1101; } }

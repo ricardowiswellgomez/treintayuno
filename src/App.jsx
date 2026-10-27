@@ -1573,7 +1573,7 @@ export default function App() {
   }, [activeBusiness?.id, productPage, productPageSize, search, showArchivedProducts, productSort, productStockFilter, productCategoryFilter, productTypeFilter]);
 
   const loadInventoryOverview = useCallback(async () => {
-    if (!activeBusiness?.id) return;
+    if (!activeBusiness?.id || !canAccessScreen("products")) return;
     setInventoryOverviewLoading(true);
     try {
       const all = [];
@@ -1608,7 +1608,7 @@ export default function App() {
   }, [activeBusiness?.id]);
 
   useEffect(() => {
-    if ((screen === "products" || screen === "home") && activeBusiness?.id) loadInventoryOverview();
+    if ((screen === "products" || screen === "home") && activeBusiness?.id && canAccessScreen("products")) loadInventoryOverview();
   }, [screen, activeBusiness?.id, inventoryOverviewRefresh, loadInventoryOverview]);
 
   const loadHomeSummary = useCallback(async () => {
@@ -4189,6 +4189,7 @@ export default function App() {
     setScreen("sales");
     setShowPurchaseForm(false); setShowSupplierForm(false); setShowExpenseForm(false);
     setShowArchivedProducts(false); setSearch(""); setCustomerSearch("");
+    setProductStockFilter("all"); setProductCategoryFilter("all"); setProductTypeFilter("all"); setProductSort("name"); setBulkEditMode(false); setBulkProductRows([]);
     setSalePaymentFormFor(null); setPurchasePaymentFormFor(null);
     setViewingVariantsFor(null); setVariantDraft(blankVariantDraft); setEditingVariantId(null);
     setProductPage(1); setSalesPage(1); setCustomersPage(1); setPurchasesPage(1); setExpensesPage(1);

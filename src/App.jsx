@@ -1176,6 +1176,7 @@ export default function App() {
   const [galleryLoadingFor, setGalleryLoadingFor] = useState(null);
   const [uploadingImagesFor, setUploadingImagesFor] = useState(null);
   const [categoryName, setCategoryName] = useState("");
+  const [showQuickCategoryForm, setShowQuickCategoryForm] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState(null);
@@ -1193,6 +1194,7 @@ export default function App() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [showQuickPurchaseSupplierForm, setShowQuickPurchaseSupplierForm] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState(blankSupplier);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
   const [purchasePeriod, setPurchasePeriod] = useState("day");
@@ -1283,6 +1285,11 @@ export default function App() {
   const [quoteCustomerName, setQuoteCustomerName] = useState("");
   const [quoteCustomerEmail, setQuoteCustomerEmail] = useState("");
   const [quoteCustomerPhone, setQuoteCustomerPhone] = useState("");
+  const [showQuickQuoteCustomerForm, setShowQuickQuoteCustomerForm] = useState(false);
+  const [quickQuoteCustomerName, setQuickQuoteCustomerName] = useState("");
+  const [quickQuoteCustomerPhone, setQuickQuoteCustomerPhone] = useState("");
+  const [quickQuoteCustomerEmail, setQuickQuoteCustomerEmail] = useState("");
+  const [quickQuoteCustomerSaving, setQuickQuoteCustomerSaving] = useState(false);
   const [quoteValidUntil, setQuoteValidUntil] = useState(() => {
     const date = new Date(todayInBogota() + "T12:00:00-05:00");
     date.setDate(date.getDate() + 15);
@@ -2110,13 +2117,20 @@ export default function App() {
   }
 
   async function addCategory(event) {
-    event.preventDefault();
-    if (!activeBusiness?.id || !categoryName.trim()) return;
+    event?.preventDefault();
+    if (!activeBusiness?.id || !categoryName.trim() || busy) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const { error: insertError } = await supabase.from("product_categories").insert({ business_id: activeBusiness.id, name: categoryName.trim() });
+      const { data: created, error: insertError } = await supabase.from("product_categories")
+        .insert({ business_id: activeBusiness.id, name: categoryName.trim() })
+        .select("id,name,description,sort_order").single();
       if (insertError) throw insertError;
-      setCategoryName(""); setNotice("Categoría creada."); await loadProducts();
+      setCategories((current) => [...current.filter((item) => item.id !== created.id), created].sort((a, b) => a.name.localeCompare(b.name, "es")));
+      setProductForm((current) => ({ ...current, category_id: created.id }));
+      setCategoryName("");
+      setShowQuickCategoryForm(false);
+      setNotice("Categoría creada y seleccionada.");
+      await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
@@ -3187,6 +3201,30 @@ export default function App() {
     setNotice("Ajusta los artículos, las cantidades o los precios. Al guardar, la propuesta quedará como borrador para revisarla con el cliente.");
   }
 
+  async function addQuickQuoteCustomer() {
+    if (!activeBusiness?.id || !canManageCustomers || quickQuoteCustomerSaving) return;
+    const name = quickQuoteCustomerName.trim();
+    if (!name) { setError("Escribe el nombre del cliente."); return; }
+    setQuickQuoteCustomerSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: insertError } = await supabase.from("customers").insert({
+        business_id: activeBusiness.id, full_name: name, first_name: name,
+        email: quickQuoteCustomerEmail.trim() || null, phone: quickQuoteCustomerPhone.trim() || null
+      }).select("id,full_name,company_name,email,phone,whatsapp,document_type,document_number,city").single();
+      if (insertError) throw insertError;
+      setCustomers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
+      setQuoteCustomers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
+      setQuoteCustomerId(data.id);
+      setQuoteCustomerName(data.company_name || data.full_name || name);
+      setQuoteCustomerEmail(data.email || "");
+      setQuoteCustomerPhone(data.phone || data.whatsapp || "");
+      setQuickQuoteCustomerName(""); setQuickQuoteCustomerPhone(""); setQuickQuoteCustomerEmail("");
+      setShowQuickQuoteCustomerForm(false);
+      setNotice("Cliente creado y seleccionado para esta cotización.");
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setQuickQuoteCustomerSaving(false); }
+  }
+
   async function createQuote(event) {
     event.preventDefault();
     if (!activeBusiness?.id || !canManageSales || quoteSaving) return;
@@ -3549,7 +3587,7 @@ export default function App() {
   }
 
   async function addSupplier(event) {
-    event.preventDefault();
+    event?.preventDefault();
     if (!activeBusiness?.id) return;
     const name = supplierDraft.name.trim();
     if (!name) { setError("Escribe el nombre del proveedor."); return; }
@@ -3564,8 +3602,8 @@ export default function App() {
         }).select("id,business_id,name,email,phone,tax_id,address,notes").single();
       if (supplierError) throw supplierError;
       setSuppliers((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name, "es")));
-      setPurchaseSupplierId(data.id); setSupplierDraft(blankSupplier); setShowSupplierForm(false);
-      setNotice("Proveedor guardado: " + data.name + ".");
+      setPurchaseSupplierId(data.id); setSupplierDraft(blankSupplier); setShowSupplierForm(false); setShowQuickPurchaseSupplierForm(false);
+      setNotice("Proveedor guardado y seleccionado para la compra: " + data.name + ".");
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
@@ -3670,8 +3708,7 @@ export default function App() {
     finally { setBusy(false); }
   }
 
-  async function addQuickCustomer(event) {
-    event.preventDefault();
+  async function addQuickCustomer() {
     if (!activeBusiness?.id || !canManageCustomers) return;
     const name = quickCustomerName.trim();
     if (!name) { setError("Escribe el nombre del cliente."); return; }
@@ -4271,8 +4308,10 @@ export default function App() {
     <main className="app-shell" style={appThemeStyle}>
       <aside className="sidebar">
         <a className="brand" href="/"><img className="brand-logo-full" src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
-        <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
+        <div className="business-logo-stage" aria-label={"Identidad de " + (activeBusiness?.name || "tu negocio")}>
           <span className={"business-avatar" + (activeBusinessLogoUrl ? " has-business-logo" : "")}><span className="business-avatar-initial">{(activeBusiness?.name || "T").slice(0,1).toUpperCase()}</span>{activeBusinessLogoUrl && <img src={activeBusinessLogoUrl} alt={"Logo de " + (activeBusiness?.name || "negocio")} onError={(event) => { event.currentTarget.remove(); event.currentTarget.parentElement?.classList.remove("has-business-logo"); }} />}</span>
+        </div>
+        <div className={"business-switcher" + (businesses.length > 1 ? " business-switcher-multiple" : "")}>
           {businesses.length > 1
             ? <><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(e) => switchActiveBusiness(e.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select><span className="switch-caret">⌄</span></>
             : <span className="business-name">{activeBusiness?.name}</span>}
@@ -4351,15 +4390,15 @@ export default function App() {
 <label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select></label>
 <label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
 </div>
-{showQuickCustomerForm && canManageCustomers && <form className="panel quick-customer-form" onSubmit={addQuickCustomer}>
-  <strong>Nuevo cliente</strong>
+{showQuickCustomerForm && canManageCustomers && <div className="panel quick-customer-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
+  <strong>Nuevo cliente</strong><p className="inline-create-hint">Se agregará a la venta actual sin cerrar este formulario.</p>
   <div className="sale-builder">
     <label><span className="field-label-heading">Nombre o empresa *</span><input value={quickCustomerName} onChange={e=>setQuickCustomerName(e.target.value)} required maxLength={200} autoComplete="name" /></label>
     <label><span className="field-label-heading">Teléfono</span><input value={quickCustomerPhone} onChange={e=>setQuickCustomerPhone(e.target.value)} maxLength={40} autoComplete="tel" /></label>
     <label><span className="field-label-heading">Correo</span><input type="email" value={quickCustomerEmail} onChange={e=>setQuickCustomerEmail(e.target.value)} maxLength={254} autoComplete="email" /></label>
-    <button type="submit" className="primary-button" disabled={quickCustomerSaving}>{quickCustomerSaving?"Guardando…":"Guardar y seleccionar"}</button>
+    <button type="button" className="primary-button" disabled={quickCustomerSaving || !quickCustomerName.trim()} onClick={addQuickCustomer}>{quickCustomerSaving?"Guardando…":"Guardar y seleccionar"}</button>
   </div>
-</form>}
+</div>}
 {!saleProducts.length&&<p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
 {saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
@@ -4540,12 +4579,21 @@ export default function App() {
             {showQuoteForm && canManageSales && <form className="quote-form panel" onSubmit={createQuote}>
               <h3>{editingQuoteId ? "Ajustar cotización" : "Nueva cotización"}</h3>
               <div className="quote-customer-fields">
-                {quoteCustomers.length > 0 && <label><span className="field-label-heading">Seleccionar cliente registrado</span><select value={quoteCustomerId} onChange={(e) => { const id = e.target.value; setQuoteCustomerId(id); const customer = quoteCustomers.find((item) => item.id === id); if (customer) { setQuoteCustomerName(customer.company_name || customer.full_name || ""); setQuoteCustomerEmail(customer.email || ""); setQuoteCustomerPhone(customer.phone || customer.whatsapp || ""); } }}><option value="">Cliente nuevo / escribir manualmente</option>{quoteCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name && customer.company_name !== customer.full_name ? customer.company_name + " · " + customer.full_name : customer.full_name || customer.company_name}</option>)}</select></label>}
+                <label><span className="field-label-heading">Seleccionar cliente registrado</span><select value={quoteCustomerId} onChange={(e) => { const id = e.target.value; setQuoteCustomerId(id); const customer = quoteCustomers.find((item) => item.id === id); if (customer) { setQuoteCustomerName(customer.company_name || customer.full_name || ""); setQuoteCustomerEmail(customer.email || ""); setQuoteCustomerPhone(customer.phone || customer.whatsapp || ""); } }}><option value="">Cliente nuevo / escribir manualmente</option>{quoteCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name && customer.company_name !== customer.full_name ? customer.company_name + " · " + customer.full_name : customer.full_name || customer.company_name}</option>)}</select></label>{canManageCustomers && <button type="button" className="secondary-button inline-customer-toggle" onClick={() => setShowQuickQuoteCustomerForm((open) => !open)}>{showQuickQuoteCustomerForm ? "Cancelar nuevo cliente" : "＋ Nuevo cliente"}</button>}
                 <label><span className="field-label-heading">Cliente o empresa *</span><input value={quoteCustomerName} onChange={(e) => { setQuoteCustomerName(e.target.value); if (quoteCustomerId) setQuoteCustomerId(""); }} maxLength={200} required placeholder="Nombre del cliente" /></label>
                 <label><span className="field-label-heading">Correo</span><input type="email" value={quoteCustomerEmail} onChange={(e) => setQuoteCustomerEmail(e.target.value)} maxLength={254} placeholder="cliente@correo.com" /></label>
                 <label><span className="field-label-heading">Teléfono / WhatsApp</span><input value={quoteCustomerPhone} onChange={(e) => setQuoteCustomerPhone(e.target.value)} maxLength={60} placeholder="Número de contacto" /></label>
                 <label><span className="field-label-heading">Válida hasta</span><input type="date" min={todayInBogota()} value={quoteValidUntil} onChange={(e) => setQuoteValidUntil(e.target.value)} /></label>
               </div>
+              {showQuickQuoteCustomerForm && canManageCustomers && <div className="quick-customer-form quick-quote-customer-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
+                <strong>Nuevo cliente</strong><p className="inline-create-hint">Guárdalo y se seleccionará en esta cotización, sin perder los artículos que ya añadiste.</p>
+                <div className="sale-builder">
+                  <label><span className="field-label-heading">Nombre o empresa *</span><input value={quickQuoteCustomerName} onChange={(event) => setQuickQuoteCustomerName(event.target.value)} maxLength={200} autoComplete="name" /></label>
+                  <label><span className="field-label-heading">Teléfono</span><input value={quickQuoteCustomerPhone} onChange={(event) => setQuickQuoteCustomerPhone(event.target.value)} maxLength={40} autoComplete="tel" /></label>
+                  <label><span className="field-label-heading">Correo</span><input type="email" value={quickQuoteCustomerEmail} onChange={(event) => setQuickQuoteCustomerEmail(event.target.value)} maxLength={254} autoComplete="email" /></label>
+                  <button type="button" className="primary-button" disabled={quickQuoteCustomerSaving || !quickQuoteCustomerName.trim()} onClick={addQuickQuoteCustomer}>{quickQuoteCustomerSaving ? "Guardando…" : "Guardar y seleccionar"}</button>
+                </div>
+              </div>}
               {quoteProducts.length > 0 && <label className="quote-product-select"><span className="field-label-heading">Cargar desde productos (opcional)</span><select value={quoteProductChoice} onChange={(e) => { const id = e.target.value; const product = quoteProducts.find((item) => item.id === id); setQuoteProductChoice(id); if (product) { setQuoteItemName(product.name); setQuoteUnitPrice(String(Number(product.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)))); } }}><option value="">Artículo personalizado…</option>{quoteProducts.map((product) => <option value={product.id} key={product.id}>{product.name} · {money(product.sale_price_minor, currencyCode)}</option>)}</select></label>}
               <div className="quote-item-builder">
                 <label><span className="field-label-heading">Artículo o servicio *</span><input value={quoteItemName} onChange={(e) => { setQuoteItemName(e.target.value); setQuoteProductChoice(""); }} maxLength={200} placeholder="Nombre del artículo o servicio" /></label>
@@ -4725,7 +4773,16 @@ export default function App() {
                 <div className="purchase-form-heading"><div><p className="eyebrow">ENTRADA DE INVENTARIO</p><h3>Nueva compra</h3></div><span className="purchase-form-hint">Se guarda con su historial</span></div>
                 <div className="purchase-form-grid">
                   <label><span className="field-label-heading">Fecha de compra *<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha en que hiciste la compra." /></span><input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} required /></label>
-                  <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el proveedor al que corresponde esta compra; puedes dejarlo sin asignar." /></span><select value={purchaseSupplierId} onChange={(e) => setPurchaseSupplierId(e.target.value)}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.name}</option>)}</select></label>
+                  <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el proveedor al que corresponde esta compra; puedes dejarlo sin asignar." /></span><select value={purchaseSupplierId} onChange={(e) => { if (e.target.value === "__create_supplier__") { setShowQuickPurchaseSupplierForm(true); return; } setPurchaseSupplierId(e.target.value); }}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.name}</option>)}{canPermission("suppliers_manage") && <option value="__create_supplier__">＋ Nuevo proveedor…</option>}</select></label>
+                  {showQuickPurchaseSupplierForm && canPermission("suppliers_manage") && <div className="inline-create-panel quick-purchase-supplier" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
+                    <strong>Nuevo proveedor</strong><p className="inline-create-hint">Se guardará como contacto y quedará seleccionado en esta compra.</p>
+                    <div className="inline-create-fields-grid">
+                      <label><span>Nombre o empresa *</span><input value={supplierDraft.name} onChange={(event) => setSupplierDraft((current) => ({...current,name:event.target.value}))} maxLength={180} placeholder="Nombre del proveedor" /></label>
+                      <label><span>Teléfono</span><input type="tel" value={supplierDraft.phone} onChange={(event) => setSupplierDraft((current) => ({...current,phone:event.target.value}))} maxLength={60} /></label>
+                      <label><span>Correo</span><input type="email" value={supplierDraft.email} onChange={(event) => setSupplierDraft((current) => ({...current,email:event.target.value}))} maxLength={254} /></label>
+                    </div>
+                    <div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !supplierDraft.name.trim()} onClick={() => addSupplier()}>{busy ? "Guardando…" : "Guardar y seleccionar"}</button><button type="button" className="text-button" onClick={() => {setShowQuickPurchaseSupplierForm(false);setSupplierDraft(blankSupplier);}}>Cancelar</button></div>
+                  </div>}
                   <label><span className="field-label-heading">Producto registrado<FieldHelp enabled={contextualHelpEnabled} text="Elige un producto ya registrado para completar automáticamente su nombre y costo cuando corresponda." /></span><select value={purchaseProductChoice} onChange={(e) => { const id = e.target.value; const product = purchaseProducts.find((p) => p.id === id); setPurchaseProductChoice(id); setPurchaseItemName(product?.name || ""); setPurchaseUnitCost(product ? String(Number(product.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode))) : ""); }}><option value="">Otro artículo / no vincular</option>{purchaseProducts.map((product) => <option value={product.id} key={product.id}>{product.name}{product.sku ? " · " + product.sku : ""}</option>)}</select></label>
                   <label><span className="field-label-heading">Artículo comprado *<FieldHelp enabled={contextualHelpEnabled} text="Describe el producto o material que compraste para identificarlo en el historial." /></span><input value={purchaseItemName} onChange={(e) => { setPurchaseItemName(e.target.value); if (purchaseProductChoice) setPurchaseProductChoice(""); }} maxLength={180} required placeholder="Nombre del material o producto" /></label>
                   <label><span className="field-label-heading">Cantidad *<FieldHelp enabled={contextualHelpEnabled} text="Cantidad comprada. Se usa con el costo unitario para calcular el subtotal." /></span><input type="number" min="0.001" step="0.001" value={purchaseQuantity} onChange={(e) => setPurchaseQuantity(e.target.value)} required /></label>
@@ -4885,7 +4942,7 @@ export default function App() {
               <div className="form-grid">
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
-                <label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })} disabled={!categories.length}><option value="">{categories.length ? "Sin categoría" : "Primero crea una categoría"}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+                <div className="product-category-field"><label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => { if (e.target.value === "__create_category__") { setShowQuickCategoryForm(true); return; } setProductForm((current) => ({ ...current, category_id: e.target.value })); }}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="__create_category__">＋ Nueva categoría…</option></select></label>{showQuickCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" autoFocus /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !categoryName.trim()} onClick={() => addCategory()}>{busy ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickCategoryForm(false); setCategoryName(""); }}>Cancelar</button></div></div>}</div>
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>

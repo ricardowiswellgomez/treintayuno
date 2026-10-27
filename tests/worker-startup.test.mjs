@@ -118,10 +118,33 @@ test("sidebar rendering uses the canonical Cuentas label and icon", () => {
 
 test("service worker cache version is incremented to evict stale sidebar bundles", () => {
   const swSource = readSource(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(swSource, /treseiscinco-shell-v3/);
+  assert.match(swSource, /treseiscinco-shell-v4/);
 });
 
 test("sidebar text label is not styled as an icon", () => {
   const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
+});
+
+test("Proveedores is a tab inside Compras, not an independent sidebar module", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
+  assert.doesNotMatch(sidebarSource, /id: "suppliers", screen: "suppliers"/);
+  assert.match(appSource, /aria-label="Compras, gastos y proveedores"/);
+  assert.match(appSource, /setPurchaseModuleTab\("suppliers"\)/);
+  assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
+  assert.doesNotMatch(appSource, /mobile-module-card"\+\(screen==="suppliers"/);
+});
+
+test("sidebar layout keeps overflow hidden and adapts rows to viewport height", () => {
+  const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(cssSource, /Permanent no-scroll sidebar/);
+  assert.match(cssSource, /\.app-shell > \.sidebar > \.nav-list\s*\{[^}]*overflow: hidden !important/s);
+  assert.match(cssSource, /min-height: clamp\(16px, calc\(\(100dvh - 270px\) \/ 15\), 33px\)/);
+  assert.match(cssSource, /text-overflow: ellipsis/);
+});
+
+test("Worker no longer hides the integrated Proveedores tab", () => {
+  const workerSource = readSource(new URL("../src/worker.js", import.meta.url), "utf8");
+  assert.doesNotMatch(workerSource, /hideSuppliers/);
 });

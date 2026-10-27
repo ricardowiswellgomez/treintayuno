@@ -126,25 +126,27 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Proveedores is a tab inside Compras, not an independent sidebar module", () => {
+test("Proveedores remains a standalone module while Auditorías and platform administration are nested", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
-  assert.doesNotMatch(sidebarSource, /id: "suppliers", screen: "suppliers"/);
-  assert.match(appSource, /aria-label="Compras, gastos y proveedores"/);
-  assert.match(appSource, /setPurchaseModuleTab\("suppliers"\)/);
-  assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
-  assert.doesNotMatch(appSource, /mobile-module-card"\+\(screen==="suppliers"/);
+  assert.ok(sidebarSource.includes('id: "suppliers", screen: "suppliers", label: "Proveedores"'));
+  assert.ok(!sidebarSource.includes('screen: "audit"'));
+  assert.ok(!sidebarSource.includes('screen: "platform_admin"'));
+  assert.ok(appSource.includes('...(isPlatformAdmin ? [["platform", "Plataforma"]] : [])'));
+  assert.ok(appSource.includes('settingsTab === "platform" && platformAdminPanel'));
+  assert.ok(appSource.includes('onClick={() => navigate("audit")}>Historial de cambios'));
+  assert.ok(!appSource.includes('screen==="platform_admin"?" active"'));
 });
 
 test("sidebar layout keeps overflow hidden and adapts rows to viewport height", () => {
   const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
-  assert.match(cssSource, /Permanent no-scroll sidebar/);
-  assert.match(cssSource, /\.app-shell > \.sidebar > \.nav-list\s*\{[^}]*overflow: hidden !important/s);
-  assert.match(cssSource, /min-height: clamp\(16px, calc\(\(100dvh - 270px\) \/ 15\), 33px\)/);
-  assert.match(cssSource, /text-overflow: ellipsis/);
+  assert.ok(cssSource.includes("Permanent no-scroll sidebar"));
+  assert.ok(/\.app-shell > \.sidebar > \.nav-list\s*\{[^}]*overflow: hidden !important/s.test(cssSource));
+  assert.ok(cssSource.includes("min-height: clamp(16px, calc((100dvh - 270px) / 15), 33px)"));
+  assert.ok(cssSource.includes("text-overflow: ellipsis"));
 });
 
-test("Worker no longer hides the integrated Proveedores tab", () => {
+test("Worker does not override supplier module visibility", () => {
   const workerSource = readSource(new URL("../src/worker.js", import.meta.url), "utf8");
-  assert.doesNotMatch(workerSource, /hideSuppliers/);
+  assert.ok(!workerSource.includes("hideSuppliers"));
 });

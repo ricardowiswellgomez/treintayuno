@@ -3567,7 +3567,7 @@ body { background: #F5F7FC; color: #19243A; }
   min-height:0;
 }
 .sidebar .business-logo-stage .business-avatar {
-  height:clamp(66px,10vh,100px);
+  height:clamp(100px,14vh,145px);
   min-height:0;
 }
 .sidebar .business-logo-stage .business-avatar-initial { font-size:clamp(34px,5vh,52px); }

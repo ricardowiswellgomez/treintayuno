@@ -262,6 +262,15 @@ Object.assign(ENGLISH_TEXT, {
 "Administración de plataforma":"Platform administration"
 });
 
+Object.assign(ENGLISH_TEXT, {
+"Celular del propietario": "Owner's mobile number",
+"Tu número de celular": "Your mobile number",
+"Este número pertenece a tu cuenta personal. Es independiente del teléfono público de tu empresa.": "This number belongs to your personal account. It is separate from your business's public phone number.",
+"Guardar celular": "Save mobile number",
+"Número de celular del propietario guardado.": "Owner's mobile number saved.",
+"Escribe un número de celular válido o deja el campo vacío.": "Enter a valid mobile number or leave the field empty."
+});
+
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const sourceRecords = new WeakMap();
 const attributeRecords = new WeakMap();

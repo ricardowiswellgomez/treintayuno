@@ -30,7 +30,17 @@ function AppIcon({ name, size = 20 }) {
     plus: <><path d="M12 5v14M5 12h14" /></>,
     "chevron-down": <><path d="m6 9 6 6 6-6" /></>,
     card: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h4" /></>,
-    expenses: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h3M16 15v3" /></>
+    expenses: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h3M16 15v3" /></>,
+    check: <><path d="m5 12 4 4L19 6" /></>,
+    "shield-check": <><path d="M12 3 20 6v5c0 5-3.3 8.4-8 10-4.7-1.6-8-5-8-10V6l8-3Z" /><path d="m8 12 2.5 2.5L16 9" /></>,
+    package: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z" /><path d="m3.5 7.6 8.5 4.7 8.5-4.7M12 12.3V21" /></>,
+    receipt: <><path d="M5 3 7.5 5 10 3l2.5 2L15 3l2.5 2L20 3v18l-2.5-2L15 21l-2.5-2L10 21l-2.5-2L5 21V3Z" /><path d="M9 9h7M9 13h7M9 17h4" /></>,
+    "chart-no-axes-combined": <><path d="M3 3v18h18" /><path d="m7 14 4-4 3 3 6-7" /></>,
+    users: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
+    sprout: <><path d="M12 21v-9" /><path d="M12 12C5 12 4 7 4 4c5 0 9 2 8 8Z" /><path d="M12 16c0-6 4-9 8-9 0 5-2 9-8 9Z" /></>,
+    "file-spreadsheet": <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 12h7M9 16h7M12 10v8" /></>,
+    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></>,
+    sliders: <><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="2" fill="var(--paper,#fff)" /><circle cx="15" cy="12" r="2" fill="var(--paper,#fff)" /><circle cx="10" cy="18" r="2" fill="var(--paper,#fff)" /></>
   };
   return <svg {...common}>{glyphs[name] || <circle cx="12" cy="12" r="8" />}</svg>;
 }
@@ -99,7 +109,7 @@ const sidebarAreaItem = (screen, label = null) => {
 };
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
-  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "quotes", "catalog"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }, sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
@@ -110,7 +120,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", accounts: "Cuentas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -1262,10 +1272,94 @@ function PublicCatalog({ businessId }) {
   </main>;
 }
 
-export default function App() {
+
+function PublicLanding({ onLogin, onSignup }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
+  return <main className="public-landing">
+    <header className="landing-header">
+      <a className="landing-brand" href="#inicio" aria-label="treseiscinco, inicio"><img src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
+      <nav className={"landing-nav" + (menuOpen ? " is-open" : "")} aria-label="Navegación principal">
+        <a href="#beneficios" onClick={() => setMenuOpen(false)}>Qué puedes hacer</a>
+        <a href="#planes" onClick={() => setMenuOpen(false)}>Planes y precios</a>
+        <a href="#importar" onClick={() => setMenuOpen(false)}>Importar inventario</a>
+        <a href="mailto:ricardowiswellgomez@gmail.com?subject=Hola%2C%20treseiscinco" onClick={() => setMenuOpen(false)}>Soporte</a>
+      </nav>
+      <div className="landing-header-actions"><button type="button" className="landing-login-link" onClick={onLogin}>Iniciar sesión</button><button type="button" className="landing-primary-button" onClick={onSignup}>Probar gratis <span aria-hidden="true">↗</span></button></div>
+      <button type="button" className="landing-menu-toggle" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span></button>
+    </header>
+
+    <section className="landing-hero" id="inicio">
+      <div className="landing-hero-copy">
+        <span className="landing-kicker"><span className="landing-kicker-dot"></span> PARA EL DÍA A DÍA DE TU NEGOCIO</span>
+        <h1>Menos enredos.<br /><em>Más negocio.</em></h1>
+        <p>Tu negocio, todos los días. Organiza productos, ventas, gastos y clientes en un solo espacio, con información clara para decidir mejor y trabajar con tranquilidad.</p>
+        <div className="landing-hero-actions"><button type="button" className="landing-primary-button landing-hero-cta" onClick={onSignup}>Crear mi cuenta gratis <span aria-hidden="true">→</span></button><button type="button" className="landing-secondary-button" onClick={() => document.getElementById("beneficios")?.scrollIntoView({behavior:"smooth"})}>Conocer treseiscinco <span aria-hidden="true">↓</span></button></div>
+        <div className="landing-trust-line"><span className="landing-trust-icon"><AppIcon name="shield-check" size={17}/></span><span>Tu información, tu negocio y tus decisiones.</span><span className="landing-trust-separator"></span><span>Empieza a organizarte desde hoy.</span></div>
+      </div>
+      <div className="landing-hero-art" aria-label="Ilustración de un negocio con indicadores, inventario y equipo de trabajo">
+        <div className="landing-orbit landing-orbit-one"></div><div className="landing-orbit landing-orbit-two"></div>
+        <div className="landing-number-mark" aria-hidden="true"><span>3</span><span>6</span><span>5</span></div>
+        <div className="landing-dashboard-mock">
+          <div className="landing-dashboard-top"><div className="landing-dashboard-brand"><img src="/symbol-treseiscinco.svg" alt="" /><div><strong>Tu negocio</strong><small>Resumen de actividad</small></div></div><span className="landing-dashboard-date">Esta semana <AppIcon name="chevron-down" size={13}/></span></div>
+          <div className="landing-dashboard-metrics"><div><span>Ventas registradas</span><strong>$ 2,48 M</strong><small className="landing-metric-positive">↑ Actividad comercial</small></div><div><span>Inventario</span><strong>128</strong><small>Referencias</small></div><div><span>Rentabilidad</span><strong>32%</strong><small>Margen ilustrativo</small></div></div>
+          <div className="landing-dashboard-chart"><div className="landing-chart-heading"><div><strong>Así se mueve tu negocio</strong><small>Gráfico ilustrativo, no son datos reales</small></div><span>7 días</span></div><div className="landing-chart-area"><div className="landing-chart-grid"><i></i><i></i><i></i><i></i></div><svg viewBox="0 0 420 114" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="landing-area-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#8F78D8" stopOpacity=".30"/><stop offset="100%" stopColor="#8F78D8" stopOpacity=".02"/></linearGradient></defs><path d="M0 88 C25 82 31 61 60 70 S100 86 125 60 S162 63 185 45 S225 65 250 40 S290 30 310 45 S350 23 375 29 S400 11 420 8 L420 114 L0 114Z" fill="url(#landing-area-fill)"/><path d="M0 88 C25 82 31 61 60 70 S100 86 125 60 S162 63 185 45 S225 65 250 40 S290 30 310 45 S350 23 375 29 S400 11 420 8" fill="none" stroke="#7664BE" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round"/></svg></div><div className="landing-chart-days"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div></div>
+          <div className="landing-dashboard-bottom"><span><i className="landing-led"></i> Productos y movimientos en un solo lugar</span><span>treseiscinco</span></div>
+        </div>
+        <div className="landing-person landing-person-left" aria-hidden="true"><svg viewBox="0 0 140 170"><ellipse cx="69" cy="156" rx="53" ry="8" fill="#22263A" opacity=".10"/><path d="M34 78 Q18 103 22 135 L16 157 L53 157 L60 116 L67 158 L103 158 L99 110 Q91 80 77 77Z" fill="#C3B5F4"/><path d="M39 85 Q15 101 23 125 L48 128 L60 102Z" fill="#9F8BE6"/><path d="M68 84 Q88 86 97 109 L109 134 L95 140 L76 113Z" fill="#B7A6EF"/><circle cx="61" cy="51" r="26" fill="#A96D4E"/><path d="M36 50 Q24 30 41 18 Q60 5 80 20 Q94 32 84 53 L76 38 Q59 44 42 34Z" fill="#2D2A37"/><path d="M51 57 Q61 64 71 57" fill="none" stroke="#6A3E32" strokeWidth="2" strokeLinecap="round"/><path d="M48 45h1M70 45h1" stroke="#24232D" strokeWidth="4" strokeLinecap="round"/><path d="M79 91 Q104 91 116 109 L128 127" fill="none" stroke="#A96D4E" strokeWidth="10" strokeLinecap="round"/><rect x="91" y="112" width="37" height="28" rx="4" fill="#fff" stroke="#D9D5E7" strokeWidth="2"/><path d="M98 120h22M98 126h16M98 132h19" stroke="#8C7BC6" strokeWidth="2" strokeLinecap="round"/></svg></div>
+        <div className="landing-person landing-person-right" aria-hidden="true"><svg viewBox="0 0 140 170"><ellipse cx="73" cy="156" rx="53" ry="8" fill="#22263A" opacity=".10"/><path d="M39 82 Q22 89 22 114 L19 157 L55 157 L64 116 L74 157 L112 157 L105 107 Q96 84 77 81Z" fill="#6A9C8B"/><path d="M40 91 Q16 105 21 127 L47 132 L60 106Z" fill="#477B6A"/><circle cx="74" cy="53" r="25" fill="#E3A77A"/><path d="M50 48 Q44 24 64 15 Q91 10 100 31 L97 47 L87 34 Q70 42 53 33Z" fill="#4A3529"/><path d="M64 60 Q74 68 84 60" fill="none" stroke="#9A5A42" strokeWidth="2" strokeLinecap="round"/><path d="M60 48h1M80 48h1" stroke="#2D2730" strokeWidth="4" strokeLinecap="round"/><path d="M46 95 Q61 99 67 119 L72 136" fill="none" stroke="#E3A77A" strokeWidth="10" strokeLinecap="round"/><rect x="56" y="119" width="50" height="29" rx="4" fill="#FFF" stroke="#D9D5E7" strokeWidth="2"/><path d="M64 127h33M64 134h24M64 141h17" stroke="#7BAA9A" strokeWidth="2" strokeLinecap="round"/></svg></div>
+        <div className="landing-float-chip landing-chip-stock"><span className="landing-chip-icon"><AppIcon name="products" size={17}/></span><span><strong>Inventario organizado</strong><small>Artículos y existencias</small></span><AppIcon name="check" size={16}/></div>
+        <div className="landing-float-chip landing-chip-flow"><span className="landing-chip-icon"><AppIcon name="sales" size={17}/></span><span><strong>Todo conectado</strong><small>Ventas · gastos · clientes</small></span></div>
+      </div>
+      <div className="landing-hero-spark landing-spark-one" aria-hidden="true">✳</div><div className="landing-hero-spark landing-spark-two" aria-hidden="true">✳</div>
+    </section>
+
+    <section className="landing-proof-strip" aria-label="Funciones de treseiscinco"><div><AppIcon name="package" size={20}/><span>Inventario y costos</span></div><div><AppIcon name="receipt" size={20}/><span>Ventas y cuentas</span></div><div><AppIcon name="chart-no-axes-combined" size={20}/><span>Estadísticas útiles</span></div><div><AppIcon name="users" size={20}/><span>Clientes y equipo</span></div></section>
+
+    <section className="landing-benefits section-wrap" id="beneficios"><div className="landing-section-intro"><span className="landing-kicker">MENOS TAREAS SUELTAS</span><h2>Todo lo importante,<br /><em>en su lugar.</em></h2><p>Para trabajar con claridad, incluso cuando tu negocio no deja de moverse.</p></div>
+      <div className="landing-feature-grid">
+        <article className="landing-feature-card feature-lilac"><span className="landing-feature-icon"><AppIcon name="package" size={24}/></span><h3>Controla tus productos</h3><p>Organiza referencias, precios, costos, cantidades y niveles de existencias desde una misma vista.</p><span className="landing-feature-foot">Inventario vivo, no hojas sueltas</span></article>
+        <article className="landing-feature-card feature-peach"><span className="landing-feature-icon"><AppIcon name="receipt" size={24}/></span><h3>Registra cada movimiento</h3><p>Registra ventas, abonos, compras y gastos. Mantén los saldos visibles y el historial a mano.</p><span className="landing-feature-foot">Lo que pasa queda registrado</span></article>
+        <article className="landing-feature-card feature-mint"><span className="landing-feature-icon"><AppIcon name="chart-no-axes-combined" size={24}/></span><h3>Entiende tus números</h3><p>Consulta costos, márgenes, rentabilidad y gráficos basados en los movimientos registrados.</p><span className="landing-feature-foot">Decisiones con más contexto</span></article>
+        <article className="landing-feature-card feature-sand"><span className="landing-feature-icon"><AppIcon name="users" size={24}/></span><h3>Trabaja con otras personas</h3><p>Organiza clientes, proveedores y permisos de equipo para que cada persona vea lo que necesita.</p><span className="landing-feature-foot">Cada negocio, con su espacio</span></article>
+      </div>
+    </section>
+
+    <section className="landing-how section-wrap"><div className="landing-how-visual"><div className="landing-how-screen"><div className="landing-how-screen-top"><img src="/symbol-treseiscinco.svg" alt=""/><span>Vista ilustrativa</span></div><div className="landing-how-product-row"><i className="landing-product-swatch"></i><span><b>Artículo de ejemplo</b><small>Precio · costo · existencias</small></span><strong>$ 45.000</strong></div><div className="landing-how-product-row"><i className="landing-product-swatch swatch-two"></i><span><b>Otro artículo</b><small>Ganancia y margen calculados</small></span><strong>$ 28.000</strong></div><div className="landing-how-mini-chart"><span>Así avanza tu semana</span><div className="landing-mini-bars"><i style={{height:"32%"}}></i><i style={{height:"52%"}}></i><i style={{height:"44%"}}></i><i style={{height:"75%"}}></i><i style={{height:"60%"}}></i><i style={{height:"94%"}}></i><i style={{height:"79%"}}></i></div></div></div><div className="landing-how-person"><svg viewBox="0 0 130 166" aria-hidden="true"><ellipse cx="66" cy="154" rx="44" ry="7" fill="#22263A" opacity=".12"/><path d="M34 77 Q18 97 25 130 L27 155 L57 155 L65 115 L73 155 L104 155 L100 108 Q92 82 75 77Z" fill="#D99B63"/><circle cx="64" cy="50" r="25" fill="#8F553F"/><path d="M40 47 Q31 24 50 14 Q75 4 89 27 L87 42 L75 29 Q62 40 41 34Z" fill="#2E2832"/><path d="M51 57 Q63 65 74 57" fill="none" stroke="#5F382F" strokeWidth="2" strokeLinecap="round"/><path d="M47 45h1M70 45h1" stroke="#24232D" strokeWidth="4" strokeLinecap="round"/><path d="M48 91Q78 97 94 119" fill="none" stroke="#8F553F" strokeWidth="10" strokeLinecap="round"/><rect x="77" y="114" width="35" height="24" rx="4" fill="#FFF" stroke="#E3D8CC" strokeWidth="2"/></svg></div></div><div className="landing-how-copy"><span className="landing-kicker">HECHO PARA USARLO</span><h2>Menos vueltas.<br /><em>Más tiempo para tu negocio.</em></h2><p>No necesitas ser experto en contabilidad o tecnología para empezar. Registra tus operaciones y consulta la información cuando te haga falta.</p><div className="landing-how-list"><div><span><AppIcon name="check" size={15}/></span><p><strong>Empieza por lo esencial</strong><small>Crea tus productos y registra tu primera venta.</small></p></div><div><span><AppIcon name="check" size={15}/></span><p><strong>Crece a tu ritmo</strong><small>Agrega clientes, equipo, cotizaciones y más control.</small></p></div><div><span><AppIcon name="check" size={15}/></span><p><strong>Úsala en computador o celular</strong><small>La aplicación web también se puede instalar en dispositivos compatibles.</small></p></div></div><button type="button" className="landing-secondary-button" onClick={onSignup}>Crear mi espacio <span aria-hidden="true">→</span></button></div></section>
+
+    <section className="landing-pricing section-wrap" id="planes"><div className="landing-section-intro"><span className="landing-kicker">PLANES CLAROS</span><h2>Un espacio para empezar.<br /><em>Otro para crecer.</em></h2><p>Dos opciones sencillas; puedes comenzar con lo esencial y elegir la que mejor encaje contigo.</p></div><div className="landing-plan-grid">
+      <article className="landing-plan-card"><div className="landing-plan-icon"><AppIcon name="sprout" size={25}/></div><span className="landing-plan-label">PARA EMPEZAR</span><h3>Emprende</h3><p>Ordena el día a día de tu negocio y gana claridad sobre lo que entra, sale y tienes disponible.</p><ul><li><AppIcon name="check" size={16}/> Productos e inventario</li><li><AppIcon name="check" size={16}/> Ventas, gastos y cuentas</li><li><AppIcon name="check" size={16}/> Clientes y proveedores</li><li><AppIcon name="check" size={16}/> Acceso desde computador o celular</li></ul><button type="button" className="landing-secondary-button" onClick={onSignup}>Empezar con Emprende <span>→</span></button></article>
+      <article className="landing-plan-card landing-plan-featured"><div className="landing-plan-icon"><AppIcon name="chart-no-axes-combined" size={25}/></div><span className="landing-plan-label">PARA DAR EL SIGUIENTE PASO</span><h3>Negocio</h3><p>Más visibilidad sobre tu operación para crecer con un equipo y tomar decisiones con contexto.</p><ul><li><AppIcon name="check" size={16}/> Todo lo de Emprende</li><li><AppIcon name="check" size={16}/> Cotizaciones y catálogo compartible</li><li><AppIcon name="check" size={16}/> Estadísticas y rentabilidad</li><li><AppIcon name="check" size={16}/> Equipo, permisos y controles</li></ul><button type="button" className="landing-primary-button" onClick={onSignup}>Elegir Negocio <span>→</span></button></article>
+    </div><p className="landing-pricing-note">Estamos preparando el lanzamiento comercial. La prueba y las condiciones del plan se confirmarán antes de activar cualquier cobro; crear la cuenta no supone un pago automático.</p></section>
+
+    <section className="landing-import-section" id="importar"><div className="section-wrap landing-import-inner"><div className="landing-import-icon"><AppIcon name="file-spreadsheet" size={28}/></div><div><span className="landing-kicker">¿YA TIENES TU INVENTARIO?</span><h2>Trae tus datos contigo.</h2><p>Puedes cargar una plantilla Excel/CSV desde la aplicación para empezar con tus referencias, precios, costos y existencias sin digitarlas una por una.</p></div><button type="button" className="landing-secondary-button" onClick={onSignup}>Ver cómo empezar <span>→</span></button></div></section>
+
+    <section className="landing-final-cta"><div className="landing-final-mark"><img src="/symbol-treseiscinco.svg" alt="treseiscinco"/></div><span className="landing-kicker">TU NEGOCIO, TODOS LOS DÍAS</span><h2>Que los números te ayuden.<br /><em>Que no te enreden.</em></h2><p>Empieza con lo que tienes hoy y construye un negocio más ordenado, paso a paso.</p><div className="landing-hero-actions"><button type="button" className="landing-primary-button" onClick={onSignup}>Crear cuenta gratis <span aria-hidden="true">→</span></button><button type="button" className="landing-secondary-button" onClick={onLogin}>Ya tengo cuenta</button></div></section>
+
+    <footer className="landing-footer"><a className="landing-footer-brand" href="#inicio"><img src="/symbol-treseiscinco.svg" alt=""/><strong>treseiscinco</strong></a><span>Tu negocio, todos los días.</span><nav><a href="#planes">Planes y precios</a><a href="#importar">Importar inventario</a><a href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco">Soporte y contacto</a></nav><small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small></footer>
+  </main>;
+}
+
+function SalesModuleCards({ active, onChoose, showQuotes = true }) {
+  return <div className="sales-module-cards" aria-label="Secciones de ventas">
+    <button type="button" className={"sales-module-card" + (active === "sales" ? " active" : "")} aria-pressed={active === "sales"} onClick={() => onChoose("sales")}>
+      <span className="sales-module-card-icon"><AppIcon name="sales" size={23}/></span>
+      <span className="sales-module-card-copy"><strong>Ventas</strong><small>Registra ventas, abonos y saldos pendientes.</small></span>
+      <span className="sales-module-card-arrow" aria-hidden="true">→</span>
+    </button>
+    {showQuotes && <button type="button" className={"sales-module-card" + (active === "quotes" ? " active" : "")} aria-pressed={active === "quotes"} onClick={() => onChoose("quotes")}>
+      <span className="sales-module-card-icon"><AppIcon name="quotes" size={23}/></span>
+      <span className="sales-module-card-copy"><strong>Cotizaciones</strong><small>Prepara y comparte propuestas antes de vender.</small></span>
+      <span className="sales-module-card-arrow" aria-hidden="true">→</span>
+    </button>}
+  </div>;
+}
+
+function AuthenticatedApp() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [mode, setMode] = useState("login");
+  const [showPublicLanding, setShowPublicLanding] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -1273,6 +1367,7 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
+  const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
   const [profitabilityChartType, setProfitabilityChartType] = useState("bars");
@@ -1626,10 +1721,33 @@ export default function App() {
     try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
     catch { return "es"; }
   });
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "wompi", hoursSchedule: {} });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
+  const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
+  const [wompiSaving, setWompiSaving] = useState(false);
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
+  useEffect(() => {
+    let active = true;
+    setWompiStatus({ loading: true, configured: false, enabled: false, environment: null });
+    setWompiDraft({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
+    if (!activeBusiness?.id) {
+      setWompiStatus({ loading: false, configured: false, enabled: false, environment: null });
+      return () => { active = false; };
+    }
+    supabase.functions.invoke("public-checkout", { body: { action: "status", business_id: activeBusiness.id } })
+      .then(({ data, error: statusError }) => {
+        if (!active) return;
+        if (statusError) throw statusError;
+        setWompiStatus({ loading: false, configured: data?.configured === true, enabled: data?.enabled === true, environment: data?.environment || null });
+        setWompiDraft((current) => ({ ...current, environment: data?.environment === "production" ? "production" : "sandbox", enabled: data?.enabled === true }));
+      })
+      .catch(() => {
+        if (active) setWompiStatus({ loading: false, configured: false, enabled: false, environment: null });
+      });
+    return () => { active = false; };
+  }, [activeBusiness?.id]);
   useEffect(() => {
     let cancelled = false;
     if (!session?.user?.id) { setOwnerPhone(""); return; }
@@ -2314,9 +2432,9 @@ export default function App() {
     const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
     const website=String(profile.website||"").trim();
     const safeWebsite=/^https?:\/\//i.test(website)?website:(website?"https://"+website:"");
-    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsTheme.primary||"")?settingsTheme.primary:"#475569";
-    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsTheme.surface||"")?settingsTheme.surface:"#FFFFFF";
-    const cardText=/^#[0-9a-f]{6}$/i.test(settingsTheme.text||"")?settingsTheme.text:"#1F2937";
+    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardPrimary||"")?settingsCommercialProfile.cardPrimary:"#475569";
+    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardSurface||"")?settingsCommercialProfile.cardSurface:"#FFFFFF";
+    const cardText=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardText||"")?settingsCommercialProfile.cardText:"#1F2937";
     const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface};color:${cardText};border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}}.details{min-width:0;flex:1}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary};margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:#fff}.card{box-shadow:none;border:0;border-radius:0;max-width:none;page-break-inside:avoid}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
     const printWindow=window.open("","_blank");
     if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
@@ -2384,7 +2502,7 @@ export default function App() {
     }).then(({error:activityError})=>{
       if(activityError) console.warn("No se pudo registrar la actividad de plataforma.");
     }).catch(()=>{});
-  }, [session?.user?.id, screen]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!activeBusiness?.id || !["owner","admin"].includes(activeBusiness.role)) {
@@ -2819,6 +2937,7 @@ export default function App() {
     setBusy(true); setError("");
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) setError(friendlyError(signOutError));
+    else { setShowPublicLanding(true); setMode("login"); setPassword(""); setNotice(""); setError(""); }
     setBusy(false);
   }
 
@@ -2892,6 +3011,36 @@ export default function App() {
     } finally { setOwnerPhoneSaving(false); }
   }
 
+  async function saveWompiConfiguration() {
+    if (!activeBusiness?.id || wompiSaving) return;
+    if (!["owner", "admin"].includes(activeBusiness.role)) { setError("Solo el propietario o un administrador puede configurar Wompi."); return; }
+    setWompiSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke("public-checkout", {
+        body: {
+          action: "configure",
+          business_id: activeBusiness.id,
+          environment: wompiDraft.environment,
+          public_key: wompiDraft.public_key.trim(),
+          private_key: wompiDraft.private_key.trim(),
+          integrity_secret: wompiDraft.integrity_secret.trim(),
+          events_secret: wompiDraft.events_secret.trim(),
+          enabled: Boolean(wompiDraft.enabled)
+        }
+      });
+      if (functionError) throw functionError;
+      if (data?.error) throw new Error(data.error);
+      if (data?.saved !== true) throw new Error("No se pudo confirmar el guardado de las credenciales de Wompi.");
+      setWompiStatus({ loading: false, configured: true, enabled: data.enabled === true, environment: data.environment || wompiDraft.environment });
+      setWompiDraft({ environment: data.environment || "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: data.enabled === true });
+      setNotice(data.enabled ? "Conexión con Wompi guardada. Usa el entorno de pruebas hasta verificar todo el flujo antes de recibir pagos reales." : "Credenciales guardadas; Wompi está desactivado para este negocio.");
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setWompiSaving(false);
+    }
+  }
+
   async function saveSettings(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
@@ -2917,6 +3066,9 @@ export default function App() {
       publicDescription: String(profile?.publicDescription || "").trim(),
       hours: String(profile?.hours || "").trim(),
       hoursSchedule: profile?.hoursSchedule && typeof profile.hoursSchedule === "object" ? profile.hoursSchedule : {},
+      cardPrimary: /^#[0-9a-f]{6}$/i.test(String(profile?.cardPrimary || "")) ? profile.cardPrimary : "#475569",
+      cardSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.cardSurface || "")) ? profile.cardSurface : "#FFFFFF",
+      cardText: /^#[0-9a-f]{6}$/i.test(String(profile?.cardText || "")) ? profile.cardText : "#1F2937",
       orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
@@ -2930,6 +3082,7 @@ export default function App() {
     const commercialProfile = normalizeCommercialProfile({...settingsCommercialProfile, hoursSchedule:hasConfiguredSchedule ? schedule : (settingsCommercialProfile.hoursSchedule || {}), hours:hoursText});
     if (commercialProfile.orderChannel === "whatsapp" && String(commercialProfile.phone).replace(/\D/g, "").length < 8) { setError("Para recibir pedidos por WhatsApp, primero configura un número válido en Teléfono / WhatsApp."); return; }
     if (commercialProfile.orderChannel === "wompi" && settingsCurrency !== "COP") { setError("Wompi solo admite COP. Elige pedidos por WhatsApp o cambia la moneda del negocio a COP."); return; }
+    if (commercialProfile.orderChannel === "wompi" && (!wompiStatus.configured || !wompiStatus.enabled)) { setError("Antes de activar Wompi en el catálogo, completa y guarda las credenciales del comercio en la sección de conexión Wompi."); setSettingsTab("company"); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
@@ -4932,11 +5085,14 @@ export default function App() {
 
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
-    if (next !== screen && !confirmLeaveForm()) return;
+    const switchingWithinSales = ["sales", "quotes"].includes(next) && ["sales", "quotes"].includes(screen);
+    if (next !== screen && !switchingWithinSales && !confirmLeaveForm()) return;
     if (next !== screen) window.history.pushState({ treseiscinco: true, screen: next }, "", window.location.href);
     dirtyFormsRef.current = new WeakSet();
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
-    if (next !== "quotes") clearQuoteDraft();
+    if (!["sales", "quotes"].includes(next)) clearQuoteDraft();
+    if (next === "sales") setSalesWorkspaceTab("sales");
+    if (next === "quotes") setSalesWorkspaceTab("quotes");
     if (next === "accounts") setAccountsTab(canPermission("sales_view") ? "receivables" : "payables");
     if (next === "purchases") { setPurchaseModuleTab(purchaseTab); if (purchaseTab !== "suppliers") setShowSupplierForm(false); }
     if (next !== "purchases") { setShowPurchaseForm(false); setShowExpenseForm(false); setShowSupplierForm(false); }
@@ -5229,12 +5385,9 @@ export default function App() {
     : screen;
   const contextualHelp = contextualHelpContent[contextualHelpKey] || contextualHelpContent.home;
 
-  const requestedPublicCatalog = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("catalog") : null;
-  if (requestedPublicCatalog && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)) {
-    return <PublicCatalog businessId={requestedPublicCatalog} />;
-  }
-
   if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
+
+  if (!session && showPublicLanding && mode !== "update-password") return <PublicLanding onLogin={() => { setShowPublicLanding(false); setMode("login"); setPassword(""); setError(""); setNotice(""); }} onSignup={() => { setShowPublicLanding(false); setMode("signup"); setPassword(""); setError(""); setNotice(""); }} />;
 
   if (!session || mode === "update-password") return (
     <main className="auth-shell">
@@ -5302,7 +5455,7 @@ export default function App() {
                   <span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>
                   <input className="sidebar-icon-edit" aria-label={"Icono de " + item.label} value={item.icon} maxLength={4} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, icon: event.target.value } : entry) })))} />
                   <input className="sidebar-label-edit" aria-label={"Nombre de " + item.label} value={item.label} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => ({ ...candidate, items: candidate.items.map((entry) => entry.id === item.id ? { ...entry, label: event.target.value } : entry) })))} />
-                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={(screen === item.screen && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
+                </> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "item", id: item.id, groupId: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "item", id: item.id, groupId: group.id })}>⠿</span>}<button className={((screen === item.screen || (item.id === "sales" && screen === "quotes")) && (item.id !== "suppliers" || purchaseModuleTab === "suppliers") ? "nav-item active" : "nav-item")} onClick={() => { if (sidebarSuppressClickRef.current) return; navigateSidebarItem(item); }}><span className="nav-icon"><AppIcon name={item.id} size={19} /></span>{item.label}</button></>}
               </div>
             ))}
           </section>)}
@@ -5310,8 +5463,8 @@ export default function App() {
         <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
-        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
-        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Movimientos diarios</strong><small>Ventas y actividad de hoy</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
+        <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
+        {mobileNavOpen && <nav id="mobile-module-navigation" className="mobile-module-navigation" aria-label="Módulos disponibles"><div className="mobile-module-menu-heading"><strong>Elegir módulo</strong><button type="button" className="mobile-module-menu-close" onClick={() => setMobileNavOpen(false)} aria-label="Cerrar menú de módulos">×</button></div><button type="button" className={"mobile-module-card"+(screen==="home"?" active":"")} onClick={()=>navigate("home")}><AppIcon name="home" size={23}/><span><strong>Inicio</strong><small>Panorama de tu negocio</small></span><b>›</b></button><button type="button" className={"mobile-module-card"+(screen==="sales"?" active":"")} onClick={()=>navigate("sales")}><AppIcon name="sales" size={23}/><span><strong>Ventas</strong><small>Ventas y cotizaciones en un solo módulo</small></span><b>›</b></button>{visibleAreas.filter((area)=>area.screen!=="sales"&&area.screen!=="quotes").map((area)=><button type="button" key={area.screen} className={"mobile-module-card"+(screen===area.screen?" active":"")} onClick={()=>navigate(area.screen)}><AppIcon name={area.screen} size={23}/><span><strong>{area.title}</strong><small>{area.description}</small></span><b>›</b></button>)}{canViewSuppliers && <button type="button" className={"mobile-module-card"+(screen==="suppliers"?" active":"")} onClick={()=>navigate("suppliers")}><AppIcon name="suppliers" size={23}/><span><strong>Proveedores</strong><small>Contactos de abastecimiento</small></span><b>›</b></button>}{isBusinessOwner && <button type="button" className={"mobile-module-card"+(screen==="settings"?" active":"")} onClick={()=>navigate("settings")}><AppIcon name="settings" size={23}/><span><strong>Configuración</strong><small>Datos, horarios, pagos y apariencia</small></span><b>›</b></button>}{isPlatformAdmin && <button type="button" className={"mobile-module-card"+(screen==="platform_admin"?" active":"")} onClick={()=>navigate("platform_admin")}><AppIcon name="team" size={23}/><span><strong>Administración de plataforma</strong><small>Pruebas, actividad y pagos</small></span><b>›</b></button>}</nav>}
         {error && <p className="message error" role="alert">{error}</p>}
         {notice && <p className="message success" role="status">{notice}<button className="dismiss-button" onClick={() => setNotice("")}>Cerrar</button></p>}
         {screen === "audit" ? (
@@ -5350,6 +5503,7 @@ export default function App() {
 </section>
 ) : screen === "sales" ? (
 <section className="sales-page">
+<SalesModuleCards active="sales" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
 <div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Por defecto ves las ventas de hoy. Cambia rápidamente a otra fecha o consulta un rango.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
 <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de ventas">{[["day","Hoy"],["date","Fecha"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={salesPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={salesPeriod === value} onClick={() => {if(value==="date"&&salesPeriod!=="date")setSalesSelectedDate(todayInBogota());setSalesPeriod(value);setSalesPage(1);}}>{label}</button>)}</div>{salesPeriod === "date" && <div className="sales-single-date"><button type="button" className="secondary-button" aria-label="Día anterior" onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>← Anterior</button><label><span>Ver movimientos del día</span><input type="date" value={salesSelectedDate} max={todayInBogota()} onChange={(e)=>{setSalesSelectedDate(e.target.value);setSalesPage(1);}} /></label><button type="button" className="secondary-button" aria-label="Día siguiente" disabled={salesSelectedDate>=todayInBogota()} onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>Siguiente →</button></div>}{salesPeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={salesDateFrom} max={salesDateTo || todayInBogota()} onChange={(e) => {setSalesDateFrom(e.target.value);setSalesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={salesDateTo} min={salesDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setSalesDateTo(e.target.value);setSalesPage(1);}} /></label></div>}<p>{salesPeriod === "day" ? "Ventas de hoy" : salesPeriod === "date" ? "Movimientos del " + new Date(salesSelectedDate+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : salesPeriod === "all" ? "Todo el historial" : salesPeriod === "custom" ? "Del " + salesDateFrom + " al " + salesDateTo : salesPeriod === "week" ? "Desde el lunes de esta semana" : salesPeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
@@ -5446,12 +5600,12 @@ export default function App() {
 <div className="form-actions"><button type="button" className="secondary-button" onClick={resetCustomerForm}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy?"Guardando…":editingCustomerId?"Guardar cambios":"Guardar cliente"}</button></div>
 </form>}
 {salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
-<div className="customer-list-heading"><span>Cliente / empresa</span><span>Contacto</span><span>Documento</span><span>Ciudad</span><span></span></div>
+<div className="customer-list-heading"><span>Cliente / empresa</span><span>Celular</span><span>E-mail</span><span>Documento</span><span>Ciudad</span><span></span></div>
 {customers.map(customer=><article className="customer-row" key={customer.id} tabIndex={0} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedCustomer(customer); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCustomer(customer); } }}>
 <div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
-<div className="customer-contact-cell"><span>{customer.email||"Sin correo"}</span><span>{customer.phone||customer.whatsapp||"Sin teléfono"}</span></div>
+<span>{customer.phone||customer.whatsapp||"Sin celular"}</span><span>{customer.email||"Sin correo"}</span>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
-{canManageCustomers && <button type="button" className="text-button" onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}>Editar</button>}
+{canManageCustomers && <button type="button" className="icon-action-button customer-edit-icon" title="Editar cliente" aria-label={"Editar "+(customer.full_name||customer.company_name)} onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}><AppIcon name="edit" size={16}/></button>}
 </article>)}
 </div>:<div className="empty-state"><span className="empty-icon">◎</span><h3>No hay clientes registrados</h3><p>Registra a una persona o empresa para asociarla a tus ventas.</p>{canManageCustomers && <button className="primary-button" onClick={()=>{setCustomerDraft(blankCustomer);setEditingCustomerId(null);setShowCustomerForm(true);}}>+ Añadir cliente</button>}</div>}
 {!salesLoading && customersCount > customersPageSize && <div className="pagination-bar customer-pagination"><span className="count-label">Mostrando {(customersPage-1)*customersPageSize+1}–{Math.min(customersPage*customersPageSize,customersCount)} de {customersCount}</span><div className="pagination-controls"><button type="button" className="secondary-button" disabled={customersPage<=1} onClick={()=>setCustomersPage((page)=>Math.max(1,page-1))}>Anterior</button><span className="page-label">{customersPage} / {Math.ceil(customersCount/customersPageSize)}</span><button type="button" className="secondary-button" disabled={customersPage>=Math.ceil(customersCount/customersPageSize)} onClick={()=>setCustomersPage((page)=>page+1)}>Siguiente</button></div></div>}
@@ -5579,6 +5733,7 @@ export default function App() {
           </section>
         ) : screen === "quotes" ? (
           <section className="quotes-page">
+            <SalesModuleCards active="quotes" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
             <div className="products-intro">
               <div><h2>Cotizaciones para tus clientes</h2><p>Prepara propuestas con productos, cantidades, precios y fecha de validez. Los valores se guardan en este negocio.</p></div>
               {canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if (showQuoteForm) clearQuoteDraft(); else { setShowQuoteForm(true); setError(""); setNotice(""); } }}>{showQuoteForm ? "Cancelar" : "+ Nueva cotización"}</button>}
@@ -5918,29 +6073,18 @@ export default function App() {
               <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
             </details>
             <div className="inventory-controls panel">
-              <label className="inventory-search"><span>Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
-              <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
-              <label><span>Categoría</span><select value={productCategoryFilter} onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}><option value="all">Todas las categorías</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
-              <label><span>Tipo</span><select value={productTypeFilter} onChange={(e) => { setProductTypeFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los tipos</option><option value="physical">Físicos</option><option value="service">Servicios</option><option value="digital">Digitales</option></select></label>
-              <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
+              <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
+              <details className="inventory-filter-disclosure">
+                <summary><AppIcon name="sliders" size={16}/><span>Filtros y orden</span><span className="inventory-filter-summary-detail">{productStockFilter !== "all" || productCategoryFilter !== "all" || productTypeFilter !== "all" ? "Filtros activos" : "Opcionales"}</span></summary>
+                <div className="inventory-filter-panel">
+                  <label><span>Existencias</span><select value={productStockFilter} onChange={(e) => { setProductStockFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los niveles</option><option value="in_stock">Con stock</option><option value="low_stock">Bajo el mínimo</option><option value="out_of_stock">Sin stock</option></select></label>
+                  <label><span>Categoría</span><select value={productCategoryFilter} onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(1); }}><option value="all">Todas las categorías</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
+                  <label><span>Tipo</span><select value={productTypeFilter} onChange={(e) => { setProductTypeFilter(e.target.value); setProductPage(1); }}><option value="all">Todos los tipos</option><option value="physical">Físicos</option><option value="service">Servicios</option><option value="digital">Digitales</option></select></label>
+                  <label><span>Ordenar por</span><select value={productSort} onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}><option value="name">Nombre (A–Z)</option><option value="name_desc">Nombre (Z–A)</option><option value="code">Código (A–Z)</option><option value="code_desc">Código (Z–A)</option><option value="price">Precio (menor a mayor)</option><option value="price_desc">Precio (mayor a menor)</option><option value="cost">Costo (menor a mayor)</option><option value="cost_desc">Costo (mayor a menor)</option><option value="stock">Existencias (menor a mayor)</option><option value="stock_desc">Existencias (mayor a menor)</option><option value="profit">Ganancia (mayor a menor)</option><option value="profit_asc">Ganancia (menor a mayor)</option><option value="margin">Margen (mayor a menor)</option><option value="margin_asc">Margen (menor a mayor)</option></select></label>
+                </div>
+              </details>
             </div>
-            {canManageProducts && !showProductForm && <div className="category-manager">
-              <button type="button" className="category-toggle" onClick={() => setShowCategoryManager((open) => !open)} aria-expanded={showCategoryManager}>
-                <span>{showCategoryManager ? "▾" : "▸"} Gestionar categorías</span><span className="category-toggle-count">{categories.length}</span>
-              </button>
-              {showCategoryManager && <section className="category-panel panel">
-                <p className="category-management-hint">Para crear una categoría nueva, utiliza el desplegable «Categoría» dentro de la ficha del artículo. Aquí puedes renombrar o eliminar las categorías existentes.</p>
-                {categories.length ? <div className="category-admin-list">{categories.map((category) => <div className="category-admin-row" key={category.id}>
-                  {editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <>
-                    <span className="category-admin-name">{category.name}</span>
-                    <div className="category-admin-actions"><button type="button" className="icon-action-button" title="Editar categoría" aria-label="Editar categoría" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={15}/></button>
-                      {confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title="Eliminar categoría" aria-label="Eliminar categoría" onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={15}/></button>}
-                    </div>
-                  </>}
-                </div>)}</div> : <p className="category-empty-note">No hay categorías todavía.</p>}
-              </section>}
-            </div>}
             {canManageProducts && showProductForm && <form className="product-form panel" onSubmit={addProduct}>
               <h3>{editingProductId ? "Editar producto" : "Datos del producto"}</h3>
               {!editingProductId && <div className="product-photo-uploader full-span">
@@ -5957,10 +6101,11 @@ export default function App() {
                 </div>
                 <span className="photo-help">JPG, PNG o WebP. Máximo 5 MB al cargarla; se convierte a WebP de máximo 1,5 MB antes de guardarse.</span>
               </div>}
+              
               <div className="form-grid">
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
-                <div className="product-category-field"><label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => { if (e.target.value === "__create_category__") { setShowQuickCategoryForm(true); return; } setProductForm((current) => ({ ...current, category_id: e.target.value })); }}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="__create_category__">＋ Nueva categoría…</option></select></label>{showQuickCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" autoFocus /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !categoryName.trim()} onClick={() => addCategory()}>{busy ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickCategoryForm(false); setCategoryName(""); }}>Cancelar</button></div></div>}</div>
+                <div className="product-category-field"><label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => { if (e.target.value === "__create_category__") { setShowQuickCategoryForm(true); return; } setProductForm((current) => ({ ...current, category_id: e.target.value })); }}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="__create_category__">＋ Nueva categoría…</option></select></label>{showQuickCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" autoFocus /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !categoryName.trim()} onClick={() => addCategory()}>{busy ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickCategoryForm(false); setCategoryName(""); }}>Cancelar</button></div></div>}<details className="product-categories-inline"><summary><AppIcon name="chevron-down" size={15}/> Administrar categorías existentes</summary><div className="product-categories-inline-list">{categories.length ? categories.map((category) => <div className="product-categories-inline-row" key={category.id}>{editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button type="submit" className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <><span>{category.name}</span><div><button type="button" className="icon-action-button" title={"Editar categoría "+category.name} aria-label={"Editar categoría "+category.name} onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={14}/></button>{confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title={"Eliminar categoría "+category.name} aria-label={"Eliminar categoría "+category.name} onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={14}/></button>}</div></>}</div>) : <p>No hay categorías existentes.</p>}</div></details></div>
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
@@ -6271,11 +6416,16 @@ export default function App() {
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
                 <div className="business-card-preview-wrap">
-                  <div className="business-card-preview" style={{ background: settingsTheme.surface, color: settingsTheme.text, borderColor: settingsTheme.primary, borderTop: "4px solid " + settingsTheme.primary }}>
+                  <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569") }}>
                     <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
                     <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
                   </div>
                   <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
+                </div>
+                <div className="business-card-color-controls">
+                  <label className="settings-color-field"><span className="field-label-heading">Color de acento de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardPrimary || "#475569"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardPrimary: e.target.value }))}/><code>{(settingsCommercialProfile.cardPrimary || "#475569").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Fondo de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardSurface || "#FFFFFF"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardSurface: e.target.value }))}/><code>{(settingsCommercialProfile.cardSurface || "#FFFFFF").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Texto de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardText || "#1F2937"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardText: e.target.value }))}/><code>{(settingsCommercialProfile.cardText || "#1F2937").toUpperCase()}</code></label>
                 </div>
                 <div className="settings-section-divider" />
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
@@ -6284,7 +6434,19 @@ export default function App() {
                     {dayHours.enabled && periods.length<2 && <button type="button" className="settings-hours-add" disabled={activeBusiness?.role!=="owner"} onClick={()=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:[{...periods[0],close:periods[0].open==="09:00"&&periods[0].close==="18:00"?"12:00":periods[0].close},{open:periods[0].open==="09:00"&&periods[0].close==="18:00"?"13:00":periods[0].close,close:"17:00"}]}} }))}>＋ Agregar segundo turno</button>}{dayHours.enabled && periods.length>1 && <button type="button" className="settings-hours-add remove" disabled={activeBusiness?.role!=="owner"} onClick={()=>setSettingsCommercialProfile((current)=>({ ...current,hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{...dayHours,periods:periods.slice(0,1)}} }))}>− Quitar segundo turno</button>}</div>})}
                 </div>
                 <div className="settings-section-divider" /><h3>Cómo quieres recibir pedidos</h3><p>Elige un canal para el catálogo público. No necesitas activar Wompi si prefieres coordinar el pedido por WhatsApp.</p>
-                <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>El cliente va al checkout seguro si los cobros están configurados.</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
+                <div className="settings-channel-choices"><label className={settingsCommercialProfile.orderChannel==="wompi"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="wompi"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"wompi"}))}/><span><strong>Pago en línea con Wompi</strong><small>{wompiStatus.loading?"Comprobando conexión…":wompiStatus.enabled?"Conexión activa · "+(wompiStatus.environment==="production"?"Producción":"Pruebas"):"Requiere credenciales de tu cuenta Wompi antes de recibir pagos."}</small></span></label><label className={settingsCommercialProfile.orderChannel==="whatsapp"?"selected":""}><input type="radio" name="orderChannel" checked={settingsCommercialProfile.orderChannel==="whatsapp"} disabled={activeBusiness?.role!=="owner"} onChange={()=>setSettingsCommercialProfile((current)=>({...current,orderChannel:"whatsapp"}))}/><span><strong>Pedidos por WhatsApp</strong><small>El catálogo envía el resumen del carrito al número comercial configurado.</small></span></label></div>
+                {settingsCommercialProfile.orderChannel==="wompi" && <section className="wompi-setup-panel">
+                  <div className="wompi-setup-heading"><div><span className="wompi-status-dot" data-connected={wompiStatus.enabled && wompiStatus.configured ? "true" : "false"}></span><div><strong>{wompiStatus.enabled && wompiStatus.configured ? "Wompi conectado" : "Conecta tu cuenta Wompi"}</strong><p>{wompiStatus.loading ? "Consultando el estado de la conexión." : wompiStatus.enabled && wompiStatus.configured ? "El checkout está habilitado. Verifica el flujo completo antes de usarlo en producción." : "Las credenciales se guardan en el servidor y no se muestran de nuevo. Nunca las pegues en el catálogo ni en el nombre o descripción del negocio."}</p></div></div><span className={"status-pill "+(wompiStatus.enabled&&wompiStatus.configured?"status-active":"status-unpublished")}>{wompiStatus.loading?"Revisando":wompiStatus.enabled&&wompiStatus.configured?"Activa":"Sin configurar"}</span></div>
+                  <div className="wompi-setup-fields">
+                    <label><span>Entorno de Wompi</span><select value={wompiDraft.environment} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,environment:e.target.value}))}><option value="sandbox">Pruebas (sandbox)</option><option value="production">Producción</option></select></label>
+                    <label><span>Llave pública</span><input autoComplete="off" spellCheck="false" value={wompiDraft.public_key} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,public_key:e.target.value}))} placeholder={wompiStatus.configured?"Dejar vacío para conservarla":"pub_test_… o pub_prod_…"}/></label>
+                    <label><span>Llave privada</span><input type="password" autoComplete="new-password" value={wompiDraft.private_key} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,private_key:e.target.value}))} placeholder={wompiStatus.configured?"Guardada · dejar vacío para conservarla":"prv_test_… o prv_prod_…"}/></label>
+                    <label><span>Secreto de integridad</span><input type="password" autoComplete="new-password" value={wompiDraft.integrity_secret} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,integrity_secret:e.target.value}))} placeholder={wompiStatus.configured?"Guardado · dejar vacío para conservarlo":"Secreto de integridad"}/></label>
+                    <label><span>Secreto de eventos (webhook)</span><input type="password" autoComplete="new-password" value={wompiDraft.events_secret} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,events_secret:e.target.value}))} placeholder={wompiStatus.configured?"Guardado · dejar vacío para conservarlo":"Secreto de eventos"}/></label>
+                    <label className="wompi-enabled-switch"><input type="checkbox" checked={wompiDraft.enabled} disabled={activeBusiness?.role!=="owner"||wompiSaving} onChange={(e)=>setWompiDraft((current)=>({...current,enabled:e.target.checked}))}/><span><strong>Habilitar cobros con Wompi</strong><small>El catálogo solo ofrecerá el pago cuando las cuatro credenciales estén configuradas.</small></span></label>
+                  </div>
+                  <div className="wompi-setup-footer"><p>Recomendación: prueba primero con las llaves de sandbox. Cambia a Producción únicamente cuando hayas verificado monto, referencia, retorno y confirmación del pago.</p><button type="button" className="primary-button" disabled={wompiSaving||activeBusiness?.role!=="owner"||wompiStatus.loading} onClick={saveWompiConfiguration}>{wompiSaving?"Guardando conexión…":"Guardar conexión Wompi"}</button></div>
+                </section>}
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>
@@ -6405,4 +6567,24 @@ export default function App() {
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}
     </main>
   );
+}
+
+
+/**
+ * Public catalogs are independent of the authenticated workspace. Route them
+ * before mounting workspace effects, auth state, and private data queries.
+ */
+export default function App() {
+  const requestedPublicCatalog = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("catalog")
+    : null;
+  const isValidCatalogId = Boolean(
+    requestedPublicCatalog &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedPublicCatalog)
+  );
+
+  if (isValidCatalogId) {
+    return <PublicCatalog businessId={requestedPublicCatalog} />;
+  }
+  return <AuthenticatedApp />;
 }

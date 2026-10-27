@@ -47,9 +47,9 @@ const areas = [
   { icon: "◷", title: "Auditorías", description: "Consulta quién hizo cada cambio y cuándo.", screen: "audit" }
 ];
 
-const sidebarAreaItem = (screen) => {
+const sidebarAreaItem = (screen, label = null) => {
   const area = areas.find((candidate) => candidate.screen === screen);
-  return area ? { id: area.screen, screen: area.screen, label: area.title, icon: area.icon } : null;
+  return area ? { id: area.screen, screen: area.screen, label: label || area.title, icon: area.icon } : null;
 };
 const defaultSidebarLayout = () => [
   {
@@ -62,13 +62,13 @@ const defaultSidebarLayout = () => [
     id: "operaciones",
     type: "group",
     title: "OPERACIONES",
-    items: [sidebarAreaItem("products"), sidebarAreaItem("purchases"), { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" }].filter(Boolean)
+    items: [sidebarAreaItem("products"), sidebarAreaItem("purchases")].filter(Boolean)
   },
   {
     id: "comercial",
     type: "group",
     title: "COMERCIAL",
-    items: ["sales", "quotes", "customers", "catalog", "coupons"].map(sidebarAreaItem).filter(Boolean)
+    items: ["sales", "quotes", "catalog", "coupons"].map(sidebarAreaItem).filter(Boolean)
   },
   {
     id: "finanzas",
@@ -80,7 +80,11 @@ const defaultSidebarLayout = () => [
     id: "personal",
     type: "group",
     title: "PERSONAL",
-    items: ["team"].map(sidebarAreaItem).filter(Boolean)
+    items: [
+      sidebarAreaItem("customers"),
+      { id: "suppliers", screen: "suppliers", label: "Proveedores", icon: "♧" },
+      sidebarAreaItem("team", "Personal")
+    ].filter(Boolean)
   },
   {
     id: "administracion",
@@ -95,7 +99,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "home" ? "Inicio" : String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "home" ? "Inicio" : item.id === "team" ? "Personal" : String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -108,15 +112,39 @@ const normalizeSidebarLayout = (layout) => {
     }));
   if (!groups.length) return fallback;
 
-  // Migra el antiguo menú predeterminado de una sola sección a las nuevas categorías.
-  // Conserva iconos y nombres modificados por el propietario.
+  // Migra el menú antiguo de una única sección a las categorías predeterminadas,
+  // conservando las etiquetas e iconos que el propietario haya personalizado.
   if (groups.length === 1 && (groups[0].id === "business" || groups[0].title.toUpperCase() === "TU NEGOCIO")) {
     const savedItems = new Map(groups[0].items.map((item) => [item.id, item]));
     return fallback.map((group) => ({
       ...group,
-      items: group.items.map((item) => savedItems.get(item.id) || item)
+      items: group.items.map((item) => savedItems.get(item.id) ? normalizeItem(savedItems.get(item.id)) : item)
     })).filter((group) => group.items.length > 0);
   }
+
+  // Los contactos y el equipo pertenecen siempre a PERSONAL, también cuando ya estaba
+  // guardada la versión anterior de los grupos. Se conserva el icono personalizado.
+  const personalItemIds = ["customers", "suppliers", "team"];
+  const savedPersonalItems = new Map();
+  for (const group of groups) {
+    group.items = group.items.filter((item) => {
+      if (!personalItemIds.includes(item.id)) return true;
+      if (!savedPersonalItems.has(item.id)) savedPersonalItems.set(item.id, item);
+      return false;
+    });
+  }
+  let personalGroup = groups.find((group) => group.id === "personal");
+  if (!personalGroup) {
+    const defaultPersonal = fallback.find((group) => group.id === "personal");
+    personalGroup = { ...defaultPersonal, items: [] };
+    groups.push(personalGroup);
+  }
+  const otherPersonalItems = personalGroup.items.filter((item) => !personalItemIds.includes(item.id));
+  personalGroup.title = "PERSONAL";
+  personalGroup.items = [
+    ...personalItemIds.map((id) => savedPersonalItems.get(id) || known.get(id)),
+    ...otherPersonalItems
+  ];
 
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
   const missing = orderedItems.filter((item) => !placed.has(item.id));

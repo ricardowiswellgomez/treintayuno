@@ -50,6 +50,29 @@ function SimpleBars({ title, description, data, formatValue }) {
   </section>;
 }
 
+
+function SimplePie({ title, description, data, formatValue }) {
+  const entries = (data || []).map((item) => ({ ...item, value: Math.max(0, Number(item.value) || 0) })).filter((item) => item.value > 0);
+  const total = entries.reduce((sum, item) => sum + item.value, 0);
+  const colors = ["#64748B", "#0F766E", "#D97706", "#7C3AED", "#DB2777", "#0284C7"];
+  let cumulative = 0;
+  return <section className="simple-chart panel simple-pie-chart">
+    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">Distribución</span></div>
+    {total > 0 ? <div className="simple-pie-layout">
+      <div className="simple-pie-visual" role="img" aria-label={title+" · "+entries.map((item)=>item.label+": "+(formatValue?formatValue(item.value):item.value)).join(", ")}>
+        <svg viewBox="0 0 120 120" role="presentation" focusable="false">
+          <circle cx="60" cy="60" r="44" fill="none" stroke="var(--line,#E2E8F0)" strokeWidth="20" />
+          {entries.map((item,index)=>{ const length=item.value/total*276.46; const offset=cumulative; cumulative+=length; return <circle key={item.key||item.label||index} cx="60" cy="60" r="44" fill="none" stroke={colors[index%colors.length]} strokeWidth="20" strokeDasharray={length+" "+(276.46-length)} strokeDashoffset={-offset} transform="rotate(-90 60 60)" />; })}
+          <text x="60" y="56" textAnchor="middle" className="simple-pie-total-label">Total</text>
+          <text x="60" y="69" textAnchor="middle" className="simple-pie-total-value">{entries.length}</text>
+        </svg>
+      </div>
+      <div className="simple-pie-legend">{entries.map((item,index)=><div className="simple-pie-legend-row" key={item.key||item.label||index}><span className="simple-pie-swatch" style={{background:colors[index%colors.length]}}/><span className="simple-pie-legend-name">{item.label}</span><strong>{formatValue?formatValue(item.value):item.value}</strong><small>{Math.round(item.value/total*100)}%</small></div>)}</div>
+    </div> : <p className="simple-chart-empty">Aún no hay importes positivos para formar el gráfico.</p>}
+    <div className="simple-chart-footnote">Distribución calculada a partir de movimientos registrados.</div>
+  </section>;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -1250,6 +1273,9 @@ export default function App() {
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState("home");
+  const dirtyFormsRef = useRef(new WeakSet());
+  const [statsChartType, setStatsChartType] = useState("bars");
+  const [profitabilityChartType, setProfitabilityChartType] = useState("bars");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminData, setPlatformAdminData] = useState(null);
   const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
@@ -4850,8 +4876,65 @@ export default function App() {
   const homeShortcutOrder = ["products","sales","accounts","customers","stats","quotes","purchases"];
   const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
 
+  function hasUnsavedForm() {
+    return Array.from(document.querySelectorAll("form")).some((form) => form.getClientRects().length > 0 && dirtyFormsRef.current.has(form));
+  }
+
+  function confirmLeaveForm() {
+    if (!hasUnsavedForm()) return true;
+    return window.confirm("Hay información sin guardar. ¿De verdad deseas salir y descartar los cambios?");
+  }
+
+  useEffect(() => {
+    const markDirty = (event) => {
+      const form = event.target?.closest?.("form");
+      if (!form || !form.getClientRects().length) return;
+      if (event.target?.matches?.("input[type=button],input[type=submit],button,select[data-filter-only=\"true\"]")) return;
+      dirtyFormsRef.current.add(form);
+    };
+    const clearDirty = (event) => { if (event.target?.tagName === "FORM") dirtyFormsRef.current.delete(event.target); };
+    const beforeUnload = (event) => { if (hasUnsavedForm()) { event.preventDefault(); event.returnValue = ""; } };
+    const handlePopState = (event) => {
+      if (!confirmLeaveForm()) {
+        window.history.pushState({ treseiscinco: true, screen }, "", window.location.href);
+        return;
+      }
+      if (event.state?.treseiscinco && event.state.screen) {
+        setScreen(event.state.screen);
+      } else {
+        // Keep Android/browser Back inside the app at its root instead of closing the app unexpectedly.
+        window.history.pushState({ treseiscinco: true, screen: "home" }, "", window.location.href);
+        setScreen("home");
+      }
+      dirtyFormsRef.current = new WeakSet();
+      setMobileNavOpen(false);
+      setShowProductForm(false);
+      setShowPurchaseForm(false);
+      setShowExpenseForm(false);
+      setShowSupplierForm(false);
+      setShowQuoteForm(false);
+      setError(""); setNotice("");
+    };
+    if (!window.history.state?.treseiscinco) window.history.pushState({ treseiscinco: true, screen }, "", window.location.href);
+    document.addEventListener("input", markDirty, true);
+    document.addEventListener("change", markDirty, true);
+    document.addEventListener("submit", clearDirty, true);
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      document.removeEventListener("input", markDirty, true);
+      document.removeEventListener("change", markDirty, true);
+      document.removeEventListener("submit", clearDirty, true);
+      window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [screen]);
+
   function navigate(next, purchaseTab = "purchases") {
     if (!canAccessScreen(next)) { setError("Tu cuenta no tiene permiso para abrir ese módulo."); return; }
+    if (next !== screen && !confirmLeaveForm()) return;
+    if (next !== screen) window.history.pushState({ treseiscinco: true, screen: next }, "", window.location.href);
+    dirtyFormsRef.current = new WeakSet();
     setScreen(next); setMobileNavOpen(false); setError(""); setNotice(""); setShowProductForm(false);
     if (next !== "quotes") clearQuoteDraft();
     if (next === "accounts") setAccountsTab(canPermission("sales_view") ? "receivables" : "payables");
@@ -5581,7 +5664,7 @@ export default function App() {
                 <article className="stats-metric panel"><span>Compras pagadas</span><strong>{money(statsPaidPurchases, currencyCode)}</strong><small>Pagos de compras del periodo</small></article>
                 <article className={"stats-metric panel stats-balance" + (statsCashBalance < 0 ? " profit-negative" : " profit-positive")}><span>Balance</span><strong>{money(statsCashBalance, currencyCode)}</strong><small>Ingresos − gastos − compras pagadas</small></article>
               </div>
-              <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} />
+              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={statsChartType === "bars" ? "active" : ""} aria-pressed={statsChartType === "bars"} onClick={() => setStatsChartType("bars")}>Barras</button><button type="button" className={statsChartType === "pie" ? "active" : ""} aria-pressed={statsChartType === "pie"} onClick={() => setStatsChartType("pie")}>Pastel</button></div>{statsChartType === "bars" ? <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} /> : <SimplePie title="Distribución del balance" description="Comparación de ingresos y salidas en el periodo seleccionado." data={[{label:"Ingresos",value:statsCollected},{label:"Gastos",value:statsExpensesTotal},{label:"Compras pagadas",value:statsPaidPurchases}]} formatValue={(value)=>money(value,currencyCode)} />}
               <div className="stats-secondary-metrics"><span>Ventas registradas: <strong>{money(statsSalesTotal, currencyCode)}</strong></span><span>Pendiente por cobrar: <strong>{money(statsOutstanding, currencyCode)}</strong></span><span>{statsPeriodSales.length} {statsPeriodSales.length === 1 ? "venta" : "ventas"}</span></div>
               <section className="stats-pending panel"><div className="stats-section-heading"><div><h3>Ventas con saldo pendiente</h3><p>Las ventas con dinero por cobrar en el periodo elegido.</p></div><button type="button" className="secondary-button compact-button" onClick={() => navigate("sales")}>Ver ventas</button></div>
                 {statsPeriodSales.filter((sale) => Number(sale.total_minor || 0) > Number(sale.amount_paid_minor || 0)).length
@@ -5611,6 +5694,7 @@ export default function App() {
                 <article className="profit-metric panel"><span>Gastos registrados</span><strong>{money(profitExpenseTotal, currencyCode)}</strong><small>{periodExpenses.length} {periodExpenses.length === 1 ? "gasto" : "gastos"}</small></article>
                 <article className="profit-metric panel profit-metric-primary"><span>Resultado estimado</span><strong className={profitNet < 0 ? "profit-negative" : "profit-positive"}>{money(profitNet, currencyCode)}</strong><small>Ganancia bruta menos gastos registrados</small></article>
               </div>
+              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={profitabilityChartType === "bars" ? "active" : ""} aria-pressed={profitabilityChartType === "bars"} onClick={() => setProfitabilityChartType("bars")}>Barras</button><button type="button" className={profitabilityChartType === "pie" ? "active" : ""} aria-pressed={profitabilityChartType === "pie"} onClick={() => setProfitabilityChartType("pie")}>Pastel</button></div>{profitabilityChartType === "pie" ? <SimplePie title="Composición del resultado" description="Distribución de ingresos, costo de lo vendido y gastos del periodo." data={[{label:"Costo de ventas",value:profitCostOfSales},{label:"Ganancia bruta",value:Math.max(0,profitGross)},{label:"Gastos",value:profitExpenseTotal}]} formatValue={(value)=>money(value,currencyCode)} /> : <SimpleBars title="Composición del resultado" description="Importes del periodo seleccionado." data={[{key:"revenue",label:"Ventas",value:profitLineRevenue},{key:"cost",label:"Costo",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />}
               <div className="profitability-secondary-metrics">
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>

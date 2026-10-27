@@ -6266,3 +6266,18 @@ body { background: #F5F7FC; color: #19243A; }
   .inventory-search{grid-column:1/-1}
   .inventory-result-count{grid-column:1/-1}
 }
+
+/* Equal-height sales cards with centered, balanced content. */
+.sales-list{align-items:stretch}
+.sale-record{height:100%;min-height:228px;display:flex;flex-direction:column;align-items:stretch;text-align:center}
+.sale-record-top{justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
+.sale-record-top>div{align-items:center}
+.sale-record-customer{overflow-wrap:anywhere}
+.sale-record-bottom{margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
+.sale-record-bottom>div{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;min-width:0;padding:8px 4px;border-radius:9px;background:color-mix(in srgb,var(--soft-green) 45%,var(--paper))}
+.sale-record-bottom>div>span{font-size:11px;color:var(--muted)}
+.sale-record-bottom>div>strong{overflow-wrap:anywhere}
+.sale-record-disclosure-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.sale-record-details{text-align:left}
+.sale-record-items>div{justify-content:space-between}
+@media(max-width:600px){.sale-record{min-height:0}.sale-record-bottom>div{padding:7px 2px}.sale-record-bottom>div>span{font-size:10px}}

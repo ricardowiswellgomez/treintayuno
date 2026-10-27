@@ -2014,7 +2014,7 @@ export default function App() {
 
 
   async function loadOutstandingAccounts() {
-    if (!activeBusiness?.id || !["receivables","payables"].includes(screen)) return;
+    if (!activeBusiness?.id || !["accounts","receivables","payables"].includes(screen)) return;
     setAccountsLoading(true);
     try {
       async function fetchAll(table, columns, orderColumn) {

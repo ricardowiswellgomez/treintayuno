@@ -3693,12 +3693,8 @@ export default function App() {
     if (teamWorkEnd <= teamWorkStart) { setError("La hora de salida debe ser posterior a la hora de entrada."); return; }
     setTeamSaving(true); setError(""); setNotice("");
     try {
-      let targetUserId = teamEditingUserId;
-      if (!teamEditingUserId) {
-        const { data, error: saveError } = await supabase.rpc("upsert_business_employee", { p_business_id: activeBusiness.id, p_email: teamEmail.trim(), p_permissions: teamPermissionDraft });
-        if (saveError) throw saveError;
-        targetUserId = data;
-      }
+      const { data: targetUserId, error: saveError } = await supabase.rpc("upsert_business_employee", { p_business_id: activeBusiness.id, p_email: teamEmail.trim(), p_permissions: teamPermissionDraft });
+      if (saveError) throw saveError;
       const { error: detailsError } = await supabase.rpc("update_business_employee_details", { p_business_id: activeBusiness.id, p_user_id: targetUserId, p_phone: teamPhone.trim() || null, p_hourly_rate_minor: teamHourlyRate.trim() === "" ? null : Number(teamHourlyRate), p_work_schedule: { days: teamWorkDays, start: teamWorkStart, end: teamWorkEnd, notes: teamWorkNotes.trim() } });
       if (detailsError) throw detailsError;
       setNotice(teamEditingUserId ? "Datos laborales y permisos actualizados." : "Colaborador agregado con sus datos laborales.");

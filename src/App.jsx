@@ -1502,6 +1502,12 @@ export default function App() {
   const [quickQuoteCustomerName, setQuickQuoteCustomerName] = useState("");
   const [quickQuoteCustomerPhone, setQuickQuoteCustomerPhone] = useState("");
   const [quickQuoteCustomerEmail, setQuickQuoteCustomerEmail] = useState("");
+  const [quickQuoteCustomerCompany, setQuickQuoteCustomerCompany] = useState("");
+  const [quickQuoteCustomerWhatsapp, setQuickQuoteCustomerWhatsapp] = useState("");
+  const [quickQuoteCustomerDocumentType, setQuickQuoteCustomerDocumentType] = useState("");
+  const [quickQuoteCustomerDocumentNumber, setQuickQuoteCustomerDocumentNumber] = useState("");
+  const [quickQuoteCustomerCity, setQuickQuoteCustomerCity] = useState("");
+  const [quickQuoteCustomerAddress, setQuickQuoteCustomerAddress] = useState("");
   const [quickQuoteCustomerSaving, setQuickQuoteCustomerSaving] = useState(false);
   const [quoteValidUntil, setQuoteValidUntil] = useState(() => {
     const date = new Date(todayInBogota() + "T12:00:00-05:00");
@@ -1535,6 +1541,12 @@ export default function App() {
   const [quickCustomerName, setQuickCustomerName] = useState("");
   const [quickCustomerPhone, setQuickCustomerPhone] = useState("");
   const [quickCustomerEmail, setQuickCustomerEmail] = useState("");
+  const [quickCustomerCompany, setQuickCustomerCompany] = useState("");
+  const [quickCustomerWhatsapp, setQuickCustomerWhatsapp] = useState("");
+  const [quickCustomerDocumentType, setQuickCustomerDocumentType] = useState("");
+  const [quickCustomerDocumentNumber, setQuickCustomerDocumentNumber] = useState("");
+  const [quickCustomerCity, setQuickCustomerCity] = useState("");
+  const [quickCustomerAddress, setQuickCustomerAddress] = useState("");
   const [quickCustomerSaving, setQuickCustomerSaving] = useState(false);
   const [saleProductChoice, setSaleProductChoice] = useState("");
   const [showQuickSaleProductForm, setShowQuickSaleProductForm] = useState(false);
@@ -3792,8 +3804,14 @@ export default function App() {
     try {
       const { data, error: insertError } = await supabase.from("customers").insert({
         business_id: activeBusiness.id, full_name: name, first_name: name,
-        email: quickQuoteCustomerEmail.trim() || null, phone: quickQuoteCustomerPhone.trim() || null
-      }).select("id,full_name,company_name,email,phone,whatsapp,document_type,document_number,city").single();
+        company_name: quickQuoteCustomerCompany.trim() || null,
+        email: quickQuoteCustomerEmail.trim() || null, phone: quickQuoteCustomerPhone.trim() || null,
+        whatsapp: quickQuoteCustomerWhatsapp.trim() || null,
+        document_type: quickQuoteCustomerDocumentType || null,
+        document_number: quickQuoteCustomerDocumentNumber.trim() || null,
+        city: quickQuoteCustomerCity.trim() || null,
+        address: quickQuoteCustomerAddress.trim() || null
+      }).select("id,full_name,company_name,email,phone,whatsapp,document_type,document_number,city,address").single();
       if (insertError) throw insertError;
       setCustomers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
       setQuoteCustomers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
@@ -3801,7 +3819,7 @@ export default function App() {
       setQuoteCustomerName(data.company_name || data.full_name || name);
       setQuoteCustomerEmail(data.email || "");
       setQuoteCustomerPhone(data.phone || data.whatsapp || "");
-      setQuickQuoteCustomerName(""); setQuickQuoteCustomerPhone(""); setQuickQuoteCustomerEmail("");
+      setQuickQuoteCustomerName(""); setQuickQuoteCustomerPhone(""); setQuickQuoteCustomerEmail(""); setQuickQuoteCustomerCompany(""); setQuickQuoteCustomerWhatsapp(""); setQuickQuoteCustomerDocumentType(""); setQuickQuoteCustomerDocumentNumber(""); setQuickQuoteCustomerCity(""); setQuickQuoteCustomerAddress("");
       setShowQuickQuoteCustomerForm(false);
       setNotice("Cliente creado y seleccionado para esta cotización.");
     } catch (e) { setError(friendlyError(e)); }
@@ -4303,13 +4321,19 @@ export default function App() {
         business_id: activeBusiness.id,
         full_name: name,
         first_name: name,
+        company_name: quickCustomerCompany.trim() || null,
         email: quickCustomerEmail.trim() || null,
-        phone: quickCustomerPhone.trim() || null
-      }).select("id,full_name,company_name,email,phone,whatsapp,document_type,document_number,city").single();
+        phone: quickCustomerPhone.trim() || null,
+        whatsapp: quickCustomerWhatsapp.trim() || null,
+        document_type: quickCustomerDocumentType || null,
+        document_number: quickCustomerDocumentNumber.trim() || null,
+        city: quickCustomerCity.trim() || null,
+        address: quickCustomerAddress.trim() || null
+      }).select("id,full_name,company_name,email,phone,whatsapp,document_type,document_number,city,address").single();
       if (insertError) throw insertError;
       setCustomers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
       setSaleCustomerId(data.id);
-      setQuickCustomerName(""); setQuickCustomerPhone(""); setQuickCustomerEmail("");
+      setQuickCustomerName(""); setQuickCustomerPhone(""); setQuickCustomerEmail(""); setQuickCustomerCompany(""); setQuickCustomerWhatsapp(""); setQuickCustomerDocumentType(""); setQuickCustomerDocumentNumber(""); setQuickCustomerCity(""); setQuickCustomerAddress("");
       setShowQuickCustomerForm(false);
       setNotice("Cliente creado y seleccionado para esta venta.");
     } catch (e) { setError(friendlyError(e)); }
@@ -5095,7 +5119,13 @@ export default function App() {
   <div className="sale-builder">
     <label><span className="field-label-heading">Nombre o empresa *</span><input value={quickCustomerName} onChange={e=>setQuickCustomerName(e.target.value)} required maxLength={200} autoComplete="name" /></label>
     <label><span className="field-label-heading">Teléfono</span><input value={quickCustomerPhone} onChange={e=>setQuickCustomerPhone(e.target.value)} maxLength={40} autoComplete="tel" /></label>
+    <label><span className="field-label-heading">Nombre o razón social</span><input value={quickCustomerCompany} onChange={(e) => setQuickCustomerCompany(e.target.value)} maxLength={200} /></label>
     <label><span className="field-label-heading">Correo</span><input type="email" value={quickCustomerEmail} onChange={e=>setQuickCustomerEmail(e.target.value)} maxLength={254} autoComplete="email" /></label>
+    <label><span className="field-label-heading">WhatsApp</span><input type="tel" value={quickCustomerWhatsapp} onChange={(e) => setQuickCustomerWhatsapp(e.target.value)} maxLength={40} /></label>
+    <label><span className="field-label-heading">Tipo de documento</span><select value={quickCustomerDocumentType} onChange={(e) => setQuickCustomerDocumentType(e.target.value)}><option value="">Sin especificar</option><option value="CC">Cédula de ciudadanía</option><option value="NIT">NIT</option><option value="CE">Cédula de extranjería</option><option value="TI">Tarjeta de identidad</option><option value="Pasaporte">Pasaporte</option><option value="Otro">Otro</option></select></label>
+    <label><span className="field-label-heading">Número de documento</span><input value={quickCustomerDocumentNumber} onChange={(e) => setQuickCustomerDocumentNumber(e.target.value)} maxLength={80} /></label>
+    <label><span className="field-label-heading">Ciudad</span><input value={quickCustomerCity} onChange={(e) => setQuickCustomerCity(e.target.value)} maxLength={100} /></label>
+    <label><span className="field-label-heading">Dirección</span><input value={quickCustomerAddress} onChange={(e) => setQuickCustomerAddress(e.target.value)} maxLength={300} /></label>
     <button type="button" className="primary-button" disabled={quickCustomerSaving || !quickCustomerName.trim()} onClick={addQuickCustomer}>{quickCustomerSaving?"Guardando…":"Guardar y seleccionar"}</button>
   </div>
 </div>}
@@ -5290,7 +5320,13 @@ export default function App() {
                 <div className="sale-builder">
                   <label><span className="field-label-heading">Nombre o empresa *</span><input value={quickQuoteCustomerName} onChange={(event) => setQuickQuoteCustomerName(event.target.value)} maxLength={200} autoComplete="name" /></label>
                   <label><span className="field-label-heading">Teléfono</span><input value={quickQuoteCustomerPhone} onChange={(event) => setQuickQuoteCustomerPhone(event.target.value)} maxLength={40} autoComplete="tel" /></label>
+                  <label><span className="field-label-heading">Nombre o razón social</span><input value={quickQuoteCustomerCompany} onChange={(event) => setQuickQuoteCustomerCompany(event.target.value)} maxLength={200} /></label>
                   <label><span className="field-label-heading">Correo</span><input type="email" value={quickQuoteCustomerEmail} onChange={(event) => setQuickQuoteCustomerEmail(event.target.value)} maxLength={254} autoComplete="email" /></label>
+                  <label><span className="field-label-heading">WhatsApp</span><input type="tel" value={quickQuoteCustomerWhatsapp} onChange={(event) => setQuickQuoteCustomerWhatsapp(event.target.value)} maxLength={40} /></label>
+                  <label><span className="field-label-heading">Tipo de documento</span><select value={quickQuoteCustomerDocumentType} onChange={(event) => setQuickQuoteCustomerDocumentType(event.target.value)}><option value="">Sin especificar</option><option value="CC">Cédula de ciudadanía</option><option value="NIT">NIT</option><option value="CE">Cédula de extranjería</option><option value="TI">Tarjeta de identidad</option><option value="Pasaporte">Pasaporte</option><option value="Otro">Otro</option></select></label>
+                  <label><span className="field-label-heading">Número de documento</span><input value={quickQuoteCustomerDocumentNumber} onChange={(event) => setQuickQuoteCustomerDocumentNumber(event.target.value)} maxLength={80} /></label>
+                  <label><span className="field-label-heading">Ciudad</span><input value={quickQuoteCustomerCity} onChange={(event) => setQuickQuoteCustomerCity(event.target.value)} maxLength={100} /></label>
+                  <label><span className="field-label-heading">Dirección</span><input value={quickQuoteCustomerAddress} onChange={(event) => setQuickQuoteCustomerAddress(event.target.value)} maxLength={300} /></label>
                   <button type="button" className="primary-button" disabled={quickQuoteCustomerSaving || !quickQuoteCustomerName.trim()} onClick={addQuickQuoteCustomer}>{quickQuoteCustomerSaving ? "Guardando…" : "Guardar y seleccionar"}</button>
                 </div>
               </div>}

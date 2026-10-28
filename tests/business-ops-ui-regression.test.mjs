@@ -48,6 +48,9 @@ test("el catálogo muestra opciones de entrega y conserva la identidad propia de
   assert.match(css, /\.public-catalog-brand\s*\{[^}]*width:\s*132px/s);
   assert.match(css, /\.public-catalog-image\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*3/s);
   assert.match(css, /\.public-catalog-grid\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
+  const denseCatalogRules = css.slice(css.lastIndexOf("/* Dense desktop catalog"));
+  assert.match(denseCatalogRules, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(denseCatalogRules, /@media \(max-width: 1180px\)[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.sidebar-nav-row \.nav-item\.active/);
   assert.match(css, /\.sidebar-contact-action/);
 });

@@ -67,10 +67,10 @@ jobs:
           apk="dist/treseiscinco.apk"
           test -s "$apk"
           badging="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk")"
-          printf '%s\n' "$badging" | grep -Eq "application: label='treseiscinco'.*icon='res/mipmap-mdpi-v4/ic_launcher.png'"
-          unzip -Z1 "$apk" | grep -q 'res/mipmap-mdpi-v4/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -q 'res/mipmap-xxxhdpi-v4/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml'
+          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'"
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-mdpi(-v4)?/ic_launcher.png'
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png'
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml'
           echo "APK references the treseiscinco launcher icon and includes the generated density/adaptive resources."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

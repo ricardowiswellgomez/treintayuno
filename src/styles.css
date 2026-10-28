@@ -8777,3 +8777,10 @@ body { background: #F5F7FC; color: #19243A; }
     gap:6px!important;
   }
 }
+
+
+@media (max-width: 640px) {
+  .app-shell .products-page .product-list.product-list-cards .product-card-stock-unit {
+    display:none!important;
+  }
+}

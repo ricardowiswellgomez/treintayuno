@@ -7099,7 +7099,7 @@ function AuthenticatedApp() {
               </div>
               <div className="inventory-metric-grid">
                 <article className="inventory-metric-card"><span>Referencias en inventario</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><p>Artículos guardados en tu tienda</p></article>
-                <article className="inventory-metric-card"><span>Unidades disponibles</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.trackedUnits.toLocaleString("es-CO", { maximumFractionDigits: 3 })}</strong><p>Existencias físicas registradas</p></article>
+                <article className="inventory-metric-card inventory-stock-metric"><span>Unidades disponibles</span><div className="inventory-stock-value-row"><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.trackedUnits.toLocaleString("es-CO", { maximumFractionDigits: 3 })}</strong><button ref={inventoryDataMobileTriggerRef} type="button" className={"inventory-import-stock-trigger" + (inventoryDataMenuOpen ? " is-open" : "")} aria-label="Importar inventario" aria-haspopup="dialog" aria-expanded={inventoryDataMenuOpen} aria-controls="inventory-data-menu" onClick={() => setInventoryDataMenuOpen((open) => !open)}><AppIcon name="file-spreadsheet" size={14}/><span>Importar</span></button></div><p>Existencias físicas registradas</p></article>
                 <article className="inventory-metric-card"><span>Costo total del inventario</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.costMinor, currencyCode)}</strong><p>Costo de las unidades en stock</p></article>
                 <article className="inventory-metric-card"><span>Valor de venta estimado</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.retailMinor, currencyCode)}</strong><p>Si se vende todo el stock disponible</p></article>
                 <button type="button" className={"inventory-metric-card inventory-metric-action" + (productStockFilter === "out_of_stock" ? " selected" : "")} onClick={() => { setProductStockFilter((current) => current === "out_of_stock" ? "all" : "out_of_stock"); setProductPage(1); }} aria-pressed={productStockFilter === "out_of_stock"}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><p>{productStockFilter === "out_of_stock" ? "Mostrar todos los artículos" : "Ver artículos agotados"}</p></button>
@@ -7119,20 +7119,6 @@ function AuthenticatedApp() {
                 <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
               </div>
             </details>}
-            <div className="inventory-import-mobile-actions">
-              <button
-                ref={inventoryDataMobileTriggerRef}
-                type="button"
-                className={"inventory-import-mobile-trigger" + (inventoryDataMenuOpen ? " is-open" : "")}
-                aria-haspopup="dialog"
-                aria-expanded={inventoryDataMenuOpen}
-                aria-controls="inventory-data-menu"
-                onClick={() => setInventoryDataMenuOpen((open) => !open)}
-              >
-                <span><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span>
-                <AppIcon name={inventoryDataMenuOpen ? "chevron-up" : "chevron-down"} size={15}/>
-              </button>
-            </div>
             <div className="inventory-controls panel">
               <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>

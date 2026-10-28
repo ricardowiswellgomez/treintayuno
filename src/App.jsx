@@ -79,12 +79,12 @@ function SimpleBars({ title, description, data, formatValue }) {
 }
 
 
-function SimplePie({ title, description, data, formatValue }) {
+function SimplePie({ title, description, data, formatValue, compact = false }) {
   const entries = (data || []).map((item) => ({ ...item, value: Math.max(0, Number(item.value) || 0) })).filter((item) => item.value > 0);
   const total = entries.reduce((sum, item) => sum + item.value, 0);
   const colors = ["#64748B", "#0F766E", "#D97706", "#7C3AED", "#DB2777", "#0284C7"];
   let cumulative = 0;
-  return <section className="simple-chart panel simple-pie-chart">
+  return <section className={"simple-chart panel simple-pie-chart" + (compact ? " simple-pie-chart-compact" : "")}>
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">Distribución</span></div>
     {total > 0 ? <div className="simple-pie-layout">
       <div className="simple-pie-visual" role="img" aria-label={title+" · "+entries.map((item)=>item.label+": "+(formatValue?formatValue(item.value):item.value)).join(", ")}>
@@ -99,6 +99,45 @@ function SimplePie({ title, description, data, formatValue }) {
     </div> : <p className="simple-chart-empty">Aún no hay importes positivos para formar el gráfico.</p>}
     <div className="simple-chart-footnote">Distribución calculada a partir de movimientos registrados.</div>
   </section>;
+}
+
+
+function shiftHomeDateKey(key, offset) {
+  const date = new Date(key + "T12:00:00Z");
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function getHomeChartRange(period) {
+  const today = todayInBogota();
+  const [year, month] = today.split("-").map(Number);
+  let start = today;
+  if (period === "week") {
+    const date = new Date(today + "T12:00:00Z");
+    start = shiftHomeDateKey(today, -((date.getUTCDay() + 6) % 7));
+  } else if (period === "month") {
+    start = today.slice(0, 7) + "-01";
+  } else if (period === "quarter") {
+    const firstMonth = Math.floor((month - 1) / 3) * 3 + 1;
+    start = year + "-" + String(firstMonth).padStart(2, "0") + "-01";
+  } else if (period === "semester") {
+    start = year + (month <= 6 ? "-01-01" : "-07-01");
+  } else if (period === "year") {
+    start = year + "-01-01";
+  }
+  return { start, today, endExclusive: shiftHomeDateKey(today, 1) };
+}
+
+function summarizeHomePieMap(values, maxVisible = 4, otherLabel = "Otros") {
+  const sorted = [...values.entries()]
+    .map(([label, value]) => ({ label: String(label || "Otros").trim() || "Otros", value: Number(value) || 0 }))
+    .filter((entry) => entry.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const visible = sorted.slice(0, maxVisible);
+  if (sorted.length > maxVisible) {
+    visible.push({ label: otherLabel, value: sorted.slice(maxVisible).reduce((sum, entry) => sum + entry.value, 0) });
+  }
+  return visible;
 }
 
 function escapeHtml(value) {

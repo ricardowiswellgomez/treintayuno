@@ -63,5 +63,5 @@ test("el APK usa el símbolo 365 transparente en el icono adaptativo y verifica 
   const icons = androidWorkflow.indexOf("npm run android:icons", sync);
   assert.ok(sync >= 0 && icons > sync, "los iconos deben generarse después de Capacitor sync");
   assert.match(androidWorkflow, /android:icon="@mipmap\/ic_launcher"/);
-  assert.match(androidWorkflow, /actual branded launcher image verified/);
+  assert.match(androidWorkflow, /actual branded launcher (?:image|artwork) verified/);
 });

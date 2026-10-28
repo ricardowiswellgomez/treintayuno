@@ -9214,3 +9214,17 @@ body { background: #F5F7FC; color: #19243A; }
   .public-catalog-intro-actions .public-catalog-delivery-badge { padding:3px 4px!important; font-size:7px!important; }
   .public-catalog-intro-actions .public-catalog-currency { padding:3px 4px!important; font-size:9px!important; }
 }
+
+
+/* On the narrowest phones, preserve the two-column inventory metrics so Importar inventario stays beside Sin stock. */
+@media (max-width:640px) {
+  .app-shell .products-page .inventory-metric-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card,
+  .app-shell .products-page .inventory-metric-grid>.inventory-metric-action {
+    grid-column:auto!important;
+    grid-row:auto!important;
+    min-width:0!important;
+  }
+}

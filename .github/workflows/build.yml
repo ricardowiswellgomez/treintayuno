@@ -60,7 +60,7 @@ jobs:
           if (!config.server?.allowNavigation?.includes('treseiscinco.com')) {
             throw new Error('The production domain must be permitted in the Android WebView.');
           }
-          if ((app.match(/href="\\/download\\/apk"/g) || []).length < 2) {
+          if (app.split('href="/download/apk"').length - 1 < 2) {
             throw new Error('Both public landing and login pages must use the verified APK download route.');
           }
           for (const marker of [
@@ -184,3 +184,14 @@ jobs:
             exit 0
           fi
           npx wrangler deploy
+      - name: Verify downloadable APK in production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSI https://treseiscinco.com/download/apk -o /tmp/treseiscinco-apk-headers.txt
+          grep -Eiq '^content-type:[[:space:]]*application/vnd.android.package-archive' /tmp/treseiscinco-apk-headers.txt
+          grep -Eiq '^content-disposition:[[:space:]]*attachment;[[:space:]]*filename="treseiscinco.apk"' /tmp/treseiscinco-apk-headers.txt
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://treseiscinco.com/download/apk -o /tmp/treseiscinco-downloaded.apk
+          test -s /tmp/treseiscinco-downloaded.apk
+          unzip -t /tmp/treseiscinco-downloaded.apk >/dev/null
+          echo "Verified: production APK endpoint sends a valid APK attachment."

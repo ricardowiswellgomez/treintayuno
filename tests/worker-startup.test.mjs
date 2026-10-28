@@ -217,3 +217,53 @@ test("contact endpoint never claims delivery while the email binding is missing"
   assert.equal(response.status, 503);
   assert.equal((await response.json()).success, undefined);
 });
+
+
+test("contextual help opens for the current workspace page and keeps the separate help-center link", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(appSource, /const inAppPageHelp = Object\.freeze\(\{/);
+  assert.match(appSource, /AYUDA DE ESTA PÁGINA/);
+  assert.match(appSource, /¿Necesitas más ayuda\?/);
+  assert.match(appSource, /href="https:\/\/treseiscinco\.com\/ayuda"/);
+  assert.doesNotMatch(cssSource, /\.context-help-layer\{display:none!important\}/);
+  assert.doesNotMatch(cssSource, /\.field-help-wrap\{display:none!important\}/);
+  assert.match(appSource, /document\.addEventListener\("pointerdown", onOutsidePointer, true\)/);
+});
+
+test("quotation records use compact horizontal rows on desktop and stacked cards on mobile", () => {
+  const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(cssSource, /\.app-shell \.quote-record\{display:grid!important;grid-template-columns:/);
+  assert.match(cssSource, /@media\(max-width:600px\)\{\s*\.app-shell \.quotes-list/);
+});
+
+test("support email delivery retries one transient provider failure and then succeeds", async () => {
+  let attempts = 0;
+  const response = await worker.fetch(
+    new Request("https://treseiscinco.com/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://treseiscinco.com" },
+      body: JSON.stringify({
+        name: "Persona de prueba",
+        email: "persona@example.com",
+        category: "Uso de la app",
+        message: "Este mensaje de prueba tiene la longitud mínima necesaria."
+      })
+    }),
+    {
+      AI_USER_LIMITER: { limit: async () => ({ success: true }) },
+      SUPPORT_EMAIL: { send: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          const error = new Error("Servicio temporalmente no disponible");
+          error.code = "E_DELIVERY_FAILED";
+          throw error;
+        }
+        return { messageId: "test-message" };
+      } }
+    }
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).success, true);
+  assert.equal(attempts, 2);
+});

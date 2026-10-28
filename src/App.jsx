@@ -170,6 +170,26 @@ const areas = [
   { icon: "◷", title: "Auditorías", description: "Consulta quién hizo cada cambio y cuándo.", screen: "audit" }
 ];
 
+const inAppPageHelp = Object.freeze({
+  home: { title: "Inicio", intro: "Aquí puedes revisar de un vistazo cómo marcha tu negocio y entrar rápidamente a cada módulo.", steps: ["Consulta las cifras y gráficos del periodo seleccionado.", "Usa las tarjetas para abrir productos, ventas, cotizaciones o finanzas.", "Registra cada operación en su módulo para mantener el balance actualizado."], tip: "Los indicadores dependen de los movimientos guardados; los valores pendientes de cobro no son dinero recibido." },
+  products: { title: "Productos e inventario", intro: "Mantén el catálogo, los precios, los costos y las existencias de tus artículos en un solo lugar.", steps: ["Busca un producto o filtra la lista para encontrarlo.", "Crea o edita la ficha con su precio, costo, unidad y control de inventario.", "Registra los ajustes de existencias desde el historial para conservar la trazabilidad."], tip: "Comprueba las existencias antes de repetir una operación que pudo haberse guardado." },
+  sales: { title: "Ventas", intro: "Registra las ventas y sus pagos para que el inventario y los saldos se mantengan coordinados.", steps: ["Selecciona la fecha, el cliente y los productos vendidos.", "Revisa cantidades, total y abono recibido antes de guardar.", "Abre el detalle de una venta para consultar sus movimientos o registrar un abono adicional."], tip: "Una venta guardada puede descontar existencias; revisa primero si un intento anterior quedó registrado." },
+  quotes: { title: "Cotizaciones", intro: "Prepara una propuesta con productos, cantidades, precios y condiciones antes de convertirla en venta.", steps: ["Crea una cotización y completa los datos de contacto del cliente.", "Añade artículos, revisa el total y establece la fecha de validez.", "Guarda la propuesta; después puedes ajustar su estado, imprimirla o compartirla."], tip: "Una cotización no es una venta ni descuenta inventario hasta que se convierta mediante la acción correspondiente." },
+  accounts: { title: "Cuentas", intro: "Controla el dinero que falta por cobrar a tus clientes y los saldos pendientes con proveedores.", steps: ["Elige la pestaña de cuentas por cobrar o por pagar.", "Abre el registro correspondiente y comprueba el saldo pendiente.", "Registra los pagos o abonos con su fecha y medio de pago."], tip: "Registra solo el dinero que efectivamente recibiste o pagaste." },
+  stats: { title: "Estadísticas y balance", intro: "Consulta los movimientos registrados en tu negocio y compara los resultados por periodo.", steps: ["Selecciona el periodo de consulta.", "Revisa ventas, cobros, compras y gastos disponibles.", "Descarga el informe cuando necesites conservar o compartir un resumen."], tip: "Las cotizaciones y los saldos por cobrar no se cuentan como ingresos recibidos." },
+  customers: { title: "Clientes", intro: "Guarda la información de contacto para relacionar las personas y empresas con tus ventas.", steps: ["Busca un cliente por nombre o datos de contacto.", "Crea o edita su ficha con los datos necesarios.", "Selecciona el cliente al registrar una venta o una cotización."], tip: "Evita duplicar fichas; busca primero por nombre, correo o documento." },
+  suppliers: { title: "Proveedores", intro: "Organiza las personas y empresas que te suministran productos, materiales o servicios.", steps: ["Busca el proveedor antes de crear un nuevo registro.", "Guarda sus datos de contacto y la información comercial disponible.", "Selecciónalo al registrar compras o consultar movimientos relacionados."], tip: "Mantener el mismo proveedor asociado facilita revisar costos y pagos pendientes." },
+  profitability: { title: "Rentabilidad", intro: "Compara ventas con costos y gastos registrados para entender mejor el resultado del negocio.", steps: ["Elige el periodo que deseas analizar.", "Revisa ingresos, costo de los productos y gastos incluidos.", "Compara los márgenes y verifica los costos que aún estén pendientes de completar."], tip: "La rentabilidad mejora cuando los costos y el tiempo de trabajo están registrados de forma realista." },
+  purchases: { title: "Compras y gastos", intro: "Registra las compras que entran al inventario y los gastos de funcionamiento del negocio.", steps: ["Selecciona si vas a registrar una compra o un gasto.", "Completa fecha, proveedor o categoría, detalle e importe.", "Revisa el resumen antes de guardar y comprueba que no exista un registro previo."], tip: "Las compras de inventario y los gastos generales tienen efectos distintos en los costos del negocio." },
+  catalog: { title: "Catálogo para compartir", intro: "Prepara una vitrina digital con los productos que quieres mostrar a tus clientes.", steps: ["Elige qué productos activos se publican y revisa sus imágenes, precios y disponibilidad.", "Verifica los datos comerciales y el canal de contacto en Configuración.", "Abre el enlace público para comprobar cómo se ve antes de compartirlo."], tip: "Publica únicamente información actualizada y no marques como disponible un artículo sin existencias reales." },
+  coupons: { title: "Cupones de descuento", intro: "Crea promociones con reglas claras y revisa sus condiciones antes de compartirlas.", steps: ["Crea un cupón con un código fácil de reconocer.", "Define el descuento, la vigencia y los límites de uso disponibles.", "Guarda y verifica el estado del cupón antes de anunciarlo."], tip: "Comprueba las condiciones del descuento para evitar ofrecer un precio inferior al que querías." },
+  payments: { title: "Pagos verificados", intro: "Consulta la configuración de la cuenta de cobro vinculada a este negocio.", steps: ["Revisa si la integración aparece configurada y habilitada.", "Comprueba las credenciales y el entorno desde la configuración correspondiente.", "Realiza una prueba controlada antes de recibir pagos reales."], tip: "Nunca compartas claves privadas ni secretos de integración con clientes o en mensajes de soporte." },
+  team: { title: "Equipo y permisos", intro: "Invita a las personas que colaboran en el negocio y limita su acceso según sus tareas.", steps: ["Añade el correo de la cuenta que utilizará cada persona.", "Selecciona un perfil inicial y revisa los permisos de cada módulo.", "Guarda los cambios y confirma que cada persona solo pueda ver y administrar lo necesario."], tip: "Asigna únicamente los permisos indispensables para cada función." },
+  audit: { title: "Auditorías", intro: "Consulta los cambios y operaciones registrados para dar seguimiento a la actividad del negocio.", steps: ["Filtra o revisa los eventos disponibles.", "Comprueba la fecha, el usuario y el registro involucrado.", "Abre el detalle cuando necesites ampliar la información de un movimiento."], tip: "Un registro de auditoría sirve para revisar lo ocurrido; no lo sustituye ni lo modifica." },
+  settings: { title: "Configuración", intro: "Personaliza los datos del negocio, la apariencia, las preferencias y las opciones disponibles.", steps: ["Revisa los datos comerciales y la moneda del negocio.", "Ajusta el logo, los colores y las preferencias de visualización.", "Guarda los cambios y comprueba que se reflejen correctamente."], tip: "La configuración pertenece al negocio seleccionado; verifica el nombre antes de guardar." },
+  platform_admin: { title: "Administración de plataforma", intro: "Esta sección está reservada para tareas de administración general de la plataforma.", steps: ["Revisa con cuidado la información de plataforma disponible.", "Realiza cambios solo cuando conozcas su alcance.", "Verifica el resultado antes de salir de la sección."], tip: "Los cambios administrativos pueden afectar a más de un negocio." }
+});
+
 const sidebarAreaItem = (screen, label = null) => {
   const area = areas.find((candidate) => candidate.screen === screen);
   return area ? { id: area.screen, screen: area.screen, label: label || area.title, icon: area.icon } : null;
@@ -2237,6 +2257,24 @@ function AuthenticatedApp() {
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
   const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
+  const [contextHelpOpen, setContextHelpOpen] = useState(false);
+  const contextHelpLayerRef = useRef(null);
+  useEffect(() => {
+    if (!contextHelpOpen) return;
+    const onOutsidePointer = (event) => {
+      if (contextHelpLayerRef.current?.contains(event.target)) return;
+      setContextHelpOpen(false);
+    };
+    const onEscape = (event) => { if (event.key === "Escape") setContextHelpOpen(false); };
+    document.addEventListener("pointerdown", onOutsidePointer, true);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", onOutsidePointer, true);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [contextHelpOpen]);
+  useEffect(() => { setContextHelpOpen(false); }, [screen, activeBusiness?.id]);
+
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
   const [aiHistory, setAiHistory] = useState([]);
@@ -7958,10 +7996,28 @@ function AuthenticatedApp() {
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
-      <div className="context-help-layer">
-        <a className="context-help-trigger" href="/ayuda" aria-label="Abrir centro de ayuda" title="Centro de ayuda">
+      <div className="context-help-layer" ref={contextHelpLayerRef}>
+        {contextHelpOpen && (() => {
+          const pageHelp = inAppPageHelp[screen] || {
+            title: areas.find((area) => area.screen === screen)?.title || "Esta sección",
+            intro: "Consulta las opciones de esta sección y revisa la información antes de guardar cambios.",
+            steps: ["Revisa los datos y las acciones disponibles.", "Completa los campos necesarios y comprueba el resumen.", "Guarda los cambios y confirma el resultado."],
+            tip: "Si la sección muestra información incompleta, verifica primero los datos relacionados."
+          };
+          return <section id="treseiscinco-page-help" className="context-help-panel" role="dialog" aria-labelledby="treseiscinco-page-help-title">
+            <header className="context-help-header">
+              <div><p>AYUDA DE ESTA PÁGINA</p><h2 id="treseiscinco-page-help-title">{pageHelp.title}</h2></div>
+              <button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setContextHelpOpen(false)}>×</button>
+            </header>
+            <p className="context-help-intro">{pageHelp.intro}</p>
+            <div className="context-help-section"><strong>Qué puedes hacer</strong><ol>{pageHelp.steps.map((step, index) => <li key={index}><span>{index + 1}</span><p>{step}</p></li>)}</ol></div>
+            {pageHelp.tip && <aside className="context-help-tip"><strong>Consejo útil</strong><p>{pageHelp.tip}</p></aside>}
+            <footer className="context-help-footer"><span>¿Necesitas más ayuda?</span><a className="primary-button" href="https://treseiscinco.com/ayuda">Ayuda ↗</a></footer>
+          </section>;
+        })()}
+        <button type="button" className="context-help-trigger" aria-expanded={contextHelpOpen} aria-controls="treseiscinco-page-help" onClick={() => setContextHelpOpen((open) => !open)} aria-label={contextHelpOpen ? "Cerrar ayuda de esta página" : "Mostrar ayuda de esta página"} title="Ayuda de esta página">
           <span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span>
-        </a>
+        </button>
       </div>
 
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}

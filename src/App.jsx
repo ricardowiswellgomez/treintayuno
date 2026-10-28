@@ -7335,7 +7335,7 @@ function AuthenticatedApp() {
       <span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span>
     </div>
     <div className="product-card-wa-details">
-      <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
+      <div><span>Existencias</span><strong>{p.track_inventory ? <>{Number(p.stock_on_hand).toLocaleString("es-CO")}<span className="product-card-stock-unit"> {p.unit_name || "unidades"}</span></> : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
       <div className="product-card-wa-unit"><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
       {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
     </div>

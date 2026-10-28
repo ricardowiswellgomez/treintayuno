@@ -3331,34 +3331,7 @@ function AuthenticatedApp() {
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      if (mode === "phone") {
-        const normalizedPhone = phoneNumber.trim().replace(/[\s().-]/g, "");
-        if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-          throw new Error("Escribe el número con prefijo internacional, por ejemplo +57 300 123 4567.");
-        }
-        if (!phoneOtpSent) {
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            phone: normalizedPhone,
-            options: { shouldCreateUser: false }
-          });
-          if (otpError) throw otpError;
-          setPhoneNumber(normalizedPhone);
-          setPhoneOtpSent(true);
-          setNotice("Si ese número está vinculado y verificado en tu cuenta, te enviaremos un código SMS.");
-        } else {
-          const { data, error: verifyError } = await supabase.auth.verifyOtp({
-            phone: normalizedPhone, token: phoneOtp.trim(), type: "sms"
-          });
-          if (verifyError) throw verifyError;
-          if (!data?.session || !data?.user) throw new Error("No pudimos validar el código. Pide uno nuevo e inténtalo otra vez.");
-          setSession(data.session);
-          setShowPublicLanding(true);
-          setMode("login");
-          setPhoneOtp("");
-          setPhoneOtpSent(false);
-          await loadBusinesses(data.user.id);
-        }
-      } else if (mode === "forgot") {
+      if (mode === "forgot") {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: window.location.origin
         });
@@ -3387,12 +3360,7 @@ function AuthenticatedApp() {
         setSession(data.session); await loadBusinesses(data.user.id);
       }
     } catch (e) {
-      const rawMessage = String(e?.message || "");
-      if (mode === "phone" && /unable to get sms provider|sms provider|sms.*provider/i.test(rawMessage)) {
-        setError("El acceso por SMS todavía no está habilitado en treseiscinco: falta configurar el proveedor de mensajes del sistema. Mientras se activa, entra con tu correo y contraseña; no se enviará ningún código hasta completar esa configuración.");
-      } else {
-        setError(friendlyError(e));
-      }
+      setError(friendlyError(e));
     } finally { setBusy(false); }
   }
 
@@ -6269,21 +6237,19 @@ function AuthenticatedApp() {
       </section>
       <section className="auth-form-panel"><div className="auth-form-wrap">
         <p className="eyebrow">{mode === "signup" ? "EMPIEZA GRATIS" : mode === "forgot" || mode === "update-password" ? "RECUPERA TU ACCESO" : "QUÉ BUENO VERTE"}</p>
-        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "phone" ? (phoneOtpSent ? "Verifica tu celular" : "Entrar con celular") : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
-        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "phone" ? (phoneOtpSent ? "Introduce el código SMS que recibiste. Por seguridad, solo se permite acceder con un número ya vinculado y verificado en una cuenta." : "Escribe tu número con prefijo internacional. Te enviaremos un código para entrar sin contraseña.") : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
+        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
+        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
-          {mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
-          {mode === "phone" && <label><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+57 300 123 4567" required /><small className="auth-phone-format-help">Incluye el signo + y el código del país antes del número. Para Colombia usa +57; ejemplo: +57 300 123 4567. Solo números ya vinculados y verificados pueden entrar por este método.</small></label>}
-          {mode === "phone" && phoneOtpSent && <label><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="Código de verificación" required minLength={4} maxLength={8} /></label>}
-          {mode !== "forgot" && mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
+          {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
+          {mode !== "forgot" && mode !== "update-password" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
           {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
           
         {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
-          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "phone" ? (phoneOtpSent ? "Verificar código" : "Enviar código SMS") : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
-          {mode === "phone" && phoneOtpSent && <button type="button" className="text-button" disabled={busy} onClick={() => { setPhoneOtpSent(false); setPhoneOtp(""); setNotice(""); setError(""); }}>Usar otro número</button>}
+          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
+
         </form>
-        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "phone" ? "¿Prefieres entrar con correo?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "phone" ? "login" : mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setPhoneOtp(""); setPhoneOtpSent(false); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : mode === "phone" ? "Usar correo" : "Crear cuenta"}</button></p>}
+        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : "Crear cuenta"}</button></p>}
         <p className="privacy-note">Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.</p>
       </div></section>
     </main>

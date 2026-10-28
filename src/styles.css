@@ -7599,7 +7599,7 @@ body { background: #F5F7FC; color: #19243A; }
 
 /* Configuración: pestañas neutras; solo la sección activa usa una tarjeta blanca. */
 .settings-tabs {
-  background: #F5F7F7;
+  background: #F7F7F7 !important;
   border: 1px solid #DDE5E5;
   border-radius: 13px;
   padding: 5px;

@@ -7386,6 +7386,7 @@ function AuthenticatedApp() {
                 </div>}
               </div>}
               <button type="button" className="home-utility-action home-share-card-button" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
+              <button type="button" className="home-utility-action home-share-business-card" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={16}/> Compartir tarjeta</button>
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

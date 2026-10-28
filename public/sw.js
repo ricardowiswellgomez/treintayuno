@@ -29,7 +29,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (/^\\/(api|auth|rest|functions|storage)\\//.test(url.pathname)) return;
+  if (["/api/", "/auth/", "/rest/", "/functions/", "/storage/"].some((prefix) => url.pathname.startsWith(prefix))) return;
 
   // Prefer the current deployed site on every page load; retain the last shell for outages.
   if (request.mode === "navigate") {

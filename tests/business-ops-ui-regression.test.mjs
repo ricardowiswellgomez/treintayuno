@@ -171,3 +171,22 @@ test("Ventas muestra iconos de ayuda reales en el bloque de caja visible al entr
   assert.match(visibleHelp, /background:\s*var\(--paper,\s*#FFFFFF\)\s*!important/);
 });
 
+
+
+test("las cotizaciones muestran filas alineadas y proveedores conserva su módulo propio", () => {
+  assert.match(app, /title: "Proveedores"[\s\S]*?screen: "suppliers"/);
+  assert.match(app, /sidebarAreaItem\("suppliers"\)/);
+  const purchaseTabsStart = app.indexOf('className="purchase-module-tabs"');
+  const purchaseTabsEnd = app.indexOf("</div>", purchaseTabsStart);
+  const purchaseTabs = app.slice(purchaseTabsStart, purchaseTabsEnd);
+  assert.match(purchaseTabs, /aria-label="Compras y gastos"/);
+  assert.doesNotMatch(purchaseTabs, />Proveedores<\/button>/);
+  assert.match(app, /if \(next === "suppliers"\) return isBusinessManager \|\| canViewSuppliers \|\| canViewPurchases/);
+  assert.match(app, /if \(next === "purchases"\) return canViewPurchases \|\| canViewExpenses/);
+  assert.match(app, /className="field-label-heading">Seleccionar cliente registrado<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  assert.match(app, /className="field-label-heading">Válida hasta<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  assert.match(app, /className="field-label-heading">Valor por hora \(COP\)<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  const alignedRows = css.slice(css.lastIndexOf("/* Cotizaciones: filas alineadas por bloques"));
+  assert.match(alignedRows, /grid-template-areas:"meta customer items totals"/);
+  assert.match(alignedRows, /grid-area:actions/);
+});

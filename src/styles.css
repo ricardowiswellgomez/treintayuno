@@ -10029,3 +10029,47 @@ body { background: #F5F7FC; color: #19243A; }
 }
 .cash-register-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cash-register-title-row h3 { margin: 0; }
+
+
+/* Cotizaciones: filas alineadas por bloques y acciones en una banda independiente. */
+@media (min-width: 1101px) {
+  .app-shell .quotes-page .quote-record {
+    display:grid!important;
+    grid-template-columns:minmax(175px,.95fr) minmax(180px,1fr) minmax(240px,1.25fr) minmax(165px,.9fr);
+    grid-template-areas:"meta customer items totals" "note note note note" "actions actions actions actions";
+    align-items:center!important; gap:10px 18px!important; padding:14px 18px!important;
+  }
+  .app-shell .quotes-page .quote-record-top { grid-area:meta; display:flex!important; flex-direction:column; align-items:center!important; justify-content:center!important; gap:7px!important; min-width:0; text-align:center; }
+  .app-shell .quotes-page .quote-record-top>div { align-items:center!important; text-align:center!important; }
+  .app-shell .quotes-page .quote-record-top>div strong { font-size:13px!important; line-height:1.4; }
+  .app-shell .quotes-page .quote-record-customer { grid-area:customer; align-items:center!important; justify-content:center!important; min-width:0; text-align:center; }
+  .app-shell .quotes-page .quote-record-customer strong { font-size:14px!important; line-height:1.4; }
+  .app-shell .quotes-page .quote-record-customer span { line-height:1.4; }
+  .app-shell .quotes-page .quote-record-items { grid-area:items; align-self:stretch; justify-content:center; min-width:0; padding:2px 12px!important; border-top:0!important; border-bottom:0!important; border-left:1px solid var(--line); }
+  .app-shell .quotes-page .quote-record-items>div { align-items:center!important; padding:5px 0!important; line-height:1.4; }
+  .app-shell .quotes-page .quote-record-bottom { grid-area:totals; grid-template-columns:repeat(2,minmax(0,1fr))!important; align-items:stretch; gap:8px!important; margin:0!important; }
+  .app-shell .quotes-page .quote-record-bottom>div { align-items:center!important; justify-content:center!important; padding:9px 6px; border:1px solid var(--line); border-radius:9px; text-align:center; }
+  .app-shell .quotes-page .quote-record-bottom>div span { font-size:10px!important; text-transform:uppercase; letter-spacing:.035em; }
+  .app-shell .quotes-page .quote-record-bottom>div strong { font-size:13.5px!important; line-height:1.35; }
+  .app-shell .quotes-page .quote-record-note { grid-area:note; margin:0!important; padding-top:8px; border-top:1px dashed var(--line); }
+  .app-shell .quotes-page .quote-record-actions { grid-area:actions; display:grid!important; grid-template-columns:minmax(0,1fr) minmax(165px,210px); align-items:center!important; gap:14px!important; padding-top:10px!important; }
+  .app-shell .quotes-page .quote-record-actions>label { width:100%; max-width:none!important; margin:0!important; }
+  .app-shell .quotes-page .quote-share-actions { justify-content:flex-start!important; }
+}
+@media (min-width:761px) and (max-width:1100px) {
+  .app-shell .quotes-page .quote-record { display:grid!important; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:"meta customer" "items totals" "note note" "actions actions"; align-items:center!important; gap:10px 14px!important; }
+  .app-shell .quotes-page .quote-record-top { grid-area:meta; align-items:flex-start!important; }
+  .app-shell .quotes-page .quote-record-customer { grid-area:customer; align-items:flex-end!important; text-align:right; }
+  .app-shell .quotes-page .quote-record-items { grid-area:items; justify-content:center; }
+  .app-shell .quotes-page .quote-record-bottom { grid-area:totals; margin:0!important; }
+  .app-shell .quotes-page .quote-record-note { grid-area:note; }
+  .app-shell .quotes-page .quote-record-actions { grid-area:actions; display:grid!important; grid-template-columns:minmax(0,1fr) minmax(155px,210px); align-items:center; gap:12px; }
+}
+@media (max-width:760px) {
+  .app-shell .quotes-page .quote-record { align-items:stretch!important; }
+  .app-shell .quotes-page .quote-record-top { text-align:left!important; }
+  .app-shell .quotes-page .quote-record-top>div { align-items:flex-start!important; text-align:left!important; }
+  .app-shell .quotes-page .quote-record-customer { align-items:center!important; text-align:center!important; padding:4px 0; }
+  .app-shell .quotes-page .quote-record-bottom>div { text-align:center!important; align-items:center!important; }
+  .app-shell .quotes-page .quote-record-items>div { align-items:center!important; }
+}

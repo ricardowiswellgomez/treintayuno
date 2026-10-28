@@ -44,18 +44,33 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-      - name: Verify Android loads the live production UI
+      - name: Verify live Android UI and downloadable APK route
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           const config = JSON.parse(readFileSync('capacitor.config.json', 'utf8'));
+          const app = readFileSync('src/App.jsx', 'utf8');
+          const worker = readFileSync('src/worker.js', 'utf8');
           if (config.server?.url !== 'https://treseiscinco.com') {
             throw new Error('The Android APK must load the live production UI from https://treseiscinco.com');
           }
           if (config.server?.cleartext !== false) {
             throw new Error('The Android live URL must use HTTPS only');
           }
-          console.log('Verified: Android UI updates from https://treseiscinco.com');
+          if (!config.server?.allowNavigation?.includes('treseiscinco.com')) {
+            throw new Error('The production domain must be permitted in the Android WebView.');
+          }
+          if ((app.match(/href="\\/download\\/apk"/g) || []).length < 2) {
+            throw new Error('Both public landing and login pages must use the verified APK download route.');
+          }
+          for (const marker of [
+            'u.pathname==="/download/apk"',
+            'application/vnd.android.package-archive',
+            'attachment; filename="treseiscinco.apk"'
+          ]) {
+            if (!worker.includes(marker)) throw new Error('Missing APK download safeguard: ' + marker);
+          }
+          console.log('Verified: live Android UI, HTTPS navigation, and explicit APK download headers.');
           NODE
       - name: Build installable Android APK
         run: |

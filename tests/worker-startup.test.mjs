@@ -136,6 +136,12 @@ test("Proveedores is reachable from Personal and keeps its purchase-management v
   assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
 });
 
+test("legacy numeric sidebar groups are rehomed instead of shown as section names", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(appSource, /const numericHeading = \/\^\[0-9\]\+\$\//);
+  assert.match(appSource, /if \(numericHeading\) \{[\s\S]*groups\.splice\(index, 1\)/);
+});
+
 test("sidebar layout keeps overflow hidden and adapts rows to viewport height", () => {
   const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(cssSource, /Permanent no-scroll sidebar/);

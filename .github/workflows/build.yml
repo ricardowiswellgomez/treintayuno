@@ -70,38 +70,38 @@ jobs:
         run: |
           apk="dist/treseiscinco.apk"
           test -s "$apk"
+          set -x
           badging="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk")"
-          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'"
-          printf '%s\n' "$badging" | grep -Eq "application:.*icon='res/mipmap-[^']+/ic_launcher.png'"
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-mdpi(-v4)?/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml'
-          icon_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png' | head -n 1)"
-          foreground_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-xxxhdpi(-v4)?/ic_launcher_foreground.png' | head -n 1)"
-          adaptive_xml_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml' | head -n 1)"
-          test -n "$icon_entry" && test -n "$foreground_entry" && test -n "$adaptive_xml_entry"
+          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'" || { echo "ERROR: la APK no informa la etiqueta treseiscinco."; printf '%s\n' "$badging"; exit 1; }
+          printf '%s\n' "$badging" | grep -Eq "application:.*icon='res/[^']*/ic_launcher.png'" || { echo "ERROR: el manifest compilado no muestra el recurso ic_launcher.png."; printf '%s\n' "$badging"; exit 1; }
+          entries="$(unzip -Z1 "$apk")"
+          icon_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher.png$' | head -n 1 || true)"
+          foreground_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher_foreground.png$' | head -n 1 || true)"
+          adaptive_xml_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher.xml$' | head -n 1 || true)"
+          if [ -z "$icon_entry" ] || [ -z "$foreground_entry" ] || [ -z "$adaptive_xml_entry" ]; then
+            echo "ERROR: faltan recursos de icono dentro del APK. Recursos encontrados:"
+            printf '%s\n' "$entries" | grep -E 'ic_launcher|mipmap' | head -n 100 || true
+            echo "icon_entry=$icon_entry"
+            echo "foreground_entry=$foreground_entry"
+            echo "adaptive_xml_entry=$adaptive_xml_entry"
+            exit 1
+          fi
           unzip -p "$apk" "$icon_entry" > /tmp/treseiscinco-launcher.png
           unzip -p "$apk" "$foreground_entry" > /tmp/treseiscinco-foreground.png
-          # Source adaptive-icon XML was verified before compilation; the APK now must contain
-          # its XML mapping, foreground image, and full-color legacy image with actual brand pixels.
-          # Both APK icon files were produced by scripts/generate-android-icons.mjs from the official
-          # app artwork (legacy icon) and official 365 symbol SVG (adaptive foreground). Confirm that
-          # Android has packaged and can decode the actual PNG payloads, not merely that resource names exist.
           node --input-type=module -e '
             import sharp from "sharp";
             for (const file of ["/tmp/treseiscinco-launcher.png", "/tmp/treseiscinco-foreground.png"]) {
               const meta = await sharp(file).metadata();
-              if (!meta.width || !meta.height || meta.width < 48 || meta.height < 48) {
-                throw new Error("Icono del APK inválido: " + JSON.stringify({ file, width: meta.width, height: meta.height, format: meta.format }));
-              }
               const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
               let visible = 0;
               for (let i = 3; i < data.length; i += info.channels) if (data[i] > 32) visible++;
-              if (visible < 300) throw new Error("Icono sin contenido visible: " + JSON.stringify({ file, visible }));
-              console.log("Icono PNG real verificado", JSON.stringify({ file, width: meta.width, height: meta.height, visible }));
+              console.log("APK_ICON_DIAGNOSTIC", JSON.stringify({ file, width: meta.width, height: meta.height, format: meta.format, visible }));
+              if (!meta.width || !meta.height || meta.width < 48 || meta.height < 48 || visible < 300) {
+                throw new Error("El PNG del icono del APK no es válido o está vacío: " + file);
+              }
             }
           '
-          echo "APK label, manifest icon references, adaptive layers and actual branded launcher artwork verified."
+          echo "APK label, icon manifest reference, adaptive icon mapping, and actual PNG payloads verified."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

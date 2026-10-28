@@ -1605,7 +1605,7 @@ function AuthenticatedApp() {
   const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
-  const [profitabilityChartType, setProfitabilityChartType] = useState("pie");
+
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminData, setPlatformAdminData] = useState(null);
   const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
@@ -1629,6 +1629,7 @@ function AuthenticatedApp() {
   const [inventoryImportProgress, setInventoryImportProgress] = useState("");
   const [inventoryDataMenuOpen, setInventoryDataMenuOpen] = useState(false);
   const inventoryDataTriggerRef = useRef(null);
+  const inventoryDataMobileTriggerRef = useRef(null);
   const inventoryDataMenuRef = useRef(null);
   const [inventoryDataMenuPosition, setInventoryDataMenuPosition] = useState({ top: 12, left: 12, width: 560 });
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -1640,7 +1641,11 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!inventoryDataMenuOpen) return;
     const reposition = () => {
-      const anchor = inventoryDataTriggerRef.current?.getBoundingClientRect();
+      const isPhone = window.matchMedia("(max-width: 640px)").matches;
+      const activeTrigger = isPhone
+        ? (inventoryDataMobileTriggerRef.current || inventoryDataTriggerRef.current)
+        : (inventoryDataTriggerRef.current || inventoryDataMobileTriggerRef.current);
+      const anchor = activeTrigger?.getBoundingClientRect();
       if (!anchor) return;
       const width = Math.min(560, Math.max(280, window.innerWidth - 24));
       const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
@@ -1653,7 +1658,7 @@ function AuthenticatedApp() {
       setInventoryDataMenuPosition({ top, left, width });
     };
     const closeOnOutside = (event) => {
-      if (inventoryDataTriggerRef.current?.contains(event.target) || inventoryDataMenuRef.current?.contains(event.target)) return;
+      if (inventoryDataTriggerRef.current?.contains(event.target) || inventoryDataMobileTriggerRef.current?.contains(event.target) || inventoryDataMenuRef.current?.contains(event.target)) return;
       setInventoryDataMenuOpen(false);
     };
     const closeOnEscape = (event) => { if (event.key === "Escape") setInventoryDataMenuOpen(false); };
@@ -3435,6 +3440,8 @@ function AuthenticatedApp() {
         { label: "Unidad", value: product.unit_name || "unidad" },
         { label: "Precio de venta", value: money(product.sale_price_minor, currencyCode) },
         { label: "Costo", value: money(product.cost_price_minor, currencyCode) },
+        { label: "Ganancia por unidad", value: money(Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0), currencyCode) },
+        { label: "Margen", value: Number(product.sale_price_minor || 0) > 0 ? (((Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0)) / Number(product.sale_price_minor || 0)) * 100).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + "%" : "—" },
         { label: "Existencias", value: product.track_inventory ? Number(product.stock_on_hand).toLocaleString("es-CO") + " " + (product.unit_name || "unidades") : "No aplica" },
         { label: "Alerta de stock", value: product.track_inventory && product.low_stock_threshold != null ? Number(product.low_stock_threshold).toLocaleString("es-CO") : "No configurada" },
         { label: "Estado", value: product.archived_at ? "Archivado" : product.is_sellable ? "Activo" : "Inactivo" },
@@ -5895,14 +5902,11 @@ function AuthenticatedApp() {
     return top.length ? top : [{label:"Ventas",value:profitLineRevenue}];
   })();
   const profitPurchasesPaid = periodPurchasePayments.reduce((sum,payment)=>sum+Number(payment.amount_minor||0),0);
-  const profitCostPieRows = [
-    {label:"Compras pagadas",value:profitPurchasesPaid},
-    ...Object.entries(periodExpenses.reduce((groups,expense)=>{
-      const category=String(expense.category||"Otros").trim()||"Otros";
-      groups[category]=(groups[category]||0)+Number(expense.amount_minor||0);
-      return groups;
-    },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5)
-  ];
+  const profitCostPieRows = Object.entries(periodExpenses.reduce((groups,expense)=>{
+    const category=String(expense.category||"Otros").trim()||"Otros";
+    groups[category]=(groups[category]||0)+Number(expense.amount_minor||0);
+    return groups;
+  },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
@@ -6835,11 +6839,11 @@ function AuthenticatedApp() {
                 <article className="profit-metric panel"><span>Gastos registrados</span><strong>{money(profitExpenseTotal, currencyCode)}</strong><small>{periodExpenses.length} {periodExpenses.length === 1 ? "gasto" : "gastos"}</small></article>
                 <article className="profit-metric panel profit-metric-primary"><span>Resultado estimado</span><strong className={profitNet < 0 ? "profit-negative" : "profit-positive"}>{money(profitNet, currencyCode)}</strong><small>Ganancia bruta menos gastos registrados</small></article>
               </div>
-              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={profitabilityChartType === "bars" ? "active" : ""} aria-pressed={profitabilityChartType === "bars"} onClick={() => setProfitabilityChartType("bars")}>Barras</button><button type="button" className={profitabilityChartType === "pie" ? "active" : ""} aria-pressed={profitabilityChartType === "pie"} onClick={() => setProfitabilityChartType("pie")}>Pastel</button></div>
-              {profitabilityChartType === "pie" ? <div className="profitability-pie-grid">
+              <div className="profitability-pie-grid">
                 <SimplePie title="Distribución de ingresos" description="Ventas agrupadas por artículo según el periodo elegido." data={profitIncomePieRows} formatValue={(value)=>money(value,currencyCode)} />
-                <SimplePie title="Compras y gastos" description="Pagos de compras de inventario y gastos registrados, sin duplicar el costo de lo vendido." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
-              </div> : <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />}
+                <SimplePie title="Distribución de gastos" description="Gastos registrados, agrupados por categoría en el periodo elegido. Las compras de inventario se muestran aparte para no confundirlas con gastos." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
+              </div>
+              <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />
               <div className="profitability-secondary-metrics">
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>
@@ -7115,7 +7119,21 @@ function AuthenticatedApp() {
                 <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
               </div>
             </details>}
-                        <div className="inventory-controls panel">
+            <div className="inventory-import-mobile-actions">
+              <button
+                ref={inventoryDataMobileTriggerRef}
+                type="button"
+                className={"inventory-import-mobile-trigger" + (inventoryDataMenuOpen ? " is-open" : "")}
+                aria-haspopup="dialog"
+                aria-expanded={inventoryDataMenuOpen}
+                aria-controls="inventory-data-menu"
+                onClick={() => setInventoryDataMenuOpen((open) => !open)}
+              >
+                <span><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span>
+                <AppIcon name={inventoryDataMenuOpen ? "chevron-up" : "chevron-down"} size={15}/>
+              </button>
+            </div>
+            <div className="inventory-controls panel">
               <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
               <details className="inventory-filter-disclosure">
@@ -7317,8 +7335,8 @@ function AuthenticatedApp() {
       <span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span>
     </div>
     <div className="product-card-wa-details">
-      <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
-      <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
+      <div><span>Existencias</span><strong>{p.track_inventory ? <>{Number(p.stock_on_hand).toLocaleString("es-CO")}<span className="product-card-stock-unit"> {p.unit_name || "unidades"}</span></> : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
+      <div className="product-card-wa-unit"><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
       {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
     </div>
     <div className="product-card-profit-row"><div><span>Ganancia por unidad</span><strong className={productProfitMinor < 0 ? "negative-value" : ""}>{money(productProfitMinor, currencyCode)}</strong></div><div><span>Margen</span><strong className={productMargin < 0 ? "negative-value" : ""}>{productMargin.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%</strong></div></div>

@@ -8619,3 +8619,168 @@ body { background: #F5F7FC; color: #19243A; }
   .public-catalog-intro-actions { justify-content: flex-start !important; }
   .public-catalog-intro-actions .public-catalog-delivery-methods { justify-content: flex-start !important; }
 }
+
+
+/* Phone-only inventory refinement: group tax, import and search actions; compact product summaries. */
+.inventory-import-mobile-actions { display:none; }
+.inventory-import-mobile-trigger {
+  display:flex;
+  width:100%;
+  min-width:0;
+  min-height:40px;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 11px;
+  border:1px solid var(--line,#DDE5E3);
+  border-radius:11px;
+  background:var(--paper,#fff);
+  color:var(--ink,#24352B);
+  text-align:left;
+  cursor:pointer;
+}
+.inventory-import-mobile-trigger>span {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.inventory-import-mobile-trigger>span strong {
+  font-size:12px;
+  line-height:1.3;
+  font-weight:750;
+}
+.inventory-import-mobile-trigger.is-open {
+  border-color:var(--green,#167D82);
+  background:var(--green-soft,#F1F8F7);
+}
+@media (max-width: 640px) {
+  /* The desktop heading retains the current import/export menu; phones get it beside tax and search. */
+  .products-page .inventory-import-actions { display:none!important; }
+  .products-page .inventory-import-mobile-actions {
+    display:block!important;
+    width:100%;
+    margin:0 0 3px!important;
+  }
+  .products-page .inventory-overview {
+    gap:5px!important;
+    margin-bottom:2px!important;
+  }
+  .products-page .inventory-page-heading { gap:7px!important; }
+  .products-page .inventory-metric-grid { margin-bottom:0!important; }
+  .products-page .bulk-tax-disclosure {
+    margin:3px 0!important;
+    border-radius:10px!important;
+  }
+  .products-page .bulk-tax-disclosure>summary {
+    padding:8px 10px!important;
+    gap:5px 8px!important;
+  }
+  .products-page .bulk-tax-disclosure>summary strong {
+    font-size:12px!important;
+    line-height:1.25!important;
+  }
+  .products-page .bulk-tax-disclosure>summary span {
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+  .products-page .inventory-import-mobile-trigger {
+    min-height:38px!important;
+    padding:8px 10px!important;
+    border-radius:10px!important;
+  }
+  .products-page .inventory-controls.panel {
+    margin:0 0 6px!important;
+    padding:8px!important;
+    gap:6px!important;
+  }
+  .products-page .inventory-controls .inventory-search { gap:4px!important; }
+  .products-page .inventory-controls .inventory-search input { min-height:38px!important; }
+  .app-shell .products-page .product-list.product-list-cards {
+    gap:8px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards>.product-card-wa {
+    padding:10px!important;
+    border-radius:12px!important;
+    gap:7px!important;
+    box-shadow:0 2px 9px #17253b0a!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-top {
+    gap:8px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-thumb {
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    flex-basis:40px!important;
+    border-radius:9px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-copy h3 {
+    font-size:14px!important;
+    line-height:1.25!important;
+    -webkit-line-clamp:2!important;
+    margin-bottom:2px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-category {
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-code {
+    gap:3px 5px!important;
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-price-row {
+    gap:6px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-price>strong {
+    font-size:16px!important;
+    line-height:1.2!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-price small {
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-details {
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-unit,
+  .app-shell .products-page .product-list.product-list-cards .product-card-profit-row {
+    display:none!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-details span {
+    font-size:10px!important;
+    line-height:1.2!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-wa-details strong {
+    font-size:12px!important;
+    line-height:1.25!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-actions {
+    gap:5px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-variants {
+    gap:4px 8px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-variants>div {
+    gap:2px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-variants>div span {
+    font-size:10px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-variants>div strong,
+  .app-shell .products-page .product-list.product-list-cards .product-card-variants .text-button {
+    font-size:11px!important;
+  }
+  .app-shell .products-page .product-list.product-list-cards .product-card-action-buttons {
+    gap:6px!important;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .app-shell .products-page .product-list.product-list-cards .product-card-stock-unit {
+    display:none!important;
+  }
+}

@@ -8105,12 +8105,12 @@ body { background: #F5F7FC; color: #19243A; }
 }
 
 
-/* Dense desktop catalog: five products per row, reducing card footprint while keeping mobile readable. */
+/* Dense desktop catalog: five compact cards per row; step down gracefully on tablets and phones. */
 .public-catalog-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
 }
 @media (max-width: 1180px) {
-  .public-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .public-catalog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 900px) {
   .public-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }

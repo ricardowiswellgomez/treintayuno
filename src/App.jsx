@@ -112,7 +112,7 @@ const toPublicCatalogSlug = (value) => String(value || "")
   .trim()
   .replace(/[^a-z0-9]+/g, "-")
   .replace(/^-+|-+$/g, "");
-const reservedPublicPaths = new Set(["api", "assets", "auth", "login", "signup", "forgot-password", "reset-password", "admin", "sw", "service-worker"]);
+const reservedPublicPaths = new Set(["api", "assets", "auth", "login", "signup", "forgot-password", "reset-password", "admin", "sw", "service-worker", "contacto", "ayuda", "soporte"]);
 
 const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
@@ -1496,7 +1496,8 @@ function PublicLanding({ onLogin, onSignup, onInstall, installPromptAvailable, a
         <a href="#beneficios" onClick={() => setMenuOpen(false)}>Qué puedes hacer</a>
         <a href="#planes" onClick={() => setMenuOpen(false)}>Planes y precios</a>
         <a href="#importar" onClick={() => setMenuOpen(false)}>Importar inventario</a>
-        <a href="mailto:ricardowiswellgomez@gmail.com?subject=Hola%2C%20treseiscinco" onClick={() => setMenuOpen(false)}>Soporte</a>
+        <a href="/ayuda" onClick={() => setMenuOpen(false)}>¿Necesitas ayuda?</a>
+        <a href="/contacto" onClick={() => setMenuOpen(false)}>Soporte</a>
       </nav>
       <div className="landing-header-actions"><button type="button" className="landing-login-link" onClick={onLogin}>Iniciar sesión</button><button type="button" className="landing-primary-button" onClick={onSignup}>Probar gratis <span aria-hidden="true">↗</span></button></div>
       <button type="button" className="landing-menu-toggle" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span></button>
@@ -1571,9 +1572,147 @@ function PublicLanding({ onLogin, onSignup, onInstall, installPromptAvailable, a
 
     <section className="landing-final-cta"><div className="landing-final-mark"><img src="/symbol-treseiscinco.svg" alt="treseiscinco"/></div><span className="landing-kicker">TU NEGOCIO, TODOS LOS DÍAS</span><h2>Que los números te ayuden.<br /><em>Que no te enreden.</em></h2><p>Empieza con lo que tienes hoy y construye un negocio más ordenado, paso a paso.</p><div className="landing-hero-actions"><button type="button" className="landing-primary-button" onClick={onSignup}>Crear cuenta gratis <span aria-hidden="true">→</span></button><button type="button" className="landing-secondary-button" onClick={onLogin}>Ya tengo cuenta</button></div></section>
 
-    <footer className="landing-footer"><a className="landing-footer-brand" href="#inicio"><img src="/symbol-treseiscinco.svg" alt=""/><strong>treseiscinco</strong></a><span>Tu negocio, todos los días.</span><nav><a href="#planes">Planes y precios</a><a href="#importar">Importar inventario</a><a href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco">Soporte y contacto</a></nav><small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small></footer>
+    <footer className="landing-footer"><a className="landing-footer-brand" href="/"><img src="/symbol-treseiscinco.svg" alt=""/><strong>treseiscinco</strong></a><span>Tu negocio, todos los días.</span><nav><a href="#planes">Planes y precios</a><a href="#importar">Importar inventario</a><a href="/ayuda">¿Necesitas ayuda?</a><a href="/contacto">Soporte y contacto</a></nav><small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small></footer>
   </main>;
 }
+
+
+
+const publicHelpArticles = [
+  {category:"Primeros pasos",title:"¿Cómo empiezo a usar treseiscinco?",summary:"Crea tu cuenta, configura lo esencial y registra el primer artículo.",steps:["Crea una cuenta con un correo al que puedas acceder e inicia sesión.","Completa el nombre de tu negocio y revisa Configuración: moneda, datos comerciales y apariencia.","Abre Productos para registrar tus artículos. Después podrás añadir clientes, ventas, compras y gastos.","Vuelve a Inicio para revisar los indicadores de los movimientos que registres."],tip:"Usa tus datos reales desde el principio. Los indicadores no se rellenan con ventas ni gastos de ejemplo.",keywords:"crear registro cuenta negocio inicio empezar configurar"},
+  {category:"Cuenta y acceso",title:"¿Cómo recupero mi contraseña?",summary:"Usa la opción de recuperación desde la pantalla de acceso.",steps:["En la pantalla de acceso, elige «Olvidé mi contraseña».","Escribe el correo asociado a tu cuenta y solicita el enlace de recuperación.","Revisa la bandeja de entrada y la carpeta de correo no deseado; abre el enlace y define una contraseña nueva.","Regresa a treseiscinco e inicia sesión con la contraseña nueva."],tip:"No compartas enlaces de recuperación, contraseñas ni códigos de verificación.",keywords:"contraseña olvidé recuperar restablecer login entrar acceso"},
+  {category:"Productos e inventario",title:"¿Cómo registro o edito un producto?",summary:"La ficha reúne nombre, código, categoría, precio, costo y existencias.",steps:["Abre Productos y pulsa «Agregar artículo».","Completa el nombre y tipo; añade código, categoría, unidad, precio de venta y costo cuando correspondan.","Si controlas inventario físico, activa el seguimiento e indica existencias y mínimo de reposición.","Guarda el artículo. Para editar uno existente, abre su ficha y pulsa la acción de edición."],tip:"En celulares, toca la tarjeta para consultar los detalles completos del artículo.",keywords:"producto artículo sku código precio costo unidad existencias crear editar"},
+  {category:"Productos e inventario",title:"¿Cómo importo muchos productos desde Excel o CSV?",summary:"La importación carga una plantilla con varias referencias.",steps:["En Productos, abre «Importar / exportar» o «Importar inventario», según el dispositivo.","Descarga la plantilla Excel o CSV y completa sus columnas sin cambiar los encabezados.","Sube el archivo .xls, .xlsx o .csv. La importación admite hasta 500 artículos por archivo.","Revisa el resultado y abre algunos productos para comprobar nombres, precios y cantidades."],tip:"La fila de muestra se omite al importar. Conserva una copia del archivo por si necesitas corregirlo.",keywords:"excel importar cargar csv plantilla inventario masivo archivo"},
+  {category:"Productos e inventario",title:"¿Qué diferencia hay entre stock, mínimo y sin stock?",summary:"Las existencias muestran unidades actuales; el mínimo ayuda a anticipar reposiciones.",steps:["En Productos, revisa las existencias de cada artículo.","Define un mínimo de reposición en la ficha cuando quieras anticipar una alerta.","Usa el filtro de inventario para consultar los productos activos, con stock bajo o agotados.","Si un producto tiene variantes, revisa las existencias por talla, color u otra opción."],tip:"Los servicios o productos sin control de inventario pueden estar habilitados para la venta sin mostrar cantidades físicas.",keywords:"stock existencia unidades disponibles agotado reposición mínimo variantes"},
+  {category:"Productos e inventario",title:"¿Cómo asigno impuestos a varios productos?",summary:"La asignación masiva guarda la tarifa para los artículos seleccionados.",steps:["En Productos, abre «Asignar impuesto a varios productos».","Selecciona la tarifa aplicable y busca productos por nombre o código.","Marca los artículos correspondientes y pulsa «Aplicar impuesto a seleccionados».","Abre una ficha para comprobar que se guardó la tarifa esperada."],tip:"IVA e impuesto al consumo son impuestos del producto. Retefuente, ReteIVA y ReteICA son retenciones distintas.",keywords:"impuesto IVA impoconsumo retefuente reteiva reteica tarifa"},
+  {category:"Ventas y dinero",title:"¿Cómo registro una venta?",summary:"Una venta reúne artículos, cantidades, datos opcionales del cliente y dinero recibido.",steps:["Abre Ventas y pulsa «Registrar venta».","Añade productos y cantidades; revisa precio, impuesto y total antes de guardar.","Relaciona un cliente si lo necesitas y registra el abono inicial, medio de pago y notas.","Guarda la venta y revisa el registro y el saldo pendiente, si no se pagó todo."],tip:"El sistema comprueba las existencias controladas al registrar una venta. Revisa las cantidades antes de confirmar.",keywords:"vender venta carrito productos cantidades cliente cobrar registrar"},
+  {category:"Ventas y dinero",title:"¿Cómo registro un abono y reviso un saldo pendiente?",summary:"Un abono registra dinero recibido; el saldo muestra cuánto queda por cobrar o pagar.",steps:["Abre la venta o la sección de Cuentas para localizar el registro.","Revisa el total original, los abonos guardados y el saldo actual.","Registra el nuevo abono desde la opción disponible y confirma fecha y medio de pago.","Vuelve a comprobar el estado de la cuenta."],tip:"Un valor por cobrar no es dinero recibido. Mantenlo separado de los ingresos realmente cobrados.",keywords:"abono abonar pago saldo pendiente cobrar cuenta deuda"},
+  {category:"Compras y gastos",title:"¿Cómo registro una compra de inventario?",summary:"Anota lo que compraste, el proveedor y el pago correspondiente.",steps:["Abre Compras y elige la acción para registrar una compra.","Añade los artículos o conceptos, las cantidades y el costo unitario; selecciona proveedor si aplica.","Revisa el total, la fecha, el pago realizado y el saldo por pagar.","Guarda y comprueba el movimiento y las existencias, si la compra quedó vinculada al inventario."],tip:"Una compra de inventario no es lo mismo que un gasto de funcionamiento. Evita registrarla dos veces.",keywords:"compra proveedor inventario costo existencias factura compras pagada"},
+  {category:"Compras y gastos",title:"¿Cómo registro un gasto del negocio?",summary:"Registra salidas como transporte, servicios y materiales de consumo.",steps:["Abre Compras y gastos y selecciona la sección de gastos.","Pulsa «Nuevo gasto» y escribe una descripción clara, categoría, fecha e importe.","Selecciona el medio de pago y añade proveedor o notas cuando sea útil.","Guarda el movimiento y comprueba que aparezca en el listado y en el periodo correspondiente."],tip:"Registra cada salida una sola vez; no dupliques una compra que ya quedó contabilizada en otro movimiento.",keywords:"gasto egreso salida dinero categoría transporte servicios pago"},
+  {category:"Informes y rentabilidad",title:"¿Qué significa el resultado en Rentabilidad?",summary:"La pantalla compara ventas, costos de artículos vendidos y gastos registrados.",steps:["En Finanzas, abre Rentabilidad y selecciona el periodo o rango de fechas.","Revisa ventas registradas y costo de lo vendido usando los costos guardados en los productos o ventas.","La ganancia bruta estimada compara el ingreso con el costo registrado de los artículos vendidos.","Los gastos registrados se tienen en cuenta para obtener el resultado estimado; revisa los gráficos y desgloses."],tip:"El cálculo depende de que los costos y gastos estén registrados. No incluye movimientos que aún no hayas anotado ni reemplaza una revisión contable.",keywords:"rentabilidad utilidad margen ganancia costo venta resultado ingresos gastos gráfico pastel"},
+  {category:"Informes y rentabilidad",title:"¿Cómo leo Estadísticas y el balance?",summary:"Consulta las cifras por periodo y distingue dinero recibido de valores pendientes.",steps:["Abre Estadísticas y selecciona el periodo que quieres analizar.","Revisa ingresos cobrados, gastos y compras pagadas, junto con los desgloses disponibles.","Consulta el detalle para identificar qué movimientos componen una cifra.","Si un valor parece incorrecto, comprueba la fecha y el estado del movimiento original."],tip:"Ventas pendientes de cobro no equivalen a dinero que ya entró en caja.",keywords:"estadísticas balance gráficos periodo ventas ingresos gastos compras total"},
+  {category:"Clientes y proveedores",title:"¿Cómo creo un cliente y lo relaciono con una venta?",summary:"La ficha mantiene los datos de contacto y ayuda a relacionar operaciones.",steps:["Abre Clientes y pulsa «Nuevo cliente».","Registra el nombre o empresa y los datos de contacto disponibles.","Guarda la ficha y selecciónala al crear una venta cuando quieras relacionarla con ese cliente."],tip:"No crees una segunda venta solo para relacionar un cliente con una operación existente.",keywords:"cliente comprador contacto empresa agregar crear relación venta"},
+  {category:"Clientes y proveedores",title:"¿Dónde administro los proveedores?",summary:"Proveedores es un módulo propio para consultar y mantener esos registros.",steps:["Abre Proveedores en el menú principal.","Crea o edita los datos del proveedor disponibles.","Selecciona el proveedor en compras o gastos cuando quieras dejar constancia de su origen."],tip:"Mantener los nombres consistentes facilita encontrar registros y revisar movimientos.",keywords:"proveedor proveedores suministrador compras gastos contacto"},
+  {category:"Ventas y catálogo",title:"¿Cómo preparo una cotización?",summary:"Prepara y comparte una propuesta antes de registrar una venta.",steps:["Abre Cotizaciones desde el módulo Ventas.","Crea una propuesta y añade cliente, conceptos, cantidades y precios según necesites.","Revisa el total y guarda la cotización.","Consulta su estado para continuar el seguimiento."],tip:"Comprueba los precios y la vigencia antes de compartir la propuesta con el cliente.",keywords:"cotización cotizaciones propuesta presupuesto cliente oferta"},
+  {category:"Ventas y catálogo",title:"¿Cómo publico y comparto mi catálogo?",summary:"El catálogo público muestra los productos que hayas habilitado y publicado.",steps:["Abre Catálogo y revisa la configuración del enlace y los datos visibles del negocio.","Publica los artículos que deben aparecer y confirma que estén habilitados para la venta.","Copia o comparte el enlace público con tus clientes y comprueba la vista como visitante."],tip:"Antes de compartir el enlace, revisa fotos, descripciones, precios, métodos de entrega y visibilidad de existencias.",keywords:"catálogo público enlace compartir tienda publicar productos clientes"},
+  {category:"Ventas y catálogo",title:"¿Cómo funcionan los cupones de descuento?",summary:"Los cupones permiten definir promociones con condiciones y vigencia.",steps:["Abre Cupones de descuento.","Crea el código y completa las condiciones, fechas y límites que permita el formulario.","Guarda la promoción y comprueba los detalles antes de compartirla."],tip:"Explica las condiciones del descuento y comprueba que el cupón siga vigente.",keywords:"cupón cupones descuento promoción código oferta"},
+  {category:"Equipo y permisos",title:"¿Cómo agrego trabajadores y limito sus permisos?",summary:"Cada persona puede tener acceso solo a los módulos que necesita.",steps:["Abre Equipo y permisos o Trabajadores, según las opciones de tu cuenta.","Agrega la persona e indica el rol o los permisos que necesita.","Guarda los cambios y revisa qué módulos puede abrir esa cuenta."],tip:"Concede solo los permisos necesarios. La información de un negocio debe permanecer separada de la de otros negocios.",keywords:"trabajadores empleados equipo permisos roles acceso subusuarios"},
+  {category:"Configuración",title:"¿Cómo cambio moneda, logo o colores?",summary:"La configuración reúne datos comerciales y personalización de la aplicación.",steps:["Abre Configuración desde el menú.","Actualiza los campos disponibles, los datos comerciales, el logo y los colores.","Guarda los cambios y regresa a Inicio para comprobar la apariencia."],tip:"Lee las advertencias antes de cambiar la moneda, especialmente si ya registraste operaciones.",keywords:"configuración moneda logo colores apariencia empresa nombre negocio"},
+  {category:"Ayuda y problemas",title:"¿Para qué sirve la IA de treseiscinco?",summary:"El asistente puede contestar preguntas en lenguaje natural con los datos permitidos.",steps:["Abre el botón «IA» dentro de la aplicación.","Escribe una pregunta concreta, como «¿qué productos debo reponer?» o «resume mis ventas de este mes».","Revisa el periodo y los movimientos implicados si necesitas validar la respuesta."],tip:"La IA no debe inventar cifras. Si no puede consultar un dato o no está registrado, te lo indicará.",keywords:"inteligencia artificial asistente preguntar resumen análisis datos"},
+  {category:"Ayuda y problemas",title:"¿Para qué sirven los iconos de ayuda?",summary:"La ayuda contextual explica el campo o formulario que estás utilizando.",steps:["Busca el icono «?» junto a un campo o formulario.","Tócalo para leer la explicación y los pasos sugeridos.","Cierra la ayuda y continúa con el formulario."],tip:"También puedes buscar dudas en esta guía completa.",keywords:"ayuda contextual icono signo pregunta campo formulario cómo usar"},
+  {category:"Aplicación móvil",title:"¿Tengo que reinstalar la APK cuando se actualiza la app?",summary:"Las mejoras normales de la interfaz se publican centralmente.",steps:["Abre treseiscinco con conexión a internet.","Si no ves un cambio recién publicado, cierra la app y vuelve a abrirla para cargar la versión web actual.","Si sigue sin aparecer, comprueba el sitio treseiscinco.com desde el navegador del celular para comparar."],tip:"Las actualizaciones normales del sitio no deberían requerir instalar otra APK. Una actualización del contenedor Android o de permisos del dispositivo sí podría necesitar una nueva versión.",keywords:"celular móvil Android APK reinstalar actualizar actualización app"},
+  {category:"Ayuda y problemas",title:"¿Qué hago si una pantalla no carga o aparece un error?",summary:"Comprueba la conexión y el estado del registro antes de repetir una operación.",steps:["Comprueba que tengas una conexión estable y vuelve a cargar la pantalla.","Cierra y abre treseiscinco. Si la sesión expiró, inicia sesión de nuevo.","Antes de repetir una venta, compra o gasto, comprueba si el primer intento quedó registrado para evitar duplicados.","Si persiste, usa Contacto e indica la sección, los pasos y el mensaje de error."],tip:"Nunca envíes tu contraseña ni códigos de verificación en un mensaje de soporte.",keywords:"error fallo no carga problema guardado sesión internet duplicado soporte"},
+  {category:"Datos y seguridad",title:"¿Mis datos se mezclan con los de otros negocios?",summary:"La aplicación separa la información por negocio y respeta los permisos de la cuenta.",steps:["Selecciona el negocio correcto si tu cuenta tiene acceso a más de uno.","Revisa los permisos si una sección no aparece.","Si ves un dato que no reconoces, no lo modifiques de inmediato: anota el movimiento y contacta a soporte."],tip:"No compartas tu contraseña. El equipo de soporte no necesita tu clave para investigar un problema.",keywords:"privacidad seguridad datos negocios permisos contraseña"}
+];
+
+function PublicUtilityHeader({ active }) {
+  return <header className="public-utility-header">
+    <a className="public-utility-brand" href="/" aria-label="treseiscinco, inicio"><img src="/brand-treseiscinco.svg" alt="treseiscinco" /></a>
+    <nav className="public-utility-nav" aria-label="Navegación de soporte">
+      <a href="/">Inicio</a>
+      <a href="/ayuda" className={active === "help" ? "is-active" : ""} aria-current={active === "help" ? "page" : undefined}>¿Necesitas ayuda?</a>
+      <a href="/contacto" className={active === "contact" ? "is-active" : ""} aria-current={active === "contact" ? "page" : undefined}>Contacto</a>
+    </nav>
+  </header>;
+}
+
+function PublicUtilityFooter() {
+  return <footer className="landing-footer public-utility-footer">
+    <a className="landing-footer-brand" href="/"><img src="/symbol-treseiscinco.svg" alt="" /><strong>treseiscinco</strong></a>
+    <span>Tu negocio, todos los días.</span>
+    <nav><a href="/">Inicio</a><a href="/ayuda">¿Necesitas ayuda?</a><a href="/contacto">Contacto</a></nav>
+    <small>© {new Date().getFullYear()} treseiscinco. Tu negocio, tus datos.</small>
+  </footer>;
+}
+
+function PublicContactPage() {
+  const [form, setForm] = useState({ name:"", email:"", category:"Uso de la app", message:"", website:"" });
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
+  async function submitContact(event) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setNotice(""); setError("");
+    try {
+      const response = await fetch("/api/contact", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "No pudimos enviar el mensaje. Inténtalo de nuevo.");
+      setNotice(result.message || "Gracias. Tu mensaje se envió al equipo de soporte.");
+      setForm({ name:"", email:"", category:"Uso de la app", message:"", website:"" });
+    } catch (submitError) {
+      setError(submitError?.message || "No pudimos enviar el mensaje ahora. Inténtalo de nuevo.");
+    } finally { setBusy(false); }
+  }
+
+  return <main className="public-landing public-utility-page">
+    <PublicUtilityHeader active="contact" />
+    <section className="public-utility-hero">
+      <span className="landing-kicker">ESTAMOS PARA AYUDARTE</span>
+      <h1>Hablemos de tu negocio.</h1>
+      <p>Cuéntanos qué necesitas. El formulario está dentro de treseiscinco: no tendrás que abrir Outlook ni ninguna otra aplicación de correo.</p>
+    </section>
+    <section className="public-contact-layout">
+      <form className="public-contact-form" onSubmit={submitContact}>
+        <div className="public-contact-form-title"><span className="landing-kicker">CONTACTO Y SOPORTE</span><h2>Envíanos un mensaje</h2><p>Completa los campos y pulsa enviar. Te responderemos al correo que dejes aquí.</p></div>
+        {notice && <div className="public-contact-alert is-success" role="status">{notice}</div>}
+        {error && <div className="public-contact-alert is-error" role="alert">{error}</div>}
+        <label><span>Tu nombre *</span><input name="name" required minLength={2} maxLength={100} autoComplete="name" value={form.name} onChange={(e) => setForm((v) => ({...v,name:e.target.value}))} placeholder="Nombre y apellido" /></label>
+        <label><span>Correo electrónico *</span><input type="email" name="email" required maxLength={254} autoComplete="email" value={form.email} onChange={(e) => setForm((v) => ({...v,email:e.target.value}))} placeholder="tunombre@correo.com" /></label>
+        <label><span>¿Sobre qué nos escribes? *</span><select name="category" value={form.category} onChange={(e) => setForm((v) => ({...v,category:e.target.value}))}><option>Uso de la app</option><option>Problema técnico</option><option>Cuenta y acceso</option><option>Inventario, ventas o gastos</option><option>Sugerencia</option><option>Otro</option></select></label>
+        <label><span>Cuéntanos en qué podemos ayudarte *</span><textarea name="message" required minLength={10} maxLength={4000} rows={6} value={form.message} onChange={(e) => setForm((v) => ({...v,message:e.target.value}))} placeholder="Describe tu duda o el problema que encontraste…" /></label>
+        <label className="public-contact-honeypot" aria-hidden="true" tabIndex={-1}>Sitio web<input name="website" value={form.website} tabIndex={-1} autoComplete="off" onChange={(e) => setForm((v) => ({...v,website:e.target.value}))} /></label>
+        <p className="public-contact-privacy">Usaremos estos datos para atender tu solicitud. No escribas contraseñas ni códigos de verificación.</p>
+        <button className="landing-primary-button public-contact-submit" type="submit" disabled={busy}>{busy ? "Enviando mensaje…" : "Enviar mensaje"} <span aria-hidden="true">→</span></button>
+      </form>
+      <aside className="public-contact-side">
+        <div className="public-contact-side-icon" aria-hidden="true">✉</div>
+        <h2>Tu mensaje llega a soporte.</h2>
+        <p>Incluye la sección y los pasos que estabas siguiendo para que podamos entender mejor tu duda.</p>
+        <div className="public-contact-side-row"><span aria-hidden="true">✓</span><span>Sin abrir aplicaciones de correo externas.</span></div>
+        <div className="public-contact-side-row"><span aria-hidden="true">✓</span><span>Envía una explicación clara y tu correo de respuesta.</span></div>
+        <div className="public-contact-side-links"><strong>¿Prefieres encontrar la respuesta ahora?</strong><a href="/ayuda">Busca en «¿Necesitas ayuda?» <span aria-hidden="true">↗</span></a></div>
+      </aside>
+    </section>
+    <PublicUtilityFooter />
+  </main>;
+}
+
+function PublicHelpPage() {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("Todas");
+  const normalizedQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const categories = ["Todas", ...new Set(publicHelpArticles.map((article) => article.category))];
+  const filtered = publicHelpArticles.filter((article) => {
+    if (category !== "Todas" && article.category !== category) return false;
+    if (!normalizedQuery) return true;
+    const searchable = [article.category, article.title, article.summary, article.keywords, ...article.steps, article.tip].join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return normalizedQuery.split(/\s+/).filter(Boolean).every((word) => searchable.includes(word));
+  });
+  return <main className="public-landing public-utility-page">
+    <PublicUtilityHeader active="help" />
+    <section className="public-utility-hero public-help-hero">
+      <span className="landing-kicker">CENTRO DE AYUDA · TRESEISCINCO</span>
+      <h1>¿Necesitas ayuda?</h1>
+      <p>Busca una pregunta, explora por tema y sigue los pasos para usar las herramientas de tu negocio.</p>
+      <label className="public-help-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Busca productos, ventas, gastos, stock, permisos…" aria-label="Buscar en la ayuda" /><kbd>Buscar</kbd></label>
+      <p className="public-help-count" aria-live="polite">{filtered.length} {filtered.length === 1 ? "guía encontrada" : "guías encontradas"}</p>
+    </section>
+    <section className="public-help-content">
+      <nav className="public-help-categories" aria-label="Filtrar guías por tema">
+        {categories.map((item) => <button type="button" key={item} className={category === item ? "is-active" : ""} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}
+      </nav>
+      {filtered.length ? <div className="public-help-list">{filtered.map((article) => <details key={article.title} className="public-help-article">
+        <summary><span className="public-help-article-meta">{article.category}</span><strong>{article.title}</strong><small>{article.summary}</small><span className="public-help-article-toggle" aria-hidden="true">＋</span></summary>
+        <div className="public-help-article-body"><h3>Cómo hacerlo</h3><ol>{article.steps.map((step, index) => <li key={index}>{step}</li>)}</ol><div className="public-help-tip"><strong>Consejo útil</strong><p>{article.tip}</p></div><button type="button" className="public-help-contact-link" onClick={() => { window.location.href = "/contacto"; }}>¿No resolvimos tu duda? Contacta a soporte <span aria-hidden="true">→</span></button></div>
+      </details>)}</div> : <div className="public-help-empty"><span aria-hidden="true">⌕</span><h2>No encontramos esa respuesta</h2><p>Prueba con otras palabras o cambia el tema seleccionado.</p><button type="button" className="landing-secondary-button" onClick={() => { setQuery(""); setCategory("Todas"); }}>Mostrar todas las guías</button><a href="/contacto">Enviar una pregunta a soporte</a></div>}
+    </section>
+    <section className="public-help-contact-strip"><div><span className="landing-kicker">¿TE FALTA UNA RESPUESTA?</span><h2>Estamos para ayudarte.</h2><p>Cuéntanos qué estabas intentando hacer y te orientaremos.</p></div><a className="landing-primary-button" href="/contacto">Contactar soporte <span aria-hidden="true">→</span></a></section>
+    <PublicUtilityFooter />
+  </main>;
+}
+
 
 function SalesModuleCards({ active, onChoose, showQuotes = true }) {
   return <div className="sales-module-cards" aria-label="Secciones de ventas">
@@ -7704,6 +7843,8 @@ export default function App() {
     !reservedPublicPaths.has(pathSlug)
   );
 
+  if (pathSlug === "contacto" || pathSlug === "soporte") return <PublicContactPage />;
+  if (pathSlug === "ayuda") return <PublicHelpPage />;
   if (isValidCatalogId) return <PublicCatalog businessId={requestedPublicCatalog} />;
   if (isValidSlugQuery) return <PublicCatalogSlugRoute slug={requestedPublicCatalog} />;
   if (isShortCatalogPath) return <PublicCatalogSlugRoute slug={pathSlug} />;

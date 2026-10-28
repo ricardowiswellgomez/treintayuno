@@ -49,6 +49,10 @@ jobs:
           # Avoid packaging a previously published APK inside the next APK.
           rm -f dist/treseiscinco.apk
           npx cap add android
+          # Use the exact official treseiscinco symbol from the public brand assets.
+          mkdir -p assets
+          cp public/symbol-treseiscinco.svg assets/logo.svg
+          npx @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#FAFCFB' --iconBackgroundColorDark '#0B3144' --splashBackgroundColor '#FAFCFB' --splashBackgroundColorDark '#0B3144'
           npx cap sync android
           cd android
           chmod +x gradlew

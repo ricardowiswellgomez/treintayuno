@@ -1934,6 +1934,8 @@ function AuthenticatedApp() {
   const [inventoryOverviewLoading, setInventoryOverviewLoading] = useState(false);
   const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
   const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
+  const [homeChartPeriod, setHomeChartPeriod] = useState("month");
+  const [homePieData, setHomePieData] = useState({ loading: false, error: "", income: [], purchases: [], expenses: [] });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);

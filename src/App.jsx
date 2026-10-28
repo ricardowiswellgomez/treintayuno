@@ -1535,7 +1535,7 @@ function PublicLanding({ onLogin, onSignup, onInstall, installPromptAvailable, a
         <p>Instala treseiscinco en la pantalla de inicio y ten tus herramientas a mano, sin buscar la página cada vez.</p>
       </div>
       <div className="landing-install-actions">
-        <a className="landing-install-button landing-apk-download" href="/treseiscinco.apk" download="treseiscinco.apk"><AppIcon name="download" size={18}/> Descargar APK <span aria-hidden="true">↓</span></a>
+        <a className="landing-install-button landing-apk-download" href="/download/apk"><AppIcon name="download" size={18}/> Descargar APK <span aria-hidden="true">↓</span></a>
         <button type="button" className="landing-install-secondary" onClick={onInstall}>{installPromptAvailable ? "Instalar en el navegador" : "Opciones para iPhone / PC"}</button>
       </div>
     </section>}
@@ -6331,7 +6331,7 @@ function AuthenticatedApp() {
         {!appInstalled && mode !== "update-password" && <div className="auth-mobile-install">
           <span className="auth-install-icon"><AppIcon name="smartphone" size={24}/></span>
           <div className="auth-install-copy"><strong>Tu negocio, también en tu celular</strong><p>Instala treseiscinco y maneja con claridad desde la pantalla de inicio.</p></div>
-          <div className="auth-install-actions"><a className="auth-install-button auth-apk-download" href="/treseiscinco.apk" download="treseiscinco.apk"><AppIcon name="download" size={15}/> Descargar APK</a><button type="button" className="auth-install-secondary" onClick={requestPwaInstall}>{installPrompt ? "Instalar en navegador" : "Otras opciones"}</button></div>
+          <div className="auth-install-actions"><a className="auth-install-button auth-apk-download" href="/download/apk"><AppIcon name="download" size={15}/> Descargar APK</a><button type="button" className="auth-install-secondary" onClick={requestPwaInstall}>{installPrompt ? "Instalar en navegador" : "Otras opciones"}</button></div>
         </div>}
         {showInstallGuide && !appInstalled && mode !== "update-password" && <section className="install-guide-panel auth-install-guide">
           <div className="install-guide-heading"><div><span className="eyebrow">TRESEISCINCO · APP INSTALABLE</span><h3>Instálala en tu celular</h3><p>No necesitas bajar un archivo externo; se instala desde tu navegador.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar instrucciones" onClick={() => setShowInstallGuide(false)}>×</button></div>

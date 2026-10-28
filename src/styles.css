@@ -6466,3 +6466,17 @@ body { background: #F5F7FC; color: #19243A; }
     font-size: 10.5px !important;
   }
 }
+
+
+/* Business card: force tenant-selected text/accent colors over legacy fixed-color rules. */
+.company-profile-panel .business-card-preview .business-card-preview-copy > small {
+  color: var(--business-card-primary, #475569) !important;
+}
+.company-profile-panel .business-card-preview .business-card-preview-copy > h3,
+.company-profile-panel .business-card-preview .business-card-preview-copy > p,
+.company-profile-panel .business-card-preview .business-card-preview-copy > span {
+  color: var(--business-card-text, #1F2937) !important;
+}
+.company-profile-panel .business-card-preview .business-card-preview-logo > span {
+  color: var(--business-card-primary, #475569) !important;
+}

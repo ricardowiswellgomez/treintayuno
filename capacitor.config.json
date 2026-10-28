@@ -1,0 +1,6 @@
+{
+  "appId": "com.treseiscinco.app",
+  "appName": "treseiscinco",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

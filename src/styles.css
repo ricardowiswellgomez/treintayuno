@@ -8496,3 +8496,126 @@ body { background: #F5F7FC; color: #19243A; }
   .products-page .bulk-tax-product-list { max-height: 135px !important; }
   .products-page .inventory-controls.panel { margin-top: 4px !important; padding: 8px !important; }
 }
+
+
+/* Requested refinements: upload filled inventory sheets, delivery badges by currency, and original payment tile colors. */
+.public-catalog-intro {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) !important;
+  align-items: center !important;
+  gap: 10px 14px !important;
+}
+.public-catalog-intro-left {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+}
+.public-catalog-intro-left > p {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+.public-catalog-intro-left .public-catalog-intro-meta { width: 100%; }
+.public-catalog-intro-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: 100%;
+}
+.public-catalog-intro-actions .public-catalog-delivery-methods {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+.public-catalog-intro-actions .public-catalog-delivery-badge {
+  max-width: 100%;
+  white-space: normal;
+}
+.public-catalog-intro-actions .public-catalog-currency {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  align-self: center;
+}
+.payment-method-tile-nq,
+.payment-method-tile-dv {
+  min-height: 84px !important;
+  gap: 7px !important;
+  box-shadow: 0 2px 8px rgba(26, 29, 44, .045) !important;
+}
+.payment-method-tile-nq {
+  background: #F4ECFF !important;
+  border-color: #D9C3FF !important;
+  color: #54219A !important;
+}
+.payment-method-tile-dv {
+  background: #FFF0EF !important;
+  border-color: #F4C1BE !important;
+  color: #B42318 !important;
+}
+.payment-method-mark-nq,
+.payment-method-mark-dv {
+  display: grid !important;
+  flex: 0 0 38px !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  max-width: 38px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+}
+.payment-method-mark-nq {
+  background: #E4D3FF !important;
+  color: #54219A !important;
+}
+.payment-method-mark-dv {
+  background: #FFD8D5 !important;
+  color: #B42318 !important;
+}
+.payment-method-tile-nq.is-selected {
+  background: #EEE0FF !important;
+  border: 2px solid #8D51D3 !important;
+  color: #54219A !important;
+  box-shadow: 0 0 0 3px rgba(141, 81, 211, .12) !important;
+}
+.payment-method-tile-dv.is-selected {
+  background: #FFE3E1 !important;
+  border: 2px solid #D93932 !important;
+  color: #B42318 !important;
+  box-shadow: 0 0 0 3px rgba(217, 57, 50, .10) !important;
+}
+.bulk-tax-note {
+  margin: 0 !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink, #19243A) 3%, var(--paper, #FFFFFF));
+  color: var(--muted, #69758A);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.tax-withholding-note {
+  border-color: color-mix(in srgb, #8D51D3 25%, var(--line, #DCE4E9)) !important;
+}
+.tax-withholding-note > strong { color: var(--ink, #19243A); }
+@media (max-width: 760px) {
+  .public-catalog-intro {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+  .public-catalog-intro-actions { justify-content: flex-start !important; }
+  .public-catalog-intro-actions .public-catalog-delivery-methods { justify-content: flex-start !important; }
+}

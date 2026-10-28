@@ -58,22 +58,7 @@ function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
   const methods = [["Efectivo","EF"],["Nequi","NQ"],["Daviplata","DV"],["Transferencia","TR"],["Tarjeta","TC"],["Otro","OT"]];
   return <div className="payment-method-tiles" role="group" aria-label={ariaLabel}>
     {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile payment-method-tile-" + mark.toLowerCase() + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
-      <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>
-        {method === "Nequi" ? <svg className="payment-method-brand-logo payment-method-brand-nequi" viewBox="0 0 48 48" role="img" aria-label="Símbolo de Nequi">
-            <rect x="2" y="2" width="44" height="44" rx="13" fill="#200020"/>
-            <path d="M12 34V18c0-4 4-6 7-2l10 13" fill="none" stroke="#DA0081" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M19 18l10 13" fill="none" stroke="#5A9BFF" strokeWidth="5.5" strokeLinecap="round"/>
-            <path d="M32 15v19" fill="none" stroke="#46C7BD" strokeWidth="5.5" strokeLinecap="round"/>
-            <circle cx="12" cy="10" r="3" fill="#DA0081"/>
-          </svg>
-          : method === "Daviplata" ? <svg className="payment-method-brand-logo payment-method-brand-daviplata" viewBox="0 0 48 48" role="img" aria-label="Símbolo de DaviPlata">
-            <rect x="2" y="2" width="44" height="44" rx="13" fill="#E01A19"/>
-            <path d="M12 24c0-6 5-10 12-10 6 0 10 3 12 8l-3 3-1 6h-4l-1-4h-9l-1 4h-4l1-7-2-2Z" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="30" cy="20" r="1.6" fill="#fff"/>
-            <path d="M17 14 19 10l4 4M34 22h4l2 4h-6M18 31v3M29 31v3M20 9h8" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          : mark}
-      </span><strong>{method}</strong>
+      <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>{mark}</span><strong>{method}</strong>
     </button>)}
   </div>;
 }
@@ -1361,7 +1346,6 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
-        {hasWhatsappContact && <a className="public-catalog-header-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Chatear por WhatsApp con este negocio" title="Chatear por WhatsApp"><AppIcon name="whatsapp" size={22}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>
@@ -1371,7 +1355,16 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div>{business.commercial_profile?.publicDescription && <p>{business.commercial_profile.publicDescription}</p>}<div className="public-catalog-intro-meta">{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}{Array.isArray(business?.commercial_profile?.deliveryMethods)&&business.commercial_profile.deliveryMethods.length>0&&<div className="public-catalog-delivery-methods" aria-label="Opciones de entrega">{business.commercial_profile.deliveryMethods.includes("pickup")&&<span className="public-catalog-delivery-badge"><AppIcon name="store" size={14}/>Recogida en el negocio</span>}{business.commercial_profile.deliveryMethods.includes("delivery")&&<span className="public-catalog-delivery-badge"><AppIcon name="truck" size={14}/>Entrega a domicilio</span>}</div>}</div></div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro">
+          <div className="public-catalog-intro-left">
+            {business.commercial_profile?.publicDescription && <p>{business.commercial_profile.publicDescription}</p>}
+            {openingInfo && <div className="public-catalog-intro-meta"><div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div></div>}
+          </div>
+          <div className="public-catalog-intro-actions">
+            {Array.isArray(business?.commercial_profile?.deliveryMethods)&&business.commercial_profile.deliveryMethods.length>0&&<div className="public-catalog-delivery-methods" aria-label="Opciones de entrega">{business.commercial_profile.deliveryMethods.includes("pickup")&&<span className="public-catalog-delivery-badge"><AppIcon name="store" size={14}/>Recogida en el negocio</span>}{business.commercial_profile.deliveryMethods.includes("delivery")&&<span className="public-catalog-delivery-badge"><AppIcon name="truck" size={14}/>Entrega a domicilio</span>}</div>}
+            <span className="public-catalog-currency">{business.currency_code}</span>
+          </div>
+        </div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -2625,7 +2618,7 @@ function AuthenticatedApp() {
     const headers = ["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"];
     const sample = [["Ej. Camiseta blanca","SKU-001","Ropa","Producto físico","Unidad","35000","18000","10","Sí","2","Descripción breve","Talla M"]];
     downloadBlobFile("plantilla-inventario-treseiscinco.xls", inventoryExcelDocument(headers, sample, "Plantilla de inventario treseiscinco"), "application/vnd.ms-excel;charset=utf-8");
-    setNotice("Plantilla Excel descargada con anchos de columna. Para importarla, guárdala desde Excel como CSV UTF-8.");
+    setNotice("Plantilla Excel descargada. Complétala y vuelve a subirla en .xls o .xlsx; también puedes guardarla como CSV UTF-8. La fila de ejemplo se omite.");
   }
 
   async function getInventoryReportData() {
@@ -2701,35 +2694,144 @@ function AuthenticatedApp() {
     input.value = "";
     if (!file || !activeBusiness?.id || !canManageProducts || inventoryImportBusy) return;
     if (file.size > 10 * 1024 * 1024) { setError("El archivo no puede superar 10 MB."); return; }
-    if (!/\.csv$/i.test(file.name)) { setError("Para la carga inicial usa la plantilla CSV compatible con Excel."); return; }
+    if (!/\.(csv|xls|xlsx)$/i.test(file.name)) { setError("Selecciona la plantilla de inventario .xls/.xlsx o un archivo CSV."); return; }
     setInventoryImportBusy(true); setInventoryImportProgress("Leyendo archivo…"); setError(""); setNotice("");
     const failures = [];
     let imported = 0, skipped = 0;
     try {
-      const source = (await file.text()).replace(/^\uFEFF/,"");
-      const firstLine = source.split(/\r?\n/,1)[0] || "";
-      const delimiter = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ";" : ",";
-      const parsed = [];
-      let row=[], cell="", quoted=false;
-      for (let i=0;i<source.length;i++) {
-        const ch=source[i];
-        if (ch === '"' && quoted && source[i+1] === '"') { cell+='"'; i++; }
-        else if (ch === '"') quoted=!quoted;
-        else if (ch === delimiter && !quoted) { row.push(cell); cell=""; }
-        else if ((ch === "\n" || ch === "\r") && !quoted) {
-          if (ch === "\r" && source[i+1] === "\n") i++;
-          row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row);
-          row=[]; cell="";
-        } else cell+=ch;
-      }
-      if (cell.length || row.length) { row.push(cell); if (row.some((x)=>String(x).trim())) parsed.push(row); }
-      if (parsed.length < 2) throw new Error("La plantilla no contiene filas de artículos.");
+      const parseDelimitedRows = (rawText) => {
+        const source = String(rawText || "").replace(/^\uFEFF/,"");
+        const firstLine = source.split(/\r?\n/,1)[0] || "";
+        const delimiter = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ";" : ",";
+        const rows = [];
+        let row=[], cell="", quoted=false;
+        for (let i=0;i<source.length;i++) {
+          const ch=source[i];
+          if (ch === '"' && quoted && source[i+1] === '"') { cell+='"'; i++; }
+          else if (ch === '"') quoted=!quoted;
+          else if (ch === delimiter && !quoted) { row.push(cell); cell=""; }
+          else if ((ch === "\n" || ch === "\r") && !quoted) {
+            if (ch === "\r" && source[i+1] === "\n") i++;
+            row.push(cell); if (row.some((x)=>String(x).trim())) rows.push(row);
+            row=[]; cell="";
+          } else cell+=ch;
+        }
+        if (cell.length || row.length) { row.push(cell); if (row.some((x)=>String(x).trim())) rows.push(row); }
+        return rows;
+      };
+      const parseHtmlExcelRows = (rawText) => {
+        const documentHtml = new DOMParser().parseFromString(String(rawText || "").replace(/^\uFEFF/,""),"text/html");
+        const table = documentHtml.querySelector("table");
+        if (!table) throw new Error("El archivo .xls no tiene el formato de la plantilla descargada. Guárdalo como .xlsx o CSV UTF-8 desde Excel.");
+        return Array.from(table.querySelectorAll("tr")).map((tr)=>Array.from(tr.querySelectorAll("th,td")).map((cell)=>String(cell.textContent||"").trim())).filter((row)=>row.some((cell)=>cell.trim()));
+      };
+      const parseXlsxRows = async (selectedFile) => {
+        if (typeof DecompressionStream === "undefined") throw new Error("Este navegador no puede leer .xlsx directamente. Guarda el archivo como CSV UTF-8 e impórtalo de nuevo.");
+        const bytes = new Uint8Array(await selectedFile.arrayBuffer());
+        const view = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+        const decoder = new TextDecoder("utf-8");
+        let endRecord = -1;
+        for (let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--) {
+          if (view.getUint32(i,true)===0x06054b50) { endRecord=i; break; }
+        }
+        if (endRecord<0) throw new Error("El archivo no parece ser un libro .xlsx válido.");
+        const totalEntries=view.getUint16(endRecord+10,true);
+        let cursor=view.getUint32(endRecord+16,true);
+        if (totalEntries===0xffff || cursor===0xffffffff) throw new Error("Este libro Excel usa un formato ZIP avanzado que no es compatible.");
+        const entries=new Map();
+        for(let i=0;i<totalEntries;i++) {
+          if(cursor+46>bytes.length || view.getUint32(cursor,true)!==0x02014b50) throw new Error("La estructura interna del libro Excel está dañada.");
+          const method=view.getUint16(cursor+10,true), compressedSize=view.getUint32(cursor+20,true), uncompressedSize=view.getUint32(cursor+24,true);
+          const nameLength=view.getUint16(cursor+28,true), extraLength=view.getUint16(cursor+30,true), commentLength=view.getUint16(cursor+32,true), localOffset=view.getUint32(cursor+42,true);
+          const name=decoder.decode(bytes.slice(cursor+46,cursor+46+nameLength));
+          entries.set(name,{method,compressedSize,uncompressedSize,localOffset});
+          cursor+=46+nameLength+extraLength+commentLength;
+        }
+        const readZipText=async (name,optional=false) => {
+          const entry=entries.get(name);
+          if(!entry) { if(optional) return ""; throw new Error("El libro Excel no contiene la hoja necesaria para importar."); }
+          if(entry.uncompressedSize>15*1024*1024) throw new Error("Una parte del libro Excel es demasiado grande para importarla de forma segura.");
+          const offset=entry.localOffset;
+          if(view.getUint32(offset,true)!==0x04034b50) throw new Error("Una parte del libro Excel está dañada.");
+          const localNameLength=view.getUint16(offset+26,true), localExtraLength=view.getUint16(offset+28,true);
+          const dataStart=offset+30+localNameLength+localExtraLength;
+          const compressed=bytes.slice(dataStart,dataStart+entry.compressedSize);
+          let plain;
+          if(entry.method===0) plain=compressed;
+          else if(entry.method===8) {
+            const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+            plain=new Uint8Array(await new Response(stream).arrayBuffer());
+          } else throw new Error("El libro Excel usa un método de compresión no compatible.");
+          if(plain.length>15*1024*1024 || (entry.uncompressedSize && plain.length!==entry.uncompressedSize)) throw new Error("El contenido descomprimido del libro Excel no es válido.");
+          return decoder.decode(plain);
+        };
+        const parseXml=(xmlText) => {
+          const parsedXml=new DOMParser().parseFromString(xmlText,"application/xml");
+          if(parsedXml.getElementsByTagName("parsererror").length) throw new Error("No se pudo leer la estructura XML de la plantilla Excel.");
+          return parsedXml;
+        };
+        const normalZipPath=(path) => {
+          const stack=[];
+          for(const segment of String(path||"").replace(/^\/+/,"").split("/")) {
+            if(!segment||segment===".") continue;
+            if(segment==="..") stack.pop(); else stack.push(segment);
+          }
+          return stack.join("/");
+        };
+        const workbook=parseXml(await readZipText("xl/workbook.xml"));
+        const firstSheet=workbook.getElementsByTagNameNS("*","sheet")[0];
+        if(!firstSheet) throw new Error("El libro Excel no contiene una hoja.");
+        const relationId=firstSheet.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id")||firstSheet.getAttribute("r:id");
+        const relationships=parseXml(await readZipText("xl/_rels/workbook.xml.rels"));
+        const relation=Array.from(relationships.getElementsByTagNameNS("*","Relationship")).find((node)=>node.getAttribute("Id")===relationId);
+        const target=relation?.getAttribute("Target")||"worksheets/sheet1.xml";
+        const sheetPath=normalZipPath(target.startsWith("/")?target:"xl/"+target);
+        const sharedText=await readZipText("xl/sharedStrings.xml",true);
+        const sharedStrings=sharedText ? Array.from(parseXml(sharedText).getElementsByTagNameNS("*","si")).map((node)=>Array.from(node.getElementsByTagNameNS("*","t")).map((t)=>t.textContent||"").join("")) : [];
+        const worksheet=parseXml(await readZipText(sheetPath));
+        const rowNodes=Array.from(worksheet.getElementsByTagNameNS("*","row"));
+        if(rowNodes.length>1002) throw new Error("El libro contiene demasiadas filas. Usa un máximo de 500 artículos por archivo.");
+        const rows=[];
+        for(const rowNode of rowNodes) {
+          const row=[];
+          const cells=Array.from(rowNode.getElementsByTagNameNS("*","c"));
+          for(const cellNode of cells) {
+            const reference=String(cellNode.getAttribute("r")||"A1").match(/^[A-Z]+/i)?.[0]?.toUpperCase()||"A";
+            let column=0;
+            for(const letter of reference) column=column*26+(letter.charCodeAt(0)-64);
+            column=Math.max(0,column-1);
+            const cellType=cellNode.getAttribute("t")||"";
+            let valueNode=cellNode.getElementsByTagNameNS("*","v")[0];
+            let value=valueNode ? String(valueNode.textContent||"") : "";
+            if(cellType==="s") value=sharedStrings[Number(value)]??"";
+            else if(cellType==="inlineStr") value=Array.from(cellNode.getElementsByTagNameNS("*","t")).map((t)=>t.textContent||"").join("");
+            else if(cellType==="b") value=value==="1"?"Sí":"No";
+            row[column]=value;
+          }
+          if(row.some((cell)=>String(cell??"").trim())) rows.push(row);
+        }
+        return rows;
+      };
+      let parsed=[];
+      const lowerFileName=file.name.toLocaleLowerCase("es");
+      if(lowerFileName.endsWith(".csv")) parsed=parseDelimitedRows(await file.text());
+      else if(lowerFileName.endsWith(".xls")) parsed=parseHtmlExcelRows(await file.text());
+      else if(lowerFileName.endsWith(".xlsx")) parsed=await parseXlsxRows(file);
+      if (parsed.length < 2) throw new Error("La plantilla no contiene filas de artículos. Completa la plantilla o agrega productos debajo de los encabezados.");
       const normalizeHeader=(value)=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/\s+/g,"_");
       const headers=parsed[0].map(normalizeHeader);
       const col=(row,...names)=>{const index=headers.findIndex((h)=>names.includes(h));return index<0?"":String(row[index]??"").trim();};
-      if (!headers.some((h)=>["nombre","producto","name","product"].includes(h))) throw new Error("Falta la columna «Nombre» en la primera fila.");
-      const dataRows=parsed.slice(1);
-      if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios CSV para conservar el control de errores.");
+      if (!headers.some((h)=>["nombre","producto","articulo","name","product"].includes(h))) throw new Error("Falta la columna «Nombre» en la primera fila.");
+      const nameColumnIndex=headers.findIndex((h)=>["nombre","producto","articulo","name","product"].includes(h));
+      const skuColumnIndex=headers.findIndex((h)=>["codigo","referencia","sku","code"].includes(h));
+      const dataRows=parsed.slice(1).map((csvRow,index)=>({csvRow,rowNo:index+2})).filter(({csvRow})=>{
+        const rowName=String(csvRow[nameColumnIndex]??"").trim().toLocaleLowerCase("es");
+        const rowCode=skuColumnIndex<0?"":String(csvRow[skuColumnIndex]??"").trim().toLocaleLowerCase("es");
+        return !(rowName==="ej. camiseta blanca" && rowCode==="sku-001");
+      });
+      if (!dataRows.length) throw new Error("La plantilla solo contiene su fila de ejemplo. Reemplázala con un artículo real o agrega tus artículos debajo de los encabezados.");
+      if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios archivos Excel o CSV.");
+
       const {data:currentProducts,error:currentError}=await supabase.from("products").select("sku,name").eq("business_id",activeBusiness.id).is("archived_at",null);
       if (currentError) throw currentError;
       const existingCodes=new Set((currentProducts||[]).map((x)=>String(x.sku||"").trim().toLocaleLowerCase()).filter(Boolean));
@@ -2755,7 +2857,7 @@ function AuthenticatedApp() {
         return Number.isFinite(number) ? number : NaN;
       };
       for (let index=0; index<dataRows.length; index++) {
-        const csvRow=dataRows[index], rowNo=index+2;
+        const {csvRow,rowNo}=dataRows[index];
         const name=col(csvRow,"nombre","producto","articulo","name","product");
         if (!name) { skipped++; failures.push("Fila "+rowNo+": falta el nombre."); continue; }
         const sku=col(csvRow,"codigo","referencia","sku","code").slice(0,100) || null;
@@ -6972,14 +7074,14 @@ function AuthenticatedApp() {
                     >
                       <div>
                         <strong>Gestiona tus archivos de inventario</strong>
-                        <p>Descarga una plantilla o importa hasta 500 artículos por CSV. También puedes exportar el inventario completo a Excel o PDF. Los códigos repetidos y las filas inválidas se informan.</p>
+                        <p>Descarga la plantilla Excel, complétala y súbela aquí en .xls o .xlsx; también puedes importar CSV. Hasta 500 artículos por archivo. La fila de ejemplo se omite.</p>
                       </div>
                       <div className="inventory-data-action-buttons">
                         <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryTemplateExcel(); }}>Plantilla Excel</button>
                         <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryTemplate(); }}>CSV para importar</button>
                         <label className={"secondary-button inventory-import-label" + (inventoryImportBusy ? " disabled" : "")}>
-                          {inventoryImportBusy ? "Importando…" : "Importar CSV"}
-                          <input type="file" accept=".csv,text/csv" onChange={(event) => { setInventoryDataMenuOpen(false); importInventoryFile(event); }} disabled={inventoryImportBusy || !canManageProducts}/>
+                          {inventoryImportBusy ? "Importando…" : "Subir plantilla llena"}
+                          <input type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" onChange={(event) => { setInventoryDataMenuOpen(false); importInventoryFile(event); }} disabled={inventoryImportBusy || !canManageProducts}/>
                         </label>
                         <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryReportExcel(); }} disabled={busy}>Reporte Excel</button>
                         <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); printInventoryReportPdf(); }} disabled={busy}>Reporte PDF</button>
@@ -7007,6 +7109,7 @@ function AuthenticatedApp() {
                   <label><span>Impuesto que se aplicará</span><select value={taxBulkCode} onChange={(event)=>setTaxBulkCode(event.target.value)}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
                   <label><span>Buscar producto</span><input value={taxBulkSearch} onChange={(event)=>setTaxBulkSearch(event.target.value)} placeholder="Nombre o código…" /></label>
                 </div>
+                <p className="bulk-tax-note">Este selector corresponde al IVA y al impuesto al consumo de los artículos. Retefuente, ReteIVA y ReteICA son retenciones por operación o pago; no se asignan aquí como tarifa fija.</p>
                 <div className="bulk-tax-list-heading"><span>{taxBulkLoading?"Cargando productos…":taxBulkFilteredProducts.length+" productos encontrados"}</span><span>{taxBulkProductIds.length}/250 seleccionados</span></div>
                 <div className="bulk-tax-product-list">{taxBulkFilteredProducts.map((product)=>{const checked=taxBulkProductIds.includes(product.id);return <label key={product.id} className="bulk-tax-product-option"><input type="checkbox" checked={checked} disabled={taxBulkSaving||(!checked&&taxBulkProductIds.length>=250)} onChange={(event)=>setTaxBulkProductIds((current)=>event.target.checked?[...current,product.id]:current.filter((id)=>id!==product.id))}/><span><strong>{product.name}</strong><small>{product.sku||"Sin código"} · Actual: {product.metadata?.tax_code||"none"}</small></span></label>;})}{!taxBulkFilteredProducts.length&&!taxBulkLoading&&<p className="stats-empty-note">No encontramos productos con esa búsqueda.</p>}</div>
                 <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
@@ -7347,6 +7450,10 @@ function AuthenticatedApp() {
                   <label className="settings-help-toggle"><input type="checkbox" checked={settingsTaxProfile.pricesIncludeVat} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, pricesIncludeVat: event.target.checked }))} disabled={activeBusiness?.role !== "owner"} /><span><strong>Los precios ya incluyen IVA</strong><small>Activa esta opción si la tarifa publicada ya contiene el impuesto.</small></span></label>
                   <label className="settings-help-toggle"><input type="checkbox" checked={settingsTaxProfile.showVatBreakdown} onChange={(event) => setSettingsTaxProfile((current) => ({ ...current, showVatBreakdown: event.target.checked }))} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar IVA por separado en nuevos documentos</strong><small>Preferencia para documentos que admitan desglose tributario.</small></span></label>
                 </>}
+                <div className="tax-guidance-note tax-withholding-note">
+                  <strong>Retenciones: Retefuente, ReteIVA y ReteICA</strong>
+                  <p>Son retenciones aplicables a determinadas operaciones o pagos, no una tarifa fija de cada producto. Dependen del concepto, de la situación tributaria de las partes y, para ReteICA, de la actividad y el municipio. Esta versión no las calcula automáticamente; confirma su aplicación con un contador o la DIAN.</p>
+                </div>
                 <div className="tax-guidance-note">
                   <strong>Importante:</strong>
                   <p>Esta configuración guarda tu perfil y una tarifa predeterminada; no activa por sí sola el cobro de IVA ni recalcula ventas, compras o cotizaciones. La tarifa puede variar según el producto o servicio y tu responsabilidad tributaria. Revisa tu RUT y confirma tu situación con un contador o la DIAN antes de cobrar IVA.</p>
@@ -7507,7 +7614,7 @@ function AuthenticatedApp() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
-              <button type="button" className="home-utility-action home-share-business-card" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
+              <button type="button" className="home-utility-action home-share-card-button" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

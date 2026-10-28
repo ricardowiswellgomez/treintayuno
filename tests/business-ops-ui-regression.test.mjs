@@ -55,7 +55,7 @@ test("la ayuda contextual escapa el contenedor y se reposiciona sin quedar recor
 
 test("el catálogo muestra opciones de entrega y conserva la identidad propia de treseiscinco", () => {
   assert.match(app, /public-catalog-delivery-methods/);
-  assert.match(app, /public-catalog-header-whatsapp/);
+  assert.doesNotMatch(app, /className="public-catalog-header-whatsapp"/);
   assert.match(css, /\.public-catalog-header-whatsapp/);
   assert.match(app, /Recogida en el negocio/);
   assert.match(app, /Entrega a domicilio/);
@@ -86,14 +86,14 @@ test("la descripción pública del producto se puede editar desde su ficha", () 
   assert.match(app, /product\.description \|\|/);
 });
 
-test("las formas de pago usan símbolos gráficos dedicados para Nequi y DaviPlata", () => {
-  assert.match(app, /Símbolo de Nequi/);
-  assert.match(app, /Símbolo de DaviPlata/);
-  assert.match(app, /payment-method-brand-nequi/);
-  assert.match(app, /payment-method-brand-daviplata/);
-  const finalUiFixes = css.slice(css.lastIndexOf("/* UX repair pass"));
-  assert.match(finalUiFixes, /\.payment-method-mark-nq,[\s\S]*?width:\s*44px\s*!important/);
-  assert.match(finalUiFixes, /\.payment-method-tile-dv\.is-selected/);
+test("Nequi y DaviPlata recuperan las tarjetas de color morado y rojo como los demás medios de pago", () => {
+  assert.match(app, /\{mark\}<\/span><strong>\{method\}<\/strong>/);
+  assert.doesNotMatch(app, /payment-method-brand-nequi|payment-method-brand-daviplata|Símbolo de Nequi|Símbolo de DaviPlata/);
+  const requested = css.slice(css.lastIndexOf("/* Requested refinements: upload filled inventory sheets"));
+  assert.match(requested, /\.payment-method-tile-nq\s*\{[\s\S]*?background:\s*#F4ECFF/s);
+  assert.match(requested, /\.payment-method-tile-dv\s*\{[\s\S]*?background:\s*#FFF0EF/s);
+  assert.match(requested, /\.payment-method-mark-nq\s*\{[\s\S]*?background:\s*#E4D3FF/s);
+  assert.match(requested, /\.payment-method-mark-dv\s*\{[\s\S]*?background:\s*#FFD8D5/s);
 });
 
 test("el APK usa el símbolo 365 transparente en el icono adaptativo y verifica el arte empaquetado", () => {
@@ -115,4 +115,42 @@ test("el inventario usa espaciado compacto entre métricas, impuestos y búsqued
   assert.match(compact, /\.products-page \.bulk-tax-content\s*\{[^}]*padding:\s*9px 10px\s*!important/s);
   assert.match(compact, /\.products-page \.inventory-controls\.panel\s*\{[^}]*margin-top:\s*5px\s*!important/s);
   assert.match(compact, /@media \(max-width: 760px\)/);
+});
+
+
+test("la plantilla Excel completada puede subirse en .xls, .xlsx o CSV", () => {
+  assert.match(app, /Subir plantilla llena/);
+  assert.match(app, /accept="\.xls,\.xlsx,\.csv/);
+  assert.match(app, /parseHtmlExcelRows/);
+  assert.match(app, /parseXlsxRows/);
+  assert.match(app, /new DecompressionStream\("deflate-raw"\)/);
+  assert.match(app, /La fila de ejemplo se omite/);
+  assert.match(app, /rowName==="ej\. camiseta blanca"/);
+});
+
+test("el catálogo no muestra WhatsApp junto al carrito y mueve las opciones de entrega junto a COP", () => {
+  assert.doesNotMatch(app, /className="public-catalog-header-whatsapp"/);
+  const introStart = app.indexOf('<div className="public-catalog-intro">');
+  const introEnd = app.indexOf("{returnedMessage", introStart);
+  assert.ok(introStart >= 0 && introEnd > introStart);
+  const intro = app.slice(introStart, introEnd);
+  assert.ok(intro.indexOf("public-business-hours-status") >= 0);
+  assert.ok(intro.indexOf("public-catalog-intro-actions") > intro.indexOf("public-business-hours-status"));
+  assert.ok(intro.indexOf("public-catalog-delivery-methods") > intro.indexOf("public-business-hours-status"));
+  assert.ok(intro.indexOf("public-catalog-currency") > intro.indexOf("public-catalog-delivery-methods"));
+  const requested = css.slice(css.lastIndexOf("/* Requested refinements: upload filled inventory sheets"));
+  assert.match(requested, /\.public-catalog-intro-actions\s*\{[\s\S]*?justify-content:\s*flex-end/s);
+});
+
+test("las retenciones se explican por separado y no se presentan como impuesto fijo del producto", () => {
+  assert.match(app, /Retenciones: Retefuente, ReteIVA y ReteICA/);
+  assert.match(app, /Este selector corresponde al IVA y al impuesto al consumo de los artículos/);
+  assert.match(app, /no las calcula automáticamente/);
+  assert.match(app, /confirma su aplicación con un contador o la DIAN/);
+});
+
+test("Inicio conserva el botón de compartir con su clase de estilo anterior", () => {
+  assert.match(app, /className="home-utility-action home-share-card-button"/);
+  assert.doesNotMatch(app, /className="home-utility-action home-share-business-card"/);
+  assert.match(css, /\.home-share-card-button\s*\{/);
 });

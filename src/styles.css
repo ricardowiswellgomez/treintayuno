@@ -7739,3 +7739,360 @@ body { background: #F5F7FC; color: #19243A; }
   .sale-form > .sale-builder > .sale-builder-related-field .sale-builder-inline-button,
   .sale-form > .sale-builder > label input { min-height: 47px; }
 }
+
+
+/* Compact import/export utility in the inventory heading: action popover instead of a tall panel. */
+.inventory-page-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.inventory-import-actions {
+  position: relative;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.inventory-import-popover {
+  position: relative;
+  display: inline-block;
+  width: auto;
+  max-width: min(620px, calc(100vw - 28px));
+}
+.inventory-import-popover > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 37px;
+  padding: 8px 11px;
+  border: 1px solid var(--line, #DCE4E9);
+  border-radius: 10px;
+  background: var(--paper, #FFFFFF);
+  color: var(--ink, #19243A);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  list-style: none;
+  box-shadow: 0 2px 7px rgba(20, 43, 50, .04);
+}
+.inventory-import-popover > summary::-webkit-details-marker { display: none; }
+.inventory-import-popover > summary:hover {
+  border-color: color-mix(in srgb, var(--green, #167D82) 40%, var(--line, #DCE4E9));
+  background: color-mix(in srgb, var(--green, #167D82) 5%, var(--paper, #FFFFFF));
+}
+.inventory-import-popover[open] > summary {
+  border-color: var(--green, #167D82);
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+}
+.inventory-import-popover .inventory-data-actions {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 13px;
+  width: min(600px, calc(100vw - 32px));
+  margin: 0;
+  padding: 15px;
+  border: 1px solid var(--line, #DCE4E9);
+  border-radius: 14px;
+  background: var(--paper, #FFFFFF);
+  color: var(--ink, #19243A);
+  box-shadow: 0 18px 48px rgba(17, 39, 48, .18);
+}
+.inventory-import-popover .inventory-data-actions > div:first-child { display: flex; flex-direction: column; gap: 5px; }
+.inventory-import-popover .inventory-data-actions > div:first-child p { margin: 0; line-height: 1.5; }
+.inventory-import-popover .inventory-data-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.inventory-import-popover .inventory-data-action-buttons > * { flex: 0 1 auto; min-width: 0; }
+.inventory-import-actions > .field-help-wrap { align-self: center; flex: 0 0 auto; }
+@media(max-width:760px) {
+  .inventory-page-heading { align-items: stretch; }
+  .inventory-import-actions { margin-left: 0; justify-content: flex-start; }
+  .inventory-import-popover .inventory-data-actions { right: auto; left: 0; }
+}
+@media(max-width:480px) {
+  .inventory-import-popover > summary { min-height: 35px; padding: 8px 9px; font-size: 11px; }
+  .inventory-import-popover .inventory-data-action-buttons > * { flex: 1 1 calc(50% - 8px); }
+}
+
+/* Remove the nested-frame effect in the business identity area and free space for modules. */
+.app-shell > .sidebar .business-logo-stage {
+  height: 100px !important;
+  min-height: 100px !important;
+  margin: 5px 0 6px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100px !important;
+  min-height: 100px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar.has-business-logo {
+  background: transparent !important;
+  border: 0 !important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar.has-business-logo img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  background: transparent !important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar.has-business-logo .business-avatar-initial { display: none !important; }
+.app-shell > .sidebar > .business-switcher {
+  min-height: 0 !important;
+  margin: 0 0 8px !important;
+  padding: 2px 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app-shell > .sidebar > .business-switcher .business-name {
+  display: block;
+  min-width: 0;
+  color: var(--sidebar-text, var(--ink, #19243A)) !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+  text-align: center !important;
+}
+.app-shell > .sidebar > .business-switcher select {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 6px 7px !important;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text, #FFFFFF) 28%, transparent) !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+}
+.app-shell > .sidebar .sidebar-nav-row .nav-item.active,
+.app-shell > .sidebar .sidebar-nav-row .nav-item.active:hover {
+  background: color-mix(in srgb, var(--brand-teal, #17AFA4) 20%, var(--sidebar-background, #0B0D0F)) !important;
+  border-color: color-mix(in srgb, var(--brand-teal, #17AFA4) 42%, var(--sidebar-border, #3E4448)) !important;
+  color: var(--sidebar-active-text, #FFFFFF) !important;
+  box-shadow: inset 4px 0 0 var(--brand-yellow, #F5C928) !important;
+  font-weight: 850 !important;
+}
+.app-shell > .sidebar .sidebar-nav-row .nav-item.active .nav-icon,
+.app-shell > .sidebar .sidebar-nav-row .nav-item.active .nav-label-text { color: inherit !important; }
+.app-shell > .sidebar .sidebar-bottom { flex: 0 0 auto !important; }
+.app-shell > .sidebar .sidebar-bottom-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.app-shell > .sidebar .sidebar-contact-action {
+  display: inline-flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--sidebar-text, #FFFFFF) 25%, transparent);
+  border-radius: 9px;
+  color: var(--sidebar-text, #FFFFFF);
+  background: transparent;
+  text-decoration: none;
+}
+.app-shell > .sidebar .sidebar-contact-action:hover {
+  color: var(--sidebar-text, #FFFFFF);
+  border-color: var(--brand-teal, #17AFA4);
+  background: color-mix(in srgb, var(--brand-teal, #17AFA4) 15%, transparent);
+}
+.app-shell > .sidebar .sidebar-contact-action svg { width: 17px; height: 17px; }
+.app-shell > .sidebar .sidebar-bottom-actions .logout-button { flex: 1 1 auto; width: auto; min-width: 0; margin-top: 0; }
+
+/* Public catalog: larger brand, more compact cards and visible store fulfilment options. */
+.public-catalog-header { gap: 18px; }
+.public-catalog-brand {
+  width: 132px !important;
+  height: 132px !important;
+  flex: 0 0 132px !important;
+  border-radius: 18px !important;
+}
+.public-catalog-brand img { width: 100% !important; height: 100% !important; object-fit: contain !important; padding: 0 !important; }
+.public-catalog-intro-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.public-catalog-intro-meta .public-business-hours-status { margin: 0; }
+.public-catalog-delivery-methods {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.public-catalog-delivery-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--green, #167D82) 20%, var(--line, #DCE4E9));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green, #167D82) 8%, var(--paper, #FFFFFF));
+  color: var(--ink, #19243A);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.public-catalog-delivery-badge svg { flex: 0 0 auto; color: var(--green, #167D82); }
+.public-catalog-grid { gap: 11px !important; }
+.public-catalog-card {
+  border-top: 3px solid color-mix(in srgb, var(--brand-yellow, #F5C928) 75%, var(--green, #167D82)) !important;
+  box-shadow: 0 4px 16px rgba(20, 43, 50, .07) !important;
+}
+.public-catalog-image {
+  aspect-ratio: 4 / 3 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.public-catalog-card-copy {
+  padding: 10px !important;
+  gap: 5px !important;
+}
+.public-catalog-category {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--green, #167D82) 9%, var(--paper, #FFFFFF));
+  color: var(--green, #167D82) !important;
+  font-size: 9px !important;
+  letter-spacing: .45px !important;
+  line-height: 1.25;
+}
+.public-catalog-card h2 { font-size: 13px !important; line-height: 1.3 !important; }
+.public-catalog-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+.public-catalog-presentation { padding: 4px 6px !important; font-size: 10px !important; }
+.public-catalog-price { padding-top: 5px !important; gap: 4px !important; }
+.public-catalog-price strong { font-size: 15px !important; }
+.public-catalog-price span { font-size: 10px !important; }
+.public-catalog-add-button { padding: 8px 9px !important; font-size: 11px !important; border-radius: 8px !important; }
+.public-catalog-variant>span { font-size: 10px !important; }
+
+@media(max-width:1080px) {
+  .public-catalog-brand { width: 112px !important; height: 112px !important; flex-basis: 112px !important; }
+}
+@media(max-width:760px) {
+  .app-shell > .sidebar .business-logo-stage { height: 86px !important; min-height: 86px !important; margin: 5px 0 5px !important; }
+  .app-shell > .sidebar .business-logo-stage .business-avatar { height: 86px !important; min-height: 86px !important; }
+  .public-catalog-header { gap: 10px; padding: 13px 12px; }
+  .public-catalog-brand { width: 92px !important; height: 92px !important; flex-basis: 92px !important; border-radius: 14px !important; }
+  .public-catalog-content { padding: 13px 11px 30px !important; }
+  .public-catalog-card-copy { padding: 8px !important; gap: 4px !important; }
+  .public-catalog-card h2 { font-size: 12px !important; }
+  .public-catalog-card p { font-size: 10.5px !important; }
+  .public-catalog-delivery-badge { font-size: 9px; padding: 5px 7px; }
+  .inventory-import-actions { width: 100%; }
+}
+@media(max-width:600px) {
+  .public-catalog-brand { width: 80px !important; height: 80px !important; flex-basis: 80px !important; }
+}
+@media(max-width:420px) {
+  .public-catalog-brand { width: 68px !important; height: 68px !important; flex-basis: 68px !important; }
+}
+
+/* The selected palette must show both the business name and the whole uploaded logo. */
+.business-card-preview-logo { flex: 0 0 35% !important; width: 35% !important; }
+.business-card-preview-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.business-card-preview .business-card-preview-logo img.default-business-logo {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+/* Nequi and DaviPlata brand wordmarks replace generic NQ/DV initials. */
+.payment-method-mark-nq,
+.payment-method-mark-dv {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.payment-method-brand-logo {
+  display: block;
+  width: 100%;
+  height: 36px;
+  overflow: visible;
+}
+.payment-method-tile-nq > strong,
+.payment-method-tile-dv > strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.payment-method-tile-nq .payment-method-brand-logo text { font-family: Arial, sans-serif; }
+.payment-method-tile-dv .payment-method-brand-logo text { font-family: Arial, sans-serif; }
+.payment-method-tile-nq { border-color: #F1C7E0; }
+.payment-method-tile-dv { border-color: #F2CBCC; }
+.payment-method-tile-nq.is-selected { background: #FEF0F8 !important; border-color: #DA0081 !important; }
+.payment-method-tile-dv.is-selected { background: #FFF0F0 !important; border-color: #DD141D !important; }
+
+/* Compact icon-only contact action shares the logout row to preserve a no-scroll sidebar. */

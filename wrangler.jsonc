@@ -12,6 +12,12 @@
   "ai": {
     "binding": "AI"
   },
+  "send_email": [
+    {
+      "name": "SUPPORT_EMAIL",
+      "destination_address": "hola.treseiscinco@gmail.com"
+    }
+  ],
   "ratelimits": [
     {
       "name": "AI_USER_LIMITER",

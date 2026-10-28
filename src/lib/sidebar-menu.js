@@ -1,9 +1,18 @@
 /**
  * Canonical labels for sidebar modules.
- * Keep critical navigation names independent from persisted/custom labels.
+ * Critical destinations stay readable even if a saved layout contains stale labels
+ * (for example, a numeric value left by an older navigation configuration).
  */
 export function getSidebarItemLabel(item) {
-  if (item?.id === "accounts" || item?.screen === "accounts") return "Cuentas";
+  const canonicalLabels = {
+    accounts: "Cuentas",
+    coupons: "Cupones",
+    suppliers: "Proveedores"
+  };
+  const itemId = String(item?.id ?? "");
+  const screenId = String(item?.screen ?? "");
+  if (canonicalLabels[itemId]) return canonicalLabels[itemId];
+  if (canonicalLabels[screenId]) return canonicalLabels[screenId];
   const label = String(item?.label ?? "").trim();
   return label || "Módulo";
 }

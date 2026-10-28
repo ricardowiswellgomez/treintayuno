@@ -117,6 +117,7 @@ const areas = [
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
+  { icon: "◈", title: "Proveedores", description: "Personas y empresas que suministran productos, materiales o servicios.", screen: "suppliers" },
   { icon: "◷", title: "Rentabilidad", description: "Costos, margen y utilidad de tu negocio.", screen: "profitability" },
   { icon: "▤", title: "Compras", description: "Compras, proveedores y gastos.", screen: "purchases" },
   { icon: "◉", title: "Catálogo", description: "Un catálogo público para tus clientes.", screen: "catalog" },
@@ -143,7 +144,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", suppliers: "Proveedores", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -195,6 +196,30 @@ const normalizeSidebarLayout = (layout) => {
     const existing = target.items.find((item) => item.id === itemId);
     const item = movedItems.get(itemId);
     if (item && !existing) target.items.push(item);
+  }
+
+  // Re-home entries from numeric legacy groups (e.g. "4") into the canonical sections.
+  // This prevents stale numeric headings and restores Coupons/Suppliers to their agreed destinations.
+  for (let index = groups.length - 1; index >= 0; index -= 1) {
+    const group = groups[index];
+    const numericHeading = /^[0-9]+$/.test(String(group.title || "").trim());
+    if (numericHeading) {
+      for (const item of group.items) {
+        const template = fallback.find((candidate) => candidate.items.some((candidateItem) => candidateItem.id === item.id));
+        if (!template) continue;
+        let target = groups.find((candidate) => candidate.id === template.id);
+        if (!target) {
+          target = { ...template, items: [] };
+          groups.push(target);
+        }
+        if (target.id !== group.id && !target.items.some((candidate) => candidate.id === item.id)) target.items.push(item);
+      }
+      groups.splice(index, 1);
+      continue;
+    }
+    if (!group.items.length && (group.id === "coupons" || group.id === "suppliers")) {
+      groups.splice(index, 1);
+    }
   }
 
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
@@ -1279,7 +1304,6 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
-        {hasWhatsappContact && <a className="public-catalog-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Chatear con el negocio por WhatsApp" title="WhatsApp"><AppIcon name="whatsapp" size={21}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>
@@ -1289,7 +1313,7 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || "Explora los productos disponibles en este catálogo."}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span>{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div>{business.commercial_profile?.publicDescription && <p>{business.commercial_profile.publicDescription}</p>}{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -6360,9 +6384,28 @@ function AuthenticatedApp() {
   <label><span className="field-label-heading">Fecha de la venta<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha real en que ocurrió la venta. Se usa para organizar los informes y el historial del negocio." /></span><input type="date" value={saleDate} max={todayInBogota()} onChange={(event) => setSaleDate(event.target.value)} required /></label>
 </div>
 <div className="sale-builder">
-<label><span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span><select value={saleCustomerId} onChange={e=>{if(e.target.value==="__create_sale_customer__"){setShowQuickCustomerForm(true);setError("");return;}setSaleCustomerId(e.target.value);}}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}{canManageCustomers&&<option value="__create_sale_customer__">＋ Nuevo cliente…</option>}</select>{canManageCustomers && <button type="button" className="text-button" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}> {showQuickCustomerForm?"Cancelar":"＋ Crear cliente"} </button>}</label>
-<label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select>{canManageProducts && <button type="button" className="text-button" onClick={() => setShowQuickSaleProductForm((open) => !open)}>{showQuickSaleProductForm ? "Cancelar nuevo artículo" : "＋ Nuevo artículo"}</button>}</label>
-<label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
+  <div className="sale-builder-related-field">
+    <span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span>
+    <div className="sale-builder-control-line">
+      <select aria-label="Cliente" value={saleCustomerId} onChange={e=>{setSaleCustomerId(e.target.value);}}>
+        <option value="">Venta sin cliente</option>
+        {customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}
+      </select>
+      {canManageCustomers && <button type="button" className="sale-builder-inline-button" title="Crear cliente" aria-label="Crear cliente" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}><AppIcon name="plus" size={16}/></button>}
+    </div>
+  </div>
+  <div className="sale-builder-related-field">
+    <span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span>
+    <div className="sale-builder-control-line">
+      <select aria-label="Producto" value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}>
+        <option value="">Elige un producto…</option>
+        {saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}
+      </select>
+      {canManageProducts && <button type="button" className="sale-builder-inline-button" title="Crear artículo" aria-label="Crear artículo" onClick={() => setShowQuickSaleProductForm((open) => !open)}><AppIcon name="plus" size={16}/></button>}
+    </div>
+  </div>
+  <label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label>
+  <button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
 </div>
 {showQuickSaleProductForm && canManageProducts && <div className="panel quick-customer-form quick-sale-product-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
   <strong>Nuevo artículo</strong><p className="inline-create-hint">Se creará y quedará seleccionado en esta venta. El registro completo lo puedes ampliar después desde Productos.</p>

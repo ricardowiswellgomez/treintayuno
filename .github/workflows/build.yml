@@ -49,15 +49,29 @@ jobs:
           # Avoid packaging a previously published APK inside the next APK.
           rm -f dist/treseiscinco.apk
           npx cap add android
-          # Use the exact official treseiscinco symbol from the public brand assets.
+          # Use the official 365 app-icon artwork and generate every launcher density before syncing.
           mkdir -p assets
-          cp public/symbol-treseiscinco.svg assets/logo.svg
+          cp public/icon-treseiscinco-512.svg assets/logo.svg
           npm run android:icons
+          test -s android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../dist/treseiscinco.apk
+      - name: Verify official 365 icon is packaged in the APK
+        run: |
+          apk="dist/treseiscinco.apk"
+          test -s "$apk"
+          badging="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk")"
+          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'"
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-mdpi(-v4)?/ic_launcher.png'
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png'
+          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml'
+          echo "APK references the treseiscinco launcher icon and includes the generated density/adaptive resources."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

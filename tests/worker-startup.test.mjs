@@ -126,14 +126,32 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Proveedores is a tab inside Compras, not an independent sidebar module", () => {
+test("Proveedores is reachable from Personal and keeps its purchase-management view", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
-  assert.doesNotMatch(sidebarSource, /id: "suppliers", screen: "suppliers"/);
+  assert.match(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
+  assert.match(appSource, /screen: "suppliers"/);
   assert.match(appSource, /aria-label="Compras, gastos y proveedores"/);
   assert.match(appSource, /setPurchaseModuleTab\("suppliers"\)/);
   assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
-  assert.doesNotMatch(appSource, /mobile-module-card"\+\(screen==="suppliers"/);
+});
+
+test("public catalog removes default filler/count but keeps bottom WhatsApp and the cart", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const start = appSource.indexOf("function PublicCatalog({ businessId })");
+  const end = appSource.indexOf("function PublicCatalogSlugRoute", start);
+  const catalog = appSource.slice(start, end);
+  assert.doesNotMatch(catalog, /Explora los productos disponibles en este catálogo/);
+  assert.doesNotMatch(catalog, /producto publicado/);
+  assert.doesNotMatch(catalog, /className="public-catalog-whatsapp"/);
+  assert.match(catalog, /public-catalog-bottom-whatsapp/);
+  assert.match(catalog, /className="public-catalog-cart-trigger"/);
+});
+
+test("legacy numeric sidebar groups are rehomed instead of shown as section names", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(appSource, /const numericHeading = \/\^\[0-9\]\+\$\//);
+  assert.match(appSource, /if \(numericHeading\) \{[\s\S]*groups\.splice\(index, 1\)/);
 });
 
 test("sidebar layout keeps overflow hidden and adapts rows to viewport height", () => {

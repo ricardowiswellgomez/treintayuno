@@ -17,6 +17,7 @@ function AppIcon({ name, size = 20 }) {
     purchases: <><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></>,
     catalog: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    whatsapp: <><path d="M20.2 11.6a8.2 8.2 0 0 1-12.1 7.2L4 20l1.2-4a8.2 8.2 0 1 1 15-4.4Z" /><path d="M8.2 8.4c.4-.8.8-.8 1.2-.1l.8 1.4c.2.3.1.6-.2.9l-.5.5c.8 1.5 1.9 2.5 3.4 3.1l.5-.6c.2-.3.5-.4.9-.2l1.4.7c.6.3.7.6.4 1.2-.4.8-1.3 1.1-2.2 1-3.1-.4-6.8-3.7-7.1-6.6-.1-.6.4-1.1 1.4-1.3Z" /></>,
     smartphone: <><rect x="6" y="2.5" width="12" height="19" rx="2.3" /><path d="M10 5h4M11 18.5h2" /></>,
     download: <><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></>,
     list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="3" /></>,
@@ -1004,6 +1005,9 @@ function CouponsAdmin({ business }) {
 
 function PublicCatalog({ businessId }) {
   const [page, setPage] = useState(0);
+  const [catalogSearchText, setCatalogSearchText] = useState("");
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all");
+  const [catalogPublicSort, setCatalogPublicSort] = useState("name_asc");
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1022,7 +1026,7 @@ function PublicCatalog({ businessId }) {
   const [paymentStatusLoading, setPaymentStatusLoading] = useState(true);
   const [returnedOrder, setReturnedOrder] = useState(null);
   const [orderStatusLoading, setOrderStatusLoading] = useState(false);
-  const pageSize = 12;
+  const pageSize = 24;
   const returnOrderReference = new URLSearchParams(window.location.search).get("order") || "";
 
   useEffect(() => {
@@ -1031,7 +1035,10 @@ function PublicCatalog({ businessId }) {
     (async () => {
       try {
         const { data, error: catalogError } = await supabase.rpc("get_public_catalog", {
-          p_business_id: businessId, p_limit: pageSize, p_offset: page * pageSize
+          p_business_id: businessId, p_limit: pageSize, p_offset: page * pageSize,
+          p_search: catalogSearchText.trim().slice(0,100) || null,
+          p_category_id: catalogCategoryFilter === "all" ? null : catalogCategoryFilter,
+          p_sort: catalogPublicSort
         });
         if (catalogError) throw catalogError;
         if (active) setPayload(data || null);
@@ -1040,7 +1047,7 @@ function PublicCatalog({ businessId }) {
       } finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-  }, [businessId, page, retryKey]);
+  }, [businessId, page, retryKey, catalogSearchText, catalogCategoryFilter, catalogPublicSort]);
 
   useEffect(() => {
     let active = true;
@@ -1080,6 +1087,10 @@ function PublicCatalog({ businessId }) {
   }, [returnOrderReference, businessId]);
 
   const business = payload?.business;
+  const catalogCategories = payload?.categories || [];
+  const ownerPhoneDigits = String(business?.commercial_profile?.phone || "").replace(/\D/g, "");
+  const whatsappPhone = ownerPhoneDigits.length === 10 && ownerPhoneDigits.startsWith("3") ? "57" + ownerPhoneDigits : ownerPhoneDigits;
+  const hasWhatsappContact = whatsappPhone.length >= 8;
   const catalogTheme = normalizeBusinessTheme(business?.theme);
   const openingInfo = (() => {
     const schedule=business?.commercial_profile?.hoursSchedule;
@@ -1240,9 +1251,12 @@ function PublicCatalog({ businessId }) {
     <header className="public-catalog-header">
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
-      <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
-        <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
-      </button>
+      <div className="public-catalog-header-actions">
+        {hasWhatsappContact && <a className="public-catalog-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Contactar al negocio por WhatsApp" title="Contactar por WhatsApp"><AppIcon name="whatsapp" size={20}/></a>}
+        <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
+          <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
+        </button>
+      </div>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
@@ -1255,6 +1269,11 @@ function PublicCatalog({ businessId }) {
           </div>
           <button type="button" className="secondary-button" onClick={refreshReturnedOrder} disabled={orderStatusLoading}>{orderStatusLoading ? "Consultando…" : "Actualizar estado"}</button>
         </div>}
+        <div className="public-catalog-filters" aria-label="Buscar y ordenar productos">
+          <label className="public-catalog-search"><span><AppIcon name="search" size={16}/> Buscar productos</span><input value={catalogSearchText} onChange={(event) => { setCatalogSearchText(event.target.value); setPage(0); }} maxLength={100} placeholder="Nombre, descripción o código…" /></label>
+          <label><span>Categoría</span><select value={catalogCategoryFilter} onChange={(event) => { setCatalogCategoryFilter(event.target.value); setPage(0); }}><option value="all">Todas las categorías</option>{catalogCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label><span>Ordenar por</span><select value={catalogPublicSort} onChange={(event) => { setCatalogPublicSort(event.target.value); setPage(0); }}><option value="name_asc">Nombre: A → Z</option><option value="name_desc">Nombre: Z → A</option><option value="price_asc">Precio: menor a mayor</option><option value="price_desc">Precio: mayor a menor</option></select></label>
+        </div>
         {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id} id={"producto-" + product.id}>
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
@@ -1263,10 +1282,13 @@ function PublicCatalog({ businessId }) {
             {product.description && <p>{product.description}</p>}
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
-            <button type="button" className="public-catalog-add-button" onClick={() => addToCart(product)}><span aria-hidden="true">＋</span> Añadir al carrito</button>
+            {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}
+            {Array.isArray(product.variants) && product.variants.length > 0 && <div className="public-catalog-variant-tags" aria-label="Variantes disponibles">{product.variants.slice(0,3).map((variant) => <span key={variant.id}>{variant.variant_name}: {variant.variant_value}</span>)}</div>}
+            <button type="button" className="public-catalog-add-button" disabled={product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable"} onClick={() => addToCart(product)}>{product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" ? "Agotado" : <><span aria-hidden="true">＋</span> Añadir al carrito</>}</button>
           </div>
         </article>)}</div>
           : <div className="public-catalog-message"><h2>Pronto habrá productos aquí</h2><p>Este negocio aún no ha publicado productos para compartir.</p></div>}
+        {!items.length && (catalogSearchText.trim() || catalogCategoryFilter !== "all") && <div className="public-catalog-message"><h2>No encontramos productos con esos filtros</h2><p>Prueba otro nombre o cambia la categoría seleccionada.</p><button type="button" className="secondary-button" onClick={() => { setCatalogSearchText(""); setCatalogCategoryFilter("all"); setCatalogPublicSort("name_asc"); setPage(0); }}>Mostrar todos los productos</button></div>}
         {total > pageSize && <nav className="public-catalog-pagination" aria-label="Páginas del catálogo">
           <button type="button" className="secondary-button" disabled={page <= 0} onClick={() => { setPage((current) => Math.max(0, current - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Anterior</button>
           <span>Página {page + 1} de {Math.ceil(total / pageSize)}</span>

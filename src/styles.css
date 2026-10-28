@@ -7321,3 +7321,277 @@ body { background: #F5F7FC; color: #19243A; }
 .payment-method-field > .field-label-heading,
 .payment-method-field > span:first-child { color: var(--ink, #19243A); font-weight: 750; }
 .payment-method-field .payment-method-tiles { margin-top: 2px; }
+
+
+/* Urgent usability fixes: restore contextual Help and leave IA visible above it. */
+.context-help-layer {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 2147483646 !important;
+}
+.context-help-trigger { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; }
+.field-help-wrap { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; vertical-align: middle; }
+.field-help-trigger, .field-help-button { visibility: visible !important; opacity: 1 !important; }
+
+/* Settings tabs use a quiet neutral rail rather than a full-width green strip. */
+.settings-tabs {
+  background: #F2F5F5 !important;
+  border: 1px solid #E1E8E8;
+}
+.settings-tab { color: #455B61; }
+.settings-tab.active { background: #FFFFFF; color: #183B45; box-shadow: 0 2px 7px rgba(21,52,61,.10); }
+
+/* Business card: increase the logo by about 60% and close the gap to the details. */
+.business-card-preview {
+  gap: 10px !important;
+  border-radius: 15px !important;
+  border: 1px solid var(--business-card-primary, #475569) !important;
+  overflow: hidden;
+}
+.business-card-preview-logo {
+  flex: 0 0 38.4% !important;
+  width: 38.4% !important;
+  max-height: 100%;
+}
+.business-card-preview-logo img { width: 100%; height: 100%; object-fit: contain; }
+.business-card-preview-copy { flex: 1 1 0; gap: clamp(2px,.55vw,5px); }
+
+/* Schedule cards: four across (Mon–Thu), then three across (Fri–Sun). */
+.settings-hours-editor {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  max-width: none !important;
+  gap: 12px !important;
+  align-items: stretch;
+}
+.settings-hours-editor > div:first-child {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  text-align: left !important;
+  margin: 0 0 4px !important;
+}
+.settings-hours-day {
+  display: flex !important;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+  padding: 12px !important;
+}
+.settings-hours-day-check { min-height: 29px; }
+.settings-hours-periods { gap: 8px; }
+.settings-hours-period {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+.settings-hours-period > span {
+  grid-column: 1 / -1;
+  align-self: start;
+}
+.settings-hours-period label { gap: 4px; }
+.settings-hours-period input { min-height: 37px; padding: 6px; font-size: 12px; }
+.settings-hours-add { max-width: 100%; white-space: normal; line-height: 1.35; }
+@media (max-width: 1100px) {
+  .settings-hours-editor { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 600px) {
+  .settings-hours-editor { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Payment methods are color-coded consistently wherever these tiles appear. */
+.payment-method-tile-ef { background: var(--paper, #FFFFFF) !important; border-color: #DDE7EA; }
+.payment-method-tile-nq { background: #F4ECFF !important; border-color: #D9C3FF; color: #54219A; }
+.payment-method-tile-dv { background: #FFF0EF !important; border-color: #F4C1BE; color: #B42318; }
+.payment-method-tile-tr { background: #ECF3FF !important; border-color: #C4D7FF; color: #174EA6; }
+.payment-method-tile-tc { background: #EAF5F3 !important; border-color: #B8DED7; color: #14685C; }
+.payment-method-tile-ot { background: #F0F3F5 !important; border-color: #D7DFE3; color: #4A5961; }
+.payment-method-tile-nq .payment-method-mark { background: #E4D3FF; color: #54219A; }
+.payment-method-tile-dv .payment-method-mark { background: #FFD8D5; color: #B42318; }
+.payment-method-tile-tr .payment-method-mark { background: #D7E6FF; color: #174EA6; }
+.payment-method-tile-tc .payment-method-mark { background: #CFEAE5; color: #14685C; }
+.payment-method-tile-ot .payment-method-mark { background: #DFE5E8; color: #4A5961; }
+.payment-method-tile.is-selected { box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent); }
+
+/* Compact storefront header; cart is always the rightmost action. */
+.public-catalog-header {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px !important;
+}
+.public-catalog-brand {
+  width: 48px !important;
+  height: 48px !important;
+  flex: 0 0 48px !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+.public-catalog-brand img { display: block; width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.public-catalog-header > div:not(.public-catalog-header-actions) { min-width: 0; }
+.public-catalog-header-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.public-catalog-cart-trigger { margin-left: 0 !important; }
+.public-catalog-whatsapp {
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #BFE3CE;
+  border-radius: 12px;
+  background: #E9F8EE;
+  color: #16804A;
+  text-decoration: none;
+}
+.public-catalog-whatsapp:hover { background: #DDF4E4; }
+.public-catalog-bottom-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.public-catalog-nav-logo {
+  display: block;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.public-catalog-bottom-whatsapp { color: #16804A !important; text-decoration: none; }
+.public-catalog-bottom-whatsapp.is-active { background: #E9F8EE; }
+.public-catalog-intro {
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  margin: 8px 0 14px !important;
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  border-radius: 15px;
+  background: var(--paper, #FFFFFF);
+}
+.public-catalog-intro > div { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
+.public-catalog-intro > div > p {
+  flex: 1 1 100%;
+  margin: 0;
+  max-width: 100%;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.public-catalog-intro > div > span { font-size: 12px; }
+.public-business-hours-status {
+  display: inline-flex !important;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px !important;
+  margin: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+}
+.public-business-hours-status small { font-size: 10px !important; }
+.public-catalog-currency { align-self: center; }
+.public-catalog-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+@media (max-width: 1200px) {
+  .public-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 760px) {
+  .public-catalog-header { padding: 12px 12px !important; gap: 9px; }
+  .public-catalog-brand { width: 39px !important; height: 39px !important; flex-basis: 39px !important; }
+  .public-catalog-header h1 { font-size: clamp(16px, 4.5vw, 22px) !important; }
+  .public-catalog-header > div > span { font-size: 10px !important; letter-spacing: 1px !important; }
+  .public-catalog-header-actions { gap: 6px; }
+  .public-catalog-whatsapp { width: 38px; height: 38px; flex-basis: 38px; }
+  .public-catalog-cart-trigger { padding: 9px 10px !important; gap: 5px !important; font-size: 12px !important; }
+  .public-catalog-intro { padding: 10px 11px !important; margin: 6px 0 10px !important; }
+  .public-catalog-intro > div > p { font-size: 12px !important; -webkit-line-clamp: 2; }
+  .public-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .public-catalog-card-copy { padding: 10px !important; }
+  .public-catalog-nav-logo { width: 22px; height: 22px; }
+}
+@media (max-width: 360px) {
+  .public-catalog-header { gap: 6px; padding-left: 8px !important; padding-right: 8px !important; }
+  .public-catalog-cart-trigger > span:nth-child(2) { display: none; }
+  .public-catalog-whatsapp { width: 34px; height: 34px; flex-basis: 34px; }
+}
+
+/* Independent customer-facing catalog palette controls. */
+.catalog-color-customizer {
+  margin: 18px 0 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--paper) 94%, var(--app-background));
+}
+.catalog-color-customizer h4 { margin: 0 0 5px; font-size: 15px; color: var(--ink); }
+.catalog-color-customizer p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.catalog-color-fields { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.catalog-color-fields .settings-color-field { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); }
+.catalog-color-fields input[type=color] { width: 100%; min-height: 42px; }
+@media (max-width: 900px) { .catalog-color-fields { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 420px) { .catalog-color-fields { grid-template-columns: minmax(0,1fr); } }
+
+/* New-sale date is visible rather than silently assumed. */
+.sale-date-row { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+.sale-date-row label { width: min(100%, 260px); display: flex; flex-direction: column; gap: 6px; }
+.sale-date-row input { min-height: 43px; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--paper); color: var(--ink); }
+
+
+/* Final alignment: keep the catalog actions at the far right and the logo in its bottom info bar. */
+.public-catalog-header { justify-content: space-between !important; }
+.public-catalog-header > div:not(.public-catalog-header-actions) { flex: 1 1 auto; }
+.public-catalog-header-actions { flex: 0 0 auto !important; margin-left: auto !important; justify-content: flex-end !important; }
+.public-catalog-cart-trigger { margin-left: 0 !important; }
+.public-catalog-bottom-bar.has-whatsapp { grid-template-columns: 54px repeat(3, minmax(0,1fr)) !important; }
+.public-catalog-bottom-bar:not(.has-whatsapp) { grid-template-columns: 54px repeat(2, minmax(0,1fr)) !important; }
+.public-catalog-bottom-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 12px;
+  text-decoration: none;
+}
+.public-catalog-bottom-brand img { width: 30px; height: 30px; object-fit: contain; }
+.public-catalog-bottom-brand:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.public-catalog-bottom-whatsapp { justify-content: center !important; color: #16804A !important; text-decoration: none; }
+@media (max-width: 760px) {
+  .public-catalog-bottom-bar.has-whatsapp { grid-template-columns: 42px repeat(3, minmax(0,1fr)) !important; }
+  .public-catalog-bottom-bar:not(.has-whatsapp) { grid-template-columns: 42px repeat(2, minmax(0,1fr)) !important; }
+  .public-catalog-bottom-brand img { width: 26px; height: 26px; }
+  .public-catalog-bottom-tab strong { font-size: 11px; }
+}
+
+/* Selected payment methods keep their own category color instead of inheriting a green selection tint. */
+.payment-method-tile-ef.is-selected { background: #FFFFFF !important; border-color: #DDE7EA !important; }
+.payment-method-tile-nq.is-selected { background: #F4ECFF !important; border-color: #B48AF5 !important; color: #54219A !important; }
+.payment-method-tile-dv.is-selected { background: #FFF0EF !important; border-color: #E58B84 !important; color: #B42318 !important; }
+.payment-method-tile-tr.is-selected { background: #ECF3FF !important; border-color: #83A9F5 !important; color: #174EA6 !important; }
+.payment-method-tile-tc.is-selected { background: #EAF5F3 !important; border-color: #77BDB0 !important; color: #14685C !important; }
+.payment-method-tile-ot.is-selected { background: #F0F3F5 !important; border-color: #AAB9C1 !important; color: #4A5961 !important; }
+
+/* Inline tips are enabled, and the two floating helpers are stacked without covering each other. */
+.field-help-wrap { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; }
+.field-help-trigger { display: inline-grid !important; visibility: visible !important; opacity: 1 !important; }
+.ai-assistant-layer { right: 18px !important; bottom: calc(82px + env(safe-area-inset-bottom,0px)) !important; z-index: 2147483645 !important; }
+.ai-assistant-layer.ai-with-help { bottom: calc(82px + env(safe-area-inset-bottom,0px)) !important; }
+.context-help-layer { right: 18px !important; bottom: calc(12px + env(safe-area-inset-bottom,0px)) !important; z-index: 2147483646 !important; }
+.context-help-panel { bottom: calc(74px + env(safe-area-inset-bottom,0px)) !important; }
+@media (max-width: 760px) {
+  .ai-assistant-layer { right: 12px !important; bottom: calc(80px + env(safe-area-inset-bottom,0px)) !important; }
+  .ai-assistant-layer.ai-with-help { bottom: calc(80px + env(safe-area-inset-bottom,0px)) !important; }
+  .context-help-layer { right: 12px !important; bottom: calc(10px + env(safe-area-inset-bottom,0px)) !important; }
+  .context-help-panel { right: 10px !important; bottom: calc(68px + env(safe-area-inset-bottom,0px)) !important; }
+}

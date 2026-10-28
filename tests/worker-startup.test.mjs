@@ -126,14 +126,14 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Proveedores is a tab inside Compras, not an independent sidebar module", () => {
+test("Proveedores is reachable from Personal and keeps its purchase-management view", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
-  assert.doesNotMatch(sidebarSource, /id: "suppliers", screen: "suppliers"/);
+  assert.match(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
+  assert.match(appSource, /screen: "suppliers"/);
   assert.match(appSource, /aria-label="Compras, gastos y proveedores"/);
   assert.match(appSource, /setPurchaseModuleTab\("suppliers"\)/);
   assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
-  assert.doesNotMatch(appSource, /mobile-module-card"\+\(screen==="suppliers"/);
 });
 
 test("sidebar layout keeps overflow hidden and adapts rows to viewport height", () => {

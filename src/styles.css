@@ -4954,7 +4954,7 @@ body { background: #F5F7FC; color: #19243A; }
   .inventory-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:8px!important; }
   .inventory-metric-grid .inventory-metric-card { padding:10px!important; }
   .inventory-metric-grid .inventory-metric-card>strong { font-size:19px!important; }
-  .inventory-metric-grid .inventory-metric-card:last-child { grid-column:1/-1; }
+.inventory-metric-grid .inventory-metric-card:last-child:not(.inventory-import-stock-card) { grid-column:1/-1; }
   .inventory-controls.panel { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
   .inventory-controls .inventory-search { grid-column:1/-1; }
   .inventory-import-disclosure>summary { align-items:flex-start; }
@@ -9226,5 +9226,102 @@ body { background: #F5F7FC; color: #19243A; }
     grid-column:auto!important;
     grid-row:auto!important;
     min-width:0!important;
+  }
+}
+
+
+/* Final mobile inventory and support fallbacks. */
+.context-help-trigger {
+  text-decoration:none!important;
+}
+.context-help-trigger:focus-visible {
+  outline:3px solid var(--ink,#19243A)!important;
+  outline-offset:3px!important;
+}
+.public-contact-alert > p {
+  margin:0 0 8px;
+}
+.public-contact-fallback-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:7px;
+  min-height:40px;
+  margin-top:2px;
+  padding:9px 12px;
+  border:1px solid color-mix(in srgb,#8C3131 28%,white);
+  border-radius:10px;
+  background:#fff;
+  color:#8C3131;
+  font-size:12px;
+  font-weight:800;
+  text-decoration:none;
+}
+.public-contact-fallback-link:hover {
+  background:#fffafa;
+  text-decoration:underline;
+}
+.public-contact-fallback-link:focus-visible {
+  outline:3px solid #8C3131;
+  outline-offset:3px;
+}
+@media (max-width: 640px) {
+  /* Keep import as a simple sixth card in the same two-column row as "Sin stock". */
+  .app-shell .products-page .inventory-metric-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .app-shell .products-page .inventory-metric-grid .inventory-metric-card:last-child:not(.inventory-import-stock-card) {
+    grid-column:1/-1;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card {
+    box-sizing:border-box!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    align-self:stretch!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:105px!important;
+    height:100%!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    gap:7px!important;
+    margin:0!important;
+    padding:10px!important;
+    border:1px solid var(--line,#DDE5E3)!important;
+    border-radius:12px!important;
+    background:var(--paper,#fff)!important;
+    color:var(--ink,#24352B)!important;
+    text-align:left!important;
+    cursor:pointer;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card.is-open {
+    border-color:var(--green,#167D82)!important;
+    background:var(--green-soft,#F1F8F7)!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label {
+    display:flex!important;
+    align-items:center!important;
+    width:100%!important;
+    min-width:0!important;
+    gap:6px!important;
+    line-height:1.25!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label svg {
+    flex:0 0 17px!important;
+    width:17px!important;
+    height:17px!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label strong {
+    display:block!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+    font-size:11px!important;
+    line-height:1.3!important;
+    font-weight:800!important;
+    overflow-wrap:anywhere!important;
   }
 }

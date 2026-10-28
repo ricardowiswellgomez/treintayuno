@@ -1,4 +1,4 @@
-const CACHE_NAME = "treseiscinco-shell-v4";
+const CACHE_NAME = "treseiscinco-shell-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -29,11 +29,12 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (/^\/(api|auth|rest|functions|storage)\//.test(url.pathname)) return;
+  if (/^\\/(api|auth|rest|functions|storage)\\//.test(url.pathname)) return;
 
+  // Prefer the current deployed site on every page load; retain the last shell for outages.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).then((response) => {
+      fetch(new Request(request, { cache: "no-store" })).then((response) => {
         if (response && response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
@@ -47,15 +48,20 @@ self.addEventListener("fetch", (event) => {
   const isAppAsset = ["script", "style", "image", "font", "manifest"].includes(request.destination)
     || url.pathname === "/manifest.webmanifest";
   if (!isAppAsset) return;
-  event.respondWith(
-    caches.match(request).then(async (cached) => {
-      if (cached) return cached;
-      const response = await fetch(request);
+
+  // Network-first lets a deployed JavaScript/CSS revision replace the cached revision.
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    try {
+      const response = await fetch(new Request(request, { cache: "no-cache" }));
       if (response && response.ok) {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        return response;
       }
-      return response;
-    })
-  );
+      return response?.status >= 500 && cached ? cached : response;
+    } catch {
+      return cached || Response.error();
+    }
+  })());
 });

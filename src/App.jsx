@@ -2078,7 +2078,7 @@ function AuthenticatedApp() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings, created_at)")
+      .select("business_id, role, permissions, businesses(id, name, slug, logo_path, theme, currency_code, settings, created_at)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
     // En una sesión nueva, prioriza el negocio propio; los negocios donde la persona trabaja siguen disponibles en el selector.
@@ -6949,6 +6949,19 @@ function AuthenticatedApp() {
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
+                <div className="settings-catalog-link-panel">
+                  <span className="eyebrow">ENLACE PÚBLICO</span>
+                  <label className="settings-field"><span className="field-label-heading">Dirección corta de tu catálogo</span><input value={settingsCatalogSlug} onChange={(event)=>setSettingsCatalogSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"").replace(/-+/g,"-").slice(0,60))} maxLength={60} disabled={activeBusiness?.role!=="owner"} placeholder="mi-negocio" autoComplete="off" /></label>
+                  <p>Tu catálogo se compartirá desde una dirección fácil de recordar. Usa letras sin tildes, números y guiones.</p>
+                  <a href={settingsCatalogSlug.trim() ? "https://treseiscinco.com/"+settingsCatalogSlug.trim().toLowerCase() : "https://treseiscinco.com/"} target="_blank" rel="noopener noreferrer">{settingsCatalogSlug.trim() ? "https://treseiscinco.com/"+settingsCatalogSlug.trim().toLowerCase() : "https://treseiscinco.com/"} ↗</a>
+                  <div className="settings-catalog-options">
+                    <label className="settings-field"><span className="field-label-heading">Productos sin existencias</span><select value={settingsCommercialProfile.stockVisibility||"hide"} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,stockVisibility:event.target.value}))}><option value="show_all">Mostrar productos como siempre</option><option value="hide">Ocultar los productos sin existencias</option><option value="show_unavailable">Mostrar como agotados y bloquear compra</option></select><small>El catálogo se actualiza según esta preferencia.</small></label>
+                    <div className="settings-field"><span className="field-label-heading">Entrega disponible</span><div className="settings-delivery-options">
+                      <label><input type="checkbox" checked={(settingsCommercialProfile.deliveryMethods||[]).includes("pickup")} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,deliveryMethods:event.target.checked?[...new Set([...(current.deliveryMethods||[]),"pickup"]) ]:(current.deliveryMethods||[]).filter((method)=>method!=="pickup")}))}/><span><strong>Recogida en el negocio</strong><small>El cliente pasa a buscar su pedido.</small></span></label>
+                      <label><input type="checkbox" checked={(settingsCommercialProfile.deliveryMethods||[]).includes("delivery")} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,deliveryMethods:event.target.checked?[...new Set([...(current.deliveryMethods||[]),"delivery"]) ]:(current.deliveryMethods||[]).filter((method)=>method!=="delivery")}))}/><span><strong>Entrega a domicilio</strong><small>El negocio coordina la entrega.</small></span></label>
+                    </div></div>
+                  </div>
+                </div>
                 <div className="business-card-preview-wrap">
                   <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
                     <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>

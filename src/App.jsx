@@ -6183,6 +6183,13 @@ function AuthenticatedApp() {
     }
     return summarizeHomePieMap(combined, 4, "Otros movimientos");
   })();
+  const homeMobilePieRows = [
+    { label: "Ingresos", value: homePieData.income.reduce((sum, item) => sum + Number(item.value || 0), 0) },
+    { label: "Compras y gastos", value:
+      homePieData.purchases.reduce((sum, item) => sum + Number(item.value || 0), 0)
+      + homePieData.expenses.reduce((sum, item) => sum + Number(item.value || 0), 0)
+    }
+  ].filter((item) => item.value > 0);
 
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
@@ -7931,11 +7938,7 @@ function AuthenticatedApp() {
                 {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
               </div>
               <section className="home-pie-mobile-panel panel">
-                <div className="home-pie-mobile-heading"><h3>Ingresos y compras-gastos</h3><p>Dos distribuciones en una sola tarjeta.</p></div>
-                <div className="home-pie-mobile-pair">
-                  {canAccessScreen("sales") && <SimplePie compact title="Ingresos" description="Por artículo vendido." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
-                  {(canViewPurchases || canViewExpenses) && <SimplePie compact title="Compras y gastos" description="Por proveedor y categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
-                </div>
+                <SimplePie compact title="Ingresos y compras-gastos" description="Participación de los ingresos frente a las compras y los gastos del periodo." data={homeMobilePieRows} formatValue={(value) => money(value, currencyCode)} />
               </section>
             </>}
           </section>

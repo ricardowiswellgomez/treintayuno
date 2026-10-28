@@ -118,7 +118,7 @@ test("sidebar rendering uses the canonical Cuentas label and icon", () => {
 
 test("service worker cache version is incremented to evict stale sidebar bundles", () => {
   const swSource = readSource(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(swSource, /treseiscinco-shell-v4/);
+  assert.match(swSource, /treseiscinco-shell-v5/);
 });
 
 test("sidebar text label is not styled as an icon", () => {

@@ -690,6 +690,49 @@ async function deleteProductImageRequest(productId, imageKey, businessId) {
   return data;
 }
 
+async function uploadProductVariantImage(productId, variantId, file, businessId) {
+  if (!businessId || !variantId) throw new Error("Falta identificar la variante para subir la foto.");
+  if (file.type !== "image/webp" || file.size > MAX_PRODUCT_IMAGE_BYTES) throw new Error("La foto debe estar optimizada en WebP y pesar 1,5 MB o menos.");
+  const imageData = await fileToBase64(file);
+  const { data, error } = await supabase.rpc("add_product_variant_image_db", {
+    p_business_id: businessId, p_product_id: productId, p_variant_id: variantId,
+    p_image_data: imageData, p_image_size_bytes: file.size
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function deleteProductVariantImage(productId, variantId, imageKey, businessId) {
+  const { data, error } = await supabase.rpc("remove_product_variant_image_db", {
+    p_business_id: businessId, p_product_id: productId, p_variant_id: variantId, p_image_key: imageKey
+  });
+  if (error) throw error;
+  if (!data) throw new Error("No se pudo quitar la foto de la variante.");
+  return data;
+}
+
+function ProductVariantImagePreview({ businessId, productId, variantId, imageKey, alt = "Foto de variante", onRemove, publicMode = false }) {
+  const [src, setSrc] = useState("");
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setSrc(""); setFailed(false);
+    const rpc = publicMode ? "get_public_catalog_variant_image" : "get_product_variant_image_db";
+    const args = { p_business_id: businessId, p_product_id: productId, p_variant_id: variantId, p_image_key: imageKey };
+    supabase.rpc(rpc, args).then(({ data, error }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!active) return;
+      if (error || !row?.image_data) { setFailed(true); return; }
+      setSrc("data:" + (row.content_type || "image/webp") + ";base64," + row.image_data);
+    }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [businessId, productId, variantId, imageKey, publicMode]);
+  return <figure className={"variant-photo-item" + (failed ? " is-unavailable" : "")}>
+    {src ? <img src={src} alt={alt} loading="lazy" /> : <span className="variant-photo-placeholder" aria-label={failed ? "No se pudo cargar la foto" : "Cargando foto"}>{failed ? "Foto no disponible" : "…"}</span>}
+    {onRemove && <button type="button" className="photo-remove-button" title="Quitar foto" aria-label="Quitar foto" onClick={onRemove}>×</button>}
+  </figure>;
+}
+
 function PublicCatalogImage({ businessId, product }) {
   const imageKey = (product.image_paths || [])[0];
   const [element, setElement] = useState(null);
@@ -2071,7 +2114,7 @@ function AuthenticatedApp() {
       let variantRows = [];
       if (productIds.length) {
         const variantsResult = await supabase.from("product_variants")
-          .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,created_at")
+          .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,image_paths,created_at")
           .eq("business_id", activeBusiness.id).in("product_id", productIds)
           .order("variant_name").order("variant_value").limit(1000);
         if (variantsResult.error) throw variantsResult.error;
@@ -3299,20 +3342,55 @@ function AuthenticatedApp() {
 
   function editProductVariant(variant) {
     const digits = currencyDigits(currencyCode);
+    (variantDraft.staged_images || []).forEach((image) => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setVariantDraft({
       variant_name: variant.variant_name || "",
       variant_value: variant.variant_value || "",
       sku: variant.sku || "",
       sale_price: variant.sale_price_minor == null ? "" : String(Number(variant.sale_price_minor) / (10 ** digits)),
-      stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand)
+      stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand),
+      image_paths: [...(variant.image_paths || [])],
+      staged_images: []
     });
     setEditingVariantId(variant.id);
     setError("");
   }
 
   function resetVariantDraft() {
+    (variantDraft.staged_images || []).forEach((image) => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setVariantDraft(blankVariantDraft);
     setEditingVariantId(null);
+  }
+
+  async function chooseVariantImages(event) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+    const existingCount = (variantDraft.image_paths || []).length + (variantDraft.staged_images || []).length;
+    const allowed = Math.max(0, 2 - existingCount);
+    if (!allowed) { setError("Cada variante admite dos fotos como máximo."); return; }
+    if (files.length > allowed) setError("Solo puedes añadir " + allowed + (allowed === 1 ? " foto más a esta variante." : " fotos más a esta variante."));
+    try {
+      const ready = [];
+      for (const original of files.slice(0, allowed)) {
+        const optimized = await prepareProductImage(original);
+        ready.push({ file: optimized, preview: URL.createObjectURL(optimized), name: original.name });
+      }
+      setVariantDraft((draft) => ({ ...draft, staged_images: [...(draft.staged_images || []), ...ready].slice(0, Math.max(0, 2 - (draft.image_paths || []).length)) }));
+    } catch (error) { setError(friendlyError(error)); }
+  }
+
+  async function removeVariantPhoto(variant, imageKey) {
+    if (!activeBusiness?.id || !viewingVariantsFor || variantBusy) return;
+    setVariantBusy(true); setError(""); setNotice("");
+    try {
+      await deleteProductVariantImage(viewingVariantsFor, variant.id, imageKey, activeBusiness.id);
+      setVariantDraft((draft) => ({ ...draft, image_paths: (draft.image_paths || []).filter((key) => key !== imageKey) }));
+      await loadProductVariants(viewingVariantsFor);
+      setNotice("Foto de la variante eliminada.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setVariantBusy(false); }
   }
 
   async function saveProductVariant(event) {
@@ -3334,9 +3412,9 @@ function AuthenticatedApp() {
         stock_on_hand: variantDraft.stock_on_hand.trim() === "" ? null : Number(variantDraft.stock_on_hand),
         is_active: true
       };
-      let mutation = supabase.from("product_variants");
+      let variantId = editingVariantId;
       if (editingVariantId) {
-        mutation = mutation.update({
+        const { data, error: saveError } = await supabase.from("product_variants").update({
           variant_name: payload.variant_name,
           variant_value: payload.variant_value,
           sku: payload.sku,
@@ -3344,16 +3422,26 @@ function AuthenticatedApp() {
           stock_on_hand: payload.stock_on_hand,
           is_active: payload.is_active,
           updated_at: new Date().toISOString()
-        })
-          .eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor);
+        }).eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor).select("id").maybeSingle();
+        if (saveError) throw saveError;
+        if (!data?.id) throw new Error("No se pudo guardar la variante.");
+        variantId = data.id;
       } else {
-        mutation = mutation.insert(payload);
+        const { data, error: saveError } = await supabase.from("product_variants").insert(payload).select("id").single();
+        if (saveError) throw saveError;
+        if (!data?.id) throw new Error("No se pudo crear la variante.");
+        variantId = data.id;
       }
-      const { error: saveError } = await mutation;
-      if (saveError) throw saveError;
+      let photosSaved = 0;
+      let photosFailed = 0;
+      for (const photo of (variantDraft.staged_images || []).slice(0, Math.max(0, 2 - (variantDraft.image_paths || []).length))) {
+        try { await uploadProductVariantImage(viewingVariantsFor, variantId, photo.file, activeBusiness.id); photosSaved += 1; }
+        catch { photosFailed += 1; }
+      }
       await loadProductVariants(viewingVariantsFor);
       resetVariantDraft();
-      setNotice(editingVariantId ? "Variante actualizada." : "Variante agregada.");
+      setNotice((editingVariantId ? "Variante actualizada." : "Variante agregada.") + (photosSaved ? " " + photosSaved + (photosSaved === 1 ? " foto guardada." : " fotos guardadas.") : ""));
+      if (photosFailed) setError("La variante se guardó, pero no se pudieron subir " + photosFailed + (photosFailed === 1 ? " foto." : " fotos.") + " Reintenta desde Editar variante.");
     } catch (e) {
       setError(friendlyError(e));
     } finally { setVariantBusy(false); }
@@ -6318,12 +6406,21 @@ function AuthenticatedApp() {
                 <section className="variant-manager panel" role="dialog" aria-modal="true" aria-label={"Variantes de " + variantProduct.name}>
                   <div className="variant-manager-heading"><div><p className="eyebrow">PRODUCTO</p><h3>Variantes de {variantProduct.name}</h3><p>Ejemplos: talla M, color azul o presentación de 500 ml.</p></div><button type="button" className="icon-action-button" title="Cerrar" aria-label="Cerrar variantes" onClick={() => { setViewingVariantsFor(null); resetVariantDraft(); }}>×</button></div>
                   {rows.length ? <div className="variant-list">{rows.map((variant) => <article className={"variant-row" + (!variant.is_active ? " variant-inactive" : "")} key={variant.id}>
-                    <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}</div>
+                    <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}{(variant.image_paths || []).length > 0 && <div className="variant-photo-list">{variant.image_paths.map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={activeBusiness.id} productId={variantProduct.id} variantId={variant.id} imageKey={imageKey} alt={"Foto de " + variant.variant_name + " " + variant.variant_value}/>)}</div>}</div>
                     <div className="variant-row-actions">{canManageProducts && <button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button>}{canManageProducts && <button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button>}</div>
                   </article>)}</div> : <div className="variant-empty"><strong>Este producto todavía no tiene variantes</strong><span>Añade talla, color, tamaño u otra opción que necesites distinguir.</span></div>}
                   {canManageProducts && <form className="variant-form" onSubmit={saveProductVariant}>
                     <h4>{editingVariantId ? "Editar variante" : "Añadir variante"}</h4>
                     <div className="variant-form-grid">
+                      <div className="variant-photo-editor full-span">
+                        <span className="field-label-heading">Fotos de esta variante (máximo 2)</span>
+                        <div className="variant-photo-list">
+                          {(variantDraft.image_paths || []).map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={activeBusiness.id} productId={viewingVariantsFor} variantId={editingVariantId} imageKey={imageKey} alt="Foto existente de la variante" onRemove={() => { const current = (rows || []).find((row) => row.id === editingVariantId); if (current) removeVariantPhoto(current, imageKey); }}/>)}
+                          {(variantDraft.staged_images || []).map((image, index) => <figure className="variant-photo-item" key={image.preview}><img src={image.preview} alt={image.name || "Foto seleccionada"}/><button type="button" className="photo-remove-button" title="Quitar foto" aria-label="Quitar foto seleccionada" onClick={() => { URL.revokeObjectURL(image.preview); setVariantDraft((draft) => ({ ...draft, staged_images: (draft.staged_images || []).filter((_, i) => i !== index) })); }}>×</button></figure>)}
+                          {((variantDraft.image_paths || []).length + (variantDraft.staged_images || []).length) < 2 && <label className="photo-empty-slot variant-photo-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={variantBusy} onChange={chooseVariantImages}/><span className="photo-plus" aria-hidden="true">＋</span><strong>Agregar foto</strong></label>}
+                        </div>
+                        <span className="photo-help">JPG, PNG o WebP hasta 5 MB al cargar; se convierte a WebP de hasta 1,5 MB.</span>
+                      </div>
                       <label><span className="field-label-heading">Tipo de variante *<FieldHelp enabled={contextualHelpEnabled} text="Escribe qué característica diferencia la variante, por ejemplo Talla o Color." /></span><input value={variantDraft.variant_name} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_name: event.target.value }))} maxLength={80} required placeholder="Ej. Talla" /></label>
                       <label><span className="field-label-heading">Valor *<FieldHelp enabled={contextualHelpEnabled} text="Indica el valor de la variante, por ejemplo M, Azul o 500 ml." /></span><input value={variantDraft.variant_value} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_value: event.target.value }))} maxLength={120} required placeholder="Ej. M" /></label>
                       <label><span className="field-label-heading">Código de variante<FieldHelp enabled={contextualHelpEnabled} text="Código interno opcional para distinguir esta variante." /></span><input value={variantDraft.sku} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sku: event.target.value }))} maxLength={100} placeholder="Opcional" /></label>

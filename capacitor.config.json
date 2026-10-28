@@ -2,5 +2,9 @@
   "appId": "com.treseiscinco.app",
   "appName": "treseiscinco",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://treseiscinco.com",
+    "cleartext": false
+  }
 }

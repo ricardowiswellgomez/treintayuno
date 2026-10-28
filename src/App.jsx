@@ -1859,16 +1859,21 @@ function AuthenticatedApp() {
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
-  const [uiLanguage, setUiLanguage] = useState(() => {
-    try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
-    catch { return "es"; }
-  });
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [uiLanguage, setUiLanguage] = useState("es");
+  const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
   const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
   const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
   const [wompiSaving, setWompiSaving] = useState(false);
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
+  useEffect(() => {
+    try {
+      const key = "treseiscinco-language:" + (session?.user?.id || "guest");
+      const saved = window.localStorage.getItem(key);
+      setUiLanguage(["es","en","pt","it","fr"].includes(saved) ? saved : "es");
+    } catch { setUiLanguage("es"); }
+  }, [session?.user?.id]);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
     let active = true;
@@ -3068,7 +3073,8 @@ function AuthenticatedApp() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {} });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
+    setSettingsCatalogSlug(activeBusiness.slug || "");
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
@@ -3336,6 +3342,8 @@ function AuthenticatedApp() {
       cardSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.cardSurface || "")) ? profile.cardSurface : "#FFFFFF",
       cardText: /^#[0-9a-f]{6}$/i.test(String(profile?.cardText || "")) ? profile.cardText : "#1F2937",
       orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
+      deliveryMethods: Array.isArray(profile?.deliveryMethods) ? [...new Set(profile.deliveryMethods.filter((value) => ["pickup","delivery"].includes(value)))] : ["pickup","delivery"],
+      stockVisibility: ["show_all","hide","show_unavailable"].includes(profile?.stockVisibility) ? profile.stockVisibility : "hide",
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
@@ -3353,6 +3361,8 @@ function AuthenticatedApp() {
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
     const nameChanged = businessName !== activeBusiness.name;
+    const nextSlug = settingsCatalogSlug.trim().toLowerCase();
+    const slugChanged = nextSlug !== String(activeBusiness.slug || "");
     const currencyChanged = settingsCurrency !== currencyCode;
     const conversionRate = Number(String(settingsConversionRate).replace(",", "."));
     if (currencyChanged && settingsHasData && (!Number.isFinite(conversionRate) || conversionRate <= 0)) { setError("Indica una tasa válida: cuántas unidades de la nueva moneda equivalen a 1 unidad de la moneda actual."); return; }
@@ -3360,7 +3370,7 @@ function AuthenticatedApp() {
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
     const taxProfileChanged = JSON.stringify(nextTaxProfile) !== JSON.stringify(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
-    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
+    if (!nameChanged && !slugChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
       setNotice("No hay cambios pendientes.");
       return;
     }
@@ -3391,6 +3401,12 @@ function AuthenticatedApp() {
         });
         if (conversionError) throw conversionError;
       }
+      let savedSlug = activeBusiness.slug || "";
+      if (slugChanged) {
+        const { data: slugData, error: slugError } = await supabase.rpc("set_business_catalog_slug", { p_business_id: activeBusiness.id, p_slug: nextSlug });
+        if (slugError) throw slugError;
+        savedSlug = slugData || nextSlug;
+      }
       const { data, error: updateError } = await supabase.from("businesses")
         .update({ name: businessName, currency_code: settingsCurrency, theme: nextTheme, logo_path: nextLogoPath, settings: nextSettings })
         .eq("id", activeBusiness.id)
@@ -3399,8 +3415,9 @@ function AuthenticatedApp() {
       if (updateError) throw updateError;
       if (!data) throw new Error("No se pudo guardar la personalización. Comprueba que hayas iniciado sesión como propietario.");
       businessUpdated = true;
-      setActiveBusiness((current) => current ? { ...current, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : current);
-      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
+      setActiveBusiness((current) => current ? { ...current, name: data.name, slug: savedSlug, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, slug: savedSlug, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
+      setSettingsCatalogSlug(savedSlug);
       setSettingsBusinessName(data.name);
       setSettingsCurrency(data.currency_code);
       setSettingsConversionRate("");
@@ -6887,7 +6904,7 @@ function AuthenticatedApp() {
                 <div className="settings-icon"><AppIcon name="grid" size={23} /></div>
                 <h3>Idioma de la aplicación</h3>
                 <p>Selecciona el idioma de toda la interfaz de treseiscinco. El cambio se aplica inmediatamente y se guarda en este navegador.</p>
-                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = event.target.value === "en" ? "en" : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language", next); } catch {} setNotice(next === "en" ? "Language saved." : "Idioma guardado."); }}><option value="es">Español</option><option value="en">English</option></select></label>
+                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = ["es","en","pt","it","fr"].includes(event.target.value) ? event.target.value : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language:" + (session?.user?.id || "guest"), next); } catch {} setNotice(({es:"Idioma guardado.",en:"Language saved.",pt:"Idioma salvo.",it:"Lingua salvata.",fr:"Langue enregistrée."})[next]); }}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="it">Italiano</option><option value="fr">Français</option></select></label>
                 <p className="helper-text">Al elegir English se traducen los textos de navegación, formularios, botones, ayudas, estados y mensajes que estén incluidos en el catálogo de traducciones. Los nombres y datos escritos por ti no se traducen.</p>
               </div>
               <div hidden={settingsTab !== "taxes"} className="settings-tab-content tax-settings-panel">

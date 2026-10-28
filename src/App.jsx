@@ -7125,7 +7125,7 @@ function AuthenticatedApp() {
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu celular de acceso y el idioma personal de la aplicación."}</p></div>
+            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu correo de acceso y el idioma personal de la aplicación."}</p></div>
             <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
               {(activeBusiness?.role === "owner" ? [
                 ["general", "General"],

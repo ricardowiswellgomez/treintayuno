@@ -10,7 +10,7 @@ ALTER TABLE public.purchase_payments
   DROP CONSTRAINT IF EXISTS purchase_payments_payment_method_check;
 ALTER TABLE public.purchase_payments
   ADD CONSTRAINT purchase_payments_payment_method_check
-  CHECK (payment_method IN ('Efectivo','Transferencia','Tarjeta','Nequi','Daviplata','Otro'));
+  CHECK (payment_method IN ('Efectivo','Transferencia','Tarjeta','Nequi','Daviplata','Otro','No especificado'));
 
 create or replace function public.create_sale(
   p_business_id uuid,

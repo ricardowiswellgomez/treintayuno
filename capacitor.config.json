@@ -5,6 +5,10 @@
   "bundledWebRuntime": false,
   "server": {
     "url": "https://treseiscinco.com",
-    "cleartext": false
+    "cleartext": false,
+    "allowNavigation": [
+      "treseiscinco.com",
+      "www.treseiscinco.com"
+    ]
   }
 }

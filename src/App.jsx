@@ -2791,7 +2791,8 @@ function AuthenticatedApp() {
 
   async function sharePersonalBusinessCard() {
     if (!activeBusiness) return;
-    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
+    const savedProfile = activeBusiness.settings?.commercial_profile || {};
+    const profile = screen === "settings" ? { ...savedProfile, ...(settingsCommercialProfile || {}) } : { ...savedProfile };
     const name = profile.tradeName || activeBusiness.name || "Mi negocio";
     try {
       const { file } = await createBusinessCardImageFile(profile, name);
@@ -2809,7 +2810,8 @@ function AuthenticatedApp() {
 
   async function printBusinessCard() {
     if (!activeBusiness) return;
-    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
+    const savedProfile = activeBusiness.settings?.commercial_profile || {};
+    const profile = screen === "settings" ? { ...savedProfile, ...(settingsCommercialProfile || {}) } : { ...savedProfile };
     const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim();
     const printWindow = window.open("", "_blank");
     if (!printWindow) {

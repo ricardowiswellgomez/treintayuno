@@ -105,3 +105,14 @@ test("el APK usa el símbolo 365 transparente en el icono adaptativo y verifica 
   assert.match(androidWorkflow, /android:icon="@mipmap\/ic_launcher"/);
   assert.match(androidWorkflow, /actual (?:PNG payloads|branded launcher artwork) verified/);
 });
+
+
+test("el inventario usa espaciado compacto entre métricas, impuestos y búsqueda", () => {
+  const compact = css.slice(css.lastIndexOf("/* Compact Inventory: reduce vertical gaps"));
+  assert.ok(compact.length > 0);
+  assert.match(compact, /\.products-page \.inventory-overview\s*\{[^}]*gap:\s*8px\s*!important/s);
+  assert.match(compact, /\.products-page \.inventory-metric-grid \.inventory-metric-card\s*\{[^}]*padding:\s*9px 10px\s*!important/s);
+  assert.match(compact, /\.products-page \.bulk-tax-content\s*\{[^}]*padding:\s*9px 10px\s*!important/s);
+  assert.match(compact, /\.products-page \.inventory-controls\.panel\s*\{[^}]*margin-top:\s*5px\s*!important/s);
+  assert.match(compact, /@media \(max-width: 760px\)/);
+});

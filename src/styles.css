@@ -7595,3 +7595,146 @@ body { background: #F5F7FC; color: #19243A; }
   .context-help-layer { right: 12px !important; bottom: calc(10px + env(safe-area-inset-bottom,0px)) !important; }
   .context-help-panel { right: 10px !important; bottom: calc(68px + env(safe-area-inset-bottom,0px)) !important; }
 }
+
+
+/* Configuración: pestañas neutras; solo la sección activa usa una tarjeta blanca. */
+.settings-tabs {
+  background: #F5F7F7;
+  border: 1px solid #DDE5E5;
+  border-radius: 13px;
+  padding: 5px;
+}
+.settings-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #52636A;
+  min-height: 40px;
+}
+.settings-tab:hover { background: #FFFFFF; color: #213F4C; }
+.settings-tab.active {
+  background: #FFFFFF;
+  color: #213F4C;
+  border-color: #DDE5E5;
+  box-shadow: 0 1px 3px rgba(18, 43, 52, .06);
+}
+
+/* Tarjeta comercial: mostrar una previsualización amplia, sin cambiar su proporción de impresión. */
+.company-profile-panel .business-card-preview-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+.company-profile-panel .business-card-preview {
+  width: 100%;
+  max-width: 740px;
+  min-height: 0;
+  aspect-ratio: 9 / 5;
+  margin-inline: auto;
+}
+@media (min-width: 761px) {
+  .company-profile-panel .business-card-preview {
+    padding: clamp(20px, 3vw, 34px);
+    gap: clamp(18px, 2.4vw, 28px);
+  }
+  .company-profile-panel .business-card-preview-logo { flex-basis: 25%; width: 25%; }
+  .company-profile-panel .business-card-preview-copy { gap: 7px; }
+  .company-profile-panel .business-card-preview-copy small { font-size: 11px; }
+  .company-profile-panel .business-card-preview-copy h3 { font-size: clamp(22px, 2.5vw, 31px); line-height: 1.08; }
+  .company-profile-panel .business-card-preview-copy p { font-size: 13px; line-height: 1.4; }
+  .company-profile-panel .business-card-preview-copy > span { font-size: 13px; line-height: 1.35; }
+}
+
+/* Nueva venta: campos con la misma altura y acciones compactas junto a cada selector. */
+.sale-builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr) minmax(108px, .38fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+.sale-builder-related-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.sale-builder-control-line {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+}
+.sale-builder-related-field .field-label-heading {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #3B4039;
+  font-size: 14px;
+  font-weight: 700;
+}
+.sale-builder-control-line select {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  min-height: 45px;
+}
+.sale-builder-related-field .sale-builder-inline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 45px;
+  width: 45px;
+  min-width: 45px;
+  min-height: 45px;
+  padding: 0;
+  border: 1px solid #D9E3E2;
+  border-radius: 9px;
+  background: #F7FAFA;
+  color: #245C61;
+  cursor: pointer;
+}
+.sale-builder-related-field .sale-builder-inline-button:hover {
+  background: #EAF4F3;
+  border-color: #AFCFCD;
+}
+.sale-builder > label { min-width: 0; }
+.sale-builder > label .field-label-heading {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sale-builder > label input { min-height: 45px; }
+.sale-builder > .sale-add-button {
+  min-width: 104px;
+  min-height: 45px;
+  white-space: nowrap;
+}
+@media (min-width: 761px) and (max-width: 1120px) {
+  .sale-builder {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .sale-builder > .sale-add-button {
+    grid-column: 2;
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+@media (max-width: 760px) {
+  .sale-builder {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 13px;
+  }
+  .sale-builder > .sale-add-button {
+    grid-column: 1;
+    width: 100%;
+    min-height: 47px;
+  }
+  .sale-builder-related-field .field-label-heading,
+  .sale-builder > label .field-label-heading { min-height: 0; }
+  .sale-builder-control-line select,
+  .sale-builder-related-field .sale-builder-inline-button,
+  .sale-builder > label input { min-height: 47px; }
+}

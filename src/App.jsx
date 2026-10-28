@@ -1877,6 +1877,10 @@ function AuthenticatedApp() {
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
+  const [accountPhoneDraft, setAccountPhoneDraft] = useState("");
+  const [accountPhoneCode, setAccountPhoneCode] = useState("");
+  const [accountPhonePending, setAccountPhonePending] = useState(false);
+  const [accountPhoneBusy, setAccountPhoneBusy] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState("es");
   const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
@@ -1893,6 +1897,10 @@ function AuthenticatedApp() {
       setUiLanguage(["es","en","pt","it","fr"].includes(saved) ? saved : "es");
     } catch { setUiLanguage("es"); }
   }, [session?.user?.id]);
+  useEffect(() => {
+    if (accountPhonePending) return;
+    setAccountPhoneDraft(String(session?.user?.phone || ownerPhone || ""));
+  }, [session?.user?.id, session?.user?.phone, ownerPhone, accountPhonePending]);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
     let active = true;
@@ -3130,7 +3138,7 @@ function AuthenticatedApp() {
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
     setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", ownerName: savedCommercial.ownerName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
     setSettingsCatalogSlug(activeBusiness.slug || "");
-    setSettingsTab("general");
+    setSettingsTab(activeBusiness.role === "owner" ? "general" : "account");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
     setSettingsTaxProfile(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
@@ -3336,6 +3344,80 @@ function AuthenticatedApp() {
     } catch (e) {
       setError(friendlyError(e));
     } finally { setOwnerPhoneSaving(false); }
+  }
+
+  async function requestAccountPhoneCode() {
+    if (!session?.user?.id || accountPhoneBusy) return;
+    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.");
+      return;
+    }
+    if (normalizedPhone === String(session?.user?.phone || "")) {
+      setNotice("Ese número ya está verificado para tu cuenta.");
+      setError("");
+      return;
+    }
+    setAccountPhoneBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ phone: normalizedPhone });
+      if (updateError) throw updateError;
+      setAccountPhoneDraft(normalizedPhone);
+      setAccountPhoneCode("");
+      setAccountPhonePending(true);
+      setNotice("Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.");
+    } catch (error) {
+      setError(friendlyError(error));
+    } finally {
+      setAccountPhoneBusy(false);
+    }
+  }
+
+  async function verifyAccountPhoneCode() {
+    if (!session?.user?.id || !accountPhonePending || accountPhoneBusy) return;
+    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
+    const code = accountPhoneCode.trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Revisa el celular con prefijo internacional.");
+      return;
+    }
+    if (!/^\d{4,8}$/.test(code)) {
+      setError("Escribe el código numérico que recibiste por SMS.");
+      return;
+    }
+    setAccountPhoneBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: normalizedPhone,
+        token: code,
+        type: "phone_change"
+      });
+      if (verifyError) throw verifyError;
+      const { data: refreshed, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const nextSession = refreshed?.session || data?.session || null;
+      if (nextSession) setSession(nextSession);
+      setOwnerPhone(normalizedPhone);
+      setAccountPhoneDraft(normalizedPhone);
+      setAccountPhoneCode("");
+      setAccountPhonePending(false);
+      const { error: profileError } = await supabase.from("profiles")
+        .upsert({ user_id: session.user.id, phone: normalizedPhone }, { onConflict: "user_id" });
+      if (profileError) {
+        setError("El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.");
+        setNotice("");
+      } else {
+        setNotice("Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.");
+      }
+    } catch (error) {
+      setError(friendlyError(error));
+    } finally {
+      setAccountPhoneBusy(false);
+    }
   }
 
   async function saveWompiConfiguration() {
@@ -5624,7 +5706,7 @@ function AuthenticatedApp() {
     if (next === "accounts") return canPermission("sales_view") || canViewPurchases;
     if (next === "receivables") return canPermission("sales_view");
     if (next === "payables") return canViewPurchases;
-    if (next === "settings") return isBusinessOwner;
+    if (next === "settings") return true;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
     if (next === "sales" || next === "stats" || next === "quotes") return canPermission("sales_view");
@@ -6977,20 +7059,37 @@ function AuthenticatedApp() {
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>
+            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu celular de acceso y el idioma personal de la aplicación."}</p></div>
             <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
-              {[
+              {(activeBusiness?.role === "owner" ? [
                 ["general", "General"],
+                ["account", "Mi cuenta"],
                 ["company", "Mi empresa"],
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
                 ["taxes", "Impuestos"],
                 ["data", "Datos y copias"]
-              ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
+              ] : [
+                ["account", "Mi cuenta"],
+                ["language", "Idioma"]
+              ]).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={!["general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["account", "general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={settingsTab !== "account"} className="settings-tab-content account-settings-panel">
+                <div className="settings-icon"><AppIcon name="smartphone" size={23}/></div>
+                <h3>Acceso con celular</h3>
+                <p>Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.</p>
+                <div className="account-phone-status"><span>Celular verificado</span><strong>{session?.user?.phone || "Todavía no hay un número verificado"}</strong></div>
+                <label className="settings-field"><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={accountPhoneDraft} onChange={(event)=>setAccountPhoneDraft(event.target.value)} placeholder="+57 300 123 4567" maxLength={24} disabled={accountPhoneBusy||accountPhonePending}/></label>
+                {!accountPhonePending && <button type="button" className="primary-button account-phone-action" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneDraft.trim()||accountPhoneDraft.trim().replace(/[\s().-]/g,"")===String(session?.user?.phone||"")}>{accountPhoneBusy?"Enviando…":"Enviar código de verificación"}</button>}
+                {accountPhonePending && <>
+                  <label className="settings-field"><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={accountPhoneCode} onChange={(event)=>setAccountPhoneCode(event.target.value.replace(/\D/g,"").slice(0,8))} placeholder="Escribe el código recibido" maxLength={8} /></label>
+                  <div className="form-actions account-phone-actions"><button type="button" className="primary-button" onClick={verifyAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneCode.trim()}>{accountPhoneBusy?"Verificando…":"Verificar celular"}</button><button type="button" className="secondary-button" onClick={()=>{setAccountPhonePending(false);setAccountPhoneCode("");setError("");setNotice("");}} disabled={accountPhoneBusy}>Cancelar</button><button type="button" className="text-button" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy}>Reenviar código</button></div>
+                </>}
+                <p className="helper-text">Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.</p>
+              </div>
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>

@@ -75,8 +75,16 @@ jobs:
           unzip -Z1 "$apk" | grep -Eq 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png'
           unzip -Z1 "$apk" | grep -Eq 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml'
           icon_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png' | head -n 1)"
+          foreground_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-xxxhdpi(-v4)?/ic_launcher_foreground.png' | head -n 1)"
+          adaptive_xml_entry="$(unzip -Z1 "$apk" | grep -E 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml' | head -n 1)"
+          test -n "$icon_entry" && test -n "$foreground_entry" && test -n "$adaptive_xml_entry"
           unzip -p "$apk" "$icon_entry" > /tmp/treseiscinco-launcher.png
-          ICON_FILE=/tmp/treseiscinco-launcher.png node --input-type=module <<'NODE'
+          unzip -p "$apk" "$foreground_entry" > /tmp/treseiscinco-foreground.png
+          unzip -p "$apk" "$adaptive_xml_entry" > /tmp/treseiscinco-adaptive-icon.xml
+          grep -q '@mipmap/ic_launcher_foreground' /tmp/treseiscinco-adaptive-icon.xml
+          grep -q '@color/treseiscinco_icon_background' /tmp/treseiscinco-adaptive-icon.xml
+          for png in /tmp/treseiscinco-launcher.png /tmp/treseiscinco-foreground.png; do
+            ICON_FILE="$png" node --input-type=module <<'NODE'
           import sharp from "sharp";
           const { data, info } = await sharp(process.env.ICON_FILE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
           let yellow = 0, teal = 0, blue = 0;
@@ -86,10 +94,11 @@ jobs:
             if (g > 100 && g > r * 1.12 && g > b * 0.92) teal++;
             if (b > 75 && b > r * 1.18 && b > g * 1.02) blue++;
           }
-          if (yellow < 20 || teal < 20 || blue < 20) throw new Error("El icono de la APK no contiene el arte cromático oficial 365: " + JSON.stringify({ yellow, teal, blue }));
-          console.log("Se verificó el arte oficial amarillo/verde azulado/azul dentro del icono de inicio.");
+          if (yellow < 20 || teal < 20 || blue < 20) throw new Error("El recurso de icono no contiene el arte cromático oficial 365: " + JSON.stringify({ file: process.env.ICON_FILE, yellow, teal, blue }));
+          console.log("Arte 365 verificado en " + process.env.ICON_FILE);
           NODE
-          echo "APK label, manifest icon references, generated resources and actual branded launcher image verified."
+          done
+          echo "APK label, manifest icon references, adaptive layers and actual branded launcher artwork verified."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

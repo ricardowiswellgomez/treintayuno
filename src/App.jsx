@@ -7937,9 +7937,9 @@ function AuthenticatedApp() {
                 {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
                 {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
               </div>
-              <section className="home-pie-mobile-panel panel">
+              <div className="home-pie-mobile-wrapper">
                 <SimplePie compact title="Ingresos y compras-gastos" description="Participación de los ingresos frente a las compras y los gastos del periodo." data={homeMobilePieRows} formatValue={(value) => money(value, currencyCode)} />
-              </section>
+              </div>
             </>}
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}

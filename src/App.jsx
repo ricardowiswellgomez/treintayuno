@@ -2592,7 +2592,7 @@ function AuthenticatedApp() {
           () => supabase.from("purchases")
             .select("id,business_id,supplier_id,total_minor,status,purchased_at,created_at")
             .eq("business_id", activeBusiness.id)
-            .gte("purchased_at", range.start).lte("purchased_at", range.today)
+            .gte("purchased_at", fromStamp).lt("purchased_at", toStamp)
             .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
           "compras del panel de Inicio"
         ) : Promise.resolve([]),

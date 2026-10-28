@@ -9,8 +9,10 @@ export function getSidebarItemLabel(item) {
     coupons: "Cupones",
     suppliers: "Proveedores"
   };
-  const key = item?.id || item?.screen;
-  if (key && canonicalLabels[key]) return canonicalLabels[key];
+  const itemId = String(item?.id ?? "");
+  const screenId = String(item?.screen ?? "");
+  if (canonicalLabels[itemId]) return canonicalLabels[itemId];
+  if (canonicalLabels[screenId]) return canonicalLabels[screenId];
   const label = String(item?.label ?? "").trim();
   return label || "Módulo";
 }

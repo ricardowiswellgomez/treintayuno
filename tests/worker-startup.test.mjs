@@ -126,14 +126,19 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Proveedores is reachable from Personal and keeps its purchase-management view", () => {
+test("Proveedores remains a standalone Personal/sidebar module, not a Compras tab", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
   assert.match(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
   assert.match(appSource, /screen: "suppliers"/);
-  assert.match(appSource, /aria-label="Compras, gastos y proveedores"/);
-  assert.match(appSource, /setPurchaseModuleTab\("suppliers"\)/);
-  assert.match(appSource, /canViewSuppliers && <button type="button" role="tab"/);
+  assert.match(appSource, /if \(next === "suppliers"\) return isBusinessManager \|\| canViewSuppliers \|\| canViewPurchases/);
+  assert.doesNotMatch(appSource, /aria-label="Compras, gastos y proveedores"/);
+  assert.doesNotMatch(appSource, /setPurchaseModuleTab\("suppliers"\)/);
+  const tabsStart = appSource.indexOf('<div className="purchase-module-tabs"');
+  const tabsEnd = appSource.indexOf("</div>", tabsStart);
+  const purchaseTabs = appSource.slice(tabsStart, tabsEnd);
+  assert.match(purchaseTabs, /aria-label="Compras y gastos"/);
+  assert.doesNotMatch(purchaseTabs, />Proveedores<\/button>/);
 });
 
 test("public catalog removes default filler/count but keeps bottom WhatsApp and the cart", () => {

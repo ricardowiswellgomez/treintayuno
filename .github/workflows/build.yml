@@ -192,11 +192,27 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSI https://treseiscinco.com/download/apk -o /tmp/treseiscinco-apk-headers.txt
-          grep -Eiq '^content-type:[[:space:]]*application/vnd.android.package-archive' /tmp/treseiscinco-apk-headers.txt
-          grep -Eiq '^content-disposition:[[:space:]]*attachment;[[:space:]]*filename="treseiscinco.apk"' /tmp/treseiscinco-apk-headers.txt
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://treseiscinco.com/download/apk -o /tmp/treseiscinco-downloaded.apk
-          test -s /tmp/treseiscinco-downloaded.apk
-          unzip -t /tmp/treseiscinco-downloaded.apk >/dev/null
-          echo "Verified: production APK endpoint sends a valid APK attachment."
+          url="https://treseiscinco.com/download/apk"
+          headers="/tmp/treseiscinco-apk-headers.txt"
+          apk="/tmp/treseiscinco-downloaded.apk"
+          # Cloudflare Workers Builds can finish a little after GitHub publishes the APK commit.
+          # Poll the real public endpoint until it serves the APK attachment rather than cached HTML.
+          for attempt in $(seq 1 12); do
+            rm -f "$headers" "$apk"
+            if curl -sS --connect-timeout 5 --max-time 10 --location -D "$headers" -o "$apk" "$url"; then
+              if grep -Eiq '^content-type:[[:space:]]*application/vnd.android.package-archive' "$headers" \
+                && grep -Eiq '^content-disposition:[[:space:]]*attachment;[[:space:]]*filename="treseiscinco.apk"' "$headers" \
+                && test -s "$apk" \
+                && unzip -t "$apk" >/dev/null 2>&1; then
+                echo "Verified: production APK endpoint sends a valid APK attachment (attempt $attempt)."
+                exit 0
+              fi
+            fi
+            echo "Production APK endpoint is not ready or did not return a valid attachment (attempt $attempt/12); retrying in 5 seconds." >&2
+            sleep 5
+          done
+          echo "ERROR: production APK route never returned a valid APK attachment." >&2
+          echo "--- Response headers from the last attempt ---" >&2
+          cat "$headers" 2>/dev/null || true
+          exit 1
 

@@ -7308,3 +7308,16 @@ body { background: #F5F7FC; color: #19243A; }
   .cash-tendered-field { grid-column: 1 / -1; }
 }
 
+
+
+.payment-method-field {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+}
+.payment-method-field > .field-label-heading,
+.payment-method-field > span:first-child { color: var(--ink, #19243A); font-weight: 750; }
+.payment-method-field .payment-method-tiles { margin-top: 2px; }

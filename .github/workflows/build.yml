@@ -49,15 +49,19 @@ jobs:
           # Avoid packaging a previously published APK inside the next APK.
           rm -f dist/treseiscinco.apk
           npx cap add android
-          # Use the official 365 app-icon artwork and generate every launcher density before syncing.
-          mkdir -p assets
-          cp public/icon-treseiscinco-512.svg assets/logo.svg
+          npx cap sync android
+          # Capacitor sync can alter Android resources; stamp the official icon after sync.
           npm run android:icons
+          manifest="android/app/src/main/AndroidManifest.xml"
+          grep -q 'android:icon="@mipmap/ic_launcher"' "$manifest"
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' "$manifest"
           test -s android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           test -s android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           test -s android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          npx cap sync android
+          test -s android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          grep -q '@mipmap/ic_launcher_foreground' android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          grep -q '@color/treseiscinco_icon_background' android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
@@ -67,11 +71,57 @@ jobs:
           apk="dist/treseiscinco.apk"
           test -s "$apk"
           badging="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk")"
-          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'"
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-mdpi(-v4)?/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-xxxhdpi(-v4)?/ic_launcher.png'
-          unzip -Z1 "$apk" | grep -Eq 'res/mipmap-anydpi-v26(-v4)?/ic_launcher.xml'
-          echo "APK references the treseiscinco launcher icon and includes the generated density/adaptive resources."
+          printf '%s\n' "$badging" | grep -q "application-label:'treseiscinco'" || { echo "ERROR: la APK no informa la etiqueta treseiscinco."; printf '%s\n' "$badging"; exit 1; }
+
+          # For adaptive launchers, aapt may resolve application: icon= to the adaptive XML;
+          # verify the real raster artwork and the adaptive XML independently instead.
+          entries="$(unzip -Z1 "$apk")"
+          icon_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher[.](png|webp)$' | head -n 1 || true)"
+          foreground_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher_foreground[.](png|webp)$' | head -n 1 || true)"
+          adaptive_xml_entry="$(printf '%s\n' "$entries" | grep -E 'res/[^[:space:]]*/ic_launcher.xml$' | head -n 1 || true)"
+
+          if [ -z "$icon_entry" ] || [ -z "$foreground_entry" ] || [ -z "$adaptive_xml_entry" ]; then
+            echo "ERROR: faltan recursos de icono dentro del APK. Recursos encontrados:"
+            printf '%s\n' "$entries" | grep -E 'ic_launcher|mipmap' | head -n 100 || true
+            echo "icon_entry=$icon_entry"
+            echo "foreground_entry=$foreground_entry"
+            echo "adaptive_xml_entry=$adaptive_xml_entry"
+            exit 1
+          fi
+
+          unzip -p "$apk" "$icon_entry" > /tmp/treseiscinco-launcher.img
+          unzip -p "$apk" "$foreground_entry" > /tmp/treseiscinco-foreground.img
+          node --input-type=module <<'NODE'
+          import sharp from "sharp";
+
+          for (const [file, requireOfficialColors] of [
+            ["/tmp/treseiscinco-launcher.img", true],
+            ["/tmp/treseiscinco-foreground.img", true],
+          ]) {
+            const meta = await sharp(file).metadata();
+            const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+            let visible = 0, yellow = 0, teal = 0, blue = 0;
+
+            for (let i = 0; i < data.length; i += info.channels) {
+              const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+              if (a > 32) visible++;
+              if (a > 32 && r > 205 && g > 145 && g < 235 && b < 115) yellow++;
+              if (a > 32 && g > 100 && g > r * 1.12 && g > b * 0.92) teal++;
+              if (a > 32 && b > 75 && b > r * 1.18 && b > g * 1.02) blue++;
+            }
+
+            const report = { file, width: meta.width, height: meta.height, format: meta.format, visible, yellow, teal, blue };
+            console.log("APK_ICON_DIAGNOSTIC", JSON.stringify(report));
+
+            if (!meta.width || !meta.height || meta.width < 48 || meta.height < 48 || visible < 300) {
+              throw new Error("El icono de la APK está vacío o tiene dimensiones inválidas: " + file);
+            }
+            if (requireOfficialColors && (yellow < 20 || teal < 20 || blue < 20)) {
+              throw new Error("El icono empaquetado no contiene los tres colores de marca 365: " + JSON.stringify(report));
+            }
+          }
+          NODE
+          echo "APK label, actual PNG payloads verified; adaptive foreground artwork and adaptive XML verified."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

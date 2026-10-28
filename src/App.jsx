@@ -16,9 +16,12 @@ function AppIcon({ name, size = 20 }) {
     profitability: <><path d="M4 19V5M4 19h17" /><path d="m7 15 4-4 3 2 5-6" /><path d="M16 7h3v3" /></>,
     purchases: <><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></>,
     catalog: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
+    store: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /><path d="M3 10h18" /></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
     whatsapp: <><path d="M20.2 11.6a8.2 8.2 0 0 1-12.1 7.2L4 20l1.2-4a8.2 8.2 0 1 1 15-4.4Z" /><path d="M8.2 8.4c.4-.8.8-.8 1.2-.1l.8 1.4c.2.3.1.6-.2.9l-.5.5c.8 1.5 1.9 2.5 3.4 3.1l.5-.6c.2-.3.5-.4.9-.2l1.4.7c.6.3.7.6.4 1.2-.4.8-1.3 1.1-2.2 1-3.1-.4-6.8-3.7-7.1-6.6-.1-.6.4-1.1 1.4-1.3Z" /></>,
     smartphone: <><rect x="6" y="2.5" width="12" height="19" rx="2.3" /><path d="M10 5h4M11 18.5h2" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    truck: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     download: <><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></>,
     list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="3" /></>,
     audit: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
@@ -54,7 +57,11 @@ function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
   const methods = [["Efectivo","EF"],["Nequi","NQ"],["Daviplata","DV"],["Transferencia","TR"],["Tarjeta","TC"],["Otro","OT"]];
   return <div className="payment-method-tiles" role="group" aria-label={ariaLabel}>
     {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile payment-method-tile-" + mark.toLowerCase() + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
-      <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>{mark}</span><strong>{method}</strong>
+      <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>
+        {method === "Nequi" ? <svg className="payment-method-brand-logo payment-method-brand-nequi" viewBox="0 0 116 36" role="img" aria-label="Nequi"><text x="4" y="27" fontFamily="Arial, sans-serif" fontSize="29" fontWeight="800" letterSpacing="-1.2" fill="#DA0081">nequi</text></svg>
+          : method === "Daviplata" ? <svg className="payment-method-brand-logo payment-method-brand-daviplata" viewBox="0 0 132 40" role="img" aria-label="DaviPlata"><path d="M8 9h16a7 7 0 0 1 7 7v8a7 7 0 0 1-7 7H8a7 7 0 0 1-7-7v-8a7 7 0 0 1 7-7Z" fill="#DD141D"/><text x="7" y="24" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="800" fill="#fff">D</text><text x="34" y="26" fontFamily="Arial, sans-serif" fontSize="21" fontWeight="800" letterSpacing="-0.8" fill="#DD141D">DaviPlata</text></svg>
+          : mark}
+      </span><strong>{method}</strong>
     </button>)}
   </div>;
 }
@@ -1304,6 +1311,7 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
+        {hasWhatsappContact && <a className="public-catalog-header-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Chatear por WhatsApp con este negocio" title="Chatear por WhatsApp"><AppIcon name="whatsapp" size={22}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>
@@ -1313,7 +1321,7 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div>{business.commercial_profile?.publicDescription && <p>{business.commercial_profile.publicDescription}</p>}{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div>{business.commercial_profile?.publicDescription && <p>{business.commercial_profile.publicDescription}</p>}<div className="public-catalog-intro-meta">{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}{Array.isArray(business?.commercial_profile?.deliveryMethods)&&business.commercial_profile.deliveryMethods.length>0&&<div className="public-catalog-delivery-methods" aria-label="Opciones de entrega">{business.commercial_profile.deliveryMethods.includes("pickup")&&<span className="public-catalog-delivery-badge"><AppIcon name="store" size={14}/>Recogida en el negocio</span>}{business.commercial_profile.deliveryMethods.includes("delivery")&&<span className="public-catalog-delivery-badge"><AppIcon name="truck" size={14}/>Entrega a domicilio</span>}</div>}</div></div><span className="public-catalog-currency">{business.currency_code}</span></div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -1330,7 +1338,7 @@ function PublicCatalog({ businessId }) {
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
             <div className="public-catalog-product-heading"><h2>{product.name}</h2><button type="button" className="public-product-share" title={"Compartir "+product.name} aria-label={"Compartir "+product.name} onClick={()=>sharePublicProduct(product)}>↗</button></div>
-            {product.description && <p>{product.description}</p>}
+            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || "Agrégalo al carrito para preparar tu pedido."}</p>
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
             {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}
@@ -1546,9 +1554,6 @@ function AuthenticatedApp() {
   const [showPublicLanding, setShowPublicLanding] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneOtp, setPhoneOtp] = useState("");
-  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
@@ -1922,10 +1927,6 @@ function AuthenticatedApp() {
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
-  const [accountPhoneDraft, setAccountPhoneDraft] = useState("");
-  const [accountPhoneCode, setAccountPhoneCode] = useState("");
-  const [accountPhonePending, setAccountPhonePending] = useState(false);
-  const [accountPhoneBusy, setAccountPhoneBusy] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState("es");
   const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
@@ -1942,10 +1943,6 @@ function AuthenticatedApp() {
       setUiLanguage(["es","en","pt","it","fr"].includes(saved) ? saved : "es");
     } catch { setUiLanguage("es"); }
   }, [session?.user?.id]);
-  useEffect(() => {
-    if (accountPhonePending) return;
-    setAccountPhoneDraft(String(session?.user?.phone || ownerPhone || ""));
-  }, [session?.user?.id, session?.user?.phone, ownerPhone, accountPhonePending]);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
     let active = true;
@@ -2868,8 +2865,9 @@ function AuthenticatedApp() {
       const printLogoUrl = settingsLogoPreview || (savedLogoPath ? getBusinessLogoUrl(savedLogoPath) : "");
       const logoDataUri = await fetchBusinessCardLogoDataUri(printLogoUrl, savedLogoPath);
       const svg = buildBusinessCardSvg(profile, businessName, logoDataUri);
-      const svgData = btoa(unescape(encodeURIComponent(svg)));
-      const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta · ' + escapeHtml(businessName) + '</title><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + svgData + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm. Si el fondo no aparece, activa «Gráficos de fondo» en las opciones de impresión.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
+      // Render the vector artwork inline in the print document. This preserves the chosen
+      // background rectangle and explicit text fills in Chrome/Edge's print pipeline.
+      const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta · ' + escapeHtml(businessName) + '</title><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;forced-color-adjust:none!important;box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.card-svg svg{display:block;width:90mm;height:50mm;max-width:100%;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg,.card-svg svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><div class="card-svg" aria-label="Tarjeta comercial con colores personalizados">' + svg + '</div><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm. El fondo y los textos usan los colores seleccionados.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
       printWindow.document.open();
       printWindow.document.write(html);
       printWindow.document.close();
@@ -3323,34 +3321,7 @@ function AuthenticatedApp() {
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      if (mode === "phone") {
-        const normalizedPhone = phoneNumber.trim().replace(/[\s().-]/g, "");
-        if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-          throw new Error("Escribe el número con prefijo internacional, por ejemplo +57 300 123 4567.");
-        }
-        if (!phoneOtpSent) {
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            phone: normalizedPhone,
-            options: { shouldCreateUser: false }
-          });
-          if (otpError) throw otpError;
-          setPhoneNumber(normalizedPhone);
-          setPhoneOtpSent(true);
-          setNotice("Si ese número está vinculado y verificado en tu cuenta, te enviaremos un código SMS.");
-        } else {
-          const { data, error: verifyError } = await supabase.auth.verifyOtp({
-            phone: normalizedPhone, token: phoneOtp.trim(), type: "sms"
-          });
-          if (verifyError) throw verifyError;
-          if (!data?.session || !data?.user) throw new Error("No pudimos validar el código. Pide uno nuevo e inténtalo otra vez.");
-          setSession(data.session);
-          setShowPublicLanding(true);
-          setMode("login");
-          setPhoneOtp("");
-          setPhoneOtpSent(false);
-          await loadBusinesses(data.user.id);
-        }
-      } else if (mode === "forgot") {
+      if (mode === "forgot") {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: window.location.origin
         });
@@ -3379,12 +3350,7 @@ function AuthenticatedApp() {
         setSession(data.session); await loadBusinesses(data.user.id);
       }
     } catch (e) {
-      const rawMessage = String(e?.message || "");
-      if (mode === "phone" && /unable to get sms provider|sms provider|sms.*provider/i.test(rawMessage)) {
-        setError("El acceso por SMS todavía no está habilitado en treseiscinco: falta configurar el proveedor de mensajes del sistema. Mientras se activa, entra con tu correo y contraseña; no se enviará ningún código hasta completar esa configuración.");
-      } else {
-        setError(friendlyError(e));
-      }
+      setError(friendlyError(e));
     } finally { setBusy(false); }
   }
 
@@ -3483,81 +3449,7 @@ function AuthenticatedApp() {
     } finally { setOwnerPhoneSaving(false); }
   }
 
-  async function requestAccountPhoneCode() {
-    if (!session?.user?.id || accountPhoneBusy) return;
-    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
-    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-      setError("Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.");
-      return;
-    }
-    if (normalizedPhone === String(session?.user?.phone || "")) {
-      setNotice("Ese número ya está verificado para tu cuenta.");
-      setError("");
-      return;
-    }
-    setAccountPhoneBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({ phone: normalizedPhone });
-      if (updateError) throw updateError;
-      setAccountPhoneDraft(normalizedPhone);
-      setAccountPhoneCode("");
-      setAccountPhonePending(true);
-      setNotice("Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.");
-    } catch (error) {
-      setError(friendlyError(error));
-    } finally {
-      setAccountPhoneBusy(false);
-    }
-  }
-
-  async function verifyAccountPhoneCode() {
-    if (!session?.user?.id || !accountPhonePending || accountPhoneBusy) return;
-    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
-    const code = accountPhoneCode.trim();
-    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-      setError("Revisa el celular con prefijo internacional.");
-      return;
-    }
-    if (!/^\d{4,8}$/.test(code)) {
-      setError("Escribe el código numérico que recibiste por SMS.");
-      return;
-    }
-    setAccountPhoneBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        phone: normalizedPhone,
-        token: code,
-        type: "phone_change"
-      });
-      if (verifyError) throw verifyError;
-      const { data: refreshed, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      const nextSession = refreshed?.session || data?.session || null;
-      if (nextSession) setSession(nextSession);
-      setOwnerPhone(normalizedPhone);
-      setAccountPhoneDraft(normalizedPhone);
-      setAccountPhoneCode("");
-      setAccountPhonePending(false);
-      const { error: profileError } = await supabase.from("profiles")
-        .upsert({ user_id: session.user.id, phone: normalizedPhone }, { onConflict: "user_id" });
-      if (profileError) {
-        setError("El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.");
-        setNotice("");
-      } else {
-        setNotice("Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.");
-      }
-    } catch (error) {
-      setError(friendlyError(error));
-    } finally {
-      setAccountPhoneBusy(false);
-    }
-  }
-
-  async function saveWompiConfiguration() {
+    async function saveWompiConfiguration() {
     if (!activeBusiness?.id || wompiSaving) return;
     if (!["owner", "admin"].includes(activeBusiness.role)) { setError("Solo el propietario o un administrador puede configurar Wompi."); return; }
     setWompiSaving(true); setError(""); setNotice("");
@@ -6261,21 +6153,19 @@ function AuthenticatedApp() {
       </section>
       <section className="auth-form-panel"><div className="auth-form-wrap">
         <p className="eyebrow">{mode === "signup" ? "EMPIEZA GRATIS" : mode === "forgot" || mode === "update-password" ? "RECUPERA TU ACCESO" : "QUÉ BUENO VERTE"}</p>
-        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "phone" ? (phoneOtpSent ? "Verifica tu celular" : "Entrar con celular") : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
-        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "phone" ? (phoneOtpSent ? "Introduce el código SMS que recibiste. Por seguridad, solo se permite acceder con un número ya vinculado y verificado en una cuenta." : "Escribe tu número con prefijo internacional. Te enviaremos un código para entrar sin contraseña.") : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
+        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
+        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
-          {mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
-          {mode === "phone" && <label><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+57 300 123 4567" required /><small className="auth-phone-format-help">Incluye el signo + y el código del país antes del número. Para Colombia usa +57; ejemplo: +57 300 123 4567. Solo números ya vinculados y verificados pueden entrar por este método.</small></label>}
-          {mode === "phone" && phoneOtpSent && <label><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="Código de verificación" required minLength={4} maxLength={8} /></label>}
-          {mode !== "forgot" && mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
-          {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button><button type="button" className="text-button" onClick={() => { setMode("phone"); setPhoneOtpSent(false); setPhoneOtp(""); setError(""); setNotice(""); }}>Entrar con celular</button></p>}
+          {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
+          {mode !== "forgot" && mode !== "update-password" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
+          {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
           
         {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
-          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "phone" ? (phoneOtpSent ? "Verificar código" : "Enviar código SMS") : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
-          {mode === "phone" && phoneOtpSent && <button type="button" className="text-button" disabled={busy} onClick={() => { setPhoneOtpSent(false); setPhoneOtp(""); setNotice(""); setError(""); }}>Usar otro número</button>}
+          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
+
         </form>
-        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "phone" ? "¿Prefieres entrar con correo?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "phone" ? "login" : mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setPhoneOtp(""); setPhoneOtpSent(false); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : mode === "phone" ? "Usar correo" : "Crear cuenta"}</button></p>}
+        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : "Crear cuenta"}</button></p>}
         <p className="privacy-note">Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.</p>
       </div></section>
     </main>
@@ -6326,7 +6216,7 @@ function AuthenticatedApp() {
             ))}
           </section>)}
         </nav>
-        <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
+        <div className="sidebar-bottom"><div className="sidebar-bottom-actions"><a className="sidebar-contact-action" href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco" title="Contacto" aria-label="Contacto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></a><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>
@@ -6971,6 +6861,11 @@ function AuthenticatedApp() {
               <div className="inventory-page-heading">
                 <div><p className="eyebrow">CATÁLOGO Y EXISTENCIAS</p><h2>Inventario</h2><p>Controla tus artículos, revisa el valor de las existencias y encuentra rápidamente lo que necesitas reponer.</p></div>
                 {canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "＋ Agregar artículo"}</button>}
+                <div className="inventory-import-actions"><details className="inventory-import-disclosure inventory-import-popover">
+              <summary><AppIcon name="download" size={16}/><span>Importar / exportar</span><AppIcon name="chevron-down" size={14}/></summary>
+              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplateExcel}>Plantilla Excel</button><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>CSV para importar</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label><button type="button" className="secondary-button" onClick={downloadInventoryReportExcel} disabled={busy}>Reporte Excel</button><button type="button" className="secondary-button" onClick={printInventoryReportPdf} disabled={busy}>Reporte PDF</button></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
+            </details>
+<FieldHelp enabled={contextualHelpEnabled} text="Descarga la plantilla, importa tu inventario inicial o exporta el inventario completo con sus variantes a Excel o PDF." /></div>
               </div>
               <div className="inventory-metric-grid">
                 <article className="inventory-metric-card"><span>Referencias en inventario</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><p>Artículos guardados en tu tienda</p></article>
@@ -6993,11 +6888,7 @@ function AuthenticatedApp() {
                 <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
               </div>
             </details>}
-            <details className="inventory-import-disclosure">
-              <summary><strong>Importar inventario</strong><span>Plantilla Excel / CSV · hasta 500 artículos por archivo</span></summary>
-              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplateExcel}>Plantilla Excel</button><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>CSV para importar</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label><button type="button" className="secondary-button" onClick={downloadInventoryReportExcel} disabled={busy}>Reporte Excel</button><button type="button" className="secondary-button" onClick={printInventoryReportPdf} disabled={busy}>Reporte PDF</button></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
-            </details>
-            <div className="inventory-controls panel">
+                        <div className="inventory-controls panel">
               <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
               <details className="inventory-filter-disclosure">
@@ -7234,12 +7125,13 @@ function AuthenticatedApp() {
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu celular de acceso y el idioma personal de la aplicación."}</p></div>
+            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu correo de acceso y el idioma personal de la aplicación."}</p></div>
             <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
               {(activeBusiness?.role === "owner" ? [
                 ["general", "General"],
                 ["account", "Mi cuenta"],
                 ["company", "Mi empresa"],
+                ["catalog", "Catálogo"],
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
@@ -7251,19 +7143,13 @@ function AuthenticatedApp() {
               ]).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={!["account", "general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["account", "general", "company", "catalog", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
               <div hidden={settingsTab !== "account"} className="settings-tab-content account-settings-panel">
-                <div className="settings-icon"><AppIcon name="smartphone" size={23}/></div>
-                <h3>Acceso con celular</h3>
-                <p>Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.</p>
-                <div className="account-phone-status"><span>Celular verificado</span><strong>{session?.user?.phone || "Todavía no hay un número verificado"}</strong></div>
-                <label className="settings-field"><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={accountPhoneDraft} onChange={(event)=>setAccountPhoneDraft(event.target.value)} placeholder="+57 300 123 4567" maxLength={24} disabled={accountPhoneBusy||accountPhonePending}/></label>
-                {!accountPhonePending && <button type="button" className="primary-button account-phone-action" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneDraft.trim()||accountPhoneDraft.trim().replace(/[\s().-]/g,"")===String(session?.user?.phone||"")}>{accountPhoneBusy?"Enviando…":"Enviar código de verificación"}</button>}
-                {accountPhonePending && <>
-                  <label className="settings-field"><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={accountPhoneCode} onChange={(event)=>setAccountPhoneCode(event.target.value.replace(/\D/g,"").slice(0,8))} placeholder="Escribe el código recibido" maxLength={8} /></label>
-                  <div className="form-actions account-phone-actions"><button type="button" className="primary-button" onClick={verifyAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneCode.trim()}>{accountPhoneBusy?"Verificando…":"Verificar celular"}</button><button type="button" className="secondary-button" onClick={()=>{setAccountPhonePending(false);setAccountPhoneCode("");setError("");setNotice("");}} disabled={accountPhoneBusy}>Cancelar</button><button type="button" className="text-button" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy}>Reenviar código</button></div>
-                </>}
-                <p className="helper-text">Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.</p>
+                <div className="settings-icon"><AppIcon name="mail" size={23}/></div>
+                <h3>Correo de acceso</h3>
+                <p>Este es el correo asociado a tu usuario. Lo puedes usar para iniciar sesión y recuperar el acceso a treseiscinco.</p>
+                <div className="account-phone-status"><span>Correo registrado</span><strong>{session?.user?.email || "Correo no disponible"}</strong></div>
+                <p className="helper-text">El acceso queda vinculado al correo que aparece arriba.</p>
               </div>
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
@@ -7368,6 +7254,24 @@ function AuthenticatedApp() {
                   <label className="settings-field"><span className="field-label-heading">Ciudad</span><input value={settingsCommercialProfile.city} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, city: e.target.value }))} maxLength={100} disabled={activeBusiness?.role !== "owner"} placeholder="Ciudad, departamento" /></label>
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
+                
+                <div className="business-card-preview-wrap">
+                  <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
+                    <div className="business-card-preview-logo">{settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }} /> : <img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco" />}</div>
+                    <div className="business-card-preview-copy"><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
+                  </div>
+                  <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
+                </div>
+                <div className="business-card-color-controls">
+                  <label className="settings-color-field"><span className="field-label-heading">Color de acento de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardPrimary || "#475569"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardPrimary: e.target.value }))}/><code>{(settingsCommercialProfile.cardPrimary || "#475569").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Fondo de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardSurface || "#FFFFFF"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardSurface: e.target.value }))}/><code>{(settingsCommercialProfile.cardSurface || "#FFFFFF").toUpperCase()}</code></label>
+                  <label className="settings-color-field"><span className="field-label-heading">Texto de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardText || "#1F2937"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardText: e.target.value }))}/><code>{(settingsCommercialProfile.cardText || "#1F2937").toUpperCase()}</code></label>
+                </div>
+                </div>
+              <div hidden={settingsTab !== "catalog"} className="settings-tab-panel catalog-settings-panel">
+                <div className="settings-icon"><AppIcon name="catalog" size={23}/></div>
+                <h3>Catálogo</h3>
+                <p>Organiza la información pública, los horarios, las entregas y la forma en que recibes pedidos.</p>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
                 <div className="settings-catalog-link-panel">
                   <span className="eyebrow">ENLACE PÚBLICO</span>
@@ -7392,18 +7296,7 @@ function AuthenticatedApp() {
                   </div>
                   {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar la paleta pública.</p>}
                 </section>
-                <div className="business-card-preview-wrap">
-                  <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
-                    <div className="business-card-preview-logo">{settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }} /> : <img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco" />}</div>
-                    <div className="business-card-preview-copy"><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
-                  </div>
-                  <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
-                </div>
-                <div className="business-card-color-controls">
-                  <label className="settings-color-field"><span className="field-label-heading">Color de acento de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardPrimary || "#475569"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardPrimary: e.target.value }))}/><code>{(settingsCommercialProfile.cardPrimary || "#475569").toUpperCase()}</code></label>
-                  <label className="settings-color-field"><span className="field-label-heading">Fondo de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardSurface || "#FFFFFF"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardSurface: e.target.value }))}/><code>{(settingsCommercialProfile.cardSurface || "#FFFFFF").toUpperCase()}</code></label>
-                  <label className="settings-color-field"><span className="field-label-heading">Texto de la tarjeta</span><input type="color" value={settingsCommercialProfile.cardText || "#1F2937"} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, cardText: e.target.value }))}/><code>{(settingsCommercialProfile.cardText || "#1F2937").toUpperCase()}</code></label>
-                </div>
+                
                 <div className="settings-section-divider" />
                 <div className="settings-hours-editor"><div><h4>Horario de atención</h4><p>Marca los días en que trabajas. Puedes indicar dos turnos si cierras al mediodía.</p></div>
                   {([{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}]).map((day) => { const dayHours=settingsCommercialProfile.hoursSchedule?.[day.key] || {enabled:false,periods:[{open:"09:00",close:"18:00"}]}; const periods=Array.isArray(dayHours.periods)&&dayHours.periods.length?dayHours.periods:[{open:"09:00",close:"18:00"}]; return <div className={"settings-hours-day"+(dayHours.enabled?" is-enabled":"")} key={day.key}><label className="settings-hours-day-check"><input type="checkbox" checked={Boolean(dayHours.enabled)} disabled={activeBusiness?.role!=="owner"} onChange={(e)=>setSettingsCommercialProfile((current)=>({ ...current, hoursSchedule:{...(current.hoursSchedule||{}),[day.key]:{enabled:e.target.checked,periods:(current.hoursSchedule?.[day.key]?.periods?.length?current.hoursSchedule[day.key].periods:[{open:"09:00",close:"18:00"}])}} }))}/><strong>{day.label}</strong></label>
@@ -7424,6 +7317,7 @@ function AuthenticatedApp() {
                   </div>
                   <div className="wompi-setup-footer"><p>Recomendación: prueba primero con las llaves de sandbox. Cambia a Producción únicamente cuando hayas verificado monto, referencia, retorno y confirmación del pago.</p><button type="button" className="primary-button" disabled={wompiSaving||activeBusiness?.role!=="owner"||wompiStatus.loading} onClick={saveWompiConfiguration}>{wompiSaving?"Guardando conexión…":"Guardar conexión Wompi"}</button></div>
                 </section>}
+              
               </div>
               <div className="form-actions"><button type="submit" className="primary-button" disabled={busy || settingsChecking || activeBusiness?.role !== "owner"}>{busy ? "Guardando…" : "Guardar configuración"}</button></div>
             </form>

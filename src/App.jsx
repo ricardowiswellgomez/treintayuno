@@ -1241,10 +1241,11 @@ function PublicCatalog({ businessId }) {
               : "";
 
   async function sharePublicProduct(product) {
-    const url = window.location.origin + "/?catalog=" + encodeURIComponent(businessId) + "#producto-" + encodeURIComponent(product.id);
+    const slug = String(business?.slug || "").trim();
+    const url = window.location.origin + (slug ? "/" + slug : "/?catalog=" + encodeURIComponent(businessId)) + "#producto-" + encodeURIComponent(product.id);
     const text = [product.name, product.description || "", "Precio: " + money(product.sale_price_minor, business?.currency_code || "COP"), url].filter(Boolean).join("\n");
-    try { if (navigator.share) await navigator.share({ title: product.name, text, url }); else await navigator.clipboard.writeText(text); }
-    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } }
+    try { if (navigator.share) await navigator.share({ title: product.name, text, url }); else { await navigator.clipboard.writeText(text); setCheckoutNotice("Enlace del producto copiado."); } }
+    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(text); setCheckoutNotice("Enlace del producto copiado."); } catch { setCheckoutError("No se pudo compartir este producto."); } } }
   }
 
   return <main className="public-catalog-shell" style={catalogThemeStyle}>

@@ -9855,3 +9855,130 @@ body { background: #F5F7FC; color: #19243A; }
     grid-template-columns:minmax(0,1fr)!important;
   }
 }
+
+
+/* Compact cash register strip keeps sales as the primary content. */
+.app-shell .sales-page{gap:10px!important}
+.app-shell .sales-page>.products-intro{margin:0!important;gap:10px!important}
+.app-shell .cash-register-panel{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:5px 14px;
+  width:100%;
+  min-width:0;
+  margin:0 0 5px!important;
+  padding:7px 11px!important;
+  border-radius:11px;
+  box-shadow:none;
+}
+.app-shell .cash-register-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+  min-width:0;
+}
+.app-shell .cash-register-heading>div{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:center;
+  gap:1px 7px;
+  min-width:0;
+}
+.app-shell .cash-register-heading .eyebrow{
+  grid-column:1;
+  grid-row:1;
+  margin:0!important;
+  font-size:8.5px!important;
+  line-height:1.15;
+  letter-spacing:.06em;
+  white-space:nowrap;
+}
+.app-shell .cash-register-heading h3{
+  grid-column:2;
+  grid-row:1;
+  margin:0!important;
+  font:750 12.5px/1.25 Manrope,sans-serif!important;
+  letter-spacing:0;
+  overflow-wrap:anywhere;
+}
+.app-shell .cash-register-heading p{
+  grid-column:1/-1;
+  margin:2px 0 0!important;
+  font-size:10.5px!important;
+  line-height:1.3!important;
+}
+.app-shell .cash-register-heading .status-pill{
+  flex:0 0 auto;
+  padding:4px 8px;
+  font-size:10px;
+  line-height:1.2;
+}
+.app-shell .cash-register-form{
+  display:grid!important;
+  grid-template-columns:minmax(118px,155px) auto;
+  align-items:end;
+  gap:7px;
+  min-width:0;
+  margin:0!important;
+}
+.app-shell .cash-register-close-form{
+  grid-template-columns:minmax(118px,145px) minmax(145px,205px) auto;
+}
+.app-shell .cash-register-form label{
+  gap:3px;
+  font-size:10.5px;
+  line-height:1.25;
+  min-width:0;
+}
+.app-shell .cash-register-form input{
+  min-height:34px!important;
+  height:34px;
+  padding:6px 9px!important;
+  font-size:13px!important;
+  border-radius:8px;
+}
+.app-shell .cash-register-form .primary-button{
+  min-height:34px!important;
+  height:34px;
+  padding:6px 10px!important;
+  font-size:11.5px!important;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.app-shell .cash-register-summary{
+  grid-column:1/-1;
+  margin:0!important;
+  padding-top:3px;
+  border-top:1px solid var(--line);
+  font-size:10.5px!important;
+  line-height:1.4;
+}
+.app-shell .sales-date-toolbar{
+  padding:9px 11px;
+}
+@media(max-width:800px){
+  .app-shell .cash-register-panel{
+    grid-template-columns:minmax(0,1fr);
+    gap:7px;
+    padding:9px 11px!important;
+  }
+  .app-shell .cash-register-heading,.app-shell .cash-register-form{
+    grid-column:1;
+    width:100%;
+  }
+  .app-shell .cash-register-form:not(.cash-register-close-form){
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+  .app-shell .cash-register-close-form{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .app-shell .cash-register-form .primary-button{width:auto!important}
+}
+@media(max-width:420px){
+  .app-shell .cash-register-heading>div{grid-template-columns:minmax(0,1fr);gap:3px}
+  .app-shell .cash-register-heading .eyebrow,.app-shell .cash-register-heading h3{grid-column:1;grid-row:auto}
+  .app-shell .cash-register-heading h3{font-size:12.5px!important}
+  .app-shell .cash-register-heading p{font-size:10px!important}
+}

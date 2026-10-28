@@ -267,3 +267,13 @@ test("support email delivery retries one transient provider failure and then suc
   assert.equal((await response.json()).success, true);
   assert.equal(attempts, 2);
 });
+
+
+test("sales cash register stays a compact strip rather than pushing sales controls down", () => {
+  const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(appSource, /className="cash-register-panel panel"/);
+  assert.match(cssSource, /\.app-shell \.cash-register-panel\s*\{[\s\S]*?grid-template-columns:minmax\(0,1fr\) auto/);
+  assert.match(cssSource, /\.app-shell \.cash-register-form:not\(\.cash-register-close-form\)\s*\{\s*grid-template-columns:minmax\(0,1fr\) auto!important/s);
+  assert.match(cssSource, /\.app-shell \.sales-page\{gap:10px!important\}/);
+});

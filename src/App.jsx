@@ -2681,20 +2681,30 @@ function AuthenticatedApp() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
-  async function fetchImageAsDataUri(url) {
-    if (!url) return "";
-    try {
-      const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
-      if (!response.ok) return "";
-      const blob = await response.blob();
-      if (!blob.type.startsWith("image/")) return "";
-      return await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-        reader.onerror = () => resolve("");
-        reader.readAsDataURL(blob);
-      });
-    } catch { return ""; }
+  async function fetchImageAsDataUri(url, storagePath = "") {
+    let imageBlob = null;
+    if (url) {
+      try {
+        const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
+        if (response.ok) {
+          const candidate = await response.blob();
+          if (candidate.type.startsWith("image/")) imageBlob = candidate;
+        }
+      } catch { /* Use the authenticated Storage download as a fallback below. */ }
+    }
+    if (!imageBlob && storagePath) {
+      try {
+        const { data, error: storageError } = await supabase.storage.from("business-logos").download(storagePath);
+        if (!storageError && data?.type?.startsWith("image/")) imageBlob = data;
+      } catch { /* Fall back to the official treseiscinco symbol when the logo is unavailable. */ }
+    }
+    if (!imageBlob) return "";
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(imageBlob);
+    });
   }
 
   function buildBusinessCardSvg(profile, businessName, logoDataUri) {
@@ -2746,8 +2756,9 @@ function AuthenticatedApp() {
   }
 
   async function createBusinessCardImageFile(profile, businessName) {
-    const logoUrl = settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path ? getBusinessLogoUrl(activeBusiness.logo_path) : "");
-    const logoDataUri = await fetchImageAsDataUri(logoUrl);
+    const savedLogoPath = !settingsLogoPreview && !settingsRemoveLogo ? String(activeBusiness?.logo_path || "") : "";
+    const logoUrl = settingsLogoPreview || (savedLogoPath ? getBusinessLogoUrl(savedLogoPath) : "");
+    const logoDataUri = await fetchImageAsDataUri(logoUrl, savedLogoPath);
     const svg = buildBusinessCardSvg(profile, businessName, logoDataUri);
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const objectUrl = URL.createObjectURL(svgBlob);
@@ -2800,8 +2811,9 @@ function AuthenticatedApp() {
     printWindow.document.write("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Preparando tarjeta…</title></head><body style=\"font-family:Arial,sans-serif;padding:24px\">Preparando la tarjeta…</body></html>");
     printWindow.document.close();
     try {
-      const printLogoUrl = settingsLogoPreview || (!settingsRemoveLogo && activeBusiness.logo_path ? getBusinessLogoUrl(activeBusiness.logo_path) : "");
-      const logoDataUri = await fetchImageAsDataUri(printLogoUrl);
+      const savedLogoPath = !settingsLogoPreview && !settingsRemoveLogo ? String(activeBusiness.logo_path || "") : "";
+      const printLogoUrl = settingsLogoPreview || (savedLogoPath ? getBusinessLogoUrl(savedLogoPath) : "");
+      const logoDataUri = await fetchImageAsDataUri(printLogoUrl, savedLogoPath);
       const svg = buildBusinessCardSvg(profile, businessName, logoDataUri);
       const svgData = btoa(unescape(encodeURIComponent(svg)));
       const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta · ' + escapeHtml(businessName) + '</title><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + svgData + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm. Si el fondo no aparece, activa «Gráficos de fondo» en las opciones de impresión.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';

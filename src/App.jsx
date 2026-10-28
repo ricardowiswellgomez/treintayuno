@@ -1861,7 +1861,7 @@ function AuthenticatedApp() {
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState("es");
   const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", ownerName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
   const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
   const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
   const [wompiSaving, setWompiSaving] = useState(false);
@@ -2671,18 +2671,54 @@ function AuthenticatedApp() {
 
   function printBusinessCard() {
     if (!activeBusiness) return;
-    const profile=settingsCommercialProfile||{};
-    const name=profile.tradeName||settingsBusinessName||activeBusiness.name||"Mi negocio";
-    const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
-    const website=String(profile.website||"").trim();
-    const safeWebsite=/^https?:\/\//i.test(website)?website:(website?"https://"+website:"");
-    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardPrimary||"")?settingsCommercialProfile.cardPrimary:"#475569";
-    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardSurface||"")?settingsCommercialProfile.cardSurface:"#FFFFFF";
-    const cardText=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardText||"")?settingsCommercialProfile.cardText:"#1F2937";
-    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}!important}.details{min-width:0;flex:1;color:${cardText}!important}.details h1,.details p,.details span:not(.tag),.details .site{color:${cardText}!important}.details .tag{color:${cardPrimary}!important}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary}!important;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:transparent}.card{background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;box-shadow:none;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:0;max-width:none;page-break-inside:avoid;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
-    const printWindow=window.open("","_blank");
+    const profile = settingsCommercialProfile || {};
+    const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim();
+    const logoUrl = getBusinessLogoUrl(activeBusiness.logo_path) || "";
+    const cardPrimary = /^#[0-9a-f]{6}$/i.test(profile.cardPrimary || "") ? profile.cardPrimary : "#475569";
+    const cardSurface = /^#[0-9a-f]{6}$/i.test(profile.cardSurface || "") ? profile.cardSurface : "#FFFFFF";
+    const cardText = /^#[0-9a-f]{6}$/i.test(profile.cardText || "") ? profile.cardText : "#1F2937";
+    const safeColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : "#1F2937";
+    const lines = [];
+    let y = 112;
+    const addWrapped = (value, maxChars, fontSize, gap, color, weight = 400) => {
+      const text = String(value || "").trim();
+      if (!text || y > 465) return;
+      const words = text.split(/\s+/);
+      let line = "";
+      const wrapped = [];
+      for (const word of words) {
+        const candidate = line ? line + " " + word : word;
+        if (candidate.length > maxChars && line) { wrapped.push(line); line = word; }
+        else line = candidate;
+      }
+      if (line) wrapped.push(line);
+      for (const part of wrapped.slice(0, 2)) {
+        if (y > 465) break;
+        lines.push('<text x="320" y="' + y + '" fill="' + safeColor(color) + '" font-family="Arial, sans-serif" font-size="' + fontSize + '" font-weight="' + weight + '">' + escapeHtml(part) + '</text>');
+        y += gap;
+      }
+    };
+    addWrapped("INFORMACIÓN COMERCIAL", 42, 18, 0, cardPrimary, 700);
+    y += 52;
+    addWrapped(businessName, 26, 37, 42, cardText, 700);
+    addWrapped(profile.ownerName, 38, 20, 29, cardText, 700);
+    addWrapped(profile.publicDescription, 42, 18, 27, cardText, 400);
+    addWrapped(profile.phone, 42, 18, 28, cardText, 400);
+    addWrapped(profile.email, 42, 18, 28, cardText, 400);
+    addWrapped([profile.address, profile.city].filter(Boolean).join(", "), 42, 18, 28, cardText, 400);
+    addWrapped(profile.website, 42, 18, 28, cardText, 700);
+    const logoOrInitial = logoUrl
+      ? '<image href="' + escapeHtml(logoUrl) + '" x="25" y="165" width="245" height="165" preserveAspectRatio="xMidYMid meet" />'
+      : '<circle cx="145" cy="248" r="68" fill="' + cardPrimary + '" fill-opacity=".13"/><text x="145" y="272" text-anchor="middle" fill="' + cardPrimary + '" font-family="Arial, sans-serif" font-size="74" font-weight="800">' + escapeHtml(businessName.slice(0,1).toLocaleUpperCase("es-CO")) + '</text>';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 900 500" role="img" aria-label="Tarjeta de presentación">' +
+      '<rect x="0" y="0" width="900" height="500" rx="26" fill="' + cardSurface + '"/>' +
+      '<rect x="0" y="0" width="900" height="16" fill="' + cardPrimary + '"/>' +
+      '<rect x="2" y="2" width="896" height="496" rx="25" fill="none" stroke="' + cardPrimary + '" stroke-width="3"/>' +
+      logoOrInitial + lines.join("") + '</svg>';
+    const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ' + escapeHtml(businessName) + '</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
+    const printWindow = window.open("", "_blank");
     if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
-    printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
+    printWindow.document.open(); printWindow.document.write(html); printWindow.document.close();
   }
 
   async function downloadBusinessBackup() {
@@ -3073,7 +3109,7 @@ function AuthenticatedApp() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", ownerName: savedCommercial.ownerName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
     setSettingsCatalogSlug(activeBusiness.slug || "");
     setSettingsTab("general");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
@@ -3329,6 +3365,7 @@ function AuthenticatedApp() {
     }
     const normalizeCommercialProfile = (profile) => ({
       tradeName: String(profile?.tradeName || "").trim(),
+      ownerName: String(profile?.ownerName || "").trim(),
       documentNumber: String(profile?.documentNumber || "").trim(),
       email: String(profile?.email || "").trim(),
       phone: String(profile?.phone || "").trim(),
@@ -6938,6 +6975,7 @@ function AuthenticatedApp() {
                 <h3>Mi empresa</h3>
                 <p>Estos datos acompañarán el logo en las cotizaciones y documentos que compartas con tus clientes.</p>
                 <label className="settings-field"><span className="field-label-heading">Nombre comercial</span><input value={settingsCommercialProfile.tradeName} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, tradeName: e.target.value }))} maxLength={160} disabled={activeBusiness?.role !== "owner"} placeholder={settingsBusinessName || "Nombre que verá tu cliente"} /></label>
+                <label className="settings-field"><span className="field-label-heading">Propietario o persona de contacto</span><input value={settingsCommercialProfile.ownerName || ""} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, ownerName: e.target.value }))} maxLength={160} disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de la persona responsable" /></label>
                 <label className="settings-field"><span className="field-label-heading">NIT o documento</span><input value={settingsCommercialProfile.documentNumber} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, documentNumber: e.target.value }))} maxLength={80} disabled={activeBusiness?.role !== "owner"} placeholder="Identificación tributaria (opcional)" /></label>
                 <div className="company-profile-grid">
                   <label className="settings-field"><span className="field-label-heading">Correo comercial</span><input type="email" value={settingsCommercialProfile.email} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, email: e.target.value }))} maxLength={254} disabled={activeBusiness?.role !== "owner"} placeholder="ventas@tuempresa.com" /></label>
@@ -6965,7 +7003,7 @@ function AuthenticatedApp() {
                 <div className="business-card-preview-wrap">
                   <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
                     <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
-                    <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
+                    <div className="business-card-preview-copy"><small style={{color:settingsCommercialProfile.cardPrimary||"#475569"}}>INFORMACIÓN COMERCIAL</small><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
                   </div>
                   <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
                 </div>

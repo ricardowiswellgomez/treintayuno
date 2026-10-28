@@ -166,3 +166,54 @@ test("Worker no longer hides the integrated Proveedores tab", () => {
   const workerSource = readSource(new URL("../src/worker.js", import.meta.url), "utf8");
   assert.doesNotMatch(workerSource, /hideSuppliers/);
 });
+
+
+test("contact endpoint rejects submissions from a different origin", async () => {
+  const response = await worker.fetch(
+    new Request("https://treseiscinco.com/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://attacker.example" },
+      body: JSON.stringify({ name: "Test User", email: "test@example.com", category: "Otro", message: "Este mensaje es de prueba." })
+    }),
+    {}
+  );
+  assert.equal(response.status, 403);
+});
+
+test("contact endpoint validates fields before trying to send email", async () => {
+  const response = await worker.fetch(
+    new Request("https://treseiscinco.com/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://treseiscinco.com" },
+      body: JSON.stringify({ name: "A", email: "not-an-email", category: "Otro", message: "Mensaje de prueba largo." })
+    }),
+    { AI_USER_LIMITER: { limit: async () => ({ success: true }) } }
+  );
+  assert.equal(response.status, 400);
+});
+
+test("contact honeypot is silently discarded without claiming a real email was sent", async () => {
+  const response = await worker.fetch(
+    new Request("https://treseiscinco.com/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://treseiscinco.com" },
+      body: JSON.stringify({ name: "Bot", email: "bot@example.com", category: "Otro", message: "Mensaje automático de prueba.", website: "https://spam.example" })
+    }),
+    {}
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).success, true);
+});
+
+test("contact endpoint never claims delivery while the email binding is missing", async () => {
+  const response = await worker.fetch(
+    new Request("https://treseiscinco.com/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://treseiscinco.com" },
+      body: JSON.stringify({ name: "Persona de prueba", email: "persona@example.com", category: "Uso de la app", message: "Este es un mensaje de prueba suficientemente largo." })
+    }),
+    { AI_USER_LIMITER: { limit: async () => ({ success: true }) } }
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).success, undefined);
+});

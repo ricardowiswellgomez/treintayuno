@@ -1553,9 +1553,6 @@ function AuthenticatedApp() {
   const [showPublicLanding, setShowPublicLanding] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneOtp, setPhoneOtp] = useState("");
-  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
@@ -1929,10 +1926,6 @@ function AuthenticatedApp() {
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
-  const [accountPhoneDraft, setAccountPhoneDraft] = useState("");
-  const [accountPhoneCode, setAccountPhoneCode] = useState("");
-  const [accountPhonePending, setAccountPhonePending] = useState(false);
-  const [accountPhoneBusy, setAccountPhoneBusy] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState("es");
   const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
@@ -1949,10 +1942,6 @@ function AuthenticatedApp() {
       setUiLanguage(["es","en","pt","it","fr"].includes(saved) ? saved : "es");
     } catch { setUiLanguage("es"); }
   }, [session?.user?.id]);
-  useEffect(() => {
-    if (accountPhonePending) return;
-    setAccountPhoneDraft(String(session?.user?.phone || ownerPhone || ""));
-  }, [session?.user?.id, session?.user?.phone, ownerPhone, accountPhonePending]);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
     let active = true;
@@ -3459,81 +3448,7 @@ function AuthenticatedApp() {
     } finally { setOwnerPhoneSaving(false); }
   }
 
-  async function requestAccountPhoneCode() {
-    if (!session?.user?.id || accountPhoneBusy) return;
-    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
-    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-      setError("Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.");
-      return;
-    }
-    if (normalizedPhone === String(session?.user?.phone || "")) {
-      setNotice("Ese número ya está verificado para tu cuenta.");
-      setError("");
-      return;
-    }
-    setAccountPhoneBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({ phone: normalizedPhone });
-      if (updateError) throw updateError;
-      setAccountPhoneDraft(normalizedPhone);
-      setAccountPhoneCode("");
-      setAccountPhonePending(true);
-      setNotice("Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.");
-    } catch (error) {
-      setError(friendlyError(error));
-    } finally {
-      setAccountPhoneBusy(false);
-    }
-  }
-
-  async function verifyAccountPhoneCode() {
-    if (!session?.user?.id || !accountPhonePending || accountPhoneBusy) return;
-    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
-    const code = accountPhoneCode.trim();
-    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
-      setError("Revisa el celular con prefijo internacional.");
-      return;
-    }
-    if (!/^\d{4,8}$/.test(code)) {
-      setError("Escribe el código numérico que recibiste por SMS.");
-      return;
-    }
-    setAccountPhoneBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        phone: normalizedPhone,
-        token: code,
-        type: "phone_change"
-      });
-      if (verifyError) throw verifyError;
-      const { data: refreshed, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      const nextSession = refreshed?.session || data?.session || null;
-      if (nextSession) setSession(nextSession);
-      setOwnerPhone(normalizedPhone);
-      setAccountPhoneDraft(normalizedPhone);
-      setAccountPhoneCode("");
-      setAccountPhonePending(false);
-      const { error: profileError } = await supabase.from("profiles")
-        .upsert({ user_id: session.user.id, phone: normalizedPhone }, { onConflict: "user_id" });
-      if (profileError) {
-        setError("El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.");
-        setNotice("");
-      } else {
-        setNotice("Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.");
-      }
-    } catch (error) {
-      setError(friendlyError(error));
-    } finally {
-      setAccountPhoneBusy(false);
-    }
-  }
-
-  async function saveWompiConfiguration() {
+    async function saveWompiConfiguration() {
     if (!activeBusiness?.id || wompiSaving) return;
     if (!["owner", "admin"].includes(activeBusiness.role)) { setError("Solo el propietario o un administrador puede configurar Wompi."); return; }
     setWompiSaving(true); setError(""); setNotice("");
@@ -7233,7 +7148,7 @@ function AuthenticatedApp() {
                 <h3>Correo de acceso</h3>
                 <p>Este es el correo asociado a tu usuario. Lo puedes usar para iniciar sesión y recuperar el acceso a treseiscinco.</p>
                 <div className="account-phone-status"><span>Correo registrado</span><strong>{session?.user?.email || "Correo no disponible"}</strong></div>
-                <p className="helper-text">Por ahora, el inicio de sesión funciona con correo y contraseña. No se solicitan códigos por SMS.</p>
+                <p className="helper-text">El acceso queda vinculado al correo que aparece arriba.</p>
               </div>
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>

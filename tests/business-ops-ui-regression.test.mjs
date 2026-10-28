@@ -41,6 +41,8 @@ test("las herramientas de importar y exportar inventario están en un control co
 
 test("el catálogo muestra opciones de entrega y conserva la identidad propia de treseiscinco", () => {
   assert.match(app, /public-catalog-delivery-methods/);
+  assert.match(app, /public-catalog-header-whatsapp/);
+  assert.match(css, /\.public-catalog-header-whatsapp/);
   assert.match(app, /Recogida en el negocio/);
   assert.match(app, /Entrega a domicilio/);
   assert.match(css, /\.public-catalog-brand\s*\{[^}]*width:\s*132px/s);

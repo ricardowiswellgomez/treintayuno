@@ -2791,7 +2791,8 @@ function AuthenticatedApp() {
 
   async function sharePersonalBusinessCard() {
     if (!activeBusiness) return;
-    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
+    const savedProfile = activeBusiness.settings?.commercial_profile || {};
+    const profile = screen === "settings" ? { ...savedProfile, ...(settingsCommercialProfile || {}) } : { ...savedProfile };
     const name = profile.tradeName || activeBusiness.name || "Mi negocio";
     try {
       const { file } = await createBusinessCardImageFile(profile, name);
@@ -2809,7 +2810,8 @@ function AuthenticatedApp() {
 
   async function printBusinessCard() {
     if (!activeBusiness) return;
-    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
+    const savedProfile = activeBusiness.settings?.commercial_profile || {};
+    const profile = screen === "settings" ? { ...savedProfile, ...(settingsCommercialProfile || {}) } : { ...savedProfile };
     const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim();
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -7406,8 +7408,7 @@ function AuthenticatedApp() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
-              <button type="button" className="home-utility-action home-share-card-button" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
-              <button type="button" className="home-utility-action home-share-business-card" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={16}/> Compartir tarjeta</button>
+              <button type="button" className="home-utility-action home-share-business-card" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

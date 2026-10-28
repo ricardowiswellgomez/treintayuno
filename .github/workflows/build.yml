@@ -3,12 +3,15 @@ name: Build treseiscinco
 on:
   push:
     branches: [main]
+    # Updating only the already-built APK must not trigger another Android build.
+    paths-ignore:
+      - "public/treseiscinco.apk"
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -43,12 +46,28 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - name: Build installable Android APK
         run: |
+          # Avoid packaging a previously published APK inside the next APK.
+          rm -f dist/treseiscinco.apk
           npx cap add android
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../dist/treseiscinco.apk
+      - name: Publish APK for Cloudflare static assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p public
+          cp dist/treseiscinco.apk public/treseiscinco.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/treseiscinco.apk
+          if git diff --cached --quiet; then
+            echo "The public APK is already up to date."
+          else
+            git commit -m "chore: publish latest Android APK"
+            git push origin HEAD:main
+          fi
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:

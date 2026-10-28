@@ -8968,3 +8968,87 @@ body { background: #F5F7FC; color: #19243A; }
   }
   .public-catalog-intro-actions .public-catalog-currency { padding:4px 5px!important; }
 }
+
+
+/* Final mobile sizing fix: the import card must match "Sin stock", not span the full grid row. */
+@media (max-width:640px) {
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card {
+    grid-column:auto!important;
+    grid-row:auto!important;
+    align-self:stretch!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:105px!important;
+    height:100%!important;
+    flex:0 1 auto!important;
+    padding:8px!important;
+    gap:6px!important;
+    justify-content:flex-start!important;
+    align-items:flex-start!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card:last-child {
+    grid-column:auto!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label {
+    width:100%!important;
+    min-width:0!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    gap:5px!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label strong {
+    flex:1 1 auto!important;
+    min-width:0!important;
+    font-size:11px!important;
+    line-height:1.25!important;
+    overflow-wrap:anywhere!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card>p {
+    margin-top:auto!important;
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+}
+
+/* When multiple businesses exist, keep the dropdown caret beside the business name. */
+.app-shell>.sidebar>.business-switcher.business-switcher-multiple {
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:6px!important;
+}
+.app-shell>.sidebar>.business-switcher.business-switcher-multiple select {
+  flex:1 1 auto!important;
+  width:0!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:38px!important;
+  border:0!important;
+  border-radius:7px!important;
+  padding:6px 2px!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  background:transparent!important;
+  color:var(--sidebar-text,var(--ink))!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+  font-weight:800!important;
+  cursor:pointer;
+}
+.app-shell>.sidebar>.business-switcher.business-switcher-multiple .switch-caret {
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 24px!important;
+  width:24px!important;
+  height:24px!important;
+  margin:0!important;
+  border:1px solid color-mix(in srgb,var(--sidebar-text,var(--ink)) 24%,transparent)!important;
+  border-radius:7px!important;
+  color:var(--sidebar-text,var(--ink))!important;
+  opacity:1!important;
+  font-size:15px!important;
+  line-height:1!important;
+  pointer-events:none;
+}

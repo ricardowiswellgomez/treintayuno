@@ -2832,7 +2832,6 @@ function AuthenticatedApp() {
       if (!dataRows.length) throw new Error("La plantilla solo contiene su fila de ejemplo. Reemplázala con un artículo real o agrega tus artículos debajo de los encabezados.");
       if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios archivos Excel o CSV.");
 
-      if (dataRows.length>500) throw new Error("La carga inicial admite hasta 500 artículos por archivo. Divide la plantilla en varios CSV para conservar el control de errores.");
       const {data:currentProducts,error:currentError}=await supabase.from("products").select("sku,name").eq("business_id",activeBusiness.id).is("archived_at",null);
       if (currentError) throw currentError;
       const existingCodes=new Set((currentProducts||[]).map((x)=>String(x.sku||"").trim().toLocaleLowerCase()).filter(Boolean));

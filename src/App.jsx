@@ -1337,7 +1337,7 @@ function PublicCatalog({ businessId }) {
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
             <div className="public-catalog-product-heading"><h2>{product.name}</h2><button type="button" className="public-product-share" title={"Compartir "+product.name} aria-label={"Compartir "+product.name} onClick={()=>sharePublicProduct(product)}>↗</button></div>
-            {product.description && <p>{product.description}</p>}
+            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || "Agrégalo al carrito para preparar tu pedido."}</p>
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
             {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}

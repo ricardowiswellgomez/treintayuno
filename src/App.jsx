@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase, supabasePublishableKey } from "./lib/supabase.js";
 import { applyAppLanguage } from "./i18n.js";
 import { getSidebarItemLabel } from "./lib/sidebar-menu.js";
@@ -58,8 +59,19 @@ function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
   return <div className="payment-method-tiles" role="group" aria-label={ariaLabel}>
     {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile payment-method-tile-" + mark.toLowerCase() + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
       <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>
-        {method === "Nequi" ? <svg className="payment-method-brand-logo payment-method-brand-nequi" viewBox="0 0 116 36" role="img" aria-label="Nequi"><text x="4" y="27" fontFamily="Arial, sans-serif" fontSize="29" fontWeight="800" letterSpacing="-1.2" fill="#DA0081">nequi</text></svg>
-          : method === "Daviplata" ? <svg className="payment-method-brand-logo payment-method-brand-daviplata" viewBox="0 0 132 40" role="img" aria-label="DaviPlata"><path d="M8 9h16a7 7 0 0 1 7 7v8a7 7 0 0 1-7 7H8a7 7 0 0 1-7-7v-8a7 7 0 0 1 7-7Z" fill="#DD141D"/><text x="7" y="24" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="800" fill="#fff">D</text><text x="34" y="26" fontFamily="Arial, sans-serif" fontSize="21" fontWeight="800" letterSpacing="-0.8" fill="#DD141D">DaviPlata</text></svg>
+        {method === "Nequi" ? <svg className="payment-method-brand-logo payment-method-brand-nequi" viewBox="0 0 48 48" role="img" aria-label="Símbolo de Nequi">
+            <rect x="2" y="2" width="44" height="44" rx="13" fill="#200020"/>
+            <path d="M12 34V18c0-4 4-6 7-2l10 13" fill="none" stroke="#DA0081" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M19 18l10 13" fill="none" stroke="#5A9BFF" strokeWidth="5.5" strokeLinecap="round"/>
+            <path d="M32 15v19" fill="none" stroke="#46C7BD" strokeWidth="5.5" strokeLinecap="round"/>
+            <circle cx="12" cy="10" r="3" fill="#DA0081"/>
+          </svg>
+          : method === "Daviplata" ? <svg className="payment-method-brand-logo payment-method-brand-daviplata" viewBox="0 0 48 48" role="img" aria-label="Símbolo de DaviPlata">
+            <rect x="2" y="2" width="44" height="44" rx="13" fill="#E01A19"/>
+            <path d="M12 24c0-6 5-10 12-10 6 0 10 3 12 8l-3 3-1 6h-4l-1-4h-9l-1 4h-4l1-7-2-2Z" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="30" cy="20" r="1.6" fill="#fff"/>
+            <path d="M17 14 19 10l4 4M34 22h4l2 4h-6M18 31v3M29 31v3M20 9h8" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           : mark}
       </span><strong>{method}</strong>
     </button>)}
@@ -598,6 +610,24 @@ const getBusinessLogoUrl = (path) => {
 function FieldHelp({ text, enabled = true }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [position, setPosition] = useState({ top: 12, left: 12, width: 270 });
+
+  const updatePosition = (target = triggerRef.current) => {
+    if (typeof window === "undefined" || !target?.getBoundingClientRect) return;
+    const rect = target.getBoundingClientRect();
+    const width = Math.min(270, Math.max(220, window.innerWidth - 24));
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+    const estimatedHeight = 150;
+    let top = rect.bottom + 8;
+    if (top + estimatedHeight > window.innerHeight - 12 && rect.top > estimatedHeight + 12) {
+      top = rect.top - estimatedHeight - 8;
+    }
+    top = Math.max(12, Math.min(top, window.innerHeight - Math.min(estimatedHeight, window.innerHeight - 24) - 12));
+    setPosition({ top, left, width });
+  };
+
   useEffect(() => {
     const onOtherHelpOpen = (event) => {
       if (event.detail?.source !== rootRef.current) setOpen(false);
@@ -605,21 +635,29 @@ function FieldHelp({ text, enabled = true }) {
     document.addEventListener("treseiscinco:field-help-open", onOtherHelpOpen);
     return () => document.removeEventListener("treseiscinco:field-help-open", onOtherHelpOpen);
   }, []);
+
   useEffect(() => {
     if (!open) return;
+    const reposition = () => updatePosition();
     const onOutsidePointer = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+      if (rootRef.current?.contains(event.target) || popoverRef.current?.contains(event.target)) return;
+      setOpen(false);
     };
     const onEscape = (event) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("pointerdown", onOutsidePointer, true);
     document.addEventListener("keydown", onEscape);
+    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
     return () => {
       document.removeEventListener("pointerdown", onOutsidePointer, true);
       document.removeEventListener("keydown", onEscape);
+      document.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
     };
   }, [open]);
+
   if (!enabled || !text) return null;
   const toggleHelp = (event) => {
     event.preventDefault();
@@ -628,18 +666,30 @@ function FieldHelp({ text, enabled = true }) {
       setOpen(false);
       return;
     }
+    updatePosition(event.currentTarget);
     document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: rootRef.current } }));
     setOpen(true);
   };
+
   return (
-    <span className="field-help-wrap" ref={rootRef}>
-      <button type="button" className="field-help-trigger" title="¿Para qué sirve?" aria-label="¿Para qué sirve?" aria-expanded={open} onClick={toggleHelp}>?</button>
-      {open && <span className="field-help-popover" role="tooltip">
-        <strong>¿Para qué sirve?</strong>
-        <span>{text}</span>
-        <button type="button" className="field-help-close" aria-label="Cerrar esta ayuda" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen(false); }}>×</button>
-      </span>}
-    </span>
+    <>
+      <span className="field-help-wrap" ref={rootRef}>
+        <button ref={triggerRef} type="button" className="field-help-trigger" title="¿Para qué sirve?" aria-label="¿Para qué sirve?" aria-expanded={open} onClick={toggleHelp}>?</button>
+      </span>
+      {open && typeof document !== "undefined" && createPortal(
+        <span
+          className="field-help-popover field-help-popover-portal"
+          ref={popoverRef}
+          role="tooltip"
+          style={{ position: "fixed", top: position.top, left: position.left, width: position.width, maxHeight: "min(240px, calc(100vh - 24px))", overflowY: "auto", zIndex: 2147483645 }}
+        >
+          <strong>¿Para qué sirve?</strong>
+          <span>{text}</span>
+          <button type="button" className="field-help-close" aria-label="Cerrar esta ayuda" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen(false); }}>×</button>
+        </span>,
+        document.body
+      )}
+    </>
   );
 }
 
@@ -1338,7 +1388,7 @@ function PublicCatalog({ businessId }) {
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
             <div className="public-catalog-product-heading"><h2>{product.name}</h2><button type="button" className="public-product-share" title={"Compartir "+product.name} aria-label={"Compartir "+product.name} onClick={()=>sharePublicProduct(product)}>↗</button></div>
-            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || "Agrégalo al carrito para preparar tu pedido."}</p>
+            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || (hasWhatsappContact ? "Consulta disponibilidad y detalles por WhatsApp." : "Consulta con el negocio los detalles de este producto.")}</p>
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
             {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}
@@ -1584,12 +1634,48 @@ function AuthenticatedApp() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [inventoryImportBusy, setInventoryImportBusy] = useState(false);
   const [inventoryImportProgress, setInventoryImportProgress] = useState("");
+  const [inventoryDataMenuOpen, setInventoryDataMenuOpen] = useState(false);
+  const inventoryDataTriggerRef = useRef(null);
+  const inventoryDataMenuRef = useRef(null);
+  const [inventoryDataMenuPosition, setInventoryDataMenuPosition] = useState({ top: 12, left: 12, width: 560 });
   const [installPrompt, setInstallPrompt] = useState(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [homeCreateMenuOpen, setHomeCreateMenuOpen] = useState(false);
   const homeCreateMenuRef = useRef(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    if (!inventoryDataMenuOpen) return;
+    const reposition = () => {
+      const anchor = inventoryDataTriggerRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const width = Math.min(560, Math.max(280, window.innerWidth - 24));
+      const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
+      const estimatedHeight = 270;
+      let top = anchor.bottom + 8;
+      if (top + estimatedHeight > window.innerHeight - 12 && anchor.top > estimatedHeight + 12) {
+        top = anchor.top - estimatedHeight - 8;
+      }
+      top = Math.max(12, Math.min(top, window.innerHeight - Math.min(estimatedHeight, window.innerHeight - 24) - 12));
+      setInventoryDataMenuPosition({ top, left, width });
+    };
+    const closeOnOutside = (event) => {
+      if (inventoryDataTriggerRef.current?.contains(event.target) || inventoryDataMenuRef.current?.contains(event.target)) return;
+      setInventoryDataMenuOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setInventoryDataMenuOpen(false); };
+    reposition();
+    document.addEventListener("pointerdown", closeOnOutside, true);
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside, true);
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [inventoryDataMenuOpen]);
   useEffect(() => {
     if (!homeCreateMenuOpen) return;
     const closeOnOutside = (event) => {
@@ -6861,11 +6947,49 @@ function AuthenticatedApp() {
               <div className="inventory-page-heading">
                 <div><p className="eyebrow">CATÁLOGO Y EXISTENCIAS</p><h2>Inventario</h2><p>Controla tus artículos, revisa el valor de las existencias y encuentra rápidamente lo que necesitas reponer.</p></div>
                 {canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "＋ Agregar artículo"}</button>}
-                <div className="inventory-import-actions"><details className="inventory-import-disclosure inventory-import-popover">
-              <summary><AppIcon name="download" size={16}/><span>Importar / exportar</span><AppIcon name="chevron-down" size={14}/></summary>
-              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplateExcel}>Plantilla Excel</button><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>CSV para importar</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label><button type="button" className="secondary-button" onClick={downloadInventoryReportExcel} disabled={busy}>Reporte Excel</button><button type="button" className="secondary-button" onClick={printInventoryReportPdf} disabled={busy}>Reporte PDF</button></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
-            </details>
-<FieldHelp enabled={contextualHelpEnabled} text="Descarga la plantilla, importa tu inventario inicial o exporta el inventario completo con sus variantes a Excel o PDF." /></div>
+                <div className="inventory-import-actions">
+                  <button
+                    ref={inventoryDataTriggerRef}
+                    type="button"
+                    className={"inventory-import-trigger" + (inventoryDataMenuOpen ? " is-open" : "")}
+                    aria-haspopup="dialog"
+                    aria-expanded={inventoryDataMenuOpen}
+                    aria-controls="inventory-data-menu"
+                    onClick={() => setInventoryDataMenuOpen((open) => !open)}
+                  >
+                    <AppIcon name="file-spreadsheet" size={16}/>
+                    <span>Importar / exportar</span>
+                    <AppIcon name={inventoryDataMenuOpen ? "chevron-up" : "chevron-down"} size={14}/>
+                  </button>
+                  {inventoryDataMenuOpen && typeof document !== "undefined" && createPortal(
+                    <div
+                      id="inventory-data-menu"
+                      ref={inventoryDataMenuRef}
+                      className="inventory-data-actions inventory-import-menu"
+                      role="dialog"
+                      aria-label="Importar y exportar inventario"
+                      style={{ position: "fixed", top: inventoryDataMenuPosition.top, left: inventoryDataMenuPosition.left, right: "auto", width: inventoryDataMenuPosition.width, maxHeight: "calc(100vh - 24px)", overflowY: "auto", zIndex: 2147483600 }}
+                    >
+                      <div>
+                        <strong>Gestiona tus archivos de inventario</strong>
+                        <p>Descarga una plantilla o importa hasta 500 artículos por CSV. También puedes exportar el inventario completo a Excel o PDF. Los códigos repetidos y las filas inválidas se informan.</p>
+                      </div>
+                      <div className="inventory-data-action-buttons">
+                        <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryTemplateExcel(); }}>Plantilla Excel</button>
+                        <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryTemplate(); }}>CSV para importar</button>
+                        <label className={"secondary-button inventory-import-label" + (inventoryImportBusy ? " disabled" : "")}>
+                          {inventoryImportBusy ? "Importando…" : "Importar CSV"}
+                          <input type="file" accept=".csv,text/csv" onChange={(event) => { setInventoryDataMenuOpen(false); importInventoryFile(event); }} disabled={inventoryImportBusy || !canManageProducts}/>
+                        </label>
+                        <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); downloadInventoryReportExcel(); }} disabled={busy}>Reporte Excel</button>
+                        <button type="button" className="secondary-button" onClick={() => { setInventoryDataMenuOpen(false); printInventoryReportPdf(); }} disabled={busy}>Reporte PDF</button>
+                      </div>
+                      {inventoryImportProgress && <span className="inventory-import-progress" role="status">{inventoryImportProgress}</span>}
+                    </div>,
+                    document.body
+                  )}
+                  <FieldHelp enabled={contextualHelpEnabled} text="Abre el menú para descargar la plantilla, importar hasta 500 artículos por CSV o exportar tus existencias a Excel o PDF. El panel se muestra por encima de la página para que no se recorte."/>
+                </div>
               </div>
               <div className="inventory-metric-grid">
                 <article className="inventory-metric-card"><span>Referencias en inventario</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.productCount.toLocaleString("es-CO")}</strong><p>Artículos guardados en tu tienda</p></article>
@@ -6930,7 +7054,7 @@ function AuthenticatedApp() {
                 <label><span className="field-label-heading">Presentación comercial<FieldHelp enabled={contextualHelpEnabled} text="Anota el formato comercial para distinguir presentaciones, por ejemplo caja por 12 o botella de 500 ml." /></span><input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label><span className="field-label-heading">Nombre de la unidad<FieldHelp enabled={contextualHelpEnabled} text="Si eliges una unidad personalizada, escribe aquí su nombre." /></span><input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && <><label><span className="field-label-heading">{editingProductId ? "Existencias actuales" : "Existencias iniciales"}<FieldHelp enabled={contextualHelpEnabled} text="Existencias actuales al editar un producto o cantidad inicial al crearlo. Las operaciones pueden actualizar el inventario." /></span><input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} readOnly={!!editingProductId} required /></label><label><span className="field-label-heading">Avisarme cuando queden<FieldHelp enabled={contextualHelpEnabled} text="Define el mínimo de existencias. Cuando el inventario llegue a ese número o baje de él, sabrás que debes reponer." /></span><input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}
-                <label className="full-span"><span className="field-label-heading">Descripción<FieldHelp enabled={contextualHelpEnabled} text="Agrega detalles que ayuden a distinguir el producto y explicárselo a tus clientes." /></span><textarea rows="2" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Detalles que te ayuden a identificarlo" /></label>
+                <label className="full-span"><span className="field-label-heading">Descripción para el catálogo<FieldHelp enabled={contextualHelpEnabled} text="Este texto aparece en la tarjeta pública del producto. Puedes editarlo cuando quieras al abrir Productos y elegir Editar artículo." /></span><textarea rows="3" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Cuenta qué incluye, sus materiales, medidas, beneficios o qué lo hace especial."/><small className="product-description-guidance">La descripción se muestra a tus clientes en el catálogo. Edita este campo desde la ficha del artículo.</small></label>
               </div>
               {editingProductId && products.find((item) => item.id === editingProductId) && <div className="product-edit-tools full-span">
                 {renderStockAdjustment(products.find((item) => item.id === editingProductId))}

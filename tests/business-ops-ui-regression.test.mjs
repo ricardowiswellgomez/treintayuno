@@ -27,16 +27,30 @@ test("Mi empresa conserva su identidad y las preferencias del catálogo viven en
   assert.match(catalogPanel, /settings-channel-choices/);
 });
 
-test("las herramientas de importar y exportar inventario están en un control compacto del encabezado", () => {
+test("el menú de importar/exportar abre con estado explícito y funciona fuera de contenedores que lo recortan", () => {
   const heading = app.indexOf('className="inventory-page-heading"');
-  const popover = app.indexOf('className="inventory-import-disclosure inventory-import-popover"');
+  const trigger = app.indexOf('className={"inventory-import-trigger"');
   const metrics = app.indexOf('className="inventory-metric-grid"', heading);
-  assert.ok(heading >= 0 && popover > heading && metrics > popover);
+  assert.ok(heading >= 0 && trigger > heading && metrics > trigger);
   assert.match(app.slice(heading, metrics), /Importar \/ exportar/);
+  assert.match(app, /setInventoryDataMenuOpen\(\(open\) => !open\)/);
+  assert.match(app, /aria-expanded=\{inventoryDataMenuOpen\}/);
+  assert.match(app, /className="inventory-data-actions inventory-import-menu"/);
+  assert.match(app, /createPortal\([\s\S]*?inventory-import-menu[\s\S]*?document\.body/);
   assert.match(app, /downloadInventoryTemplateExcel/);
   assert.match(app, /downloadInventoryReportExcel/);
   assert.match(app, /printInventoryReportPdf/);
-  assert.match(css, /\.inventory-import-popover \.inventory-data-actions\s*\{\s*position:\s*absolute/);
+  const finalUiFixes = css.slice(css.lastIndexOf("/* UX repair pass"));
+  assert.match(finalUiFixes, /\.inventory-import-menu\s*\{[\s\S]*?box-shadow:[^;]+!important/);
+  assert.match(finalUiFixes, /\.inventory-import-trigger:focus-visible/);
+});
+
+test("la ayuda contextual escapa el contenedor y se reposiciona sin quedar recortada", () => {
+  assert.match(app, /import \{ createPortal \} from "react-dom"/);
+  assert.match(app, /className="field-help-popover field-help-popover-portal"/);
+  assert.match(app, /popoverRef\.current\?\.contains\(event\.target\)/);
+  const finalUiFixes = css.slice(css.lastIndexOf("/* UX repair pass"));
+  assert.match(finalUiFixes, /\.field-help-popover-portal/);
 });
 
 test("el catálogo muestra opciones de entrega y conserva la identidad propia de treseiscinco", () => {
@@ -45,7 +59,7 @@ test("el catálogo muestra opciones de entrega y conserva la identidad propia de
   assert.match(css, /\.public-catalog-header-whatsapp/);
   assert.match(app, /Recogida en el negocio/);
   assert.match(app, /Entrega a domicilio/);
-  assert.match(css, /\.public-catalog-brand\s*\{[^}]*width:\s*132px/s);
+  assert.match(css, /\.public-catalog-brand\s*\{[^}]*width:\s*119px/s);
   assert.match(css, /\.public-catalog-image\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*3/s);
   assert.match(css, /\.public-catalog-grid\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
   const denseCatalogRules = css.slice(css.lastIndexOf("/* Dense desktop catalog"));
@@ -55,11 +69,31 @@ test("el catálogo muestra opciones de entrega y conserva la identidad propia de
   assert.match(css, /\.sidebar-contact-action/);
 });
 
-test("la impresión incrusta el SVG completo para conservar fondo y colores de texto", () => {
+test("la vista previa de tarjeta reserva una columna real más grande para el logo", () => {
   assert.match(app, /<div class="card-svg" aria-label="Tarjeta comercial con colores personalizados">' \+ svg \+ '<\/div>/);
   assert.match(app, /forced-color-adjust:none!important/);
   assert.match(app, /fill="' \+ textColor \+ '"/);
-  assert.match(css, /\.business-card-preview-logo\s*\{[^}]*width:\s*35%/s);
+  const finalUiFixes = css.slice(css.lastIndexOf("/* UX repair pass"));
+  assert.match(finalUiFixes, /\.company-profile-panel \.business-card-preview\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1\.05fr\)\s+minmax\(0,\s*1fr\)\s*!important/);
+  assert.match(finalUiFixes, /\.company-profile-panel \.business-card-preview-logo img\s*\{[\s\S]*?max-height:\s*220px\s*!important/);
+});
+
+test("la descripción pública del producto se puede editar desde su ficha", () => {
+  assert.match(app, /Descripción para el catálogo/);
+  assert.match(app, /value=\{productForm\.description\}/);
+  assert.match(app, /setProductForm\(\{ \.\.\.productForm, description: e\.target\.value \}\)/);
+  assert.match(app, /La descripción se muestra a tus clientes en el catálogo/);
+  assert.match(app, /product\.description \|\|/);
+});
+
+test("las formas de pago usan símbolos gráficos dedicados para Nequi y DaviPlata", () => {
+  assert.match(app, /Símbolo de Nequi/);
+  assert.match(app, /Símbolo de DaviPlata/);
+  assert.match(app, /payment-method-brand-nequi/);
+  assert.match(app, /payment-method-brand-daviplata/);
+  const finalUiFixes = css.slice(css.lastIndexOf("/* UX repair pass"));
+  assert.match(finalUiFixes, /\.payment-method-mark-nq,[\s\S]*?width:\s*44px\s*!important/);
+  assert.match(finalUiFixes, /\.payment-method-tile-dv\.is-selected/);
 });
 
 test("el APK usa el símbolo 365 transparente en el icono adaptativo y verifica el arte empaquetado", () => {

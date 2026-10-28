@@ -4,8 +4,10 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const sourcePath = path.join(root, "public", "symbol-treseiscinco.svg");
+const fullIconPath = path.join(root, "public", "icon-treseiscinco-512.svg");
 const resRoot = path.join(root, "android", "app", "src", "main", "res");
 const logoSvg = await readFile(sourcePath);
+const fullIconSvg = await readFile(fullIconPath);
 
 const densities = [
   { name: "mdpi", scale: 1, legacy: 48, adaptive: 108 },
@@ -22,6 +24,11 @@ async function renderLogo(side) {
   return sharp(logoSvg).resize(side, side, { fit: "contain" }).png().toBuffer();
 }
 
+async function renderFullBrandIcon(side) {
+  // Legacy launcher icons use the full official 365 app-icon artwork, not an initial or placeholder.
+  return sharp(fullIconSvg).resize(side, side, { fit: "contain" }).png().toBuffer();
+}
+
 async function savePng(filePath, buffer) {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, buffer);
@@ -35,15 +42,7 @@ function circleMask(side) {
 
 for (const density of densities) {
   const legacySize = density.legacy;
-  const legacyLogoSide = Math.round(legacySize * 0.86);
-  const legacyLogo = await renderLogo(legacyLogoSide);
-  const legacySquare = await sharp({
-    create: { width: legacySize, height: legacySize, channels: 4, background }
-  }).composite([{
-    input: legacyLogo,
-    left: Math.round((legacySize - legacyLogoSide) / 2),
-    top: Math.round((legacySize - legacyLogoSide) / 2)
-  }]).png().toBuffer();
+  const legacySquare = await renderFullBrandIcon(legacySize);
 
   const mipmapDir = path.join(resRoot, `mipmap-${density.name}`);
   await savePng(path.join(mipmapDir, "ic_launcher.png"), legacySquare);
@@ -85,4 +84,4 @@ const colorsXml = `<?xml version="1.0" encoding="utf-8"?>
 await mkdir(path.join(resRoot, "values"), { recursive: true });
 await writeFile(path.join(resRoot, "values", "treseiscinco_icon_colors.xml"), colorsXml);
 
-console.log("Android icons generated from public/symbol-treseiscinco.svg for all densities.");
+console.log("Android launcher icons generated from public/icon-treseiscinco-512.svg; adaptive foreground uses public/symbol-treseiscinco.svg.");

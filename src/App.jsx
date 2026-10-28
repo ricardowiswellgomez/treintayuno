@@ -53,7 +53,7 @@ function AppIcon({ name, size = 20 }) {
 function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
   const methods = [["Efectivo","EF"],["Nequi","NQ"],["Daviplata","DV"],["Transferencia","TR"],["Tarjeta","TC"],["Otro","OT"]];
   return <div className="payment-method-tiles" role="group" aria-label={ariaLabel}>
-    {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile" + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
+    {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile payment-method-tile-" + mark.toLowerCase() + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
       <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>{mark}</span><strong>{method}</strong>
     </button>)}
   </div>;
@@ -1108,7 +1108,16 @@ function PublicCatalog({ businessId }) {
   const ownerPhoneDigits = String(business?.commercial_profile?.phone || "").replace(/\D/g, "");
   const whatsappPhone = ownerPhoneDigits.length === 10 && ownerPhoneDigits.startsWith("3") ? "57" + ownerPhoneDigits : ownerPhoneDigits;
   const hasWhatsappContact = whatsappPhone.length >= 8;
-  const catalogTheme = normalizeBusinessTheme(business?.theme);
+  const baseCatalogTheme = normalizeBusinessTheme(business?.theme);
+  const publicProfile = business?.commercial_profile || {};
+  const validCatalogColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || ""));
+  const catalogTheme = {
+    ...baseCatalogTheme,
+    primary: validCatalogColor(publicProfile.catalogPrimary) ? publicProfile.catalogPrimary : baseCatalogTheme.primary,
+    background: validCatalogColor(publicProfile.catalogBackground) ? publicProfile.catalogBackground : baseCatalogTheme.background,
+    surface: validCatalogColor(publicProfile.catalogSurface) ? publicProfile.catalogSurface : baseCatalogTheme.surface,
+    text: validCatalogColor(publicProfile.catalogText) ? publicProfile.catalogText : baseCatalogTheme.text
+  };
   const openingInfo = (() => {
     const schedule=business?.commercial_profile?.hoursSchedule;
     if (!schedule || typeof schedule!=="object") return null;
@@ -1270,6 +1279,7 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
+        {hasWhatsappContact && <a className="public-catalog-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Chatear con el negocio por WhatsApp" title="WhatsApp"><AppIcon name="whatsapp" size={21}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>
@@ -1279,7 +1289,7 @@ function PublicCatalog({ businessId }) {
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
       : !business ? <div className="public-catalog-message"><h2>Este catálogo no está disponible</h2><p>Revisa que el enlace sea correcto.</p></div>
       : <section className="public-catalog-content">
-        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || `Una selección de productos de ${business.commercial_profile?.tradeName || business.name}.`}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span>{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
+        <div className="public-catalog-intro"><div><p>{business.commercial_profile?.publicDescription || "Explora los productos disponibles en este catálogo."}</p><span>{total} {total === 1 ? "producto publicado" : "productos publicados"}</span>{openingInfo&&<div className={"public-business-hours-status "+(openingInfo.isOpen?"is-open":"is-closed")}><span className="public-business-hours-dot" aria-hidden="true"/><strong>{openingInfo.isOpen?"Abierto":"Cerrado"}</strong><span>{openingInfo.dayLabel}: {openingInfo.hours}</span><small>Hora de Colombia</small></div>}</div><span className="public-catalog-currency">{business.currency_code}</span></div>
         {returnedMessage && <div className={`public-catalog-payment-result ${returnedStatus === "approved" ? "is-success" : returnedStatus === "review" ? "is-warning" : ""}`} role="status">
           <div><strong>{returnedStatus === "approved" ? "¡Compra confirmada!" : returnedStatus === "pending" ? "Pago en proceso" : returnedStatus === "review" ? "Pedido en revisión" : "Estado del pedido"}</strong><p>{returnedMessage}</p>
           {returnedOrder?.sale_number && <span>Venta {returnedOrder.sale_number}</span>}
@@ -1313,7 +1323,7 @@ function PublicCatalog({ businessId }) {
         </nav>}
       </section>}
     <nav className="public-catalog-bottom-bar" aria-label="Navegación del catálogo">
-      <button type="button" className={"public-catalog-bottom-tab"+(!businessInfoOpen?" is-active":"")} aria-current={!businessInfoOpen?"page":undefined} onClick={() => { setBusinessInfoOpen(false); setCartOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
+      <button type="button" className={"public-catalog-bottom-tab"+(!businessInfoOpen?" is-active":"")} aria-current={!businessInfoOpen?"page":undefined} onClick={() => { setBusinessInfoOpen(false); setCartOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><img className="public-catalog-nav-logo" src="/symbol-treseiscinco.svg" alt="" /><strong>Catálogo</strong></button>
       <button type="button" className={"public-catalog-bottom-tab"+(businessInfoOpen?" is-active":"")} onClick={() => { setCartOpen(false); setBusinessInfoOpen(true); }} aria-haspopup="dialog" aria-expanded={businessInfoOpen}><span aria-hidden="true">ⓘ</span><strong>Información</strong></button>
       {hasWhatsappContact && <a className="public-catalog-bottom-tab public-catalog-bottom-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Consultar por WhatsApp" title="Consultar por WhatsApp"><AppIcon name="whatsapp" size={22}/><strong>WhatsApp</strong></a>}
     </nav>
@@ -1870,6 +1880,7 @@ function AuthenticatedApp() {
   const [quickSaleProductSaving, setQuickSaleProductSaving] = useState(false);
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleItems, setSaleItems] = useState([]);
+  const [saleDate, setSaleDate] = useState(todayInBogota());
   const [saleSaving, setSaleSaving] = useState(false);
   const [salePayment, setSalePayment] = useState("");
   const [saleCashTendered, setSaleCashTendered] = useState("");
@@ -1893,7 +1904,7 @@ function AuthenticatedApp() {
   const [settingsTab, setSettingsTab] = useState("general");
   const [uiLanguage, setUiLanguage] = useState("es");
   const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", ownerName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", ownerName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", catalogPrimary: "#167D82", catalogBackground: "#F5F7FC", catalogSurface: "#FFFFFF", catalogText: "#24352B", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
   const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
   const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
   const [wompiSaving, setWompiSaving] = useState(false);
@@ -2752,11 +2763,11 @@ function AuthenticatedApp() {
     const textRows = rows.map((row) => {
       const baseline = cursor + Math.round(row.lineHeight * 0.73);
       cursor += row.lineHeight;
-      return '<text x="625" y="' + baseline + '" text-anchor="middle" fill="' + textColor + '" font-family="Arial, sans-serif" font-size="' + row.size + '" font-weight="' + row.weight + '">' + escapeHtml(row.text) + '</text>';
+      return '<text x="468" y="' + baseline + '" text-anchor="start" fill="' + textColor + '" font-family="Arial, sans-serif" font-size="' + row.size + '" font-weight="' + row.weight + '">' + escapeHtml(row.text) + '</text>';
     }).join("");
     const logoMarkup = logoDataUri
-      ? '<image href="' + escapeHtml(logoDataUri) + '" x="25" y="159" width="270" height="182" preserveAspectRatio="xMidYMid meet" />'
-      : '<svg x="67" y="159" width="182" height="182" viewBox="0 0 128 128" aria-label="Logo de treseiscinco"><g fill="none" stroke-width="17" stroke-linecap="butt"><path d="M 26 39 A 45 45 0 0 1 89 22" stroke="#F5C928"/><path d="M 99 29 A 45 45 0 0 1 103 94" stroke="#0A9D9F"/><path d="M 92 103 A 45 45 0 0 1 22 54" stroke="#174580"/></g><circle cx="64" cy="64" r="26" fill="#fff"/></svg>';
+      ? '<image href="' + escapeHtml(logoDataUri) + '" x="16" y="104" width="432" height="292" preserveAspectRatio="xMidYMid meet" />'
+      : '<svg x="64" y="104" width="292" height="292" viewBox="0 0 128 128" aria-label="Logo de treseiscinco"><g fill="none" stroke-width="17" stroke-linecap="butt"><path d="M 26 39 A 45 45 0 0 1 89 22" stroke="#F5C928"/><path d="M 99 29 A 45 45 0 0 1 103 94" stroke="#0A9D9F"/><path d="M 92 103 A 45 45 0 0 1 22 54" stroke="#174580"/></g><circle cx="64" cy="64" r="26" fill="#fff"/></svg>';
     return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 900 500" role="img" aria-label="Tarjeta de ' + escapeHtml(businessName) + '">' +
       '<rect x="0" y="0" width="900" height="500" rx="26" fill="' + surface + '"/>' +
       '<rect x="0" y="0" width="900" height="16" fill="' + primary + '"/>' +
@@ -3231,7 +3242,7 @@ function AuthenticatedApp() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", ownerName: savedCommercial.ownerName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", ownerName: savedCommercial.ownerName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", catalogPrimary: savedCommercial.catalogPrimary || "#167D82", catalogBackground: savedCommercial.catalogBackground || "#F5F7FC", catalogSurface: savedCommercial.catalogSurface || "#FFFFFF", catalogText: savedCommercial.catalogText || "#24352B", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
     setSettingsCatalogSlug(activeBusiness.slug || "");
     setSettingsTab(activeBusiness.role === "owner" ? "general" : "account");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
@@ -3577,6 +3588,10 @@ function AuthenticatedApp() {
       publicDescription: String(profile?.publicDescription || "").trim(),
       hours: String(profile?.hours || "").trim(),
       hoursSchedule: profile?.hoursSchedule && typeof profile.hoursSchedule === "object" ? profile.hoursSchedule : {},
+      catalogPrimary: /^#[0-9a-f]{6}$/i.test(String(profile?.catalogPrimary || "")) ? profile.catalogPrimary : "#167D82",
+      catalogBackground: /^#[0-9a-f]{6}$/i.test(String(profile?.catalogBackground || "")) ? profile.catalogBackground : "#F5F7FC",
+      catalogSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.catalogSurface || "")) ? profile.catalogSurface : "#FFFFFF",
+      catalogText: /^#[0-9a-f]{6}$/i.test(String(profile?.catalogText || "")) ? profile.catalogText : "#24352B",
       cardPrimary: /^#[0-9a-f]{6}$/i.test(String(profile?.cardPrimary || "")) ? profile.cardPrimary : "#475569",
       cardSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.cardSurface || "")) ? profile.cardSurface : "#FFFFFF",
       cardText: /^#[0-9a-f]{6}$/i.test(String(profile?.cardText || "")) ? profile.cardText : "#1F2937",
@@ -5466,17 +5481,19 @@ function AuthenticatedApp() {
     if (cashTendered !== null && cashTendered < 0) { setError("El efectivo recibido no puede ser negativo."); return; }
     setSaleSaving(true); setError(""); setNotice("");
     try {
-      const { data, error: saleError } = await supabase.rpc("create_sale", {
+      const { data, error: saleError } = await supabase.rpc("create_sale_with_date", {
         p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
         p_items: saleItems.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })),
-        p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null, p_initial_payment_method: saleInitialPaymentMethod
+        p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null,
+        p_initial_payment_method: saleInitialPaymentMethod,
+        p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString()
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;
       const wasOnFirstSalesPage = salesPage === 1;
       setSalesPage(1);
       setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-      setSaleItems([]); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
+      setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó." + (cashChange > 0 ? " Devuelta: " + money(cashChange, currencyCode) + "." : ""));
       if (wasOnFirstSalesPage) await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -5524,7 +5541,7 @@ function AuthenticatedApp() {
 
   function clearSaleDraft() {
     setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-    setSaleItems([]); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
+    setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
   }
 
   function saleStatusLabel(status) {
@@ -5818,7 +5835,8 @@ function AuthenticatedApp() {
     if (next === "sales" || next === "stats" || next === "quotes") return canPermission("sales_view");
     if (next === "customers") return canPermission("customers_view");
     if (next === "purchases") return canViewPurchases || canViewExpenses || canViewSuppliers;
-    if (next === "suppliers") return canViewSuppliers;
+    if (next === "suppliers") return isBusinessManager || canViewSuppliers || canViewPurchases;
+    if (next === "coupons") return isBusinessManager;
     if (next === "profitability") return canPermission("sales_view") && canViewExpenses;
     if (next === "audit") return canPermission("reports_view") || isBusinessManager;
     if (next === "catalog") return canManageProducts;
@@ -6263,14 +6281,14 @@ function AuthenticatedApp() {
         </div>
 
         <nav className={"nav-list" + (sidebarEditing ? " nav-list-editing" : "") + (sidebarTouchDragging ? " nav-list-touch-dragging" : "")} aria-label="Navegación del negocio">
-          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
+          {sidebarLayout.filter((group) => sidebarEditing || group.items.some((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (isBusinessManager || canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen))).map((group) => <section key={group.id} data-sidebar-group-id={group.id} className={"sidebar-nav-group" + (!group.title.trim() && !sidebarEditing ? " sidebar-nav-group-untitled" : "")}
             onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
             onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); confirmSidebarDrop(draggedSidebarItem, group.id); }}>
             {!group.items.some((navItem) => navItem.id === "home") && <div className="sidebar-group-heading">
               {sidebarEditing ? <><span className="sidebar-drag-handle" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={isBusinessOwner && !(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span><input aria-label="Nombre del grupo" value={group.title} maxLength={60} onChange={(event) => updateSidebarDraft((current) => current.map((candidate) => candidate.id === group.id ? { ...candidate, title: event.target.value } : candidate))} /></> : <>{isBusinessOwner && <span className="sidebar-reorder-grip" title="Arrastra con el ratón o mantén presionado para mover el grupo" draggable={!(typeof window !== "undefined" && "ontouchstart" in window)} onTouchStart={(event) => startSidebarTouchDrag(event, { type: "group", id: group.id })} onDragStart={(event) => startSidebarMouseDrag(event, { type: "group", id: group.id })}>⠿</span>}<p className="nav-label">{group.title}</p></>}
               {sidebarEditing && <button type="button" className="sidebar-mini-action danger-text" title="Eliminar grupo vacío" disabled={group.items.length > 0 || sidebarLayout.length < 2} onClick={() => updateSidebarDraft((current) => current.filter((candidate) => candidate.id !== group.id))}>×</button>}
             </div>}
-            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
+            {group.items.filter((item) => item.id === "home" || item.id === "settings" ? (item.id === "settings" ? isBusinessOwner : true) : item.id === "suppliers" ? (isBusinessManager || canPermission("suppliers_view") || canViewPurchases) : canAccessScreen(item.screen)).map((item) => (
               <div key={item.id} data-sidebar-item-id={item.id} className="sidebar-nav-row"
                 onDragOver={(event) => { if (isBusinessOwner) event.preventDefault(); }}
                 onDrop={(event) => { if (!isBusinessOwner) return; event.preventDefault(); event.stopPropagation(); if (draggedSidebarItem?.id !== item.id) confirmSidebarDrop(draggedSidebarItem, group.id, item.id); }}>
@@ -6337,6 +6355,9 @@ function AuthenticatedApp() {
 <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de ventas">{[["day","Hoy"],["date","Fecha"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={salesPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={salesPeriod === value} onClick={() => {if(value==="date"&&salesPeriod!=="date")setSalesSelectedDate(todayInBogota());setSalesPeriod(value);setSalesPage(1);}}>{label}</button>)}</div>{salesPeriod === "date" && <div className="sales-single-date"><button type="button" className="secondary-button" aria-label="Día anterior" onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>← Anterior</button><label><span>Ver movimientos del día</span><input type="date" value={salesSelectedDate} max={todayInBogota()} onChange={(e)=>{setSalesSelectedDate(e.target.value);setSalesPage(1);}} /></label><button type="button" className="secondary-button" aria-label="Día siguiente" disabled={salesSelectedDate>=todayInBogota()} onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>Siguiente →</button></div>}{salesPeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={salesDateFrom} max={salesDateTo || todayInBogota()} onChange={(e) => {setSalesDateFrom(e.target.value);setSalesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={salesDateTo} min={salesDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setSalesDateTo(e.target.value);setSalesPage(1);}} /></label></div>}<p>{salesPeriod === "day" ? "Ventas de hoy" : salesPeriod === "date" ? "Movimientos del " + new Date(salesSelectedDate+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : salesPeriod === "all" ? "Todo el historial" : salesPeriod === "custom" ? "Del " + salesDateFrom + " al " + salesDateTo : salesPeriod === "week" ? "Desde el lunes de esta semana" : salesPeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>
+<div className="sale-date-row">
+  <label><span className="field-label-heading">Fecha de la venta<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha real en que ocurrió la venta. Se usa para organizar los informes y el historial del negocio." /></span><input type="date" value={saleDate} max={todayInBogota()} onChange={(event) => setSaleDate(event.target.value)} required /></label>
+</div>
 <div className="sale-builder">
 <label><span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span><select value={saleCustomerId} onChange={e=>{if(e.target.value==="__create_sale_customer__"){setShowQuickCustomerForm(true);setError("");return;}setSaleCustomerId(e.target.value);}}><option value="">Venta sin cliente</option>{customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}{canManageCustomers&&<option value="__create_sale_customer__">＋ Nuevo cliente…</option>}</select>{canManageCustomers && <button type="button" className="text-button" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}> {showQuickCustomerForm?"Cancelar":"＋ Crear cliente"} </button>}</label>
 <label><span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span><select value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}><option value="">Elige un producto…</option>{saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}</select>{canManageProducts && <button type="button" className="text-button" onClick={() => setShowQuickSaleProductForm((open) => !open)}>{showQuickSaleProductForm ? "Cancelar nuevo artículo" : "＋ Nuevo artículo"}</button>}</label>
@@ -7258,7 +7279,7 @@ function AuthenticatedApp() {
                 <div className="settings-icon"><AppIcon name="grid" size={23} /></div>
                 <h3>Idioma de la aplicación</h3>
                 <p>Selecciona el idioma de toda la interfaz de treseiscinco. El cambio se aplica inmediatamente y se guarda en este navegador.</p>
-                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = ["es","en","pt","it","fr"].includes(event.target.value) ? event.target.value : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language:" + (session?.user?.id || "guest"), next); } catch {} setNotice(({es:"Idioma guardado.",en:"Language saved.",pt:"Idioma salvo.",it:"Lingua salvata.",fr:"Langue enregistrée."})[next]); }}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="it">Italiano</option><option value="fr">Français</option></select></label>
+                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = ["es","en","pt","it","fr"].includes(event.target.value) ? event.target.value : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language:" + (session?.user?.id || "guest"), next); } catch {} setNotice(({es:"Idioma guardado.",en:"Language saved.",pt:"Idioma salvo.",it:"Lingua salvata.",fr:"Langue enregistrée."})[next]); }}><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="it">Italiano</option><option value="pt">Português</option></select></label>
                 <p className="helper-text">Al elegir English se traducen los textos de navegación, formularios, botones, ayudas, estados y mensajes que estén incluidos en el catálogo de traducciones. Los nombres y datos escritos por ti no se traducen.</p>
               </div>
               <div hidden={settingsTab !== "taxes"} className="settings-tab-content tax-settings-panel">
@@ -7317,6 +7338,16 @@ function AuthenticatedApp() {
                     </div></div>
                   </div>
                 </div>
+                <section className="catalog-color-customizer">
+                  <div><h4>Colores de la vitrina</h4><p>Personaliza el aspecto que ven tus clientes. Esto no cambia los colores de tu espacio de trabajo.</p></div>
+                  <div className="catalog-color-fields">
+                    <label className="settings-color-field"><span className="field-label-heading">Color principal</span><input type="color" value={settingsCommercialProfile.catalogPrimary || "#167D82"} disabled={activeBusiness?.role !== "owner"} onChange={(event) => setSettingsCommercialProfile((current) => ({ ...current, catalogPrimary: event.target.value }))}/><code>{(settingsCommercialProfile.catalogPrimary || "#167D82").toUpperCase()}</code></label>
+                    <label className="settings-color-field"><span className="field-label-heading">Fondo de la página</span><input type="color" value={settingsCommercialProfile.catalogBackground || "#F5F7FC"} disabled={activeBusiness?.role !== "owner"} onChange={(event) => setSettingsCommercialProfile((current) => ({ ...current, catalogBackground: event.target.value }))}/><code>{(settingsCommercialProfile.catalogBackground || "#F5F7FC").toUpperCase()}</code></label>
+                    <label className="settings-color-field"><span className="field-label-heading">Fondo de tarjetas</span><input type="color" value={settingsCommercialProfile.catalogSurface || "#FFFFFF"} disabled={activeBusiness?.role !== "owner"} onChange={(event) => setSettingsCommercialProfile((current) => ({ ...current, catalogSurface: event.target.value }))}/><code>{(settingsCommercialProfile.catalogSurface || "#FFFFFF").toUpperCase()}</code></label>
+                    <label className="settings-color-field"><span className="field-label-heading">Color del texto</span><input type="color" value={settingsCommercialProfile.catalogText || "#24352B"} disabled={activeBusiness?.role !== "owner"} onChange={(event) => setSettingsCommercialProfile((current) => ({ ...current, catalogText: event.target.value }))}/><code>{(settingsCommercialProfile.catalogText || "#24352B").toUpperCase()}</code></label>
+                  </div>
+                  {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar la paleta pública.</p>}
+                </section>
                 <div className="business-card-preview-wrap">
                   <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
                     <div className="business-card-preview-logo">{settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }} /> : <img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco" />}</div>

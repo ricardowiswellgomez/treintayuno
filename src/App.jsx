@@ -2453,7 +2453,7 @@ function AuthenticatedApp() {
 
   function downloadInventoryTemplate() {
     const rows = [["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"]];
-    const csv = "\\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\\r\\n");
+    const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
     downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
     setNotice("CSV descargado. Si prefieres columnas con ancho ajustado, descarga la plantilla Excel.");
   }
@@ -2463,7 +2463,7 @@ function AuthenticatedApp() {
     const colgroup = headers.map((_, index) => "<col width=\"" + (widths[index] || 120) + "\" style=\"width:" + (widths[index] || 120) + "px;mso-width-source:userset\">").join("");
     const th = headers.map((value) => "<th>" + escapeHtml(value) + "</th>").join("");
     const body = rows.map((row) => "<tr>" + headers.map((_, index) => "<td>" + escapeHtml(row[index] ?? "") + "</td>").join("") + "</tr>").join("");
-    return "\\uFEFF<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head><meta charset=\"utf-8\"><title>" + escapeHtml(title) + "</title><style>body{font-family:Calibri,Arial,sans-serif}h1{font-size:18pt;color:#164E63}table{border-collapse:collapse;table-layout:fixed}th{background:#DDF1EE;color:#163B45;font-weight:bold;border:1px solid #AFC9CC;padding:7px;text-align:left}td{border:1px solid #D9E2E5;padding:6px;vertical-align:top;mso-number-format:\\\"\\@\\\";overflow-wrap:anywhere}tr:nth-child(even) td{background:#F6FAFA}</style></head><body><h1>" + escapeHtml(title) + "</h1><table><colgroup>" + colgroup + "</colgroup><thead><tr>" + th + "</tr></thead><tbody>" + body + "</tbody></table></body></html>";
+    return "\uFEFF<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head><meta charset=\"utf-8\"><title>" + escapeHtml(title) + "</title><style>body{font-family:Calibri,Arial,sans-serif}h1{font-size:18pt;color:#164E63}table{border-collapse:collapse;table-layout:fixed}th{background:#DDF1EE;color:#163B45;font-weight:bold;border:1px solid #AFC9CC;padding:7px;text-align:left}td{border:1px solid #D9E2E5;padding:6px;vertical-align:top;mso-number-format:\\\"\\@\\\";overflow-wrap:anywhere}tr:nth-child(even) td{background:#F6FAFA}</style></head><body><h1>" + escapeHtml(title) + "</h1><table><colgroup>" + colgroup + "</colgroup><thead><tr>" + th + "</tr></thead><tbody>" + body + "</tbody></table></body></html>";
   }
 
   function downloadInventoryTemplateExcel() {
@@ -2500,7 +2500,7 @@ function AuthenticatedApp() {
         product.is_sellable ? "Vendible" : "No vendible", product.metadata?.tax_code || "none"
       ];
       const productVariants = byProduct.get(product.id) || [];
-      if (!productVariants.length) rows.push([...productBase, "", "", "", "", ""]);
+      if (!productVariants.length) rows.push([...productBase, "", "", "", "", "", ""]);
       else for (const variant of productVariants) rows.push([
         ...productBase, variant.variant_name, variant.variant_value, variant.sku || "",
         variant.sale_price_minor == null ? "" : Number(variant.sale_price_minor) / (10 ** currencyDigits(currencyCode)),
@@ -2656,7 +2656,7 @@ function AuthenticatedApp() {
 
   async function sharePersonalBusinessCard() {
     if (!activeBusiness) return;
-    const profile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile || settingsCommercialProfile || {});
+    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
     const name = profile.tradeName || activeBusiness.name || "Mi negocio";
     const slug = String(activeBusiness.slug || "").trim();
     const url = slug ? window.location.origin + "/" + slug : window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
@@ -4168,16 +4168,16 @@ function AuthenticatedApp() {
             .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("sale_id").order("id"),
           "artículos vendidos para estadísticas"
         ) : Promise.resolve([]),
-        fetchAllProfitabilityRows(
+        canAccessScreen("customers") ? fetchAllProfitabilityRows(
           () => supabase.from("customers").select("id,business_id,full_name,company_name")
             .eq("business_id", activeBusiness.id).order("full_name"),
           "clientes para estadísticas"
-        ),
-        fetchAllProfitabilityRows(
+        ) : Promise.resolve([]),
+        canAccessScreen("suppliers") ? fetchAllProfitabilityRows(
           () => supabase.from("suppliers").select("id,business_id,name")
             .eq("business_id", activeBusiness.id).order("name"),
           "proveedores para estadísticas"
-        )
+        ) : Promise.resolve([])
       ]);
       setStatsSales(sales);
       setStatsPayments(payments);

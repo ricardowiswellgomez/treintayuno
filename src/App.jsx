@@ -3937,7 +3937,7 @@ function AuthenticatedApp() {
         setCustomers(result.data || []);
         setCustomersCount(result.count || 0);
       } else {
-        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,created_by,sale_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
         const salesToday = todayInBogota();
         const shiftSalesDate = (key, offset) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0,10); };
         const salesWeekStart = shiftSalesDate(salesToday, -((new Date(salesToday + "T12:00:00Z").getUTCDay() + 6) % 7));
@@ -3964,14 +3964,18 @@ function AuthenticatedApp() {
         const paymentsBySale = {};
         if (salesRows.length) {
           const saleIds = salesRows.map((sale) => sale.id);
-          const [itemsResult, paymentsResult] = await Promise.all([
-            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor")
+          const [itemsResult, paymentsResult, membersResult] = await Promise.all([
+            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor,tax_minor")
               .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("created_at"),
-            supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,paid_at,notes")
-              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true })
+            supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,created_by,paid_at,notes")
+              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true }),
+            supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id })
           ]);
           if (itemsResult.error) throw itemsResult.error;
           if (paymentsResult.error) throw paymentsResult.error;
+          if (membersResult.error) throw membersResult.error;
+          const memberNames = new Map((membersResult.data || []).map((member) => [member.user_id, member.display_name]));
+
           for (const item of itemsResult.data || []) {
             if (!itemsBySale[item.sale_id]) itemsBySale[item.sale_id] = [];
             itemsBySale[item.sale_id].push(item);
@@ -3982,11 +3986,22 @@ function AuthenticatedApp() {
           }
         }
         setCustomers(customersResult.data || []);
-        setSalesData(salesRows.map((sale) => ({ ...sale,
-          customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
-          items: itemsBySale[sale.id] || [],
-          payments: paymentsBySale[sale.id] || []
-        })));
+        if (!salesRows.length) {
+          const { data: members, error: memberError } = await supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id });
+          if (memberError) throw memberError;
+          const memberNames = new Map((members || []).map((member) => [member.user_id, member.display_name]));
+          setSalesData(salesRows.map((sale) => ({ ...sale, seller_name: memberNames.get(sale.created_by) || "Usuario del negocio", items: [], payments: [] })));
+        } else {
+          const memberRows = await supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id });
+          if (memberRows.error) throw memberRows.error;
+          const memberNames = new Map((memberRows.data || []).map((member) => [member.user_id, member.display_name]));
+          setSalesData(salesRows.map((sale) => ({ ...sale,
+            customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
+            seller_name: memberNames.get(sale.created_by) || "Usuario del negocio",
+            items: itemsBySale[sale.id] || [],
+            payments: paymentsBySale[sale.id] || []
+          })));
+        }
       }
     } catch (e) {
       setError(friendlyError(e));
@@ -6101,7 +6116,7 @@ function AuthenticatedApp() {
 </form>}
 <div className="sales-toolbar"><span>{salesCount} {salesCount===1?"venta":"ventas"} · Página {salesPage} de {Math.max(1,Math.ceil(salesCount/salesPageSize))}</span><label className="sales-page-size"><span className="field-label-heading">Mostrar<FieldHelp enabled={contextualHelpEnabled} text="Define cuántas ventas aparecen en cada página de la lista." /></span><select value={salesPageSize} onChange={(e)=>{setSalesPageSize(Number(e.target.value));setSalesPage(1);}}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label></div>
 {salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel mobile-detail-trigger" key={sale.id} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedRecordDetail({type:"Venta",title:sale.sale_number || "Venta",fields:[{label:"Cliente",value:sale.customer_name},{label:"Fecha",value:new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})},{label:"Estado",value:saleStatusLabel(sale.status)},{label:"Total",value:money(sale.total_minor,sale.currency_code||currencyCode)},{label:"Abonado",value:money(sale.amount_paid_minor,sale.currency_code||currencyCode)},{label:"Pendiente",value:money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)},{label:"Artículos",value:(sale.items||[]).map(item=>item.item_name+" × "+Number(item.quantity).toLocaleString("es-CO")+" — "+money(item.line_total_minor,sale.currency_code||currencyCode)).join("\n")||"Sin artículos"},{label:"Historial de abonos",value:(sale.payments||[]).map(p=>money(p.amount_minor,sale.currency_code||currencyCode)+" · "+p.payment_method+" · "+new Date(p.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})+(p.notes?" · "+p.notes:"")).join("\n")||"Sin abonos"}],notes:sale.notes}); }}>
-<div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
+<div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}</span><small>Registró: {sale.seller_name||"Usuario del negocio"}</small></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
 <div className="sale-record-customer">{sale.customer_name}</div>
 
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>

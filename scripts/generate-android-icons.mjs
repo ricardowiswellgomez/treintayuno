@@ -4,8 +4,10 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const fullIconPath = path.join(root, "public", "icon-treseiscinco-512.svg");
+const symbolIconPath = path.join(root, "public", "symbol-treseiscinco.svg");
 const resRoot = path.join(root, "android", "app", "src", "main", "res");
 const fullIconSvg = await readFile(fullIconPath);
+const symbolIconSvg = await readFile(symbolIconPath);
 
 const densities = [
   { name: "mdpi", scale: 1, legacy: 48, adaptive: 108 },
@@ -17,9 +19,23 @@ const densities = [
 
 const background = { r: 250, g: 252, b: 251, alpha: 1 };
 async function renderFullBrandIcon(side) {
-  // Both Android launcher variants use the official treseiscinco 365 app icon.
-  // Never derive an icon from a numeric placeholder or a generic Capacitor asset.
+  // Legacy launchers use the complete official square app artwork.
   return sharp(fullIconSvg).resize(side, side, { fit: "contain" }).png().toBuffer();
+}
+
+async function renderAdaptiveForeground(side) {
+  // Adaptive launchers need the official symbol on transparency, not a nested app-icon tile.
+  // Keep the symbol in the Android safe zone so launchers cannot crop it out.
+  const markSide = Math.round(side * 0.76);
+  const mark = await sharp(symbolIconSvg).resize(markSide, markSide, { fit: "contain" }).png().toBuffer();
+  return sharp({
+    create: {
+      width: side,
+      height: side,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  }).composite([{ input: mark, gravity: "centre" }]).png().toBuffer();
 }
 
 async function savePng(filePath, buffer) {
@@ -44,10 +60,9 @@ for (const density of densities) {
     await sharp(legacySquare).composite([{ input: circleMask(legacySize), blend: "dest-in" }]).png().toBuffer()
   );
 
-  // Android adaptive icons use the full official app artwork as the foreground.
-  // This preserves the branded gradient and 365 mark on launchers that prefer adaptive icons.
+  // Adaptive foreground is the genuine transparent 365 symbol; background is a separate Android layer.
   const adaptiveSize = density.adaptive;
-  const foreground = await renderFullBrandIcon(adaptiveSize);
+  const foreground = await renderAdaptiveForeground(adaptiveSize);
 
   await savePng(path.join(mipmapDir, "ic_launcher_foreground.png"), foreground);
 }
@@ -70,4 +85,4 @@ const colorsXml = `<?xml version="1.0" encoding="utf-8"?>
 await mkdir(path.join(resRoot, "values"), { recursive: true });
 await writeFile(path.join(resRoot, "values", "treseiscinco_icon_colors.xml"), colorsXml);
 
-console.log("Android legacy and adaptive launcher icons generated from public/icon-treseiscinco-512.svg (official treseiscinco 365 artwork).");
+console.log("Android legacy icons generated from the official square artwork; adaptive foregrounds generated from public/symbol-treseiscinco.svg.");

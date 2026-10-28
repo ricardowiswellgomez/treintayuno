@@ -9,6 +9,7 @@
     "allowNavigation": [
       "treseiscinco.com",
       "www.treseiscinco.com"
-    ]
+    ],
+    "errorPath": "offline.html"
   }
 }

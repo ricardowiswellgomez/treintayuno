@@ -8,15 +8,19 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "deploy": "wrangler deploy",
-    "test": "node --test"
+    "test": "node --test",
+    "android:sync": "cap sync android"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "@capacitor/core": "8.5.3"
   },
   "devDependencies": {
     "vite": "8.3.5",
-    "wrangler": "4.153.0"
+    "wrangler": "4.153.0",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/cli": "8.5.3"
   }
 }

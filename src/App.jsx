@@ -60,10 +60,11 @@ function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
     {methods.map(([method, mark]) => <button key={method} type="button" className={"payment-method-tile payment-method-tile-" + mark.toLowerCase() + (value === method ? " is-selected" : "")} aria-pressed={value === method} onClick={() => onChange(method)}>
       <span className={"payment-method-mark payment-method-mark-" + mark.toLowerCase()}>
         {method === "Nequi" ? <svg className="payment-method-brand-logo payment-method-brand-nequi" viewBox="0 0 48 48" role="img" aria-label="Símbolo de Nequi">
-            <path d="M10 9c5-4 12-1 14 5 1 4-1 8-5 10l-7 4c-5 3-11-1-11-7 0-5 3-9 9-12Z" fill="#DA0081" transform="translate(1 1)"/>
-            <path d="M28 10c6-1 11 3 11 9 0 4-2 7-6 9l-8 4c-5 2-10-1-10-6 0-3 2-6 5-8l8-8Z" fill="#5A9BFF"/>
-            <path d="M17 25c2-3 6-5 10-3 4 2 5 6 3 10-2 4-6 6-10 4-4-2-5-7-3-11Z" fill="#46C7BD"/>
-            <circle cx="13" cy="8" r="3.4" fill="#DA0081"/>
+            <rect x="2" y="2" width="44" height="44" rx="13" fill="#200020"/>
+            <path d="M12 34V18c0-4 4-6 7-2l10 13" fill="none" stroke="#DA0081" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M19 18l10 13" fill="none" stroke="#5A9BFF" strokeWidth="5.5" strokeLinecap="round"/>
+            <path d="M32 15v19" fill="none" stroke="#46C7BD" strokeWidth="5.5" strokeLinecap="round"/>
+            <circle cx="12" cy="10" r="3" fill="#DA0081"/>
           </svg>
           : method === "Daviplata" ? <svg className="payment-method-brand-logo payment-method-brand-daviplata" viewBox="0 0 48 48" role="img" aria-label="Símbolo de DaviPlata">
             <rect x="2" y="2" width="44" height="44" rx="13" fill="#E01A19"/>
@@ -1387,7 +1388,7 @@ function PublicCatalog({ businessId }) {
           <div className="public-catalog-card-copy">
             <span className="public-catalog-category">{product.category_name || "Producto"}</span>
             <div className="public-catalog-product-heading"><h2>{product.name}</h2><button type="button" className="public-product-share" title={"Compartir "+product.name} aria-label={"Compartir "+product.name} onClick={()=>sharePublicProduct(product)}>↗</button></div>
-            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || "Agrégalo al carrito para preparar tu pedido."}</p>
+            <p className={"public-catalog-card-description" + (product.description ? "" : " is-guidance")}>{product.description || (hasWhatsappContact ? "Consulta disponibilidad y detalles por WhatsApp." : "Consulta con el negocio los detalles de este producto.")}</p>
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
             {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}

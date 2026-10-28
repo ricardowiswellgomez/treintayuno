@@ -7643,27 +7643,28 @@ body { background: #F5F7FC; color: #19243A; }
   .company-profile-panel .business-card-preview-copy > span { font-size: 13px; line-height: 1.35; }
 }
 
+
 /* Nueva venta: campos con la misma altura y acciones compactas junto a cada selector. */
-.sale-builder {
+.sale-form > .sale-builder {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr) minmax(108px, .38fr) auto;
   align-items: end;
   gap: 12px;
 }
-.sale-builder-related-field {
+.sale-form > .sale-builder > .sale-builder-related-field {
   display: flex;
   flex-direction: column;
   gap: 7px;
   min-width: 0;
 }
-.sale-builder-control-line {
+.sale-form > .sale-builder > .sale-builder-related-field > .sale-builder-control-line {
   display: flex;
   align-items: stretch;
   gap: 7px;
   width: 100%;
   min-width: 0;
 }
-.sale-builder-related-field .field-label-heading {
+.sale-form > .sale-builder > .sale-builder-related-field .field-label-heading {
   min-height: 22px;
   display: flex;
   align-items: center;
@@ -7672,13 +7673,13 @@ body { background: #F5F7FC; color: #19243A; }
   font-size: 14px;
   font-weight: 700;
 }
-.sale-builder-control-line select {
+.sale-form > .sale-builder > .sale-builder-related-field select {
   flex: 1 1 0;
   min-width: 0;
   width: 100%;
   min-height: 45px;
 }
-.sale-builder-related-field .sale-builder-inline-button {
+.sale-form > .sale-builder > .sale-builder-related-field .sale-builder-inline-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7693,48 +7694,48 @@ body { background: #F5F7FC; color: #19243A; }
   color: #245C61;
   cursor: pointer;
 }
-.sale-builder-related-field .sale-builder-inline-button:hover {
+.sale-form > .sale-builder > .sale-builder-related-field .sale-builder-inline-button:hover {
   background: #EAF4F3;
   border-color: #AFCFCD;
 }
-.sale-builder > label { min-width: 0; }
-.sale-builder > label .field-label-heading {
+.sale-form > .sale-builder > label { min-width: 0; }
+.sale-form > .sale-builder > label .field-label-heading {
   min-height: 22px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.sale-builder > label input { min-height: 45px; }
-.sale-builder > .sale-add-button {
+.sale-form > .sale-builder > label input { min-height: 45px; }
+.sale-form > .sale-builder > .sale-add-button {
   min-width: 104px;
   min-height: 45px;
   white-space: nowrap;
 }
 @media (min-width: 761px) and (max-width: 1120px) {
-  .sale-builder {
+  .sale-form > .sale-builder {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: end;
   }
-  .sale-builder > .sale-add-button {
+  .sale-form > .sale-builder > .sale-add-button {
     grid-column: 2;
     justify-self: stretch;
     width: 100%;
   }
 }
 @media (max-width: 760px) {
-  .sale-builder {
+  .sale-form > .sale-builder {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 13px;
   }
-  .sale-builder > .sale-add-button {
+  .sale-form > .sale-builder > .sale-add-button {
     grid-column: 1;
     width: 100%;
     min-height: 47px;
   }
-  .sale-builder-related-field .field-label-heading,
-  .sale-builder > label .field-label-heading { min-height: 0; }
-  .sale-builder-control-line select,
-  .sale-builder-related-field .sale-builder-inline-button,
-  .sale-builder > label input { min-height: 47px; }
+  .sale-form > .sale-builder > .sale-builder-related-field .field-label-heading,
+  .sale-form > .sale-builder > label .field-label-heading { min-height: 0; }
+  .sale-form > .sale-builder > .sale-builder-related-field select,
+  .sale-form > .sale-builder > .sale-builder-related-field .sale-builder-inline-button,
+  .sale-form > .sale-builder > label input { min-height: 47px; }
 }

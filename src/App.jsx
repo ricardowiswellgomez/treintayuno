@@ -123,9 +123,9 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
-  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "audit", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("suppliers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -161,7 +161,9 @@ const normalizeSidebarLayout = (layout) => {
     accounts: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
+    audit: "finanzas",
     customers: "personal",
+    suppliers: "personal",
     team: "personal"
   };
   const movedItems = new Map();
@@ -396,8 +398,8 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
-const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "" };
+const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
@@ -1432,7 +1434,7 @@ function AuthenticatedApp() {
   const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
-  const [profitabilityChartType, setProfitabilityChartType] = useState("bars");
+  const [profitabilityChartType, setProfitabilityChartType] = useState("pie");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminData, setPlatformAdminData] = useState(null);
   const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
@@ -2018,7 +2020,7 @@ function AuthenticatedApp() {
   const loadProducts = useCallback(async () => {
     if (!activeBusiness?.id) return;
     setProductsLoading(true); setError("");
-    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at";
+    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,metadata,archived_at,created_at";
     const safeTerm = search.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
     const sortColumn = ({ name: "name", name_desc: "name", code: "sku", code_desc: "sku", price: "sale_price_minor", price_desc: "sale_price_minor", cost: "cost_price_minor", cost_desc: "cost_price_minor", stock: "stock_on_hand", stock_desc: "stock_on_hand" })[productSort] || "name";
     const descending = productSort.endsWith("_desc");
@@ -2487,6 +2489,21 @@ function AuthenticatedApp() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
+  async function sharePersonalBusinessCard() {
+    if (!activeBusiness) return;
+    const profile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile || settingsCommercialProfile || {});
+    const name = profile.tradeName || activeBusiness.name || "Mi negocio";
+    const slug = String(activeBusiness.slug || "").trim();
+    const url = slug ? window.location.origin + "/" + slug : window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
+    const details = [name, profile.phone ? "Celular / WhatsApp: " + profile.phone : "", profile.email ? "Correo: " + profile.email : "", profile.address ? "Dirección: " + profile.address : "", profile.city || "", profile.website || "", url].filter(Boolean).join("\n");
+    try {
+      if (navigator.share) await navigator.share({ title: name, text: details, url });
+      else { await navigator.clipboard.writeText(details); setNotice("Datos de la tarjeta copiados para compartir."); }
+    } catch (error) {
+      if (error?.name !== "AbortError") setError("No se pudo compartir automáticamente. Copia la dirección del catálogo desde Configuración → Mi empresa.");
+    }
+  }
+
   function printBusinessCard() {
     if (!activeBusiness) return;
     const profile=settingsCommercialProfile||{};
@@ -2497,7 +2514,7 @@ function AuthenticatedApp() {
     const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardPrimary||"")?settingsCommercialProfile.cardPrimary:"#475569";
     const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardSurface||"")?settingsCommercialProfile.cardSurface:"#FFFFFF";
     const cardText=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardText||"")?settingsCommercialProfile.cardText:"#1F2937";
-    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}!important}.details{min-width:0;flex:1;color:${cardText}!important}.details h1,.details p,.details .site{color:${cardText}!important}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary}!important;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:transparent}.card{background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;box-shadow:none;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:0;max-width:none;page-break-inside:avoid;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}!important}.details{min-width:0;flex:1;color:${cardText}!important}.details h1,.details p,.details span:not(.tag),.details .site{color:${cardText}!important}.details .tag{color:${cardPrimary}!important}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary}!important;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:transparent}.card{background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;box-shadow:none;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:0;max-width:none;page-break-inside:avoid;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
     const printWindow=window.open("","_blank");
     if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
     printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
@@ -3255,7 +3272,8 @@ function AuthenticatedApp() {
       sale_price: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
       cost_price: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
       stock: String(product.stock_on_hand ?? 0),
-      low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold)
+      low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold),
+      tax_code: product.metadata?.tax_code || "none"
     });
     setError("");
     setNotice("");
@@ -3395,7 +3413,8 @@ function AuthenticatedApp() {
             unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
             sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
             cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
-            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null
+            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null,
+            metadata: { ...(products.find((item) => item.id === editingProductId)?.metadata || {}), tax_code: productForm.tax_code || "none" }
           })
           .eq("business_id", activeBusiness.id).eq("id", editingProductId)
           .select("id").maybeSingle();
@@ -3426,6 +3445,8 @@ function AuthenticatedApp() {
         p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
+      const { error: metadataError } = await supabase.from("products").update({ metadata: { tax_code: productForm.tax_code || "none" } }).eq("business_id", activeBusiness.id).eq("id", newProductId);
+      if (metadataError) throw metadataError;
       setProductForm(blankProduct); setShowProductForm(false);
       setStagedImages([]);
       pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
@@ -6431,7 +6452,7 @@ function AuthenticatedApp() {
               <h3>Logo del negocio</h3>
               <p>Tu logo se conservará para las próximas sesiones y se mostrará en la navegación y el catálogo público.</p>
               <div className="settings-logo-editor">
-                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>31</span>}</div>
+                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}</div>
                 <div className="settings-logo-controls">
                   <label className="settings-field"><span className="field-label-heading">Elegir logo<FieldHelp enabled={contextualHelpEnabled} text="Sube el logo de tu negocio para identificarlo en la aplicación y el catálogo compartido." /></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseBusinessLogo} disabled={activeBusiness?.role !== "owner" || busy} /></label>
                   <p className="helper-text">JPG, PNG o WebP; máximo 5 MB. Se optimiza al guardar.</p>
@@ -6451,7 +6472,7 @@ function AuthenticatedApp() {
               </div>
               <p className="settings-contrast-note"><span aria-hidden="true">✓</span> Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.</p>
               <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-button-text": readableText(settingsTheme.primary, "#FFFFFF"), "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": readableText(settingsTheme.background, settingsTheme.text), "--preview-surface-text": readableText(settingsTheme.surface, settingsTheme.text), "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": readableText(settingsTheme.sidebarBackground, settingsTheme.sidebarText), "--button-hover": shadeHex(settingsTheme.primary), "--button-hover-text": readableText(shadeHex(settingsTheme.primary), "#FFFFFF") }}>
-                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>31</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
+                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>

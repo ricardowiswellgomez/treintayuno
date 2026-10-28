@@ -1629,6 +1629,7 @@ function AuthenticatedApp() {
   const [inventoryImportProgress, setInventoryImportProgress] = useState("");
   const [inventoryDataMenuOpen, setInventoryDataMenuOpen] = useState(false);
   const inventoryDataTriggerRef = useRef(null);
+  const inventoryDataMobileTriggerRef = useRef(null);
   const inventoryDataMenuRef = useRef(null);
   const [inventoryDataMenuPosition, setInventoryDataMenuPosition] = useState({ top: 12, left: 12, width: 560 });
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -1640,7 +1641,11 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!inventoryDataMenuOpen) return;
     const reposition = () => {
-      const anchor = inventoryDataTriggerRef.current?.getBoundingClientRect();
+      const isPhone = window.matchMedia("(max-width: 640px)").matches;
+      const activeTrigger = isPhone
+        ? (inventoryDataMobileTriggerRef.current || inventoryDataTriggerRef.current)
+        : (inventoryDataTriggerRef.current || inventoryDataMobileTriggerRef.current);
+      const anchor = activeTrigger?.getBoundingClientRect();
       if (!anchor) return;
       const width = Math.min(560, Math.max(280, window.innerWidth - 24));
       const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
@@ -1653,7 +1658,7 @@ function AuthenticatedApp() {
       setInventoryDataMenuPosition({ top, left, width });
     };
     const closeOnOutside = (event) => {
-      if (inventoryDataTriggerRef.current?.contains(event.target) || inventoryDataMenuRef.current?.contains(event.target)) return;
+      if (inventoryDataTriggerRef.current?.contains(event.target) || inventoryDataMobileTriggerRef.current?.contains(event.target) || inventoryDataMenuRef.current?.contains(event.target)) return;
       setInventoryDataMenuOpen(false);
     };
     const closeOnEscape = (event) => { if (event.key === "Escape") setInventoryDataMenuOpen(false); };
@@ -3435,6 +3440,8 @@ function AuthenticatedApp() {
         { label: "Unidad", value: product.unit_name || "unidad" },
         { label: "Precio de venta", value: money(product.sale_price_minor, currencyCode) },
         { label: "Costo", value: money(product.cost_price_minor, currencyCode) },
+        { label: "Ganancia por unidad", value: money(Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0), currencyCode) },
+        { label: "Margen", value: Number(product.sale_price_minor || 0) > 0 ? (((Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0)) / Number(product.sale_price_minor || 0)) * 100).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + "%" : "—" },
         { label: "Existencias", value: product.track_inventory ? Number(product.stock_on_hand).toLocaleString("es-CO") + " " + (product.unit_name || "unidades") : "No aplica" },
         { label: "Alerta de stock", value: product.track_inventory && product.low_stock_threshold != null ? Number(product.low_stock_threshold).toLocaleString("es-CO") : "No configurada" },
         { label: "Estado", value: product.archived_at ? "Archivado" : product.is_sellable ? "Activo" : "Inactivo" },
@@ -7112,7 +7119,21 @@ function AuthenticatedApp() {
                 <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
               </div>
             </details>}
-                        <div className="inventory-controls panel">
+            <div className="inventory-import-mobile-actions">
+              <button
+                ref={inventoryDataMobileTriggerRef}
+                type="button"
+                className={"inventory-import-mobile-trigger" + (inventoryDataMenuOpen ? " is-open" : "")}
+                aria-haspopup="dialog"
+                aria-expanded={inventoryDataMenuOpen}
+                aria-controls="inventory-data-menu"
+                onClick={() => setInventoryDataMenuOpen((open) => !open)}
+              >
+                <span><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span>
+                <AppIcon name={inventoryDataMenuOpen ? "chevron-up" : "chevron-down"} size={15}/>
+              </button>
+            </div>
+            <div className="inventory-controls panel">
               <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
               <span className="inventory-result-count">{productsLoading ? "Actualizando inventario…" : productsCount.toLocaleString("es-CO") + (productsCount === 1 ? " resultado" : " resultados")}</span>
               <details className="inventory-filter-disclosure">
@@ -7315,7 +7336,7 @@ function AuthenticatedApp() {
     </div>
     <div className="product-card-wa-details">
       <div><span>Existencias</span><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") + " " + (p.unit_name || "unidades") : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
-      <div><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
+      <div className="product-card-wa-unit"><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
       {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
     </div>
     <div className="product-card-profit-row"><div><span>Ganancia por unidad</span><strong className={productProfitMinor < 0 ? "negative-value" : ""}>{money(productProfitMinor, currencyCode)}</strong></div><div><span>Margen</span><strong className={productMargin < 0 ? "negative-value" : ""}>{productMargin.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%</strong></div></div>

@@ -121,7 +121,7 @@ jobs:
             }
           }
           NODE
-          echo "APK label, legacy launcher artwork, adaptive foreground artwork, and adaptive XML verified."
+          echo "APK label, actual PNG payloads verified; adaptive foreground artwork and adaptive XML verified."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

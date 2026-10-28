@@ -1615,8 +1615,8 @@ function PublicContactPage() {
     "Tema: " + form.category,
     "",
     "Mensaje:",
-    (form.message || "").slice(0, 1200) + (form.message.length > 1200 ? "\\n\\n[El mensaje continúa en el formulario de treseiscinco.]" : "")
-  ].join("\\n");
+    (form.message || "").slice(0, 1200) + (form.message.length > 1200 ? "\n\n[El mensaje se ha abreviado. Vuelve a copiarlo completo desde el formulario si hace falta.]" : "")
+  ].join("\n");
   const fallbackMailto = "mailto:hola.treseiscinco@gmail.com?subject=" + encodeURIComponent("[treseiscinco] " + form.category + " — " + form.name) + "&body=" + encodeURIComponent(fallbackMailBody);
 
   async function submitContact(event) {
@@ -7191,7 +7191,7 @@ function AuthenticatedApp() {
                 <article className="inventory-metric-card"><span>Costo total del inventario</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.costMinor, currencyCode)}</strong><p>Costo de las unidades en stock</p></article>
                 <article className="inventory-metric-card"><span>Valor de venta estimado</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.retailMinor, currencyCode)}</strong><p>Si se vende todo el stock disponible</p></article>
                 <button type="button" className={"inventory-metric-card inventory-metric-action" + (productStockFilter === "out_of_stock" ? " selected" : "")} onClick={() => { setProductStockFilter((current) => current === "out_of_stock" ? "all" : "out_of_stock"); setProductPage(1); }} aria-pressed={productStockFilter === "out_of_stock"}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><p>{productStockFilter === "out_of_stock" ? "Mostrar todos los artículos" : "Ver artículos agotados"}</p></button>
-                <button ref={inventoryDataMobileTriggerRef} type="button" className={"inventory-metric-card inventory-import-stock-card" + (inventoryDataMenuOpen ? " is-open" : "")} aria-label="Importar inventario" aria-haspopup="dialog" aria-expanded={inventoryDataMenuOpen} aria-controls="inventory-data-menu" onClick={() => setInventoryDataMenuOpen((open) => !open)}><span className="inventory-import-stock-label"><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span><p>Plantilla Excel, CSV y reportes</p></button>
+                <button ref={inventoryDataMobileTriggerRef} type="button" className={"inventory-metric-card inventory-import-stock-card" + (inventoryDataMenuOpen ? " is-open" : "")} aria-label="Importar inventario" title="Importar inventario" aria-haspopup="dialog" aria-expanded={inventoryDataMenuOpen} aria-controls="inventory-data-menu" onClick={() => setInventoryDataMenuOpen((open) => !open)}><span className="inventory-import-stock-label"><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span></button>
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>

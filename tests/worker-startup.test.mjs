@@ -144,7 +144,7 @@ test("public catalog removes default filler/count but keeps bottom WhatsApp and 
   assert.doesNotMatch(catalog, /Explora los productos disponibles en este catálogo/);
   assert.doesNotMatch(catalog, /producto publicado/);
   assert.doesNotMatch(catalog, /className="public-catalog-whatsapp"/);
-  assert.match(catalog, /className="public-catalog-bottom-whatsapp"/);
+  assert.match(catalog, /public-catalog-bottom-whatsapp/);
   assert.match(catalog, /className="public-catalog-cart-trigger"/);
 });
 

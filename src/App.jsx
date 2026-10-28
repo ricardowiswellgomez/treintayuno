@@ -7907,6 +7907,38 @@ function AuthenticatedApp() {
             {inventoryOverview.lowStockCount > 0 && canAccessScreen("products") && <button type="button" className="home-stock-warning" onClick={() => { setProductStockFilter("low_stock"); setProductPage(1); navigate("products"); }}><span><strong>{inventoryOverview.lowStockCount} artículos están en su mínimo o por debajo</strong><small>Abre el filtro y revisa qué necesitas reponer.</small></span><b>Ver inventario ↗</b></button>}
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
+          <section className="home-pie-dashboard" aria-label="Distribución de ingresos, compras y gastos">
+            <div className="home-pie-toolbar">
+              <div className="home-pie-title">
+                <h2>Ingresos, compras y gastos</h2>
+                <p>Distribución de movimientos registrados del periodo.</p>
+              </div>
+              <div className="home-pie-period-controls" role="group" aria-label="Periodo de los gráficos de Inicio">
+                {[[ "day", "Hoy" ], [ "week", "Semana" ], [ "month", "Mes" ], [ "quarter", "Trimestre" ], [ "semester", "Semestre" ], [ "year", "Año" ]].map(([value, label]) =>
+                  <button type="button" key={value} className={homeChartPeriod === value ? "active" : ""} aria-pressed={homeChartPeriod === value} onClick={() => setHomeChartPeriod(value)}>{label}</button>
+                )}
+              </div>
+            </div>
+            {homePieData.error && <p className="home-pie-error" role="alert">No se pudieron cargar los gráficos de este periodo: {homePieData.error}</p>}
+            {homePieData.loading ? <div className="home-pie-loading panel" role="status">Actualizando los gráficos con los movimientos registrados…</div> : <>
+              <div className="home-pie-grid home-pie-desktop">
+                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                {canViewPurchases && <SimplePie title="Compras" description="Compras registradas agrupadas por proveedor." data={homePieData.purchases} formatValue={(value) => money(value, currencyCode)} />}
+                {canViewExpenses && <SimplePie title="Gastos" description="Gastos registrados agrupados por categoría." data={homePieData.expenses} formatValue={(value) => money(value, currencyCode)} />}
+              </div>
+              <div className="home-pie-grid home-pie-tablet">
+                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
+              </div>
+              <section className="home-pie-mobile-panel panel">
+                <div className="home-pie-mobile-heading"><h3>Ingresos y compras-gastos</h3><p>Dos distribuciones en una sola tarjeta.</p></div>
+                <div className="home-pie-mobile-pair">
+                  {canAccessScreen("sales") && <SimplePie compact title="Ingresos" description="Por artículo vendido." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                  {(canViewPurchases || canViewExpenses) && <SimplePie compact title="Compras y gastos" description="Por proveedor y categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
+                </div>
+              </section>
+            </>}
+          </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>

@@ -8895,3 +8895,76 @@ body { background: #F5F7FC; color: #19243A; }
     color:var(--muted,#64748B)!important;
   }
 }
+
+
+/* Keep catalog pickup, delivery and currency badges together in a single right-aligned row. */
+.public-catalog-intro-actions {
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  min-width:0!important;
+}
+.public-catalog-intro-actions .public-catalog-delivery-methods {
+  display:inline-flex!important;
+  flex:0 1 auto!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+  min-width:0!important;
+}
+.public-catalog-intro-actions .public-catalog-delivery-badge {
+  flex:0 0 auto!important;
+  max-width:none!important;
+  white-space:nowrap!important;
+  padding:5px 7px!important;
+  gap:4px!important;
+  font-size:9px!important;
+  line-height:1.15!important;
+}
+.public-catalog-intro-actions .public-catalog-currency {
+  flex:0 0 auto!important;
+  align-self:center!important;
+  white-space:nowrap!important;
+  padding:5px 8px!important;
+  font-size:11px!important;
+  letter-spacing:.5px!important;
+}
+@media (max-width:760px) {
+  .public-catalog-intro-actions {
+    width:100%!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-end!important;
+    gap:4px!important;
+  }
+  .public-catalog-intro-actions .public-catalog-delivery-methods {
+    flex-wrap:nowrap!important;
+    gap:4px!important;
+  }
+  .public-catalog-intro-actions .public-catalog-delivery-badge {
+    padding:4px 5px!important;
+    gap:3px!important;
+    font-size:8.5px!important;
+    line-height:1.1!important;
+  }
+  .public-catalog-intro-actions .public-catalog-delivery-badge svg {
+    width:12px!important;
+    height:12px!important;
+  }
+  .public-catalog-intro-actions .public-catalog-currency {
+    padding:4px 6px!important;
+    font-size:10px!important;
+    letter-spacing:.35px!important;
+  }
+}
+@media (max-width:340px) {
+  .public-catalog-intro-actions { gap:3px!important; }
+  .public-catalog-intro-actions .public-catalog-delivery-methods { gap:3px!important; }
+  .public-catalog-intro-actions .public-catalog-delivery-badge {
+    padding:4px!important;
+    font-size:8px!important;
+  }
+  .public-catalog-intro-actions .public-catalog-currency { padding:4px 5px!important; }
+}

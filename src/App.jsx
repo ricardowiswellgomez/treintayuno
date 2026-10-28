@@ -1311,6 +1311,7 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
+        {hasWhatsappContact && <a className="public-catalog-header-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Chatear por WhatsApp con este negocio" title="Chatear por WhatsApp"><AppIcon name="whatsapp" size={22}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>

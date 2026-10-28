@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#167D82">
+  <title>Sin conexión · treseiscinco</title>
+  <style>
+    :root{color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#19243A;background:#F5F7FC}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px}
+    main{width:min(460px,100%);padding:clamp(24px,6vw,36px);border:1px solid #DDE6E9;border-radius:22px;background:#fff;box-shadow:0 18px 50px #19243A12}
+    .brand{display:inline-flex;align-items:center;gap:10px;font-size:20px;font-weight:850;letter-spacing:-.04em;color:#167D82}
+    .mark{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#167D82;color:white;font-size:19px;font-weight:900}
+    .eyebrow{margin:24px 0 7px;color:#64748B;font-size:11px;font-weight:800;letter-spacing:.13em}
+    h1{margin:0;font-size:clamp(24px,6vw,32px);line-height:1.14;letter-spacing:-.04em}
+    p{color:#64748B;font-size:14px;line-height:1.65}
+    button{display:flex;justify-content:center;align-items:center;width:100%;min-height:48px;margin-top:22px;padding:12px 16px;border:0;border-radius:12px;background:#167D82;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+    button:focus-visible{outline:3px solid #8ACCC4;outline-offset:3px}
+    .hint{font-size:12px;margin-bottom:0}
+  </style>
+</head>
+<body>
+  <main role="status">
+    <div class="brand"><span class="mark" aria-hidden="true">365</span><span>treseiscinco</span></div>
+    <p class="eyebrow">CONEXIÓN NECESARIA</p>
+    <h1>No pudimos conectar con tu espacio</h1>
+    <p>Para mantener la aplicación actualizada, treseiscinco abre la versión publicada en internet. Comprueba tu conexión y vuelve a intentarlo. Tus registros guardados no se borran por este aviso.</p>
+    <button type="button" id="retry">Volver a intentar</button>
+    <p class="hint">Cuando recuperes la conexión, toca el botón. No necesitas reinstalar la aplicación por una actualización de la web.</p>
+  </main>
+  <script>
+    document.getElementById("retry").addEventListener("click", function () {
+      window.location.replace("https://treseiscinco.com/?reintento=" + Date.now());
+    });
+  </script>
+</body>
+</html>

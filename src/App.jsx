@@ -17,6 +17,7 @@ function AppIcon({ name, size = 20 }) {
     purchases: <><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></>,
     catalog: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    whatsapp: <><path d="M20.2 11.6a8.2 8.2 0 0 1-12.1 7.2L4 20l1.2-4a8.2 8.2 0 1 1 15-4.4Z" /><path d="M8.2 8.4c.4-.8.8-.8 1.2-.1l.8 1.4c.2.3.1.6-.2.9l-.5.5c.8 1.5 1.9 2.5 3.4 3.1l.5-.6c.2-.3.5-.4.9-.2l1.4.7c.6.3.7.6.4 1.2-.4.8-1.3 1.1-2.2 1-3.1-.4-6.8-3.7-7.1-6.6-.1-.6.4-1.1 1.4-1.3Z" /></>,
     smartphone: <><rect x="6" y="2.5" width="12" height="19" rx="2.3" /><path d="M10 5h4M11 18.5h2" /></>,
     download: <><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></>,
     list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="3" /></>,
@@ -124,8 +125,8 @@ const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
   { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
-  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [...["audit"].map(sidebarAreaItem).filter(Boolean), { id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("suppliers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
+  { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
   const fallback = defaultSidebarLayout();
@@ -162,6 +163,7 @@ const normalizeSidebarLayout = (layout) => {
     purchases: "finanzas",
     coupons: "finanzas",
     customers: "personal",
+    suppliers: "personal",
     team: "personal"
   };
   const movedItems = new Map();
@@ -396,8 +398,8 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", stock: "0", low_stock: "" };
-const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "" };
+const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
@@ -539,6 +541,15 @@ const normalizeTaxProfile = (profile) => {
     showVatBreakdown: Boolean(profile?.showVatBreakdown)
   };
 };
+const PRODUCT_TAX_RATES = Object.freeze({ iva_19: 19, iva_5: 5, impoconsumo_8: 8, iva_exento: 0, iva_excluido: 0, none: 0 });
+const productTaxAmounts = (unitPriceMinor, quantity, taxCode, pricesIncludeVat) => {
+  const grossOrBase = Math.round(Number(unitPriceMinor || 0) * Number(quantity || 0));
+  const rate = Number(PRODUCT_TAX_RATES[taxCode] ?? 0);
+  const tax = rate > 0 ? Math.round(pricesIncludeVat ? grossOrBase * rate / (100 + rate) : grossOrBase * rate / 100) : 0;
+  const subtotal = pricesIncludeVat ? grossOrBase - tax : grossOrBase;
+  return { subtotal, tax, total: pricesIncludeVat ? grossOrBase : grossOrBase + tax, rate };
+};
+
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
   try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
@@ -686,6 +697,49 @@ async function deleteProductImageRequest(productId, imageKey, businessId) {
   if (error) throw error;
   if (!data) throw new Error("No se pudo quitar la foto.");
   return data;
+}
+
+async function uploadProductVariantImage(productId, variantId, file, businessId) {
+  if (!businessId || !variantId) throw new Error("Falta identificar la variante para subir la foto.");
+  if (file.type !== "image/webp" || file.size > MAX_PRODUCT_IMAGE_BYTES) throw new Error("La foto debe estar optimizada en WebP y pesar 1,5 MB o menos.");
+  const imageData = await fileToBase64(file);
+  const { data, error } = await supabase.rpc("add_product_variant_image_db", {
+    p_business_id: businessId, p_product_id: productId, p_variant_id: variantId,
+    p_image_data: imageData, p_image_size_bytes: file.size
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function deleteProductVariantImage(productId, variantId, imageKey, businessId) {
+  const { data, error } = await supabase.rpc("remove_product_variant_image_db", {
+    p_business_id: businessId, p_product_id: productId, p_variant_id: variantId, p_image_key: imageKey
+  });
+  if (error) throw error;
+  if (!data) throw new Error("No se pudo quitar la foto de la variante.");
+  return data;
+}
+
+function ProductVariantImagePreview({ businessId, productId, variantId, imageKey, alt = "Foto de variante", onRemove, publicMode = false }) {
+  const [src, setSrc] = useState("");
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setSrc(""); setFailed(false);
+    const rpc = publicMode ? "get_public_catalog_variant_image" : "get_product_variant_image_db";
+    const args = { p_business_id: businessId, p_product_id: productId, p_variant_id: variantId, p_image_key: imageKey };
+    supabase.rpc(rpc, args).then(({ data, error }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!active) return;
+      if (error || !row?.image_data) { setFailed(true); return; }
+      setSrc("data:" + (row.content_type || "image/webp") + ";base64," + row.image_data);
+    }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [businessId, productId, variantId, imageKey, publicMode]);
+  return <figure className={"variant-photo-item" + (failed ? " is-unavailable" : "")}>
+    {src ? <img src={src} alt={alt} loading="lazy" /> : <span className="variant-photo-placeholder" aria-label={failed ? "No se pudo cargar la foto" : "Cargando foto"}>{failed ? "Foto no disponible" : "…"}</span>}
+    {onRemove && <button type="button" className="photo-remove-button" title="Quitar foto" aria-label="Quitar foto" onClick={onRemove}>×</button>}
+  </figure>;
 }
 
 function PublicCatalogImage({ businessId, product }) {
@@ -959,6 +1013,9 @@ function CouponsAdmin({ business }) {
 
 function PublicCatalog({ businessId }) {
   const [page, setPage] = useState(0);
+  const [catalogSearchText, setCatalogSearchText] = useState("");
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all");
+  const [catalogPublicSort, setCatalogPublicSort] = useState("name_asc");
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -977,7 +1034,7 @@ function PublicCatalog({ businessId }) {
   const [paymentStatusLoading, setPaymentStatusLoading] = useState(true);
   const [returnedOrder, setReturnedOrder] = useState(null);
   const [orderStatusLoading, setOrderStatusLoading] = useState(false);
-  const pageSize = 12;
+  const pageSize = 24;
   const returnOrderReference = new URLSearchParams(window.location.search).get("order") || "";
 
   useEffect(() => {
@@ -986,7 +1043,10 @@ function PublicCatalog({ businessId }) {
     (async () => {
       try {
         const { data, error: catalogError } = await supabase.rpc("get_public_catalog", {
-          p_business_id: businessId, p_limit: pageSize, p_offset: page * pageSize
+          p_business_id: businessId, p_limit: pageSize, p_offset: page * pageSize,
+          p_search: catalogSearchText.trim().slice(0,100) || null,
+          p_category_id: catalogCategoryFilter === "all" ? null : catalogCategoryFilter,
+          p_sort: catalogPublicSort
         });
         if (catalogError) throw catalogError;
         if (active) setPayload(data || null);
@@ -995,7 +1055,7 @@ function PublicCatalog({ businessId }) {
       } finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-  }, [businessId, page, retryKey]);
+  }, [businessId, page, retryKey, catalogSearchText, catalogCategoryFilter, catalogPublicSort]);
 
   useEffect(() => {
     let active = true;
@@ -1035,6 +1095,10 @@ function PublicCatalog({ businessId }) {
   }, [returnOrderReference, businessId]);
 
   const business = payload?.business;
+  const catalogCategories = payload?.categories || [];
+  const ownerPhoneDigits = String(business?.commercial_profile?.phone || "").replace(/\D/g, "");
+  const whatsappPhone = ownerPhoneDigits.length === 10 && ownerPhoneDigits.startsWith("3") ? "57" + ownerPhoneDigits : ownerPhoneDigits;
+  const hasWhatsappContact = whatsappPhone.length >= 8;
   const catalogTheme = normalizeBusinessTheme(business?.theme);
   const openingInfo = (() => {
     const schedule=business?.commercial_profile?.hoursSchedule;
@@ -1185,19 +1249,23 @@ function PublicCatalog({ businessId }) {
               : "";
 
   async function sharePublicProduct(product) {
-    const url = window.location.origin + "/?catalog=" + encodeURIComponent(businessId) + "#producto-" + encodeURIComponent(product.id);
+    const slug = String(business?.slug || "").trim();
+    const url = window.location.origin + (slug ? "/" + slug : "/?catalog=" + encodeURIComponent(businessId)) + "#producto-" + encodeURIComponent(product.id);
     const text = [product.name, product.description || "", "Precio: " + money(product.sale_price_minor, business?.currency_code || "COP"), url].filter(Boolean).join("\n");
-    try { if (navigator.share) await navigator.share({ title: product.name, text, url }); else await navigator.clipboard.writeText(text); }
-    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(text); } catch {} } }
+    try { if (navigator.share) await navigator.share({ title: product.name, text, url }); else { await navigator.clipboard.writeText(text); setCheckoutNotice("Enlace del producto copiado."); } }
+    catch (e) { if (e?.name !== "AbortError") { try { await navigator.clipboard.writeText(text); setCheckoutNotice("Enlace del producto copiado."); } catch { setCheckoutError("No se pudo compartir este producto."); } } }
   }
 
   return <main className="public-catalog-shell" style={catalogThemeStyle}>
     <header className="public-catalog-header">
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
-      <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
-        <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
-      </button>
+      <div className="public-catalog-header-actions">
+        {hasWhatsappContact && <a className="public-catalog-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Contactar al negocio por WhatsApp" title="Contactar por WhatsApp"><AppIcon name="whatsapp" size={20}/></a>}
+        <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
+          <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
+        </button>
+      </div>
     </header>
     {loading ? <div className="public-catalog-message"><span className="loading-dots">31</span><p>Cargando el catálogo…</p></div>
       : error ? <div className="public-catalog-message"><h2>No se pudo abrir el catálogo</h2><p>{error}</p><button type="button" className="secondary-button" onClick={() => setRetryKey((key) => key + 1)}>Reintentar</button></div>
@@ -1210,6 +1278,11 @@ function PublicCatalog({ businessId }) {
           </div>
           <button type="button" className="secondary-button" onClick={refreshReturnedOrder} disabled={orderStatusLoading}>{orderStatusLoading ? "Consultando…" : "Actualizar estado"}</button>
         </div>}
+        <div className="public-catalog-filters" aria-label="Buscar y ordenar productos">
+          <label className="public-catalog-search"><span><AppIcon name="search" size={16}/> Buscar productos</span><input value={catalogSearchText} onChange={(event) => { setCatalogSearchText(event.target.value); setPage(0); }} maxLength={100} placeholder="Nombre, descripción o código…" /></label>
+          <label><span>Categoría</span><select value={catalogCategoryFilter} onChange={(event) => { setCatalogCategoryFilter(event.target.value); setPage(0); }}><option value="all">Todas las categorías</option>{catalogCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label><span>Ordenar por</span><select value={catalogPublicSort} onChange={(event) => { setCatalogPublicSort(event.target.value); setPage(0); }}><option value="name_asc">Nombre: A → Z</option><option value="name_desc">Nombre: Z → A</option><option value="price_asc">Precio: menor a mayor</option><option value="price_desc">Precio: mayor a menor</option></select></label>
+        </div>
         {items.length ? <div className="public-catalog-grid">{items.map((product) => <article className="public-catalog-card" key={product.id} id={"producto-" + product.id}>
           <PublicCatalogImage businessId={businessId} product={product} />
           <div className="public-catalog-card-copy">
@@ -1218,10 +1291,13 @@ function PublicCatalog({ businessId }) {
             {product.description && <p>{product.description}</p>}
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
-            <button type="button" className="public-catalog-add-button" onClick={() => addToCart(product)}><span aria-hidden="true">＋</span> Añadir al carrito</button>
+            {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}
+            {Array.isArray(product.variants) && product.variants.length > 0 && <div className="public-catalog-variants" aria-label="Variantes disponibles">{product.variants.slice(0,4).map((variant) => <div className="public-catalog-variant" key={variant.id}><span>{variant.variant_name}: {variant.variant_value}</span>{(variant.image_paths||[]).slice(0,2).map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={businessId} productId={product.id} variantId={variant.id} imageKey={imageKey} alt={"Foto de "+variant.variant_name+" "+variant.variant_value} publicMode />)}</div>)}</div>}
+            <button type="button" className="public-catalog-add-button" disabled={product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable"} onClick={() => addToCart(product)}>{product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" ? "Agotado" : <><span aria-hidden="true">＋</span> Añadir al carrito</>}</button>
           </div>
         </article>)}</div>
           : <div className="public-catalog-message"><h2>Pronto habrá productos aquí</h2><p>Este negocio aún no ha publicado productos para compartir.</p></div>}
+        {!items.length && (catalogSearchText.trim() || catalogCategoryFilter !== "all") && <div className="public-catalog-message"><h2>No encontramos productos con esos filtros</h2><p>Prueba otro nombre o cambia la categoría seleccionada.</p><button type="button" className="secondary-button" onClick={() => { setCatalogSearchText(""); setCatalogCategoryFilter("all"); setCatalogPublicSort("name_asc"); setPage(0); }}>Mostrar todos los productos</button></div>}
         {total > pageSize && <nav className="public-catalog-pagination" aria-label="Páginas del catálogo">
           <button type="button" className="secondary-button" disabled={page <= 0} onClick={() => { setPage((current) => Math.max(0, current - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Anterior</button>
           <span>Página {page + 1} de {Math.ceil(total / pageSize)}</span>
@@ -1364,7 +1440,10 @@ function PublicLanding({ onLogin, onSignup, onInstall, installPromptAvailable, a
         <h2>Descarga la app y maneja tu negocio con claridad.</h2>
         <p>Instala treseiscinco en la pantalla de inicio y ten tus herramientas a mano, sin buscar la página cada vez.</p>
       </div>
-      <button type="button" className="landing-install-button" onClick={onInstall}><AppIcon name={installPromptAvailable ? "download" : "smartphone"} size={18}/>{installPromptAvailable ? "Instalar app" : "Cómo instalar"}<span aria-hidden="true">→</span></button>
+      <div className="landing-install-actions">
+        <a className="landing-install-button landing-apk-download" href="/treseiscinco.apk" download="treseiscinco.apk"><AppIcon name="download" size={18}/> Descargar APK <span aria-hidden="true">↓</span></a>
+        <button type="button" className="landing-install-secondary" onClick={onInstall}>{installPromptAvailable ? "Instalar en el navegador" : "Opciones para iPhone / PC"}</button>
+      </div>
     </section>}
 
     {showInstallGuide && !appInstalled && <section className="install-guide-panel landing-install-guide" aria-label="Instrucciones para instalar treseiscinco">
@@ -1424,6 +1503,9 @@ function AuthenticatedApp() {
   const [showPublicLanding, setShowPublicLanding] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
@@ -1432,7 +1514,7 @@ function AuthenticatedApp() {
   const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
-  const [profitabilityChartType, setProfitabilityChartType] = useState("bars");
+  const [profitabilityChartType, setProfitabilityChartType] = useState("pie");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminData, setPlatformAdminData] = useState(null);
   const [platformAdminLoading, setPlatformAdminLoading] = useState(false);
@@ -1569,6 +1651,12 @@ function AuthenticatedApp() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
   const [stagedImages, setStagedImages] = useState([]);
+  const [taxBulkProducts, setTaxBulkProducts] = useState([]);
+  const [taxBulkProductIds, setTaxBulkProductIds] = useState([]);
+  const [taxBulkCode, setTaxBulkCode] = useState("iva_19");
+  const [taxBulkSearch, setTaxBulkSearch] = useState("");
+  const [taxBulkLoading, setTaxBulkLoading] = useState(false);
+  const [taxBulkSaving, setTaxBulkSaving] = useState(false);
   const [productImageUrls, setProductImageUrls] = useState({});
   const [variantsByProduct, setVariantsByProduct] = useState({});
   const [viewingVariantsFor, setViewingVariantsFor] = useState(null);
@@ -1626,6 +1714,7 @@ function AuthenticatedApp() {
   const [profitabilitySales, setProfitabilitySales] = useState([]);
   const [profitabilitySaleItems, setProfitabilitySaleItems] = useState([]);
   const [profitabilityExpenses, setProfitabilityExpenses] = useState([]);
+  const [profitabilityPurchasePayments, setProfitabilityPurchasePayments] = useState([]);
   const [profitabilityPeriod, setProfitabilityPeriod] = useState("month");
   const [profitabilityDateFrom, setProfitabilityDateFrom] = useState(() => todayInBogota().slice(0,7) + "-01");
   const [profitabilityDateTo, setProfitabilityDateTo] = useState(() => todayInBogota());
@@ -1658,6 +1747,13 @@ function AuthenticatedApp() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [cashRegisterSession, setCashRegisterSession] = useState(null);
+  const [cashRegisterLoading, setCashRegisterLoading] = useState(false);
+  const [cashRegisterSaving, setCashRegisterSaving] = useState(false);
+  const [cashRegisterOpenAmount, setCashRegisterOpenAmount] = useState("0");
+  const [cashRegisterCloseAmount, setCashRegisterCloseAmount] = useState("");
+  const [cashRegisterCloseNotes, setCashRegisterCloseNotes] = useState("");
+  const [cashRegisterSummary, setCashRegisterSummary] = useState({received:0,expenses:0,expected:0,count:0});
   const [salesPeriod, setSalesPeriod] = useState("day");
   const [salesDateFrom, setSalesDateFrom] = useState(() => todayInBogota());
   const [salesDateTo, setSalesDateTo] = useState(() => todayInBogota());
@@ -1674,6 +1770,9 @@ function AuthenticatedApp() {
   const [simulateAllocations, setSimulateAllocations] = useState(false);
   const [statsSales, setStatsSales] = useState([]);
   const [statsPayments, setStatsPayments] = useState([]);
+  const [statsSaleItems, setStatsSaleItems] = useState([]);
+  const [statsCustomers, setStatsCustomers] = useState([]);
+  const [statsSuppliers, setStatsSuppliers] = useState([]);
   const [statsExpenses, setStatsExpenses] = useState([]);
   const [statsPurchases, setStatsPurchases] = useState([]);
   const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
@@ -1778,17 +1877,30 @@ function AuthenticatedApp() {
   const [settingsBusinessName, setSettingsBusinessName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPhoneSaving, setOwnerPhoneSaving] = useState(false);
+  const [accountPhoneDraft, setAccountPhoneDraft] = useState("");
+  const [accountPhoneCode, setAccountPhoneCode] = useState("");
+  const [accountPhonePending, setAccountPhonePending] = useState(false);
+  const [accountPhoneBusy, setAccountPhoneBusy] = useState(false);
   const [settingsTab, setSettingsTab] = useState("general");
-  const [uiLanguage, setUiLanguage] = useState(() => {
-    try { return typeof window !== "undefined" && window.localStorage.getItem("treseiscinco-language") === "en" ? "en" : "es"; }
-    catch { return "es"; }
-  });
-  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
+  const [uiLanguage, setUiLanguage] = useState("es");
+  const [settingsCatalogSlug, setSettingsCatalogSlug] = useState("");
+  const [settingsCommercialProfile, setSettingsCommercialProfile] = useState({ tradeName: "", ownerName: "", documentNumber: "", email: "", phone: "", address: "", city: "", website: "", publicDescription: "", hours: "", orderChannel: "whatsapp", hoursSchedule: {}, deliveryMethods: ["pickup","delivery"], stockVisibility: "hide", cardPrimary: "#475569", cardSurface: "#FFFFFF", cardText: "#1F2937" });
   const [wompiDraft, setWompiDraft] = useState({ environment: "sandbox", public_key: "", private_key: "", integrity_secret: "", events_secret: "", enabled: true });
   const [wompiStatus, setWompiStatus] = useState({ loading: true, configured: false, enabled: false, environment: null });
   const [wompiSaving, setWompiSaving] = useState(false);
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
   const aiRecognitionRef = useRef(null);
+  useEffect(() => {
+    try {
+      const key = "treseiscinco-language:" + (session?.user?.id || "guest");
+      const saved = window.localStorage.getItem(key);
+      setUiLanguage(["es","en","pt","it","fr"].includes(saved) ? saved : "es");
+    } catch { setUiLanguage("es"); }
+  }, [session?.user?.id]);
+  useEffect(() => {
+    if (accountPhonePending) return;
+    setAccountPhoneDraft(String(session?.user?.phone || ownerPhone || ""));
+  }, [session?.user?.id, session?.user?.phone, ownerPhone, accountPhonePending]);
   useEffect(() => applyAppLanguage(uiLanguage), [uiLanguage]);
   useEffect(() => {
     let active = true;
@@ -1993,7 +2105,7 @@ function AuthenticatedApp() {
   const loadBusinesses = useCallback(async (userId) => {
     const { data, error: queryError } = await supabase
       .from("business_members")
-      .select("business_id, role, permissions, businesses(id, name, logo_path, theme, currency_code, settings, created_at)")
+      .select("business_id, role, permissions, businesses(id, name, slug, logo_path, theme, currency_code, settings, created_at)")
       .eq("user_id", userId);
     if (queryError) throw queryError;
     // En una sesión nueva, prioriza el negocio propio; los negocios donde la persona trabaja siguen disponibles en el selector.
@@ -2018,7 +2130,7 @@ function AuthenticatedApp() {
   const loadProducts = useCallback(async () => {
     if (!activeBusiness?.id) return;
     setProductsLoading(true); setError("");
-    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at";
+    const columns = "id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,metadata,archived_at,created_at";
     const safeTerm = search.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
     const sortColumn = ({ name: "name", name_desc: "name", code: "sku", code_desc: "sku", price: "sale_price_minor", price_desc: "sale_price_minor", cost: "cost_price_minor", cost_desc: "cost_price_minor", stock: "stock_on_hand", stock_desc: "stock_on_hand" })[productSort] || "name";
     const descending = productSort.endsWith("_desc");
@@ -2069,7 +2181,7 @@ function AuthenticatedApp() {
       let variantRows = [];
       if (productIds.length) {
         const variantsResult = await supabase.from("product_variants")
-          .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,created_at")
+          .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,image_paths,created_at")
           .eq("business_id", activeBusiness.id).in("product_id", productIds)
           .order("variant_name").order("variant_value").limit(1000);
         if (variantsResult.error) throw variantsResult.error;
@@ -2370,7 +2482,89 @@ function AuthenticatedApp() {
     const rows = [["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"]];
     const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
     downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
-    setNotice("Plantilla descargada. Puedes abrirla y editarla en Excel; guarda el resultado como CSV UTF-8 para importarlo.");
+    setNotice("CSV descargado. Si prefieres columnas con ancho ajustado, descarga la plantilla Excel.");
+  }
+
+  function inventoryExcelDocument(headers, rows, title) {
+    const widths = [180,110,140,100,80,95,95,90,100,95,230,150,130,130,110,110];
+    const colgroup = headers.map((_, index) => "<col width=\"" + (widths[index] || 120) + "\" style=\"width:" + (widths[index] || 120) + "px;mso-width-source:userset\">").join("");
+    const th = headers.map((value) => "<th>" + escapeHtml(value) + "</th>").join("");
+    const body = rows.map((row) => "<tr>" + headers.map((_, index) => "<td>" + escapeHtml(row[index] ?? "") + "</td>").join("") + "</tr>").join("");
+    return "\uFEFF<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head><meta charset=\"utf-8\"><title>" + escapeHtml(title) + "</title><style>body{font-family:Calibri,Arial,sans-serif}h1{font-size:18pt;color:#164E63}table{border-collapse:collapse;table-layout:fixed}th{background:#DDF1EE;color:#163B45;font-weight:bold;border:1px solid #AFC9CC;padding:7px;text-align:left}td{border:1px solid #D9E2E5;padding:6px;vertical-align:top;mso-number-format:\\\"\\@\\\";overflow-wrap:anywhere}tr:nth-child(even) td{background:#F6FAFA}</style></head><body><h1>" + escapeHtml(title) + "</h1><table><colgroup>" + colgroup + "</colgroup><thead><tr>" + th + "</tr></thead><tbody>" + body + "</tbody></table></body></html>";
+  }
+
+  function downloadInventoryTemplateExcel() {
+    const headers = ["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"];
+    const sample = [["Ej. Camiseta blanca","SKU-001","Ropa","Producto físico","Unidad","35000","18000","10","Sí","2","Descripción breve","Talla M"]];
+    downloadBlobFile("plantilla-inventario-treseiscinco.xls", inventoryExcelDocument(headers, sample, "Plantilla de inventario treseiscinco"), "application/vnd.ms-excel;charset=utf-8");
+    setNotice("Plantilla Excel descargada con anchos de columna. Para importarla, guárdala desde Excel como CSV UTF-8.");
+  }
+
+  async function getInventoryReportData() {
+    if (!activeBusiness?.id || !canAccessScreen("products")) throw new Error("No tienes acceso al inventario de este negocio.");
+    const [products, variants, categoriesResult] = await Promise.all([
+      fetchAllProfitabilityRows(() => supabase.from("products").select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,track_inventory,low_stock_threshold,is_sellable,is_published,metadata,archived_at").eq("business_id", activeBusiness.id).is("archived_at", null).order("name"), "productos del inventario"),
+      fetchAllProfitabilityRows(() => supabase.from("product_variants").select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,image_paths").eq("business_id", activeBusiness.id).order("variant_name").order("variant_value"), "variantes del inventario"),
+      supabase.from("product_categories").select("id,name").eq("business_id", activeBusiness.id).order("name")
+    ]);
+    if (categoriesResult.error) throw categoriesResult.error;
+    const categoryNames = new Map((categoriesResult.data || []).map((category) => [category.id, category.name]));
+    const byProduct = new Map();
+    for (const variant of variants) {
+      if (!byProduct.has(variant.product_id)) byProduct.set(variant.product_id, []);
+      byProduct.get(variant.product_id).push(variant);
+    }
+    const rows = [];
+    for (const product of products) {
+      const productBase = [
+        product.name, product.sku || "", categoryNames.get(product.category_id) || "", product.product_type || "",
+        product.unit_name || "", Number(product.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)),
+        Number(product.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)),
+        product.track_inventory ? Number(product.stock_on_hand || 0) : "No aplica",
+        product.track_inventory ? "Sí" : "No",
+        product.low_stock_threshold == null ? "" : product.low_stock_threshold,
+        product.description || "", product.is_published ? "Publicado" : "No publicado",
+        product.is_sellable ? "Vendible" : "No vendible", product.metadata?.tax_code || "none"
+      ];
+      const productVariants = byProduct.get(product.id) || [];
+      if (!productVariants.length) rows.push([...productBase, "", "", "", "", "", ""]);
+      else for (const variant of productVariants) rows.push([
+        ...productBase, variant.variant_name, variant.variant_value, variant.sku || "",
+        variant.sale_price_minor == null ? "" : Number(variant.sale_price_minor) / (10 ** currencyDigits(currencyCode)),
+        variant.stock_on_hand == null ? "" : variant.stock_on_hand, (variant.image_paths || []).length + " foto(s)"
+      ]);
+    }
+    return rows;
+  }
+
+  async function downloadInventoryReportExcel() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const rows = await getInventoryReportData();
+      const headers = ["Artículo","Código","Categoría","Tipo","Unidad","Precio","Costo","Existencias","Controla inventario","Stock mínimo","Descripción","Estado de catálogo","Estado de venta","Impuesto","Tipo de variante","Valor de variante","Código de variante","Precio de variante","Existencias de variante","Fotos de variante"];
+      downloadBlobFile("reporte-inventario-treseiscinco.xls", inventoryExcelDocument(headers, rows, "Reporte completo de inventario · " + (activeBusiness?.name || "treseiscinco")), "application/vnd.ms-excel;charset=utf-8");
+      setNotice("Reporte Excel generado: " + rows.length + " fila(s), incluyendo las variantes.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setBusy(false); }
+  }
+
+  async function printInventoryReportPdf() {
+    const reportWindow = window.open("", "_blank");
+    if (!reportWindow) { setError("Permite las ventanas emergentes para preparar el PDF del inventario."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const rows = await getInventoryReportData();
+      const headers = ["Artículo","Código","Categoría","Precio","Costo","Existencias","Impuesto","Variante","Valor","SKU variante","Precio variante","Stock variante","Fotos"];
+      const mapRows = rows.map((row) => [row[0],row[1],row[2],row[5],row[6],row[7],row[13],row[14],row[15],row[16],row[17],row[18],row[19]]);
+      const table = "<table><thead><tr>" + headers.map((value) => "<th>" + escapeHtml(value) + "</th>").join("") + "</tr></thead><tbody>" + mapRows.map((row) => "<tr>" + row.map((cell) => "<td>" + escapeHtml(cell ?? "") + "</td>").join("") + "</tr>").join("") + "</tbody></table>";
+      reportWindow.document.open();
+      reportWindow.document.write("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Inventario · treseiscinco</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#173744;font-size:8pt}h1{font-size:17pt;margin:0 0 5mm}p{color:#60757C;font-size:9pt}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #C9DADD;padding:4px;overflow-wrap:anywhere;vertical-align:top}th{background:#DDF1EE;text-align:left}tr:nth-child(even) td{background:#F6FAFA}@media print{button{display:none}}</style></head><body><h1>Reporte de inventario · " + escapeHtml(activeBusiness?.name || "treseiscinco") + "</h1><p>" + rows.length + " fila(s), incluye productos y variantes. Generado el " + new Date().toLocaleString("es-CO",{timeZone:"America/Bogota"}) + ".</p>" + table + "</body></html>");
+      reportWindow.document.close();
+      reportWindow.focus();
+      reportWindow.setTimeout(() => reportWindow.print(), 250);
+      setNotice("Reporte preparado para guardar como PDF.");
+    } catch (error) { reportWindow.close(); setError(friendlyError(error)); }
+    finally { setBusy(false); }
   }
 
   async function importInventoryFile(event) {
@@ -2487,20 +2681,71 @@ function AuthenticatedApp() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
+  async function sharePersonalBusinessCard() {
+    if (!activeBusiness) return;
+    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
+    const name = profile.tradeName || activeBusiness.name || "Mi negocio";
+    const slug = String(activeBusiness.slug || "").trim();
+    const url = slug ? window.location.origin + "/" + slug : window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
+    const details = [name, profile.phone ? "Celular / WhatsApp: " + profile.phone : "", profile.email ? "Correo: " + profile.email : "", profile.address ? "Dirección: " + profile.address : "", profile.city || "", profile.website || "", url].filter(Boolean).join("\n");
+    try {
+      if (navigator.share) await navigator.share({ title: name, text: details, url });
+      else { await navigator.clipboard.writeText(details); setNotice("Datos de la tarjeta copiados para compartir."); }
+    } catch (error) {
+      if (error?.name !== "AbortError") setError("No se pudo compartir automáticamente. Copia la dirección del catálogo desde Configuración → Mi empresa.");
+    }
+  }
+
   function printBusinessCard() {
     if (!activeBusiness) return;
-    const profile=settingsCommercialProfile||{};
-    const name=profile.tradeName||settingsBusinessName||activeBusiness.name||"Mi negocio";
-    const logoUrl=getBusinessLogoUrl(activeBusiness.logo_path)||"";
-    const website=String(profile.website||"").trim();
-    const safeWebsite=/^https?:\/\//i.test(website)?website:(website?"https://"+website:"");
-    const cardPrimary=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardPrimary||"")?settingsCommercialProfile.cardPrimary:"#475569";
-    const cardSurface=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardSurface||"")?settingsCommercialProfile.cardSurface:"#FFFFFF";
-    const cardText=/^#[0-9a-f]{6}$/i.test(settingsCommercialProfile.cardText||"")?settingsCommercialProfile.cardText:"#1F2937";
-    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ${escapeHtml(name)}</title><style>*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;padding:32px;font-family:Arial,sans-serif;background:#eef1f4;color:#17202a;display:flex;justify-content:center;align-items:flex-start}.card{width:90mm;height:50mm;max-width:100%;padding:6mm;display:flex;gap:5mm;align-items:center;background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:3mm;box-shadow:0 4mm 12mm #17202a18;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.identity{width:25mm;flex:0 0 25mm;height:25mm;display:grid;place-items:center}.identity img{max-width:100%;max-height:100%;object-fit:contain}.initial{font-size:28pt;font-weight:800;color:${cardPrimary}!important}.details{min-width:0;flex:1;color:${cardText}!important}.details h1,.details p,.details .site{color:${cardText}!important}.details h1{font-size:16pt;line-height:1.1;margin:0 0 2mm;overflow-wrap:anywhere}.details .tag{font-size:7pt;letter-spacing:1.2px;text-transform:uppercase;color:${cardPrimary}!important;margin-bottom:2mm}.details p{margin:1mm 0;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}.details .site{font-weight:700;margin-top:2mm}@media print{@page{size:90mm 50mm;margin:0}body{padding:0;background:transparent}.card{background:${cardSurface}!important;background-color:${cardSurface}!important;color:${cardText}!important;box-shadow:none;border:1px solid ${cardPrimary};border-top:2mm solid ${cardPrimary};border-radius:0;max-width:none;page-break-inside:avoid;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}.print-hint{font-size:13px;color:#555;margin:18px auto;max-width:90mm}@media print{.print-hint{display:none}}</style></head><body><div><article class="card"><div class="identity">${logoUrl?'<img src="'+escapeHtml(logoUrl)+'" alt="">':'<span class="initial">'+escapeHtml(name.slice(0,1).toUpperCase())+'</span>'}</div><div class="details"><div class="tag">Información comercial</div><h1>${escapeHtml(name)}</h1>${profile.publicDescription?'<p>'+escapeHtml(profile.publicDescription)+'</p>':""}${profile.documentNumber?'<p>'+escapeHtml(profile.documentNumber)+'</p>':""}${profile.phone?'<p>'+escapeHtml(profile.phone)+'</p>':""}${profile.email?'<p>'+escapeHtml(profile.email)+'</p>':""}${[profile.address,profile.city].filter(Boolean).length?'<p>'+escapeHtml([profile.address,profile.city].filter(Boolean).join(", "))+'</p>':""}${safeWebsite?'<p class="site">'+escapeHtml(website)+'</p>':""}</div></article><p class="print-hint">En el diálogo de impresión, elige «Guardar como PDF» para conservar tu tarjeta en formato 9 × 5 cm.</p></div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`;
-    const printWindow=window.open("","_blank");
+    const profile = settingsCommercialProfile || {};
+    const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim();
+    const logoUrl = getBusinessLogoUrl(activeBusiness.logo_path) || "";
+    const cardPrimary = /^#[0-9a-f]{6}$/i.test(profile.cardPrimary || "") ? profile.cardPrimary : "#475569";
+    const cardSurface = /^#[0-9a-f]{6}$/i.test(profile.cardSurface || "") ? profile.cardSurface : "#FFFFFF";
+    const cardText = /^#[0-9a-f]{6}$/i.test(profile.cardText || "") ? profile.cardText : "#1F2937";
+    const safeColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : "#1F2937";
+    const lines = [];
+    let y = 112;
+    const addWrapped = (value, maxChars, fontSize, gap, color, weight = 400) => {
+      const text = String(value || "").trim();
+      if (!text || y > 465) return;
+      const words = text.split(/\s+/);
+      let line = "";
+      const wrapped = [];
+      for (const word of words) {
+        const candidate = line ? line + " " + word : word;
+        if (candidate.length > maxChars && line) { wrapped.push(line); line = word; }
+        else line = candidate;
+      }
+      if (line) wrapped.push(line);
+      for (const part of wrapped.slice(0, 2)) {
+        if (y > 465) break;
+        lines.push('<text x="320" y="' + y + '" fill="' + safeColor(color) + '" font-family="Arial, sans-serif" font-size="' + fontSize + '" font-weight="' + weight + '">' + escapeHtml(part) + '</text>');
+        y += gap;
+      }
+    };
+    addWrapped("INFORMACIÓN COMERCIAL", 42, 18, 0, cardPrimary, 700);
+    y += 52;
+    addWrapped(businessName, 26, 37, 42, cardText, 700);
+    addWrapped(profile.ownerName, 38, 20, 29, cardText, 700);
+    addWrapped(profile.publicDescription, 42, 18, 27, cardText, 400);
+    addWrapped(profile.phone, 42, 18, 28, cardText, 400);
+    addWrapped(profile.email, 42, 18, 28, cardText, 400);
+    addWrapped([profile.address, profile.city].filter(Boolean).join(", "), 42, 18, 28, cardText, 400);
+    addWrapped(profile.website, 42, 18, 28, cardText, 700);
+    const logoOrInitial = logoUrl
+      ? '<image href="' + escapeHtml(logoUrl) + '" x="25" y="165" width="245" height="165" preserveAspectRatio="xMidYMid meet" />'
+      : '<circle cx="145" cy="248" r="68" fill="' + cardPrimary + '" fill-opacity=".13"/><text x="145" y="272" text-anchor="middle" fill="' + cardPrimary + '" font-family="Arial, sans-serif" font-size="74" font-weight="800">' + escapeHtml(businessName.slice(0,1).toLocaleUpperCase("es-CO")) + '</text>';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 900 500" role="img" aria-label="Tarjeta de presentación">' +
+      '<rect x="0" y="0" width="900" height="500" rx="26" fill="' + cardSurface + '"/>' +
+      '<rect x="0" y="0" width="900" height="16" fill="' + cardPrimary + '"/>' +
+      '<rect x="2" y="2" width="896" height="496" rx="25" fill="none" stroke="' + cardPrimary + '" stroke-width="3"/>' +
+      logoOrInitial + lines.join("") + '</svg>';
+    const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ' + escapeHtml(businessName) + '</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
+    const printWindow = window.open("", "_blank");
     if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
-    printWindow.document.open();printWindow.document.write(html);printWindow.document.close();
+    printWindow.document.open(); printWindow.document.write(html); printWindow.document.close();
   }
 
   async function downloadBusinessBackup() {
@@ -2891,8 +3136,9 @@ function AuthenticatedApp() {
     setSettingsCurrency(activeBusiness.currency_code || "COP");
     setSettingsBusinessName(activeBusiness.name || "");
     const savedCommercial = activeBusiness.settings?.commercial_profile || {};
-    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {} });
-    setSettingsTab("general");
+    setSettingsCommercialProfile({ tradeName: savedCommercial.tradeName || "", ownerName: savedCommercial.ownerName || "", documentNumber: savedCommercial.documentNumber || "", email: savedCommercial.email || "", phone: savedCommercial.phone || "", address: savedCommercial.address || "", city: savedCommercial.city || "", website: savedCommercial.website || "", publicDescription: savedCommercial.publicDescription || "", hours: savedCommercial.hours || "", orderChannel: savedCommercial.orderChannel === "whatsapp" ? "whatsapp" : "wompi", hoursSchedule: savedCommercial.hoursSchedule || {}, deliveryMethods: Array.isArray(savedCommercial.deliveryMethods) ? savedCommercial.deliveryMethods : ["pickup","delivery"], stockVisibility: ["show_all","hide","show_unavailable"].includes(savedCommercial.stockVisibility) ? savedCommercial.stockVisibility : "hide", cardPrimary: savedCommercial.cardPrimary || "#475569", cardSurface: savedCommercial.cardSurface || "#FFFFFF", cardText: savedCommercial.cardText || "#1F2937" });
+    setSettingsCatalogSlug(activeBusiness.slug || "");
+    setSettingsTab(activeBusiness.role === "owner" ? "general" : "account");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
     setSettingsTaxProfile(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
@@ -2946,7 +3192,34 @@ function AuthenticatedApp() {
   async function submitAuth(event) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      if (mode === "forgot") {
+      if (mode === "phone") {
+        const normalizedPhone = phoneNumber.trim().replace(/[\s().-]/g, "");
+        if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+          throw new Error("Escribe el número con prefijo internacional, por ejemplo +57 300 123 4567.");
+        }
+        if (!phoneOtpSent) {
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            phone: normalizedPhone,
+            options: { shouldCreateUser: false }
+          });
+          if (otpError) throw otpError;
+          setPhoneNumber(normalizedPhone);
+          setPhoneOtpSent(true);
+          setNotice("Si ese número está vinculado y verificado en tu cuenta, te enviaremos un código SMS.");
+        } else {
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            phone: normalizedPhone, token: phoneOtp.trim(), type: "sms"
+          });
+          if (verifyError) throw verifyError;
+          if (!data?.session || !data?.user) throw new Error("No pudimos validar el código. Pide uno nuevo e inténtalo otra vez.");
+          setSession(data.session);
+          setShowPublicLanding(true);
+          setMode("login");
+          setPhoneOtp("");
+          setPhoneOtpSent(false);
+          await loadBusinesses(data.user.id);
+        }
+      } else if (mode === "forgot") {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: window.location.origin
         });
@@ -3073,6 +3346,80 @@ function AuthenticatedApp() {
     } finally { setOwnerPhoneSaving(false); }
   }
 
+  async function requestAccountPhoneCode() {
+    if (!session?.user?.id || accountPhoneBusy) return;
+    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.");
+      return;
+    }
+    if (normalizedPhone === String(session?.user?.phone || "")) {
+      setNotice("Ese número ya está verificado para tu cuenta.");
+      setError("");
+      return;
+    }
+    setAccountPhoneBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ phone: normalizedPhone });
+      if (updateError) throw updateError;
+      setAccountPhoneDraft(normalizedPhone);
+      setAccountPhoneCode("");
+      setAccountPhonePending(true);
+      setNotice("Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.");
+    } catch (error) {
+      setError(friendlyError(error));
+    } finally {
+      setAccountPhoneBusy(false);
+    }
+  }
+
+  async function verifyAccountPhoneCode() {
+    if (!session?.user?.id || !accountPhonePending || accountPhoneBusy) return;
+    const normalizedPhone = accountPhoneDraft.trim().replace(/[\s().-]/g, "");
+    const code = accountPhoneCode.trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Revisa el celular con prefijo internacional.");
+      return;
+    }
+    if (!/^\d{4,8}$/.test(code)) {
+      setError("Escribe el código numérico que recibiste por SMS.");
+      return;
+    }
+    setAccountPhoneBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: normalizedPhone,
+        token: code,
+        type: "phone_change"
+      });
+      if (verifyError) throw verifyError;
+      const { data: refreshed, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const nextSession = refreshed?.session || data?.session || null;
+      if (nextSession) setSession(nextSession);
+      setOwnerPhone(normalizedPhone);
+      setAccountPhoneDraft(normalizedPhone);
+      setAccountPhoneCode("");
+      setAccountPhonePending(false);
+      const { error: profileError } = await supabase.from("profiles")
+        .upsert({ user_id: session.user.id, phone: normalizedPhone }, { onConflict: "user_id" });
+      if (profileError) {
+        setError("El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.");
+        setNotice("");
+      } else {
+        setNotice("Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.");
+      }
+    } catch (error) {
+      setError(friendlyError(error));
+    } finally {
+      setAccountPhoneBusy(false);
+    }
+  }
+
   async function saveWompiConfiguration() {
     if (!activeBusiness?.id || wompiSaving) return;
     if (!["owner", "admin"].includes(activeBusiness.role)) { setError("Solo el propietario o un administrador puede configurar Wompi."); return; }
@@ -3119,6 +3466,7 @@ function AuthenticatedApp() {
     }
     const normalizeCommercialProfile = (profile) => ({
       tradeName: String(profile?.tradeName || "").trim(),
+      ownerName: String(profile?.ownerName || "").trim(),
       documentNumber: String(profile?.documentNumber || "").trim(),
       email: String(profile?.email || "").trim(),
       phone: String(profile?.phone || "").trim(),
@@ -3132,6 +3480,8 @@ function AuthenticatedApp() {
       cardSurface: /^#[0-9a-f]{6}$/i.test(String(profile?.cardSurface || "")) ? profile.cardSurface : "#FFFFFF",
       cardText: /^#[0-9a-f]{6}$/i.test(String(profile?.cardText || "")) ? profile.cardText : "#1F2937",
       orderChannel: profile?.orderChannel === "whatsapp" ? "whatsapp" : "wompi",
+      deliveryMethods: Array.isArray(profile?.deliveryMethods) ? [...new Set(profile.deliveryMethods.filter((value) => ["pickup","delivery"].includes(value)))] : ["pickup","delivery"],
+      stockVisibility: ["show_all","hide","show_unavailable"].includes(profile?.stockVisibility) ? profile.stockVisibility : "hide",
     });
     const days = [{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}];
     const schedule = Object.fromEntries(days.map((day) => { const saved = settingsCommercialProfile.hoursSchedule?.[day.key] || {}; const periods = Array.isArray(saved.periods) ? saved.periods.slice(0,2).map((p) => ({open: String(p.open || ""), close: String(p.close || "")})) : [{open:"09:00",close:"18:00"}]; return [day.key, {enabled:Boolean(saved.enabled), periods: periods.length ? periods : [{open:"09:00",close:"18:00"}]}]; }));
@@ -3149,6 +3499,8 @@ function AuthenticatedApp() {
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
     const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
     const nameChanged = businessName !== activeBusiness.name;
+    const nextSlug = settingsCatalogSlug.trim().toLowerCase();
+    const slugChanged = nextSlug !== String(activeBusiness.slug || "");
     const currencyChanged = settingsCurrency !== currencyCode;
     const conversionRate = Number(String(settingsConversionRate).replace(",", "."));
     if (currencyChanged && settingsHasData && (!Number.isFinite(conversionRate) || conversionRate <= 0)) { setError("Indica una tasa válida: cuántas unidades de la nueva moneda equivalen a 1 unidad de la moneda actual."); return; }
@@ -3156,7 +3508,7 @@ function AuthenticatedApp() {
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
     const taxProfileChanged = JSON.stringify(nextTaxProfile) !== JSON.stringify(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
-    if (!nameChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
+    if (!nameChanged && !slugChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
       setNotice("No hay cambios pendientes.");
       return;
     }
@@ -3187,6 +3539,12 @@ function AuthenticatedApp() {
         });
         if (conversionError) throw conversionError;
       }
+      let savedSlug = activeBusiness.slug || "";
+      if (slugChanged) {
+        const { data: slugData, error: slugError } = await supabase.rpc("set_business_catalog_slug", { p_business_id: activeBusiness.id, p_slug: nextSlug });
+        if (slugError) throw slugError;
+        savedSlug = slugData || nextSlug;
+      }
       const { data, error: updateError } = await supabase.from("businesses")
         .update({ name: businessName, currency_code: settingsCurrency, theme: nextTheme, logo_path: nextLogoPath, settings: nextSettings })
         .eq("id", activeBusiness.id)
@@ -3195,8 +3553,9 @@ function AuthenticatedApp() {
       if (updateError) throw updateError;
       if (!data) throw new Error("No se pudo guardar la personalización. Comprueba que hayas iniciado sesión como propietario.");
       businessUpdated = true;
-      setActiveBusiness((current) => current ? { ...current, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : current);
-      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
+      setActiveBusiness((current) => current ? { ...current, name: data.name, slug: savedSlug, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : current);
+      setBusinesses((current) => current.map((business) => business.id === data.id ? { ...business, name: data.name, slug: savedSlug, currency_code: data.currency_code, theme: normalizeBusinessTheme(data.theme), logo_path: data.logo_path, settings: data.settings || nextSettings } : business));
+      setSettingsCatalogSlug(savedSlug);
       setSettingsBusinessName(data.name);
       setSettingsCurrency(data.currency_code);
       setSettingsConversionRate("");
@@ -3255,7 +3614,8 @@ function AuthenticatedApp() {
       sale_price: String(Number(product.sale_price_minor || 0) / (10 ** digits)),
       cost_price: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
       stock: String(product.stock_on_hand ?? 0),
-      low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold)
+      low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold),
+      tax_code: product.metadata?.tax_code || "none"
     });
     setError("");
     setNotice("");
@@ -3281,20 +3641,55 @@ function AuthenticatedApp() {
 
   function editProductVariant(variant) {
     const digits = currencyDigits(currencyCode);
+    (variantDraft.staged_images || []).forEach((image) => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setVariantDraft({
       variant_name: variant.variant_name || "",
       variant_value: variant.variant_value || "",
       sku: variant.sku || "",
       sale_price: variant.sale_price_minor == null ? "" : String(Number(variant.sale_price_minor) / (10 ** digits)),
-      stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand)
+      stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand),
+      image_paths: [...(variant.image_paths || [])],
+      staged_images: []
     });
     setEditingVariantId(variant.id);
     setError("");
   }
 
   function resetVariantDraft() {
+    (variantDraft.staged_images || []).forEach((image) => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setVariantDraft(blankVariantDraft);
     setEditingVariantId(null);
+  }
+
+  async function chooseVariantImages(event) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+    const existingCount = (variantDraft.image_paths || []).length + (variantDraft.staged_images || []).length;
+    const allowed = Math.max(0, 2 - existingCount);
+    if (!allowed) { setError("Cada variante admite dos fotos como máximo."); return; }
+    if (files.length > allowed) setError("Solo puedes añadir " + allowed + (allowed === 1 ? " foto más a esta variante." : " fotos más a esta variante."));
+    try {
+      const ready = [];
+      for (const original of files.slice(0, allowed)) {
+        const optimized = await prepareProductImage(original);
+        ready.push({ file: optimized, preview: URL.createObjectURL(optimized), name: original.name });
+      }
+      setVariantDraft((draft) => ({ ...draft, staged_images: [...(draft.staged_images || []), ...ready].slice(0, Math.max(0, 2 - (draft.image_paths || []).length)) }));
+    } catch (error) { setError(friendlyError(error)); }
+  }
+
+  async function removeVariantPhoto(variant, imageKey) {
+    if (!activeBusiness?.id || !viewingVariantsFor || variantBusy) return;
+    setVariantBusy(true); setError(""); setNotice("");
+    try {
+      await deleteProductVariantImage(viewingVariantsFor, variant.id, imageKey, activeBusiness.id);
+      setVariantDraft((draft) => ({ ...draft, image_paths: (draft.image_paths || []).filter((key) => key !== imageKey) }));
+      await loadProductVariants(viewingVariantsFor);
+      setNotice("Foto de la variante eliminada.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setVariantBusy(false); }
   }
 
   async function saveProductVariant(event) {
@@ -3316,9 +3711,9 @@ function AuthenticatedApp() {
         stock_on_hand: variantDraft.stock_on_hand.trim() === "" ? null : Number(variantDraft.stock_on_hand),
         is_active: true
       };
-      let mutation = supabase.from("product_variants");
+      let variantId = editingVariantId;
       if (editingVariantId) {
-        mutation = mutation.update({
+        const { data, error: saveError } = await supabase.from("product_variants").update({
           variant_name: payload.variant_name,
           variant_value: payload.variant_value,
           sku: payload.sku,
@@ -3326,16 +3721,26 @@ function AuthenticatedApp() {
           stock_on_hand: payload.stock_on_hand,
           is_active: payload.is_active,
           updated_at: new Date().toISOString()
-        })
-          .eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor);
+        }).eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor).select("id").maybeSingle();
+        if (saveError) throw saveError;
+        if (!data?.id) throw new Error("No se pudo guardar la variante.");
+        variantId = data.id;
       } else {
-        mutation = mutation.insert(payload);
+        const { data, error: saveError } = await supabase.from("product_variants").insert(payload).select("id").single();
+        if (saveError) throw saveError;
+        if (!data?.id) throw new Error("No se pudo crear la variante.");
+        variantId = data.id;
       }
-      const { error: saveError } = await mutation;
-      if (saveError) throw saveError;
+      let photosSaved = 0;
+      let photosFailed = 0;
+      for (const photo of (variantDraft.staged_images || []).slice(0, Math.max(0, 2 - (variantDraft.image_paths || []).length))) {
+        try { await uploadProductVariantImage(viewingVariantsFor, variantId, photo.file, activeBusiness.id); photosSaved += 1; }
+        catch { photosFailed += 1; }
+      }
       await loadProductVariants(viewingVariantsFor);
       resetVariantDraft();
-      setNotice(editingVariantId ? "Variante actualizada." : "Variante agregada.");
+      setNotice((editingVariantId ? "Variante actualizada." : "Variante agregada.") + (photosSaved ? " " + photosSaved + (photosSaved === 1 ? " foto guardada." : " fotos guardadas.") : ""));
+      if (photosFailed) setError("La variante se guardó, pero no se pudieron subir " + photosFailed + (photosFailed === 1 ? " foto." : " fotos.") + " Reintenta desde Editar variante.");
     } catch (e) {
       setError(friendlyError(e));
     } finally { setVariantBusy(false); }
@@ -3378,6 +3783,47 @@ function AuthenticatedApp() {
     finally { setBusy(false); }
   }
 
+  async function loadTaxBulkProducts() {
+    if (!activeBusiness?.id || !canManageProducts || taxBulkLoading) return;
+    setTaxBulkLoading(true); setError("");
+    try {
+      const rows = await fetchAllProfitabilityRows(
+        () => supabase.from("products").select("id,business_id,name,sku,metadata,archived_at")
+          .eq("business_id",activeBusiness.id).is("archived_at",null).order("name"),
+        "productos para asignar impuestos"
+      );
+      setTaxBulkProducts(rows);
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setTaxBulkLoading(false); }
+  }
+
+  async function applyBulkTaxToProducts() {
+    if (!activeBusiness?.id || !canManageProducts || taxBulkSaving) return;
+    const ids = [...new Set(taxBulkProductIds)];
+    if (!ids.length) { setError("Selecciona al menos un producto para aplicar el impuesto."); return; }
+    if (ids.length > 250) { setError("Puedes aplicar el impuesto a un máximo de 250 productos por operación."); return; }
+    setTaxBulkSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: rpcError } = await supabase.rpc("set_products_tax_code", {
+        p_business_id: activeBusiness.id, p_product_ids: ids, p_tax_code: taxBulkCode
+      });
+      if (rpcError) throw rpcError;
+      if (Number(data) !== ids.length) throw new Error("No se actualizaron todos los productos seleccionados.");
+      setTaxBulkProductIds([]);
+      setTaxBulkSearch("");
+      setInventoryOverviewRefresh((current) => current + 1);
+      await loadProducts();
+      await loadTaxBulkProducts();
+      setNotice("Impuesto actualizado en " + ids.length + (ids.length===1 ? " producto." : " productos."));
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setTaxBulkSaving(false); }
+  }
+
+  const taxBulkFilteredProducts = taxBulkProducts.filter((product) => {
+    const term = taxBulkSearch.trim().toLocaleLowerCase("es-CO");
+    return !term || String(product.name || "").toLocaleLowerCase("es-CO").includes(term) || String(product.sku || "").toLocaleLowerCase("es-CO").includes(term);
+  });
+
   async function addProduct(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
@@ -3395,7 +3841,8 @@ function AuthenticatedApp() {
             unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
             sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
             cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
-            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null
+            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null,
+            metadata: { ...(products.find((item) => item.id === editingProductId)?.metadata || {}), tax_code: productForm.tax_code || "none" }
           })
           .eq("business_id", activeBusiness.id).eq("id", editingProductId)
           .select("id").maybeSingle();
@@ -3426,6 +3873,8 @@ function AuthenticatedApp() {
         p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
+      const { error: metadataError } = await supabase.from("products").update({ metadata: { tax_code: productForm.tax_code || "none" } }).eq("business_id", activeBusiness.id).eq("id", newProductId);
+      if (metadataError) throw metadataError;
       setProductForm(blankProduct); setShowProductForm(false);
       setStagedImages([]);
       pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
@@ -3533,6 +3982,82 @@ function AuthenticatedApp() {
 
   const customerFields = "id,full_name,first_name,last_name,company_name,document_type,document_number,email,phone,whatsapp,city,address,notes,created_at";
 
+  async function loadCashRegisterSession() {
+    if (!activeBusiness?.id || !session?.user?.id || !canAccessScreen("sales")) { setCashRegisterSession(null); return; }
+    setCashRegisterLoading(true);
+    try {
+      const { data, error: queryError } = await supabase.from("cash_register_sessions")
+        .select("id,business_id,opened_by,closed_by,currency_code,opening_cash_minor,closing_cash_minor,expected_cash_minor,difference_minor,close_notes,status,opened_at,closed_at")
+        .eq("business_id", activeBusiness.id).eq("opened_by", session.user.id).eq("status", "open")
+        .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+      if (queryError) throw queryError;
+      setCashRegisterSession(data || null);
+      if (data) setCashRegisterCloseAmount("");
+    } catch (error) {
+      setError(friendlyError(error));
+      setCashRegisterSession(null);
+    } finally { setCashRegisterLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "sales" && activeBusiness?.id && session?.user?.id) loadCashRegisterSession();
+  }, [screen, activeBusiness?.id, session?.user?.id]);
+
+  async function openCashRegister(event) {
+    event?.preventDefault();
+    if (!activeBusiness?.id || !session?.user?.id || !canManageSales || cashRegisterSaving) return;
+    const opening = toMinorUnits(cashRegisterOpenAmount, currencyCode);
+    if (!Number.isSafeInteger(opening) || opening < 0) { setError("Escribe un monto inicial de caja válido."); return; }
+    setCashRegisterSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: insertError } = await supabase.from("cash_register_sessions")
+        .insert({business_id:activeBusiness.id,opened_by:session.user.id,currency_code:currencyCode,opening_cash_minor:opening})
+        .select("id,business_id,opened_by,closed_by,currency_code,opening_cash_minor,closing_cash_minor,expected_cash_minor,difference_minor,close_notes,status,opened_at,closed_at").single();
+      if (insertError) throw insertError;
+      setCashRegisterSession(data);
+      setCashRegisterOpenAmount("0");
+      setNotice("Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setCashRegisterSaving(false); }
+  }
+
+  async function closeCashRegister(event) {
+    event?.preventDefault();
+    const register = cashRegisterSession;
+    if (!activeBusiness?.id || !session?.user?.id || !register || !canManageSales || cashRegisterSaving) return;
+    const closing = toMinorUnits(cashRegisterCloseAmount, currencyCode);
+    if (!Number.isSafeInteger(closing) || closing < 0) { setError("Escribe el efectivo contado al cerrar la caja."); return; }
+    setCashRegisterSaving(true); setError(""); setNotice("");
+    try {
+      const [{data:payments,error:paymentsError},{data:expenses,error:expensesError}] = await Promise.all([
+        supabase.from("sale_payments").select("amount_minor,payment_method,paid_at")
+          .eq("business_id",activeBusiness.id).eq("created_by",session.user.id)
+          .eq("payment_method","Efectivo").gte("paid_at",register.opened_at).lte("paid_at",new Date().toISOString()),
+        supabase.from("expenses").select("amount_minor,payment_method,created_at")
+          .eq("business_id",activeBusiness.id).eq("created_by",session.user.id)
+          .eq("payment_method","Efectivo").gte("created_at",register.opened_at).lte("created_at",new Date().toISOString())
+      ]);
+      if (paymentsError) throw paymentsError;
+      if (expensesError) throw expensesError;
+      const received=(payments||[]).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+      const expenseTotal=(expenses||[]).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+      const expected=Number(register.opening_cash_minor||0)+received-expenseTotal;
+      const {data,error:updateError}=await supabase.from("cash_register_sessions").update({
+        closed_by:session.user.id,closed_at:new Date().toISOString(),status:"closed",
+        closing_cash_minor:closing,expected_cash_minor:expected,difference_minor:closing-expected,
+        close_notes:cashRegisterCloseNotes.trim()||null,updated_at:new Date().toISOString()
+      }).eq("business_id",activeBusiness.id).eq("id",register.id).eq("status","open")
+        .select("id").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("La caja ya se cerró o no tienes permiso para modificarla.");
+      setCashRegisterSummary({received,expenses:expenseTotal,expected,count:(payments||[]).length});
+      setCashRegisterSession(null);
+      setCashRegisterCloseAmount(""); setCashRegisterCloseNotes("");
+      setNotice("Caja cerrada. Efectivo esperado: " + money(expected,currencyCode) + "; diferencia: " + money(closing-expected,currencyCode) + ".");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setCashRegisterSaving(false); }
+  }
+
   async function loadSalesModuleData() {
     if (!activeBusiness?.id || (screen !== "sales" && screen !== "customers")) return;
     setSalesLoading(true);
@@ -3554,7 +4079,7 @@ function AuthenticatedApp() {
         setCustomers(result.data || []);
         setCustomersCount(result.count || 0);
       } else {
-        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,sale_number,status,currency_code,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,created_by,sale_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
         const salesToday = todayInBogota();
         const shiftSalesDate = (key, offset) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0,10); };
         const salesWeekStart = shiftSalesDate(salesToday, -((new Date(salesToday + "T12:00:00Z").getUTCDay() + 6) % 7));
@@ -3579,16 +4104,21 @@ function AuthenticatedApp() {
         const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
         const itemsBySale = {};
         const paymentsBySale = {};
+        let memberNamesById = new Map();
         if (salesRows.length) {
           const saleIds = salesRows.map((sale) => sale.id);
-          const [itemsResult, paymentsResult] = await Promise.all([
-            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor")
+          const [itemsResult, paymentsResult, membersResult] = await Promise.all([
+            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor,tax_minor")
               .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("created_at"),
-            supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,paid_at,notes")
-              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true })
+            supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,created_by,paid_at,notes")
+              .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true }),
+            supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id })
           ]);
           if (itemsResult.error) throw itemsResult.error;
           if (paymentsResult.error) throw paymentsResult.error;
+          if (membersResult.error) throw membersResult.error;
+          memberNamesById = new Map((membersResult.data || []).map((member) => [member.user_id, member.display_name]));
+
           for (const item of itemsResult.data || []) {
             if (!itemsBySale[item.sale_id]) itemsBySale[item.sale_id] = [];
             itemsBySale[item.sale_id].push(item);
@@ -3601,6 +4131,7 @@ function AuthenticatedApp() {
         setCustomers(customersResult.data || []);
         setSalesData(salesRows.map((sale) => ({ ...sale,
           customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
+          seller_name: memberNamesById.get(sale.created_by) || "Usuario del negocio",
           items: itemsBySale[sale.id] || [],
           payments: paymentsBySale[sale.id] || []
         })));
@@ -3744,14 +4275,14 @@ function AuthenticatedApp() {
       const [sales, payments, expenses, purchases, purchasePayments] = await Promise.all([
         fetchAllProfitabilityRows(
           () => supabase.from("sales")
-            .select("id,business_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
+            .select("id,business_id,customer_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
             .eq("business_id", activeBusiness.id)
             .order("sold_at", { ascending: false }).order("id", { ascending: true }),
           "ventas para las estadísticas"
         ),
         fetchAllProfitabilityRows(
           () => supabase.from("sale_payments")
-            .select("id,business_id,sale_id,amount_minor,paid_at")
+            .select("id,business_id,sale_id,amount_minor,payment_method,created_by,paid_at")
             .eq("business_id", activeBusiness.id)
             .order("paid_at", { ascending: false }).order("id", { ascending: true }),
           "abonos para las estadísticas"
@@ -3765,7 +4296,7 @@ function AuthenticatedApp() {
         ),
         fetchAllProfitabilityRows(
           () => supabase.from("purchases")
-            .select("id,business_id,purchase_number,status,total_minor,amount_paid_minor,purchased_at,created_at")
+            .select("id,business_id,supplier_id,purchase_number,status,total_minor,amount_paid_minor,purchased_at,created_at")
             .eq("business_id", activeBusiness.id)
             .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
           "compras para las estadísticas"
@@ -3778,8 +4309,29 @@ function AuthenticatedApp() {
           "pagos de compras para las estadísticas"
         )
       ]);
+      const saleIds = sales.map((sale) => sale.id);
+      const [saleItems, customers, suppliers] = await Promise.all([
+        saleIds.length ? fetchAllProfitabilityRows(
+          () => supabase.from("sale_items").select("id,business_id,sale_id,product_id,item_name,quantity,unit_price_minor,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("sale_id").order("id"),
+          "artículos vendidos para estadísticas"
+        ) : Promise.resolve([]),
+        canAccessScreen("customers") ? fetchAllProfitabilityRows(
+          () => supabase.from("customers").select("id,business_id,full_name,company_name")
+            .eq("business_id", activeBusiness.id).order("full_name"),
+          "clientes para estadísticas"
+        ) : Promise.resolve([]),
+        canAccessScreen("suppliers") ? fetchAllProfitabilityRows(
+          () => supabase.from("suppliers").select("id,business_id,name")
+            .eq("business_id", activeBusiness.id).order("name"),
+          "proveedores para estadísticas"
+        ) : Promise.resolve([])
+      ]);
       setStatsSales(sales);
       setStatsPayments(payments);
+      setStatsSaleItems(saleItems);
+      setStatsCustomers(customers);
+      setStatsSuppliers(suppliers);
       setStatsExpenses(expenses);
       setStatsPurchases(purchases);
       setStatsPurchasePayments(purchasePayments);
@@ -3787,6 +4339,9 @@ function AuthenticatedApp() {
       setError(friendlyError(e));
       setStatsSales([]);
       setStatsPayments([]);
+      setStatsSaleItems([]);
+      setStatsCustomers([]);
+      setStatsSuppliers([]);
       setStatsExpenses([]);
       setStatsPurchases([]);
       setStatsPurchasePayments([]);
@@ -4045,7 +4600,7 @@ function AuthenticatedApp() {
     if (!activeBusiness?.id || screen !== "profitability") return;
     setProfitabilityLoading(true); setError("");
     try {
-      const [sales, expenses] = await Promise.all([
+      const [sales, expenses, purchasePayments] = await Promise.all([
         fetchAllProfitabilityRows(
           () => supabase.from("sales").select("id,business_id,status,currency_code,total_minor,amount_paid_minor,sold_at,created_at")
             .eq("business_id", activeBusiness.id).order("sold_at", { ascending: false }).order("id", { ascending: true }),
@@ -4055,7 +4610,12 @@ function AuthenticatedApp() {
           () => supabase.from("expenses").select("id,business_id,category,description,amount_minor,currency_code,expense_date")
             .eq("business_id", activeBusiness.id).order("expense_date", { ascending: false }).order("id", { ascending: true }),
           "gastos"
-        )
+        ),
+        canAccessScreen("purchases") ? fetchAllProfitabilityRows(
+          () => supabase.from("purchase_payments").select("id,business_id,purchase_id,amount_minor,payment_method,paid_at")
+            .eq("business_id", activeBusiness.id).order("paid_at", { ascending: false }).order("id", { ascending: true }),
+          "pagos de compras"
+        ) : Promise.resolve([])
       ]);
       let items = [];
       if (sales.length) {
@@ -4074,9 +4634,10 @@ function AuthenticatedApp() {
       setProfitabilitySales(sales);
       setProfitabilitySaleItems(items);
       setProfitabilityExpenses(expenses);
+      setProfitabilityPurchasePayments(purchasePayments);
     } catch (e) {
       setError(friendlyError(e));
-      setProfitabilitySales([]); setProfitabilitySaleItems([]); setProfitabilityExpenses([]);
+      setProfitabilitySales([]); setProfitabilitySaleItems([]); setProfitabilityExpenses([]); setProfitabilityPurchasePayments([]);
     } finally { setProfitabilityLoading(false); }
   }
 
@@ -4783,6 +5344,7 @@ function AuthenticatedApp() {
       if (exists) return current.map((item) => item.product_id === product.id ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)) } : item);
       return [...current, { product_id: product.id, name: product.name, quantity,
         unit_price_minor: Number(product.sale_price_minor || 0), unit_cost_minor: Number(product.cost_price_minor || 0),
+        tax_code: product.metadata?.tax_code || "none",
         unit_name: product.unit_name || "unidad", track_inventory: product.track_inventory, stock_on_hand: Number(product.stock_on_hand || 0) }];
     });
     setSaleProductChoice(""); setSaleQuantity("1"); setError("");
@@ -4792,7 +5354,8 @@ function AuthenticatedApp() {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     if (!saleItems.length) { setError("Añade al menos un producto a la venta."); return; }
-    const total = saleItems.reduce((sum, item) => sum + Math.round(item.unit_price_minor * Number(item.quantity)), 0);
+    const includeVat = normalizeTaxProfile(activeBusiness.settings?.tax_profile || settingsTaxProfile).pricesIncludeVat;
+    const total = saleItems.reduce((sum, item) => sum + productTaxAmounts(item.unit_price_minor, item.quantity, item.tax_code || "none", includeVat).total, 0);
     const payment = toMinorUnits(salePayment || 0, currencyCode);
     if (payment < 0 || payment > total) { setError("El abono debe estar entre cero y el total de la venta."); return; }
     setSaleSaving(true); setError(""); setNotice("");
@@ -4950,6 +5513,7 @@ function AuthenticatedApp() {
   const periodSaleIds = new Set(periodSales.map((sale) => sale.id));
   const periodSaleItems = profitabilitySaleItems.filter((item) => periodSaleIds.has(item.sale_id));
   const periodExpenses = profitabilityExpenses.filter((expense) => profitInPeriod(expense.expense_date));
+  const periodPurchasePayments = profitabilityPurchasePayments.filter((payment) => profitInPeriod(payment.paid_at));
   const shiftDateKey = (key, offset) => {
     const date = new Date(key + "T12:00:00Z");
     date.setUTCDate(date.getUTCDate() + offset);
@@ -4976,6 +5540,8 @@ function AuthenticatedApp() {
     return Boolean(key && key >= statsRangeStart && key <= statsRangeEnd);
   };
   const statsPeriodSales = statsSales.filter((sale) => !["canceled", "refunded", "draft"].includes(sale.status) && statsInPeriod(sale.sold_at || sale.created_at));
+  const statsPeriodSaleIds = new Set(statsPeriodSales.map((sale) => sale.id));
+  const statsPeriodSaleItems = statsSaleItems.filter((item) => statsPeriodSaleIds.has(item.sale_id));
   const statsPeriodPayments = statsPayments.filter((payment) => statsInPeriod(payment.paid_at));
   const statsPeriodExpenses = statsExpenses.filter((expense) => statsInPeriod(expense.expense_date));
   const statsPeriodPurchases = statsPurchases.filter((purchase) => !["cancelled", "canceled", "draft"].includes(String(purchase.status || "").toLowerCase()) && statsInPeriod(purchase.purchased_at || purchase.created_at));
@@ -4989,6 +5555,41 @@ function AuthenticatedApp() {
   const statsPaidPurchases = statsPurchasePayments.length
     ? statsPeriodPurchasePayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
     : statsPeriodPurchases.reduce((sum, purchase) => sum + Number(purchase.amount_paid_minor || 0), 0);
+  const statsTopProducts = Object.values(statsPeriodSaleItems.reduce((groups, item) => {
+    const key = item.product_id || item.item_name || "unknown";
+    if (!groups[key]) groups[key] = { name: item.item_name || "Artículo", quantity: 0, revenue: 0 };
+    groups[key].quantity += Number(item.quantity || 0);
+    groups[key].revenue += Number(item.line_total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.quantity - left.quantity || right.revenue - left.revenue).slice(0, 3);
+  const statsTopExpenses = Object.values(statsPeriodExpenses.reduce((groups, expense) => {
+    const key = String(expense.category || "Otros").trim() || "Otros";
+    if (!groups[key]) groups[key] = { name: key, count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(expense.amount_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.count - left.count || right.amount - left.amount).slice(0, 3);
+  const statsTopPaymentMethods = Object.values(statsPeriodPayments.reduce((groups, payment) => {
+    const key = String(payment.payment_method || "No especificado");
+    if (!groups[key]) groups[key] = { name: key, count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(payment.amount_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.count - left.count || right.amount - left.amount).slice(0, 3);
+  const customerNames = new Map(statsCustomers.map((customer) => [customer.id, customer.company_name || customer.full_name || "Cliente"]));
+  const statsTopCustomers = Object.values(statsPeriodSales.reduce((groups, sale) => {
+    if (!sale.customer_id) return groups;
+    const key = sale.customer_id;
+    if (!groups[key]) groups[key] = { name: customerNames.get(key) || "Cliente", count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(sale.total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.amount - left.amount || right.count - left.count).slice(0, 3);
+  const supplierNames = new Map(statsSuppliers.map((supplier) => [supplier.id, supplier.name || "Proveedor"]));
+  const statsTopSuppliers = Object.values(statsPeriodPurchases.reduce((groups, purchase) => {
+    if (!purchase.supplier_id) return groups;
+    const key = purchase.supplier_id;
+    if (!groups[key]) groups[key] = { name: supplierNames.get(key) || "Proveedor", count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(purchase.total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.amount - left.amount || right.count - left.count).slice(0, 3);
   const statsCashBalance = statsCollected - statsExpensesTotal - statsPaidPurchases;
 
   function downloadStatsExcel() {
@@ -5058,6 +5659,22 @@ function AuthenticatedApp() {
     groups[name].cost += Math.round(Number(item.unit_cost_minor || 0) * Number(item.quantity || 0));
     return groups;
   }, {})).sort((a, b) => (b.revenue - b.cost) - (a.revenue - a.cost));
+  const profitIncomePieRows = (() => {
+    const revenueRows = [...profitByItem].sort((a,b) => b.revenue-a.revenue);
+    const top = revenueRows.slice(0,4).map((item) => ({label:item.name,value:item.revenue}));
+    const otherRevenue = revenueRows.slice(4).reduce((sum,item)=>sum+item.revenue,0);
+    if (otherRevenue>0) top.push({label:"Otros productos",value:otherRevenue});
+    return top.length ? top : [{label:"Ventas",value:profitLineRevenue}];
+  })();
+  const profitPurchasesPaid = periodPurchasePayments.reduce((sum,payment)=>sum+Number(payment.amount_minor||0),0);
+  const profitCostPieRows = [
+    {label:"Compras pagadas",value:profitPurchasesPaid},
+    ...Object.entries(periodExpenses.reduce((groups,expense)=>{
+      const category=String(expense.category||"Otros").trim()||"Otros";
+      groups[category]=(groups[category]||0)+Number(expense.amount_minor||0);
+      return groups;
+    },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5)
+  ];
 
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
@@ -5089,7 +5706,7 @@ function AuthenticatedApp() {
     if (next === "accounts") return canPermission("sales_view") || canViewPurchases;
     if (next === "receivables") return canPermission("sales_view");
     if (next === "payables") return canViewPurchases;
-    if (next === "settings") return isBusinessOwner;
+    if (next === "settings") return true;
     if (next === "team") return isBusinessManager;
     if (next === "products") return canPermission("products_view");
     if (next === "sales" || next === "stats" || next === "quotes") return canPermission("sales_view");
@@ -5481,7 +6098,7 @@ function AuthenticatedApp() {
         {!appInstalled && mode !== "update-password" && <div className="auth-mobile-install">
           <span className="auth-install-icon"><AppIcon name="smartphone" size={24}/></span>
           <div className="auth-install-copy"><strong>Tu negocio, también en tu celular</strong><p>Instala treseiscinco y maneja con claridad desde la pantalla de inicio.</p></div>
-          <button type="button" className="auth-install-button" onClick={requestPwaInstall}>{installPrompt ? "Instalar app" : "Cómo instalar"}</button>
+          <div className="auth-install-actions"><a className="auth-install-button auth-apk-download" href="/treseiscinco.apk" download="treseiscinco.apk"><AppIcon name="download" size={15}/> Descargar APK</a><button type="button" className="auth-install-secondary" onClick={requestPwaInstall}>{installPrompt ? "Instalar en navegador" : "Otras opciones"}</button></div>
         </div>}
         {showInstallGuide && !appInstalled && mode !== "update-password" && <section className="install-guide-panel auth-install-guide">
           <div className="install-guide-heading"><div><span className="eyebrow">TRESEISCINCO · APP INSTALABLE</span><h3>Instálala en tu celular</h3><p>No necesitas bajar un archivo externo; se instala desde tu navegador.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar instrucciones" onClick={() => setShowInstallGuide(false)}>×</button></div>
@@ -5495,18 +6112,21 @@ function AuthenticatedApp() {
       </section>
       <section className="auth-form-panel"><div className="auth-form-wrap">
         <p className="eyebrow">{mode === "signup" ? "EMPIEZA GRATIS" : mode === "forgot" || mode === "update-password" ? "RECUPERA TU ACCESO" : "QUÉ BUENO VERTE"}</p>
-        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
-        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
+        <h2>{mode === "signup" ? "Crea tu cuenta" : mode === "forgot" ? "Recupera tu acceso" : mode === "phone" ? (phoneOtpSent ? "Verifica tu celular" : "Entrar con celular") : mode === "update-password" ? "Crea una nueva contraseña" : "Inicia sesión"}</h2>
+        <p className="form-intro">{mode === "signup" ? "Primero creamos tu acceso. Después podrás registrar tu negocio." : mode === "forgot" ? "Escribe el correo de tu cuenta y te enviaremos un enlace para recuperar el acceso." : mode === "phone" ? (phoneOtpSent ? "Introduce el código SMS que recibiste. Por seguridad, solo se permite acceder con un número ya vinculado y verificado en una cuenta." : "Escribe tu número con prefijo internacional. Te enviaremos un código para entrar sin contraseña.") : mode === "update-password" ? "Elige una contraseña nueva para volver a entrar a tu cuenta." : "Entra para continuar con tu negocio."}</p>
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
-          {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
-          {mode !== "forgot" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
-          {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
+          {mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
+          {mode === "phone" && <label><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+57 300 123 4567" required /></label>}
+          {mode === "phone" && phoneOtpSent && <label><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="Código de verificación" required minLength={4} maxLength={8} /></label>}
+          {mode !== "forgot" && mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
+          {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button><button type="button" className="text-button" onClick={() => { setMode("phone"); setPhoneOtpSent(false); setPhoneOtp(""); setError(""); setNotice(""); }}>Entrar con celular</button></p>}
           
         {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}
-          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
+          <button className="primary-button" disabled={busy}>{busy ? "Un momento…" : mode === "signup" ? "Crear mi cuenta" : mode === "forgot" ? "Enviar enlace de recuperación" : mode === "phone" ? (phoneOtpSent ? "Verificar código" : "Enviar código SMS") : mode === "update-password" ? "Guardar nueva contraseña" : "Entrar"}</button>
+          {mode === "phone" && phoneOtpSent && <button type="button" className="text-button" disabled={busy} onClick={() => { setPhoneOtpSent(false); setPhoneOtp(""); setNotice(""); setError(""); }}>Usar otro número</button>}
         </form>
-        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : "Crear cuenta"}</button></p>}
+        {mode !== "update-password" && <p className="switch-mode">{mode === "forgot" ? "¿Recordaste tu contraseña?" : mode === "phone" ? "¿Prefieres entrar con correo?" : mode === "signup" ? "¿Ya tienes cuenta?" : "¿Primera vez por aquí?"} <button type="button" className="text-button" onClick={() => { setMode(mode === "phone" ? "login" : mode === "signup" || mode === "forgot" ? "login" : "signup"); setPassword(""); setPhoneOtp(""); setPhoneOtpSent(false); setError(""); setNotice(""); }}>{mode === "signup" || mode === "forgot" ? "Inicia sesión" : mode === "phone" ? "Usar correo" : "Crear cuenta"}</button></p>}
         <p className="privacy-note">Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.</p>
       </div></section>
     </main>
@@ -5601,7 +6221,13 @@ function AuthenticatedApp() {
 ) : screen === "sales" ? (
 <section className="sales-page">
 <SalesModuleCards active="sales" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
-<div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Por defecto ves las ventas de hoy. Cambia rápidamente a otra fecha o consulta un rango.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+<div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Identifica qué se vendió, quién lo registró y en qué momento.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+<section className="cash-register-panel panel">
+  <div className="cash-register-heading"><div><span className="eyebrow">CONTROL DE TURNO</span><h3>{cashRegisterSession ? "Tu caja está abierta" : "Apertura y cierre de caja"}</h3><p>{cashRegisterSession ? "Abierta el " + new Date(cashRegisterSession.opened_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"}) : "Cada trabajador puede abrir su caja, registrar operaciones y cerrarla al terminar."}</p></div><span className={"status-pill "+(cashRegisterSession?"status-active":"status-inactive")}>{cashRegisterLoading?"Consultando…":cashRegisterSession?"Abierta":"Cerrada"}</span></div>
+  {canManageSales && !cashRegisterSession && <form className="cash-register-form" onSubmit={openCashRegister}><label><span className="field-label-heading">Efectivo inicial</span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={cashRegisterOpenAmount} onChange={(event)=>setCashRegisterOpenAmount(event.target.value)} required /></label><button type="submit" className="primary-button" disabled={cashRegisterSaving||cashRegisterLoading}>{cashRegisterSaving?"Abriendo…":"Abrir mi caja"}</button></form>}
+  {cashRegisterSession && <form className="cash-register-form cash-register-close-form" onSubmit={closeCashRegister}><label><span className="field-label-heading">Efectivo contado al cierre</span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={cashRegisterCloseAmount} onChange={(event)=>setCashRegisterCloseAmount(event.target.value)} required placeholder="Total de efectivo en caja" /></label><label><span className="field-label-heading">Notas del turno</span><input value={cashRegisterCloseNotes} onChange={(event)=>setCashRegisterCloseNotes(event.target.value)} maxLength={500} placeholder="Diferencias, novedades o entrega de turno" /></label><button type="submit" className="primary-button" disabled={cashRegisterSaving}>{cashRegisterSaving?"Cerrando…":"Cerrar caja"}</button></form>}
+  {cashRegisterSummary.count>0 && <p className="cash-register-summary">Último cierre: recibido en efectivo {money(cashRegisterSummary.received,currencyCode)} · salidas en efectivo {money(cashRegisterSummary.expenses,currencyCode)} · esperado {money(cashRegisterSummary.expected,currencyCode)}.</p>}
+</section>
 <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de ventas">{[["day","Hoy"],["date","Fecha"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={salesPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={salesPeriod === value} onClick={() => {if(value==="date"&&salesPeriod!=="date")setSalesSelectedDate(todayInBogota());setSalesPeriod(value);setSalesPage(1);}}>{label}</button>)}</div>{salesPeriod === "date" && <div className="sales-single-date"><button type="button" className="secondary-button" aria-label="Día anterior" onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>← Anterior</button><label><span>Ver movimientos del día</span><input type="date" value={salesSelectedDate} max={todayInBogota()} onChange={(e)=>{setSalesSelectedDate(e.target.value);setSalesPage(1);}} /></label><button type="button" className="secondary-button" aria-label="Día siguiente" disabled={salesSelectedDate>=todayInBogota()} onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>Siguiente →</button></div>}{salesPeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={salesDateFrom} max={salesDateTo || todayInBogota()} onChange={(e) => {setSalesDateFrom(e.target.value);setSalesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={salesDateTo} min={salesDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setSalesDateTo(e.target.value);setSalesPage(1);}} /></label></div>}<p>{salesPeriod === "day" ? "Ventas de hoy" : salesPeriod === "date" ? "Movimientos del " + new Date(salesSelectedDate+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : salesPeriod === "all" ? "Todo el historial" : salesPeriod === "custom" ? "Del " + salesDateFrom + " al " + salesDateTo : salesPeriod === "week" ? "Desde el lunes de esta semana" : salesPeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>
@@ -5640,7 +6266,7 @@ function AuthenticatedApp() {
 {!saleProducts.length&&<p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
 {saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
-<div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum,item)=>sum+Math.round(item.unit_price_minor*Number(item.quantity||0)),0),currencyCode)}</strong></div></div>}
+<div className="sale-tax-summary"><span>Base de productos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).subtotal,0),currencyCode)}</strong></div>{saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0)>0&&<div className="sale-tax-summary"><span>Impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0),currencyCode)}</strong></div>}<div className="sale-total-line"><span>Total con impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0),currencyCode)}</strong></div></div>}
 <div className="sale-bottom-fields"><label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo recibes el primer pago de esta venta: efectivo, transferencia, tarjeta u otro medio." /></span><select value={saleInitialPaymentMethod} onChange={e=>setSaleInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label><label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
 {!saleItems.length && <p className="helper-text sale-empty-cart-hint">Todavía no hay productos agregados. Elige un producto y pulsa «+ Agregar». Si intentas guardar antes, te indicaremos qué falta.</p>}
@@ -5648,7 +6274,7 @@ function AuthenticatedApp() {
 </form>}
 <div className="sales-toolbar"><span>{salesCount} {salesCount===1?"venta":"ventas"} · Página {salesPage} de {Math.max(1,Math.ceil(salesCount/salesPageSize))}</span><label className="sales-page-size"><span className="field-label-heading">Mostrar<FieldHelp enabled={contextualHelpEnabled} text="Define cuántas ventas aparecen en cada página de la lista." /></span><select value={salesPageSize} onChange={(e)=>{setSalesPageSize(Number(e.target.value));setSalesPage(1);}}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label></div>
 {salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel mobile-detail-trigger" key={sale.id} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedRecordDetail({type:"Venta",title:sale.sale_number || "Venta",fields:[{label:"Cliente",value:sale.customer_name},{label:"Fecha",value:new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})},{label:"Estado",value:saleStatusLabel(sale.status)},{label:"Total",value:money(sale.total_minor,sale.currency_code||currencyCode)},{label:"Abonado",value:money(sale.amount_paid_minor,sale.currency_code||currencyCode)},{label:"Pendiente",value:money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)},{label:"Artículos",value:(sale.items||[]).map(item=>item.item_name+" × "+Number(item.quantity).toLocaleString("es-CO")+" — "+money(item.line_total_minor,sale.currency_code||currencyCode)).join("\n")||"Sin artículos"},{label:"Historial de abonos",value:(sale.payments||[]).map(p=>money(p.amount_minor,sale.currency_code||currencyCode)+" · "+p.payment_method+" · "+new Date(p.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})+(p.notes?" · "+p.notes:"")).join("\n")||"Sin abonos"}],notes:sale.notes}); }}>
-<div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})}</span></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
+<div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}</span><small>Registró: {sale.seller_name||"Usuario del negocio"}</small></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
 <div className="sale-record-customer">{sale.customer_name}</div>
 
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
@@ -5900,7 +6526,7 @@ function AuthenticatedApp() {
           </section>
         ) : screen === "stats" ? (
           <section className="stats-page">
-            <div className="products-intro stats-intro"><div><h2>Estadísticas y balance</h2><p>Elige un periodo y descarga un informe de los movimientos registrados.</p></div></div>
+            <div className="products-intro stats-intro"><div><h2>Estadísticas y balance</h2><p>Elige un periodo y descarga un informe de los movimientos registrados.</p></div><button type="button" className="secondary-button compact-button" onClick={()=>navigate("audit")}><AppIcon name="audit" size={16}/> Ver auditorías</button></div>
             <div className="stats-filter-toolbar">
               <div className="stats-period-buttons" role="group" aria-label="Periodo de estadísticas">
                 {[["day","Día"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Desde / hasta"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={statsPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={statsPeriod === value} onClick={() => setStatsPeriod(value)}>{label}</button>)}
@@ -5917,6 +6543,16 @@ function AuthenticatedApp() {
                 <article className={"stats-metric panel stats-balance" + (statsCashBalance < 0 ? " profit-negative" : " profit-positive")}><span>Balance</span><strong>{money(statsCashBalance, currencyCode)}</strong><small>Ingresos − gastos − compras pagadas</small></article>
               </div>
               <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={statsChartType === "bars" ? "active" : ""} aria-pressed={statsChartType === "bars"} onClick={() => setStatsChartType("bars")}>Barras</button><button type="button" className={statsChartType === "pie" ? "active" : ""} aria-pressed={statsChartType === "pie"} onClick={() => setStatsChartType("pie")}>Pastel</button></div>{statsChartType === "bars" ? <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} /> : <SimplePie title="Distribución del balance" description="Comparación de ingresos y salidas en el periodo seleccionado." data={[{label:"Ingresos",value:statsCollected},{label:"Gastos",value:statsExpensesTotal},{label:"Compras pagadas",value:statsPaidPurchases}]} formatValue={(value)=>money(value,currencyCode)} />}
+              <section className="stats-insight-section">
+                <div className="stats-section-heading"><div><h3>Lo que más se mueve</h3><p>Resumen calculado con los registros del periodo elegido.</p></div></div>
+                <div className="stats-insight-grid">
+                  <article className="stats-insight-card panel"><div className="stats-insight-title"><AppIcon name="products" size={18}/><h4>Productos más vendidos</h4></div>{statsTopProducts.length ? <ol>{statsTopProducts.map((item) => <li key={item.name}><span><strong>{item.name}</strong><small>{Number(item.quantity).toLocaleString("es-CO")} unidades</small></span><b>{money(item.revenue,currencyCode)}</b></li>)}</ol> : <p className="stats-empty-note">Aún no hay artículos vendidos en este periodo.</p>}</article>
+                  <article className="stats-insight-card panel"><div className="stats-insight-title"><AppIcon name="expenses" size={18}/><h4>Gastos más frecuentes</h4></div>{statsTopExpenses.length ? <ol>{statsTopExpenses.map((item) => <li key={item.name}><span><strong>{item.name}</strong><small>{item.count} registros</small></span><b>{money(item.amount,currencyCode)}</b></li>)}</ol> : <p className="stats-empty-note">Aún no hay gastos en este periodo.</p>}</article>
+                  <article className="stats-insight-card panel"><div className="stats-insight-title"><AppIcon name="payments" size={18}/><h4>Medios de pago más usados</h4></div>{statsTopPaymentMethods.length ? <ol>{statsTopPaymentMethods.map((item) => <li key={item.name}><span><strong>{item.name}</strong><small>{item.count} pagos</small></span><b>{money(item.amount,currencyCode)}</b></li>)}</ol> : <p className="stats-empty-note">Faltan pagos registrados para comparar medios.</p>}</article>
+                  <article className="stats-insight-card panel"><div className="stats-insight-title"><AppIcon name="customers" size={18}/><h4>Mejores clientes</h4></div>{statsTopCustomers.length ? <ol>{statsTopCustomers.map((item) => <li key={item.name}><span><strong>{item.name}</strong><small>{item.count} ventas</small></span><b>{money(item.amount,currencyCode)}</b></li>)}</ol> : <p className="stats-empty-note">Relaciona ventas con clientes para ver este ranking.</p>}</article>
+                  <article className="stats-insight-card panel"><div className="stats-insight-title"><AppIcon name="suppliers" size={18}/><h4>Proveedores principales</h4></div>{statsTopSuppliers.length ? <ol>{statsTopSuppliers.map((item) => <li key={item.name}><span><strong>{item.name}</strong><small>{item.count} compras</small></span><b>{money(item.amount,currencyCode)}</b></li>)}</ol> : <p className="stats-empty-note">Asocia compras a proveedores para ver el ranking.</p>}</article>
+                </div>
+              </section>
               <div className="stats-secondary-metrics"><span>Ventas registradas: <strong>{money(statsSalesTotal, currencyCode)}</strong></span><span>Pendiente por cobrar: <strong>{money(statsOutstanding, currencyCode)}</strong></span><span>{statsPeriodSales.length} {statsPeriodSales.length === 1 ? "venta" : "ventas"}</span></div>
               <section className="stats-pending panel"><div className="stats-section-heading"><div><h3>Ventas con saldo pendiente</h3><p>Las ventas con dinero por cobrar en el periodo elegido.</p></div><button type="button" className="secondary-button compact-button" onClick={() => navigate("sales")}>Ver ventas</button></div>
                 {statsPeriodSales.filter((sale) => Number(sale.total_minor || 0) > Number(sale.amount_paid_minor || 0)).length
@@ -5946,7 +6582,11 @@ function AuthenticatedApp() {
                 <article className="profit-metric panel"><span>Gastos registrados</span><strong>{money(profitExpenseTotal, currencyCode)}</strong><small>{periodExpenses.length} {periodExpenses.length === 1 ? "gasto" : "gastos"}</small></article>
                 <article className="profit-metric panel profit-metric-primary"><span>Resultado estimado</span><strong className={profitNet < 0 ? "profit-negative" : "profit-positive"}>{money(profitNet, currencyCode)}</strong><small>Ganancia bruta menos gastos registrados</small></article>
               </div>
-              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={profitabilityChartType === "bars" ? "active" : ""} aria-pressed={profitabilityChartType === "bars"} onClick={() => setProfitabilityChartType("bars")}>Barras</button><button type="button" className={profitabilityChartType === "pie" ? "active" : ""} aria-pressed={profitabilityChartType === "pie"} onClick={() => setProfitabilityChartType("pie")}>Pastel</button></div>{profitabilityChartType === "pie" ? <SimplePie title="Composición del resultado" description="Distribución de ingresos, costo de lo vendido y gastos del periodo." data={[{label:"Costo de ventas",value:profitCostOfSales},{label:"Ganancia bruta",value:Math.max(0,profitGross)},{label:"Gastos",value:profitExpenseTotal}]} formatValue={(value)=>money(value,currencyCode)} /> : <SimpleBars title="Composición del resultado" description="Importes del periodo seleccionado." data={[{key:"revenue",label:"Ventas",value:profitLineRevenue},{key:"cost",label:"Costo",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />}
+              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={profitabilityChartType === "bars" ? "active" : ""} aria-pressed={profitabilityChartType === "bars"} onClick={() => setProfitabilityChartType("bars")}>Barras</button><button type="button" className={profitabilityChartType === "pie" ? "active" : ""} aria-pressed={profitabilityChartType === "pie"} onClick={() => setProfitabilityChartType("pie")}>Pastel</button></div>
+              {profitabilityChartType === "pie" ? <div className="profitability-pie-grid">
+                <SimplePie title="Distribución de ingresos" description="Ventas agrupadas por artículo según el periodo elegido." data={profitIncomePieRows} formatValue={(value)=>money(value,currencyCode)} />
+                <SimplePie title="Compras y gastos" description="Pagos de compras de inventario y gastos registrados, sin duplicar el costo de lo vendido." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
+              </div> : <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />}
               <div className="profitability-secondary-metrics">
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>
@@ -6166,9 +6806,21 @@ function AuthenticatedApp() {
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
+            {canManageProducts && <details className="bulk-tax-disclosure" onToggle={(event)=>{if(event.currentTarget.open && !taxBulkProducts.length && !taxBulkLoading) loadTaxBulkProducts();}}>
+              <summary><strong>Asignar impuesto a varios productos</strong><span>Elige los artículos y aplica un mismo impuesto</span></summary>
+              <div className="bulk-tax-content">
+                <div className="bulk-tax-controls">
+                  <label><span>Impuesto que se aplicará</span><select value={taxBulkCode} onChange={(event)=>setTaxBulkCode(event.target.value)}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
+                  <label><span>Buscar producto</span><input value={taxBulkSearch} onChange={(event)=>setTaxBulkSearch(event.target.value)} placeholder="Nombre o código…" /></label>
+                </div>
+                <div className="bulk-tax-list-heading"><span>{taxBulkLoading?"Cargando productos…":taxBulkFilteredProducts.length+" productos encontrados"}</span><span>{taxBulkProductIds.length}/250 seleccionados</span></div>
+                <div className="bulk-tax-product-list">{taxBulkFilteredProducts.map((product)=>{const checked=taxBulkProductIds.includes(product.id);return <label key={product.id} className="bulk-tax-product-option"><input type="checkbox" checked={checked} disabled={taxBulkSaving||(!checked&&taxBulkProductIds.length>=250)} onChange={(event)=>setTaxBulkProductIds((current)=>event.target.checked?[...current,product.id]:current.filter((id)=>id!==product.id))}/><span><strong>{product.name}</strong><small>{product.sku||"Sin código"} · Actual: {product.metadata?.tax_code||"none"}</small></span></label>;})}{!taxBulkFilteredProducts.length&&!taxBulkLoading&&<p className="stats-empty-note">No encontramos productos con esa búsqueda.</p>}</div>
+                <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
+              </div>
+            </details>}
             <details className="inventory-import-disclosure">
               <summary><strong>Importar inventario</strong><span>Plantilla Excel / CSV · hasta 500 artículos por archivo</span></summary>
-              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>Descargar plantilla</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
+              <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplateExcel}>Plantilla Excel</button><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>CSV para importar</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label><button type="button" className="secondary-button" onClick={downloadInventoryReportExcel} disabled={busy}>Reporte Excel</button><button type="button" className="secondary-button" onClick={printInventoryReportPdf} disabled={busy}>Reporte PDF</button></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>
             </details>
             <div className="inventory-controls panel">
               <label className="inventory-search"><span><AppIcon name="search" size={15}/> Buscar artículo</span><input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(1); }} placeholder="Nombre, código o descripción…" /></label>
@@ -6207,6 +6859,7 @@ function AuthenticatedApp() {
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <label><span className="field-label-heading">Impuesto del artículo<FieldHelp enabled={contextualHelpEnabled} text="Elige el impuesto que corresponde a este artículo. Esta asignación se conserva en su ficha." /></span><select value={productForm.tax_code || "none"} onChange={(e) => setProductForm({ ...productForm, tax_code: e.target.value })}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
                 <label><span className="field-label-heading">Unidad<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo mides o vendes este producto, por ejemplo unidad, par, kilogramo o servicio." /></span><select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 <label><span className="field-label-heading">Presentación comercial<FieldHelp enabled={contextualHelpEnabled} text="Anota el formato comercial para distinguir presentaciones, por ejemplo caja por 12 o botella de 500 ml." /></span><input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label><span className="field-label-heading">Nombre de la unidad<FieldHelp enabled={contextualHelpEnabled} text="Si eliges una unidad personalizada, escribe aquí su nombre." /></span><input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
@@ -6297,12 +6950,21 @@ function AuthenticatedApp() {
                 <section className="variant-manager panel" role="dialog" aria-modal="true" aria-label={"Variantes de " + variantProduct.name}>
                   <div className="variant-manager-heading"><div><p className="eyebrow">PRODUCTO</p><h3>Variantes de {variantProduct.name}</h3><p>Ejemplos: talla M, color azul o presentación de 500 ml.</p></div><button type="button" className="icon-action-button" title="Cerrar" aria-label="Cerrar variantes" onClick={() => { setViewingVariantsFor(null); resetVariantDraft(); }}>×</button></div>
                   {rows.length ? <div className="variant-list">{rows.map((variant) => <article className={"variant-row" + (!variant.is_active ? " variant-inactive" : "")} key={variant.id}>
-                    <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}</div>
+                    <div className="variant-row-main"><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"}{variant.stock_on_hand != null ? " · Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO") : ""}</span>{variant.sale_price_minor != null && <small>{money(variant.sale_price_minor, currencyCode)}</small>}{(variant.image_paths || []).length > 0 && <div className="variant-photo-list">{variant.image_paths.map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={activeBusiness.id} productId={variantProduct.id} variantId={variant.id} imageKey={imageKey} alt={"Foto de " + variant.variant_name + " " + variant.variant_value}/>)}</div>}</div>
                     <div className="variant-row-actions">{canManageProducts && <button type="button" className="text-button" onClick={() => editProductVariant(variant)}>Editar</button>}{canManageProducts && <button type="button" className="text-button danger-text" disabled={variantBusy} onClick={() => removeProductVariant(variant)}>Quitar</button>}</div>
                   </article>)}</div> : <div className="variant-empty"><strong>Este producto todavía no tiene variantes</strong><span>Añade talla, color, tamaño u otra opción que necesites distinguir.</span></div>}
                   {canManageProducts && <form className="variant-form" onSubmit={saveProductVariant}>
                     <h4>{editingVariantId ? "Editar variante" : "Añadir variante"}</h4>
                     <div className="variant-form-grid">
+                      <div className="variant-photo-editor full-span">
+                        <span className="field-label-heading">Fotos de esta variante (máximo 2)</span>
+                        <div className="variant-photo-list">
+                          {(variantDraft.image_paths || []).map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={activeBusiness.id} productId={viewingVariantsFor} variantId={editingVariantId} imageKey={imageKey} alt="Foto existente de la variante" onRemove={() => { const current = (rows || []).find((row) => row.id === editingVariantId); if (current) removeVariantPhoto(current, imageKey); }}/>)}
+                          {(variantDraft.staged_images || []).map((image, index) => <figure className="variant-photo-item" key={image.preview}><img src={image.preview} alt={image.name || "Foto seleccionada"}/><button type="button" className="photo-remove-button" title="Quitar foto" aria-label="Quitar foto seleccionada" onClick={() => { URL.revokeObjectURL(image.preview); setVariantDraft((draft) => ({ ...draft, staged_images: (draft.staged_images || []).filter((_, i) => i !== index) })); }}>×</button></figure>)}
+                          {((variantDraft.image_paths || []).length + (variantDraft.staged_images || []).length) < 2 && <label className="photo-empty-slot variant-photo-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={variantBusy} onChange={chooseVariantImages}/><span className="photo-plus" aria-hidden="true">＋</span><strong>Agregar foto</strong></label>}
+                        </div>
+                        <span className="photo-help">JPG, PNG o WebP hasta 5 MB al cargar; se convierte a WebP de hasta 1,5 MB.</span>
+                      </div>
                       <label><span className="field-label-heading">Tipo de variante *<FieldHelp enabled={contextualHelpEnabled} text="Escribe qué característica diferencia la variante, por ejemplo Talla o Color." /></span><input value={variantDraft.variant_name} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_name: event.target.value }))} maxLength={80} required placeholder="Ej. Talla" /></label>
                       <label><span className="field-label-heading">Valor *<FieldHelp enabled={contextualHelpEnabled} text="Indica el valor de la variante, por ejemplo M, Azul o 500 ml." /></span><input value={variantDraft.variant_value} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_value: event.target.value }))} maxLength={120} required placeholder="Ej. M" /></label>
                       <label><span className="field-label-heading">Código de variante<FieldHelp enabled={contextualHelpEnabled} text="Código interno opcional para distinguir esta variante." /></span><input value={variantDraft.sku} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sku: event.target.value }))} maxLength={100} placeholder="Opcional" /></label>
@@ -6397,20 +7059,37 @@ function AuthenticatedApp() {
           <CouponsAdmin business={activeBusiness} />
         ) : screen === "settings" ? (
           <section className="settings-page">
-            <div className="settings-intro"><h2>Configuración del negocio</h2><p>Administra la apariencia del sistema y los datos comerciales que aparecerán en las cotizaciones para tus clientes.</p></div>
+            <div className="settings-intro"><h2>{activeBusiness?.role === "owner" ? "Configuración del negocio" : "Mi cuenta"}</h2><p>{activeBusiness?.role === "owner" ? "Administra los datos, impuestos, catálogo y apariencia de tu negocio." : "Administra tu celular de acceso y el idioma personal de la aplicación."}</p></div>
             <div className="settings-tabs" role="tablist" aria-label="Secciones de configuración">
-              {[
+              {(activeBusiness?.role === "owner" ? [
                 ["general", "General"],
+                ["account", "Mi cuenta"],
                 ["company", "Mi empresa"],
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
                 ["language", "Idioma"],
                 ["taxes", "Impuestos"],
                 ["data", "Datos y copias"]
-              ].map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
+              ] : [
+                ["account", "Mi cuenta"],
+                ["language", "Idioma"]
+              ]).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings}>
-              <div hidden={!["general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["account", "general", "company", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={settingsTab !== "account"} className="settings-tab-content account-settings-panel">
+                <div className="settings-icon"><AppIcon name="smartphone" size={23}/></div>
+                <h3>Acceso con celular</h3>
+                <p>Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.</p>
+                <div className="account-phone-status"><span>Celular verificado</span><strong>{session?.user?.phone || "Todavía no hay un número verificado"}</strong></div>
+                <label className="settings-field"><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={accountPhoneDraft} onChange={(event)=>setAccountPhoneDraft(event.target.value)} placeholder="+57 300 123 4567" maxLength={24} disabled={accountPhoneBusy||accountPhonePending}/></label>
+                {!accountPhonePending && <button type="button" className="primary-button account-phone-action" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneDraft.trim()||accountPhoneDraft.trim().replace(/[\s().-]/g,"")===String(session?.user?.phone||"")}>{accountPhoneBusy?"Enviando…":"Enviar código de verificación"}</button>}
+                {accountPhonePending && <>
+                  <label className="settings-field"><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={accountPhoneCode} onChange={(event)=>setAccountPhoneCode(event.target.value.replace(/\D/g,"").slice(0,8))} placeholder="Escribe el código recibido" maxLength={8} /></label>
+                  <div className="form-actions account-phone-actions"><button type="button" className="primary-button" onClick={verifyAccountPhoneCode} disabled={accountPhoneBusy||!accountPhoneCode.trim()}>{accountPhoneBusy?"Verificando…":"Verificar celular"}</button><button type="button" className="secondary-button" onClick={()=>{setAccountPhonePending(false);setAccountPhoneCode("");setError("");setNotice("");}} disabled={accountPhoneBusy}>Cancelar</button><button type="button" className="text-button" onClick={requestAccountPhoneCode} disabled={accountPhoneBusy}>Reenviar código</button></div>
+                </>}
+                <p className="helper-text">Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.</p>
+              </div>
               <div hidden={settingsTab !== "general"} className="settings-tab-content">
               <div className="settings-icon"><AppIcon name="settings" size={23} /></div>
               <h3>Datos del negocio</h3>
@@ -6431,7 +7110,7 @@ function AuthenticatedApp() {
               <h3>Logo del negocio</h3>
               <p>Tu logo se conservará para las próximas sesiones y se mostrará en la navegación y el catálogo público.</p>
               <div className="settings-logo-editor">
-                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>31</span>}</div>
+                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}</div>
                 <div className="settings-logo-controls">
                   <label className="settings-field"><span className="field-label-heading">Elegir logo<FieldHelp enabled={contextualHelpEnabled} text="Sube el logo de tu negocio para identificarlo en la aplicación y el catálogo compartido." /></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseBusinessLogo} disabled={activeBusiness?.role !== "owner" || busy} /></label>
                   <p className="helper-text">JPG, PNG o WebP; máximo 5 MB. Se optimiza al guardar.</p>
@@ -6451,7 +7130,7 @@ function AuthenticatedApp() {
               </div>
               <p className="settings-contrast-note"><span aria-hidden="true">✓</span> Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.</p>
               <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-button-text": readableText(settingsTheme.primary, "#FFFFFF"), "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": readableText(settingsTheme.background, settingsTheme.text), "--preview-surface-text": readableText(settingsTheme.surface, settingsTheme.text), "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": readableText(settingsTheme.sidebarBackground, settingsTheme.sidebarText), "--button-hover": shadeHex(settingsTheme.primary), "--button-hover-text": readableText(shadeHex(settingsTheme.primary), "#FFFFFF") }}>
-                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>31</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
+                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
@@ -6468,7 +7147,7 @@ function AuthenticatedApp() {
                 <div className="settings-icon"><AppIcon name="grid" size={23} /></div>
                 <h3>Idioma de la aplicación</h3>
                 <p>Selecciona el idioma de toda la interfaz de treseiscinco. El cambio se aplica inmediatamente y se guarda en este navegador.</p>
-                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = event.target.value === "en" ? "en" : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language", next); } catch {} setNotice(next === "en" ? "Language saved." : "Idioma guardado."); }}><option value="es">Español</option><option value="en">English</option></select></label>
+                <label className="settings-field"><span className="field-label-heading">Idioma</span><select value={uiLanguage} onChange={(event) => { const next = ["es","en","pt","it","fr"].includes(event.target.value) ? event.target.value : "es"; setUiLanguage(next); try { window.localStorage.setItem("treseiscinco-language:" + (session?.user?.id || "guest"), next); } catch {} setNotice(({es:"Idioma guardado.",en:"Language saved.",pt:"Idioma salvo.",it:"Lingua salvata.",fr:"Langue enregistrée."})[next]); }}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="it">Italiano</option><option value="fr">Français</option></select></label>
                 <p className="helper-text">Al elegir English se traducen los textos de navegación, formularios, botones, ayudas, estados y mensajes que estén incluidos en el catálogo de traducciones. Los nombres y datos escritos por ti no se traducen.</p>
               </div>
               <div hidden={settingsTab !== "taxes"} className="settings-tab-content tax-settings-panel">
@@ -6502,6 +7181,7 @@ function AuthenticatedApp() {
                 <h3>Mi empresa</h3>
                 <p>Estos datos acompañarán el logo en las cotizaciones y documentos que compartas con tus clientes.</p>
                 <label className="settings-field"><span className="field-label-heading">Nombre comercial</span><input value={settingsCommercialProfile.tradeName} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, tradeName: e.target.value }))} maxLength={160} disabled={activeBusiness?.role !== "owner"} placeholder={settingsBusinessName || "Nombre que verá tu cliente"} /></label>
+                <label className="settings-field"><span className="field-label-heading">Propietario o persona de contacto</span><input value={settingsCommercialProfile.ownerName || ""} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, ownerName: e.target.value }))} maxLength={160} disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de la persona responsable" /></label>
                 <label className="settings-field"><span className="field-label-heading">NIT o documento</span><input value={settingsCommercialProfile.documentNumber} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, documentNumber: e.target.value }))} maxLength={80} disabled={activeBusiness?.role !== "owner"} placeholder="Identificación tributaria (opcional)" /></label>
                 <div className="company-profile-grid">
                   <label className="settings-field"><span className="field-label-heading">Correo comercial</span><input type="email" value={settingsCommercialProfile.email} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, email: e.target.value }))} maxLength={254} disabled={activeBusiness?.role !== "owner"} placeholder="ventas@tuempresa.com" /></label>
@@ -6513,10 +7193,23 @@ function AuthenticatedApp() {
                   <label className="settings-field"><span className="field-label-heading">Sitio web</span><input value={settingsCommercialProfile.website} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, website: e.target.value }))} maxLength={200} disabled={activeBusiness?.role !== "owner"} placeholder="https://tuempresa.com" /></label>
                 </div>
                 <label className="settings-field"><span className="field-label-heading">Descripción pública</span><textarea value={settingsCommercialProfile.publicDescription} onChange={(e) => setSettingsCommercialProfile((current) => ({ ...current, publicDescription: e.target.value }))} maxLength={500} rows={3} disabled={activeBusiness?.role !== "owner"} placeholder="Cuenta brevemente qué ofrece tu negocio. Aparecerá en tu catálogo público." /></label>
+                <div className="settings-catalog-link-panel">
+                  <span className="eyebrow">ENLACE PÚBLICO</span>
+                  <label className="settings-field"><span className="field-label-heading">Dirección corta de tu catálogo</span><input value={settingsCatalogSlug} onChange={(event)=>setSettingsCatalogSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"").replace(/-+/g,"-").slice(0,60))} maxLength={60} disabled={activeBusiness?.role!=="owner"} placeholder="mi-negocio" autoComplete="off" /></label>
+                  <p>Tu catálogo se compartirá desde una dirección fácil de recordar. Usa letras sin tildes, números y guiones.</p>
+                  <a href={settingsCatalogSlug.trim() ? "https://treseiscinco.com/"+settingsCatalogSlug.trim().toLowerCase() : "https://treseiscinco.com/"} target="_blank" rel="noopener noreferrer">{settingsCatalogSlug.trim() ? "https://treseiscinco.com/"+settingsCatalogSlug.trim().toLowerCase() : "https://treseiscinco.com/"} ↗</a>
+                  <div className="settings-catalog-options">
+                    <label className="settings-field"><span className="field-label-heading">Productos sin existencias</span><select value={settingsCommercialProfile.stockVisibility||"hide"} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,stockVisibility:event.target.value}))}><option value="show_all">Mostrar productos como siempre</option><option value="hide">Ocultar los productos sin existencias</option><option value="show_unavailable">Mostrar como agotados y bloquear compra</option></select><small>El catálogo se actualiza según esta preferencia.</small></label>
+                    <div className="settings-field"><span className="field-label-heading">Entrega disponible</span><div className="settings-delivery-options">
+                      <label><input type="checkbox" checked={(settingsCommercialProfile.deliveryMethods||[]).includes("pickup")} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,deliveryMethods:event.target.checked?[...new Set([...(current.deliveryMethods||[]),"pickup"]) ]:(current.deliveryMethods||[]).filter((method)=>method!=="pickup")}))}/><span><strong>Recogida en el negocio</strong><small>El cliente pasa a buscar su pedido.</small></span></label>
+                      <label><input type="checkbox" checked={(settingsCommercialProfile.deliveryMethods||[]).includes("delivery")} disabled={activeBusiness?.role!=="owner"} onChange={(event)=>setSettingsCommercialProfile((current)=>({...current,deliveryMethods:event.target.checked?[...new Set([...(current.deliveryMethods||[]),"delivery"]) ]:(current.deliveryMethods||[]).filter((method)=>method!=="delivery")}))}/><span><strong>Entrega a domicilio</strong><small>El negocio coordina la entrega.</small></span></label>
+                    </div></div>
+                  </div>
+                </div>
                 <div className="business-card-preview-wrap">
                   <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
                     <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
-                    <div className="business-card-preview-copy"><small>INFORMACIÓN COMERCIAL</small><h3>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.publicDescription&&<p>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span>{settingsCommercialProfile.website}</span>}</div>
+                    <div className="business-card-preview-copy"><small style={{color:settingsCommercialProfile.cardPrimary||"#475569"}}>INFORMACIÓN COMERCIAL</small><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
                   </div>
                   <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
                 </div>
@@ -6610,6 +7303,7 @@ function AuthenticatedApp() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
+              <button type="button" className="home-utility-action home-share-card-button" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

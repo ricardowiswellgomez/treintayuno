@@ -124,7 +124,7 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "audit", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("suppliers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }, { id: "platform_admin", screen: "platform_admin", label: "Administración de plataforma", icon: "◇" }] }
 ];
@@ -162,7 +162,6 @@ const normalizeSidebarLayout = (layout) => {
     accounts: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
-    audit: "finanzas",
     customers: "personal",
     suppliers: "personal",
     team: "personal"
@@ -6434,7 +6433,7 @@ function AuthenticatedApp() {
           </section>
         ) : screen === "stats" ? (
           <section className="stats-page">
-            <div className="products-intro stats-intro"><div><h2>Estadísticas y balance</h2><p>Elige un periodo y descarga un informe de los movimientos registrados.</p></div></div>
+            <div className="products-intro stats-intro"><div><h2>Estadísticas y balance</h2><p>Elige un periodo y descarga un informe de los movimientos registrados.</p></div><button type="button" className="secondary-button compact-button" onClick={()=>navigate("audit")}><AppIcon name="audit" size={16}/> Ver auditorías</button></div>
             <div className="stats-filter-toolbar">
               <div className="stats-period-buttons" role="group" aria-label="Periodo de estadísticas">
                 {[["day","Día"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Desde / hasta"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={statsPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={statsPeriod === value} onClick={() => setStatsPeriod(value)}>{label}</button>)}

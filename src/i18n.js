@@ -423,6 +423,65 @@ Object.assign(ENGLISH_TEXT, {
   "Activa esta opción si la tarifa publicada ya contiene el impuesto.": "Enable this if the listed price already includes tax."
 });
 
+Object.assign(ENGLISH_TEXT, {
+  "Entrar con celular":"Sign in with phone","Verifica tu celular":"Verify your phone","Código SMS":"SMS code","Enviar código SMS":"Send SMS code","Verificar código":"Verify code","Usar otro número":"Use another number",
+  "Productos más vendidos":"Best-selling products","Gastos más frecuentes":"Most frequent expenses","Medios de pago más usados":"Most-used payment methods","Mejores clientes":"Top customers","Proveedores principales":"Top suppliers","Lo que más se mueve":"Business highlights",
+  "Apertura y cierre de caja":"Cash drawer open and close","Tu caja está abierta":"Your cash drawer is open","Abrir mi caja":"Open my cash drawer","Cerrar caja":"Close cash drawer","Efectivo inicial":"Opening cash","Efectivo contado al cierre":"Cash counted at close","Notas del turno":"Shift notes","CONTROL DE TURNO":"SHIFT CONTROL",
+  "Buscar productos":"Search products","Categoría":"Category","Todas las categorías":"All categories","Ordenar por":"Sort by","Nombre: A → Z":"Name: A → Z","Nombre: Z → A":"Name: Z → A","Precio: menor a mayor":"Price: low to high","Precio: mayor a menor":"Price: high to low","Contactar al negocio por WhatsApp":"Contact the business on WhatsApp",
+  "Productos sin existencias":"Out-of-stock products","Mostrar productos como siempre":"Show products as usual","Ocultar los productos sin existencias":"Hide out-of-stock products","Mostrar como agotados y bloquear compra":"Show as out of stock and block purchase",
+  "IVA general · 19 %":"General VAT · 19%","IVA reducido · 5 %":"Reduced VAT · 5%","Impuesto al consumo · 8 %":"Consumption tax · 8%","IVA exento · 0 %":"VAT exempt · 0%","IVA excluido · 0 %":"VAT excluded · 0%","Sin impuesto · 0 %":"No tax · 0%",
+  "Fotos de esta variante (máximo 2)":"Variant photos (maximum 2)","Agregar foto":"Add photo","Plantilla Excel":"Excel template","CSV para importar":"CSV for import","Reporte Excel":"Excel report","Reporte PDF":"PDF report",
+  "Dirección corta de tu catálogo":"Short catalogue address","Entrega disponible":"Available delivery methods","Recogida en el negocio":"Pickup at the business","Entrega a domicilio":"Home delivery","Instala la app y maneja tu negocio con claridad.":"Install the app and run your business with clarity.",
+  "Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.":"Cash drawer opened. Cash payments for this shift will be associated with your user.",
+  "Caja cerrada.":"Cash drawer closed.","No encontramos productos con esos filtros":"No products found for those filters","Mostrar todos los productos":"Show all products","Productos físicos":"Physical products"
+});
+
+const PORTUGUESE_TEXT = {
+  "INICIO":"INÍCIO","COMERCIAL":"COMERCIAL","FINANZAS":"FINANÇAS","PERSONAL":"EQUIPE","ADMINISTRACIÓN":"ADMINISTRAÇÃO",
+  "Inicio":"Início","Productos e inventario":"Produtos e estoque","Ventas":"Vendas","Estadísticas":"Estatísticas","Rentabilidad":"Rentabilidade","Proveedores":"Fornecedores","Clientes":"Clientes","Trabajadores":"Equipe","Configuración":"Configurações","Mi empresa":"Minha empresa","General":"Geral","Personalización":"Personalização","Ayudas":"Ajuda","Idioma":"Idioma","Impuestos":"Impostos","Catálogo":"Catálogo","Cupones":"Cupons","Auditorías":"Auditoria","Compras":"Compras","Cuentas":"Contas","Pagos":"Pagamentos","Cotizaciones":"Orçamentos","Tarjeta de presentación":"Cartão de visita",
+  "Qué bueno verte":"Que bom ver você","QUÉ BUENO VERTE":"QUE BOM VER VOCÊ","Inicia sesión":"Entrar","Entra para continuar con tu negocio.":"Entre para continuar com seu negócio.","Correo electrónico":"E-mail","Contraseña":"Senha","Olvidé mi contraseña":"Esqueci minha senha","Entrar":"Entrar","Crear cuenta":"Criar conta","Crear tu cuenta":"Crie sua conta","Crear mi cuenta":"Criar minha conta","¿Primera vez por aquí?":"É sua primeira vez aqui?","¿Ya tienes cuenta?":"Já tem uma conta?","Recupera tu acceso":"Recupere seu acesso","Enviar enlace de recuperación":"Enviar link de recuperação","Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.":"Suas informações pertencem ao seu negócio. Não use dados reais de clientes até concluir os testes de segurança.",
+  "TU NEGOCIO, CON CLARIDAD":"SEU NEGÓCIO, COM CLAREZA","Menos enredos.":"Menos complicação.","Más negocio.":"Mais negócio.","Productos, ventas, costos y clientes en un solo lugar, fácil de entender y usar.":"Produtos, vendas, custos e clientes em um só lugar, fáceis de entender e usar.","Un espacio independiente para cada negocio.":"Um espaço independente para cada negócio.",
+  "Productos":"Produtos","Nombre":"Nome","Código del artículo":"Código do item","Categoría":"Categoria","Tipo":"Tipo","Precio de venta":"Preço de venda","Costo por unidad":"Custo por unidade","Unidad":"Unidade","Descripción":"Descrição","Guardar":"Salvar","Guardar cambios":"Salvar alterações","Cancelar":"Cancelar","Eliminar":"Excluir","Editar":"Editar","Buscar artículo":"Buscar item","Nombre: A → Z":"Nome: A → Z","Nombre: Z → A":"Nome: Z → A","Precio: menor a mayor":"Preço: menor para maior","Precio: mayor a menor":"Preço: maior para menor","Buscar productos":"Buscar produtos","Todas las categorías":"Todas as categorias","Ordenar por":"Ordenar por",
+  "Productos más vendidos":"Produtos mais vendidos","Gastos más frecuentes":"Despesas mais frequentes","Medios de pago más usados":"Meios de pagamento mais usados","Mejores clientes":"Melhores clientes","Proveedores principales":"Principais fornecedores","Lo que más se mueve":"O que mais movimenta","Productos vendidos":"Produtos vendidos","Gastos":"Despesas","Ingresos":"Receitas","Compras":"Compras","Total":"Total","Hoy":"Hoje","Semana":"Semana","Mes":"Mês","Año":"Ano","Trimestre":"Trimestre","Semestre":"Semestre","Guardar configuración":"Salvar configurações",
+  "Apertura y cierre de caja":"Abertura e fechamento de caixa","Tu caja está abierta":"Seu caixa está aberto","Abrir mi caja":"Abrir meu caixa","Cerrar caja":"Fechar caixa","Efectivo inicial":"Dinheiro inicial","Efectivo contado al cierre":"Dinheiro contado no fechamento","Notas del turno":"Observações do turno","CONTROL DE TURNO":"CONTROLE DO TURNO","Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.":"Caixa aberto. Os recebimentos em dinheiro deste turno serão associados ao seu usuário.",
+  "Entrar con celular":"Entrar com celular","Verifica tu celular":"Verifique seu celular","Código SMS":"Código SMS","Enviar código SMS":"Enviar código SMS","Verificar código":"Verificar código","Usar otro número":"Usar outro número","Celular con prefijo de país":"Celular com código do país",
+  "Impuesto del artículo":"Imposto do item","IVA general · 19 %":"IVA geral · 19%","IVA reducido · 5 %":"IVA reduzido · 5%","Impuesto al consumo · 8 %":"Imposto sobre consumo · 8%","IVA exento · 0 %":"IVA isento · 0%","IVA excluido · 0 %":"IVA excluído · 0%","Sin impuesto · 0 %":"Sem imposto · 0%",
+  "Fotos de esta variante (máximo 2)":"Fotos desta variante (máximo 2)","Agregar foto":"Adicionar foto","Plantilla Excel":"Modelo Excel","CSV para importar":"CSV para importar","Reporte Excel":"Relatório Excel","Reporte PDF":"Relatório PDF","Importar inventario":"Importar estoque","Descargar plantilla":"Baixar modelo",
+  "Dirección corta de tu catálogo":"Endereço curto do catálogo","Entrega disponible":"Entrega disponível","Recogida en el negocio":"Retirada no estabelecimento","Entrega a domicilio":"Entrega em domicílio","Productos sin existencias":"Produtos sem estoque","Mostrar productos como siempre":"Mostrar produtos normalmente","Ocultar los productos sin existencias":"Ocultar produtos sem estoque","Mostrar como agotados y bloquear compra":"Mostrar como esgotado e bloquear a compra",
+  "Cargar":"Carregar","Añadir al carrito":"Adicionar ao carrinho","Carrito":"Carrinho","Agotado":"Esgotado","Conocer treseiscinco":"Conheça treseiscinco","Probar gratis":"Experimentar grátis","Crear cuenta gratis":"Criar conta grátis","Instalar app":"Instalar app","Cómo instalar":"Como instalar","Tu negocio, también en tu celular":"Seu negócio também no celular","No encontramos productos con esos filtros":"Nenhum produto encontrado com esses filtros","Mostrar todos los productos":"Mostrar todos os produtos"
+};
+
+const ITALIAN_TEXT = {
+  "INICIO":"INIZIO","COMERCIAL":"COMMERCIALE","FINANZAS":"FINANZA","PERSONAL":"PERSONALE","ADMINISTRACIÓN":"AMMINISTRAZIONE",
+  "Inicio":"Inizio","Productos e inventario":"Prodotti e inventario","Ventas":"Vendite","Estadísticas":"Statistiche","Rentabilidad":"Redditività","Proveedores":"Fornitori","Clientes":"Clienti","Trabajadores":"Collaboratori","Configuración":"Impostazioni","Mi empresa":"La mia azienda","General":"Generale","Personalización":"Personalizzazione","Ayudas":"Aiuto","Idioma":"Lingua","Impuestos":"Imposte","Catálogo":"Catalogo","Cupones":"Coupon","Auditorías":"Audit","Compras":"Acquisti","Cuentas":"Conti","Pagos":"Pagamenti","Cotizaciones":"Preventivi","Tarjeta de presentación":"Biglietto da visita",
+  "Qué bueno verte":"Che piacere rivederti","QUÉ BUENO VERTE":"CHE PIACERE RIVEDERTI","Inicia sesión":"Accedi","Entra para continuar con tu negocio.":"Accedi per continuare con la tua attività.","Correo electrónico":"Indirizzo e-mail","Contraseña":"Password","Olvidé mi contraseña":"Ho dimenticato la password","Entrar":"Accedi","Crear cuenta":"Crea account","Crear tu cuenta":"Crea il tuo account","Crear mi cuenta":"Crea il mio account","¿Primera vez por aquí?":"È la tua prima volta?","¿Ya tienes cuenta?":"Hai già un account?","Recupera tu acceso":"Recupera l'accesso","Enviar enlace de recuperación":"Invia link di recupero","Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.":"Le tue informazioni appartengono alla tua attività. Non usare dati reali dei clienti prima di completare i test di sicurezza.",
+  "TU NEGOCIO, CON CLARIDAD":"LA TUA ATTIVITÀ, CON CHIAREZZA","Menos enredos.":"Meno complicazioni.","Más negocio.":"Più attività.","Productos, ventas, costos y clientes en un solo lugar, fácil de entender y usar.":"Prodotti, vendite, costi e clienti in un unico spazio, facile da capire e usare.","Un espacio independiente para cada negocio.":"Uno spazio indipendente per ogni attività.",
+  "Productos":"Prodotti","Nombre":"Nome","Código del artículo":"Codice articolo","Categoría":"Categoria","Tipo":"Tipo","Precio de venta":"Prezzo di vendita","Costo por unidad":"Costo unitario","Unidad":"Unità","Descripción":"Descrizione","Guardar":"Salva","Guardar cambios":"Salva modifiche","Cancelar":"Annulla","Eliminar":"Elimina","Editar":"Modifica","Buscar artículo":"Cerca articolo","Nombre: A → Z":"Nome: A → Z","Nombre: Z → A":"Nome: Z → A","Precio: menor a mayor":"Prezzo: crescente","Precio: mayor a menor":"Prezzo: decrescente","Buscar productos":"Cerca prodotti","Todas las categorías":"Tutte le categorie","Ordenar por":"Ordina per",
+  "Productos más vendidos":"Prodotti più venduti","Gastos más frecuentes":"Spese più frequenti","Medios de pago más usados":"Metodi di pagamento più usati","Mejores clientes":"Migliori clienti","Proveedores principales":"Fornitori principali","Lo que más se mueve":"I dati principali","Productos vendidos":"Prodotti venduti","Gastos":"Spese","Ingresos":"Entrate","Compras":"Acquisti","Total":"Totale","Hoy":"Oggi","Semana":"Settimana","Mes":"Mese","Año":"Anno","Trimestre":"Trimestre","Semestre":"Semestre","Guardar configuración":"Salva impostazioni",
+  "Apertura y cierre de caja":"Apertura e chiusura cassa","Tu caja está abierta":"La cassa è aperta","Abrir mi caja":"Apri la mia cassa","Cerrar caja":"Chiudi cassa","Efectivo inicial":"Contanti iniziali","Efectivo contado al cierre":"Contanti contati alla chiusura","Notas del turno":"Note del turno","CONTROL DE TURNO":"CONTROLLO DEL TURNO","Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.":"Cassa aperta. Gli incassi in contanti di questo turno saranno associati al tuo utente.",
+  "Entrar con celular":"Accedi con il telefono","Verifica tu celular":"Verifica il telefono","Código SMS":"Codice SMS","Enviar código SMS":"Invia codice SMS","Verificar código":"Verifica codice","Usar otro número":"Usa un altro numero","Celular con prefijo de país":"Telefono con prefisso internazionale",
+  "Impuesto del artículo":"Imposta dell'articolo","IVA general · 19 %":"IVA ordinaria · 19%","IVA reducido · 5 %":"IVA ridotta · 5%","Impuesto al consumo · 8 %":"Imposta sul consumo · 8%","IVA exento · 0 %":"IVA esente · 0%","IVA excluido · 0 %":"IVA esclusa · 0%","Sin impuesto · 0 %":"Nessuna imposta · 0%",
+  "Fotos de esta variante (máximo 2)":"Foto di questa variante (massimo 2)","Agregar foto":"Aggiungi foto","Plantilla Excel":"Modello Excel","CSV para importar":"CSV da importare","Reporte Excel":"Report Excel","Reporte PDF":"Report PDF","Importar inventario":"Importa inventario","Descargar plantilla":"Scarica modello",
+  "Dirección corta de tu catálogo":"Indirizzo breve del catalogo","Entrega disponible":"Consegna disponibile","Recogida en el negocio":"Ritiro in negozio","Entrega a domicilio":"Consegna a domicilio","Productos sin existencias":"Prodotti esauriti","Mostrar productos como siempre":"Mostra i prodotti normalmente","Ocultar los productos sin existencias":"Nascondi i prodotti esauriti","Mostrar como agotados y bloquear compra":"Mostra come esaurito e blocca l'acquisto",
+  "Añadir al carrito":"Aggiungi al carrello","Carrito":"Carrello","Agotado":"Esaurito","Conocer treseiscinco":"Scopri treseiscinco","Probar gratis":"Prova gratis","Crear cuenta gratis":"Crea account gratuito","Instalar app":"Installa app","Cómo instalar":"Come installare","Tu negocio, también en tu celular":"La tua attività anche sul telefono","No encontramos productos con esos filtros":"Nessun prodotto trovato con questi filtri","Mostrar todos los productos":"Mostra tutti i prodotti"
+};
+
+const FRENCH_TEXT = {
+  "INICIO":"ACCUEIL","COMERCIAL":"COMMERCIAL","FINANZAS":"FINANCES","PERSONAL":"ÉQUIPE","ADMINISTRACIÓN":"ADMINISTRATION",
+  "Inicio":"Accueil","Productos e inventario":"Produits et stock","Ventas":"Ventes","Estadísticas":"Statistiques","Rentabilidad":"Rentabilité","Proveedores":"Fournisseurs","Clientes":"Clients","Trabajadores":"Équipe","Configuración":"Paramètres","Mi empresa":"Mon entreprise","General":"Général","Personalización":"Personnalisation","Ayudas":"Aide","Idioma":"Langue","Impuestos":"Taxes","Catálogo":"Catalogue","Cupones":"Coupons","Auditorías":"Audits","Compras":"Achats","Cuentas":"Comptes","Pagos":"Paiements","Cotizaciones":"Devis","Tarjeta de presentación":"Carte de visite",
+  "Qué bueno verte":"Heureux de vous revoir","QUÉ BUENO VERTE":"HEUREUX DE VOUS REVOIR","Inicia sesión":"Se connecter","Entra para continuar con tu negocio.":"Connectez-vous pour poursuivre votre activité.","Correo electrónico":"Adresse e-mail","Contraseña":"Mot de passe","Olvidé mi contraseña":"Mot de passe oublié","Entrar":"Se connecter","Crear cuenta":"Créer un compte","Crear tu cuenta":"Créez votre compte","Crear mi cuenta":"Créer mon compte","¿Primera vez por aquí?":"C’est votre première visite ?","¿Ya tienes cuenta?":"Vous avez déjà un compte ?","Recupera tu acceso":"Récupérer l’accès","Enviar enlace de recuperación":"Envoyer le lien de récupération","Tu información pertenece a tu negocio. No uses datos reales de clientes hasta completar las pruebas de seguridad.":"Vos informations appartiennent à votre entreprise. N’utilisez pas de données réelles de clients avant la fin des tests de sécurité.",
+  "TU NEGOCIO, CON CLARIDAD":"VOTRE ACTIVITÉ, EN TOUTE CLARTÉ","Menos enredos.":"Moins de complications.","Más negocio.":"Plus d’activité.","Productos, ventas, costos y clientes en un solo lugar, fácil de entender y usar.":"Produits, ventes, coûts et clients au même endroit, faciles à comprendre et à utiliser.","Un espacio independiente para cada negocio.":"Un espace indépendant pour chaque entreprise.",
+  "Productos":"Produits","Nombre":"Nom","Código del artículo":"Code de l’article","Categoría":"Catégorie","Tipo":"Type","Precio de venta":"Prix de vente","Costo por unidad":"Coût unitaire","Unidad":"Unité","Descripción":"Description","Guardar":"Enregistrer","Guardar cambios":"Enregistrer les modifications","Cancelar":"Annuler","Eliminar":"Supprimer","Editar":"Modifier","Buscar artículo":"Rechercher un article","Nombre: A → Z":"Nom : A → Z","Nombre: Z → A":"Nom : Z → A","Precio: menor a mayor":"Prix : croissant","Precio: mayor a menor":"Prix : décroissant","Buscar productos":"Rechercher des produits","Todas las categorías":"Toutes les catégories","Ordenar por":"Trier par",
+  "Productos más vendidos":"Produits les plus vendus","Gastos más frecuentes":"Dépenses les plus fréquentes","Medios de pago más usados":"Moyens de paiement les plus utilisés","Mejores clientes":"Meilleurs clients","Proveedores principales":"Fournisseurs principaux","Lo que más se mueve":"Les principales tendances","Productos vendidos":"Produits vendus","Gastos":"Dépenses","Ingresos":"Revenus","Compras":"Achats","Total":"Total","Hoy":"Aujourd’hui","Semana":"Semaine","Mes":"Mois","Año":"Année","Trimestre":"Trimestre","Semestre":"Semestre","Guardar configuración":"Enregistrer les paramètres",
+  "Apertura y cierre de caja":"Ouverture et fermeture de caisse","Tu caja está abierta":"Votre caisse est ouverte","Abrir mi caja":"Ouvrir ma caisse","Cerrar caja":"Fermer la caisse","Efectivo inicial":"Espèces au départ","Efectivo contado al cierre":"Espèces comptées à la fermeture","Notas del turno":"Notes du service","CONTROL DE TURNO":"SUIVI DU SERVICE","Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.":"Caisse ouverte. Les encaissements en espèces de ce service seront associés à votre utilisateur.",
+  "Entrar con celular":"Se connecter par téléphone","Verifica tu celular":"Vérifiez votre téléphone","Código SMS":"Code SMS","Enviar código SMS":"Envoyer le code SMS","Verificar código":"Vérifier le code","Usar otro número":"Utiliser un autre numéro","Celular con prefijo de país":"Téléphone avec indicatif international",
+  "Impuesto del artículo":"Taxe de l’article","IVA general · 19 %":"TVA normale · 19 %","IVA reducido · 5 %":"TVA réduite · 5 %","Impuesto al consumo · 8 %":"Taxe sur la consommation · 8 %","IVA exento · 0 %":"TVA exonérée · 0 %","IVA excluido · 0 %":"TVA exclue · 0 %","Sin impuesto · 0 %":"Sans taxe · 0 %",
+  "Fotos de esta variante (máximo 2)":"Photos de cette variante (2 maximum)","Agregar foto":"Ajouter une photo","Plantilla Excel":"Modèle Excel","CSV para importar":"CSV à importer","Reporte Excel":"Rapport Excel","Reporte PDF":"Rapport PDF","Importar inventario":"Importer le stock","Descargar plantilla":"Télécharger le modèle",
+  "Dirección corta de tu catálogo":"Adresse courte de votre catalogue","Entrega disponible":"Modes de livraison","Recogida en el negocio":"Retrait sur place","Entrega a domicilio":"Livraison à domicile","Productos sin existencias":"Produits en rupture de stock","Mostrar productos como siempre":"Afficher les produits normalement","Ocultar los productos sin existencias":"Masquer les produits en rupture de stock","Mostrar como agotados y bloquear compra":"Afficher comme épuisé et bloquer l’achat",
+  "Añadir al carrito":"Ajouter au panier","Carrito":"Panier","Agotado":"Épuisé","Conocer treseiscinco":"Découvrir treseiscinco","Probar gratis":"Essayer gratuitement","Crear cuenta gratis":"Créer un compte gratuit","Instalar app":"Installer l’application","Cómo instalar":"Comment installer","Tu negocio, también en tu celular":"Votre activité aussi sur votre téléphone","No encontramos productos con esos filtros":"Aucun produit trouvé avec ces filtres","Mostrar todos los productos":"Afficher tous les produits"
+};
+
+const LANGUAGE_TEXT = { en: ENGLISH_TEXT, pt: PORTUGUESE_TEXT, it: ITALIAN_TEXT, fr: FRENCH_TEXT };
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const sourceRecords = new WeakMap();
 const attributeRecords = new WeakMap();
@@ -435,17 +494,16 @@ function translateTextNode(node, language) {
   if (!current || !current.trim()) return;
   let record = sourceRecords.get(node);
   const source = record && record.translated && current === record.translated ? record.original : current;
-  if (language === "en") {
-    const replacement = ENGLISH_TEXT[normalizeText(source)];
-    if (replacement && replacement !== current) {
-      sourceRecords.set(node, { original: source, translated: replacement });
-      node.nodeValue = source.replace(/^\s*/, "") === source ? replacement : source.replace(normalizeText(source), replacement);
-    } else if (!(record?.translated && current === record.translated)) {
-      sourceRecords.set(node, { original: source, translated: null });
-    }
+  const dictionary = LANGUAGE_TEXT[language];
+  const replacement = dictionary?.[normalizeText(source)];
+  if (replacement && replacement !== current) {
+    sourceRecords.set(node, { original: source, translated: replacement });
+    node.nodeValue = source.replace(/^\s*/, "") === source ? replacement : source.replace(normalizeText(source), replacement);
   } else if (record?.translated && current === record.translated) {
     node.nodeValue = record.original;
     sourceRecords.set(node, { original: record.original, translated: null });
+  } else if (!record) {
+    sourceRecords.set(node, { original: source, translated: null });
   }
 }
 
@@ -457,17 +515,16 @@ function translateAttribute(element, attribute, language) {
   const current = element.getAttribute(attribute) || "";
   const record = byName[attribute];
   const source = record && record.translated && current === record.translated ? record.original : current;
-  if (language === "en") {
-    const replacement = ENGLISH_TEXT[normalizeText(source)];
-    if (replacement && replacement !== current) {
-      byName[attribute] = { original: source, translated: replacement };
-      element.setAttribute(attribute, replacement);
-    } else if (!(record?.translated && current === record.translated)) {
-      byName[attribute] = { original: source, translated: null };
-    }
+  const dictionary = LANGUAGE_TEXT[language];
+  const replacement = dictionary?.[normalizeText(source)];
+  if (replacement && replacement !== current) {
+    byName[attribute] = { original: source, translated: replacement };
+    element.setAttribute(attribute, replacement);
   } else if (record?.translated && current === record.translated) {
     element.setAttribute(attribute, record.original);
     byName[attribute] = { original: record.original, translated: null };
+  } else if (!record) {
+    byName[attribute] = { original: source, translated: null };
   }
 }
 
@@ -727,9 +784,15 @@ Object.assign(ENGLISH_TEXT, {
 
 export function applyAppLanguage(language) {
   if (typeof document === "undefined") return () => {};
-  const lang = language === "en" ? "en" : "es";
-  document.documentElement.lang = lang;
-  document.title = lang === "en" ? "treseiscinco — Your business, every day" : "treseiscinco — Tu negocio, todos los días";
+  const lang = ["en","pt","it","fr"].includes(language) ? language : "es";
+  document.documentElement.lang = ({pt:"pt-BR",it:"it",fr:"fr",en:"en"}[lang] || "es");
+  document.title = ({
+    en:"treseiscinco — Your business, every day",
+    pt:"treseiscinco — Seu negócio, todos os dias",
+    it:"treseiscinco — La tua attività, ogni giorno",
+    fr:"treseiscinco — Votre activité, chaque jour",
+    es:"treseiscinco — Tu negocio, todos los días"
+  })[lang];
   const root = document.body;
   walk(root, lang);
   const observer = new MutationObserver((mutations) => {

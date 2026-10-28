@@ -491,6 +491,88 @@ Object.assign(FRENCH_TEXT, {
   "Filtros y orden":"Filtres et tri","Buscar":"Rechercher","Código":"Code","Precio":"Prix","Costo":"Coût","Cantidad":"Quantité","Stock mínimo":"Stock minimum","Existencias":"Stock disponible","Disponible":"Disponible","Guardar cambios":"Enregistrer les modifications","Crear categoría":"Créer une catégorie","Agregar categoría":"Ajouter une catégorie","Productos archivados":"Produits archivés","Mostrar archivados":"Afficher les archives","Exportar Excel (CSV)":"Exporter Excel (CSV)","PDF / Imprimir":"PDF / Imprimer","Aplicar impuesto a seleccionados":"Appliquer la taxe aux éléments sélectionnés","Asignar impuesto a varios productos":"Attribuer une taxe à plusieurs produits","Seleccionar productos":"Sélectionner des produits","Día":"Jour","Desde":"Du","Hasta":"Au","Volver":"Retour","Anterior":"Précédent","Siguiente":"Suivant","Cargando…":"Chargement…","No hay artículos":"Aucun article","No hay ventas":"Aucune vente","Registrar venta":"Enregistrer une vente","Nueva venta":"Nouvelle vente","Ventas y cotizaciones":"Ventes et devis","Forma de pago":"Mode de paiement","Efectivo":"Espèces","Transferencia":"Virement","Tarjeta":"Carte","Otro":"Autre","Pagado":"Payé","Pendiente":"En attente","Parcialmente pagado":"Partiellement payé","Proveedor":"Fournisseur","Agregar proveedor":"Ajouter un fournisseur","Crear proveedor":"Créer un fournisseur","Cliente":"Client","Agregar cliente":"Ajouter un client","Crear cliente":"Créer un client","Nombre comercial":"Nom commercial","Propietario o persona de contacto":"Propriétaire ou contact","Dirección":"Adresse","Ciudad":"Ville","Sitio web":"Site web","Descripción pública":"Description publique","Horario de atención":"Horaires d’ouverture","Métodos de entrega":"Modes de livraison","Precios incluyen IVA":"Les prix incluent la TVA","Historial de cambios":"Historique des modifications","Quién hizo qué y cuándo":"Qui a fait quoi et quand","Ventas registradas":"Ventes enregistrées","Compras pagadas":"Achats payés","Gasto registrado":"Dépense enregistrée","Registró:":"Enregistré par :","Todo":"Tout","Rango":"Période","No se encontraron resultados":"Aucun résultat trouvé","Estado":"Statut","Editar producto":"Modifier le produit","Eliminar producto":"Supprimer le produit","Restaurar producto":"Restaurer le produit","Archivado":"Archivé","Publicado":"Publié","No publicado":"Non publié","Sin proveedor":"Sans fournisseur","Sin cliente":"Sans client","Sin código":"Sans code","Pagar pedido":"Payer la commande","Enviar pedido":"Envoyer la commande","Continuar":"Continuer","Cerrar":"Fermer","Abrir":"Ouvrir","Confirmar":"Confirmer","Copiar enlace":"Copier le lien","Compartir":"Partager"
 });
 
+
+Object.assign(ENGLISH_TEXT, {
+  "Mi cuenta": "My account",
+  "Acceso con celular": "Mobile sign-in",
+  "Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.": "Link and verify your number to sign in with an SMS code. This changes only your user account; it does not change the business or worker permissions.",
+  "Celular verificado": "Verified mobile number",
+  "Todavía no hay un número verificado": "No verified number yet",
+  "Enviar código de verificación": "Send verification code",
+  "Verificar celular": "Verify mobile number",
+  "Reenviar código": "Resend code",
+  "Verificando…": "Verifying…",
+  "Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.": "Enter your mobile number with an international prefix, for example, +57 300 123 4567.",
+  "Ese número ya está verificado para tu cuenta.": "That number is already verified for your account.",
+  "Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.": "We sent you an SMS code. This number can be used to sign in only after verification.",
+  "Revisa el celular con prefijo internacional.": "Check the mobile number and its international prefix.",
+  "Escribe el código numérico que recibiste por SMS.": "Enter the numeric code you received by SMS.",
+  "El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.": "Your mobile number is verified for sign-in, but we couldn't update the contact details in your profile. You can continue and save it again later.",
+  "Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.": "Mobile number verified. You can now choose “Sign in with phone” on the sign-in screen.",
+  "Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.": "Use the international prefix, for example +57 for Colombia. SMS codes require an SMS provider to be enabled in treseiscinco authentication.",
+  "Administra tu celular de acceso y el idioma personal de la aplicación.": "Manage your sign-in phone and your personal app language."
+});
+Object.assign(PORTUGUESE_TEXT, {
+  "Mi cuenta": "Minha conta",
+  "Acceso con celular": "Entrar com celular",
+  "Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.": "Vincule e confirme seu número para entrar com um código SMS. Isso altera apenas o acesso da sua conta; não muda as permissões do negócio nem dos seus funcionários.",
+  "Celular verificado": "Celular verificado",
+  "Todavía no hay un número verificado": "Ainda não há número verificado",
+  "Enviar código de verificación": "Enviar código de verificação",
+  "Verificar celular": "Verificar celular",
+  "Reenviar código": "Reenviar código",
+  "Verificando…": "Verificando…",
+  "Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.": "Digite seu celular com o código internacional, por exemplo, +57 300 123 4567.",
+  "Ese número ya está verificado para tu cuenta.": "Esse número já está verificado para sua conta.",
+  "Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.": "Enviamos um código por SMS. O número só poderá ser usado para entrar depois da verificação.",
+  "Revisa el celular con prefijo internacional.": "Confira o celular e o código internacional.",
+  "Escribe el código numérico que recibiste por SMS.": "Digite o código numérico recebido por SMS.",
+  "El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.": "O celular foi verificado para entrar, mas não foi possível atualizar o contato do seu perfil. Você pode continuar e salvá-lo novamente depois.",
+  "Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.": "Celular verificado. Agora você pode escolher «Entrar com celular» na tela de acesso.",
+  "Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.": "Use o código internacional, por exemplo +57 para a Colômbia. O envio de códigos exige um provedor de SMS habilitado na autenticação do treseiscinco.",
+  "Administra tu celular de acceso y el idioma personal de la aplicación.": "Gerencie seu celular de acesso e o idioma pessoal do aplicativo."
+});
+Object.assign(ITALIAN_TEXT, {
+  "Mi cuenta": "Il mio account",
+  "Acceso con celular": "Accesso con telefono",
+  "Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.": "Collega e verifica il tuo numero per accedere con un codice SMS. Questo modifica solo l'accesso del tuo account e non cambia i permessi dell'attività o dei tuoi collaboratori.",
+  "Celular verificado": "Numero verificato",
+  "Todavía no hay un número verificado": "Nessun numero verificato",
+  "Enviar código de verificación": "Invia codice di verifica",
+  "Verificar celular": "Verifica il telefono",
+  "Reenviar código": "Invia di nuovo il codice",
+  "Verificando…": "Verifica in corso…",
+  "Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.": "Inserisci il numero con prefisso internazionale, ad esempio +57 300 123 4567.",
+  "Ese número ya está verificado para tu cuenta.": "Questo numero è già verificato per il tuo account.",
+  "Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.": "Ti abbiamo inviato un codice SMS. Il numero potrà essere usato per accedere solo dopo la verifica.",
+  "Revisa el celular con prefijo internacional.": "Controlla il numero e il prefisso internazionale.",
+  "Escribe el código numérico que recibiste por SMS.": "Inserisci il codice numerico ricevuto via SMS.",
+  "El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.": "Il numero è verificato per l'accesso, ma non siamo riusciti ad aggiornare il contatto nel profilo. Puoi continuare e salvarlo di nuovo in seguito.",
+  "Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.": "Numero verificato. Ora puoi scegliere «Accedi con il telefono» nella schermata di accesso.",
+  "Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.": "Usa il prefisso internazionale, ad esempio +57 per la Colombia. L'invio dei codici richiede un provider SMS abilitato nell'autenticazione di treseiscinco.",
+  "Administra tu celular de acceso y el idioma personal de la aplicación.": "Gestisci il numero per l'accesso e la lingua personale dell'app."
+});
+Object.assign(FRENCH_TEXT, {
+  "Mi cuenta": "Mon compte",
+  "Acceso con celular": "Connexion par téléphone",
+  "Vincula y verifica tu número para poder entrar con un código SMS. Esto solo cambia el acceso de tu usuario; no modifica los permisos del negocio ni los de tus trabajadores.": "Associez et vérifiez votre numéro pour vous connecter avec un code SMS. Cela ne change que l'accès à votre compte, pas les autorisations de l'entreprise ni celles de vos employés.",
+  "Celular verificado": "Téléphone vérifié",
+  "Todavía no hay un número verificado": "Aucun numéro vérifié pour le moment",
+  "Enviar código de verificación": "Envoyer le code de vérification",
+  "Verificar celular": "Vérifier le téléphone",
+  "Reenviar código": "Renvoyer le code",
+  "Verificando…": "Vérification…",
+  "Escribe tu celular con prefijo internacional; por ejemplo, +57 300 123 4567.": "Saisissez votre numéro avec l'indicatif international, par exemple +57 300 123 4567.",
+  "Ese número ya está verificado para tu cuenta.": "Ce numéro est déjà vérifié pour votre compte.",
+  "Te enviamos un código SMS. El número solo servirá para entrar cuando completes la verificación.": "Nous vous avons envoyé un code SMS. Ce numéro ne pourra servir à vous connecter qu'après vérification.",
+  "Revisa el celular con prefijo internacional.": "Vérifiez le numéro et l'indicatif international.",
+  "Escribe el código numérico que recibiste por SMS.": "Saisissez le code numérique reçu par SMS.",
+  "El celular quedó verificado para iniciar sesión, pero no pudimos actualizar el contacto de tu perfil. Puedes continuar y volver a guardarlo más tarde.": "Votre numéro est vérifié pour la connexion, mais nous n'avons pas pu mettre à jour les coordonnées du profil. Vous pouvez continuer et les enregistrer à nouveau plus tard.",
+  "Celular verificado. Ya puedes elegir «Entrar con celular» en la pantalla de acceso.": "Téléphone vérifié. Vous pouvez maintenant choisir « Se connecter par téléphone » sur l'écran de connexion.",
+  "Usa el prefijo internacional, por ejemplo +57 para Colombia. El envío de códigos necesita que el proveedor de SMS esté habilitado en la autenticación de treseiscinco.": "Utilisez l'indicatif international, par exemple +57 pour la Colombie. L'envoi des codes nécessite un fournisseur SMS activé dans l'authentification treseiscinco.",
+  "Administra tu celular de acceso y el idioma personal de la aplicación.": "Gérez votre téléphone de connexion et la langue personnelle de l'application."
+});
+
 const LANGUAGE_TEXT = { en: ENGLISH_TEXT, pt: PORTUGUESE_TEXT, it: ITALIAN_TEXT, fr: FRENCH_TEXT };
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const sourceRecords = new WeakMap();

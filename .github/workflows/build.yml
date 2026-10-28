@@ -52,7 +52,7 @@ jobs:
           # Use the exact official treseiscinco symbol from the public brand assets.
           mkdir -p assets
           cp public/symbol-treseiscinco.svg assets/logo.svg
-          npx @capacitor/assets generate --android --assetPath assets --iconBackgroundColor '#FAFCFB' --iconBackgroundColorDark '#0B3144' --splashBackgroundColor '#FAFCFB' --splashBackgroundColorDark '#0B3144'
+          npm run android:icons
           npx cap sync android
           cd android
           chmod +x gradlew

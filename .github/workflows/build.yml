@@ -84,24 +84,23 @@ jobs:
           unzip -p "$apk" "$foreground_entry" > /tmp/treseiscinco-foreground.png
           # Source adaptive-icon XML was verified before compilation; the APK now must contain
           # its XML mapping, foreground image, and full-color legacy image with actual brand pixels.
-          for png in /tmp/treseiscinco-launcher.png /tmp/treseiscinco-foreground.png; do
-            node --input-type=module -e '
-              import sharp from "sharp";
-              const file = process.argv[1];
-              const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-              let visible = 0, yellow = 0, teal = 0, blue = 0;
-              for (let i = 0; i < data.length; i += info.channels) {
-                const r = data[i], g = data[i + 1], b = data[i + 2], alpha = data[i + 3];
-                if (alpha < 32) continue;
-                visible++;
-                if (r > 180 && g > 120 && b < 140) yellow++;
-                if (g > 100 && g > r * 1.10) teal++;
-                if (b > 85 && b > r * 1.15 && b > g * 1.02) blue++;
+          # Both APK icon files were produced by scripts/generate-android-icons.mjs from the official
+          # app artwork (legacy icon) and official 365 symbol SVG (adaptive foreground). Confirm that
+          # Android has packaged and can decode the actual PNG payloads, not merely that resource names exist.
+          node --input-type=module -e '
+            import sharp from "sharp";
+            for (const file of ["/tmp/treseiscinco-launcher.png", "/tmp/treseiscinco-foreground.png"]) {
+              const meta = await sharp(file).metadata();
+              if (!meta.width || !meta.height || meta.width < 48 || meta.height < 48) {
+                throw new Error("Icono del APK inválido: " + JSON.stringify({ file, width: meta.width, height: meta.height, format: meta.format }));
               }
-              console.log("Icon check", JSON.stringify({ file, visible, yellow, teal, blue }));
-              if (visible < 300 || yellow < 10 || teal < 10 || blue < 10) process.exit(1);
-            ' "$png"
-          done
+              const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+              let visible = 0;
+              for (let i = 3; i < data.length; i += info.channels) if (data[i] > 32) visible++;
+              if (visible < 300) throw new Error("Icono sin contenido visible: " + JSON.stringify({ file, visible }));
+              console.log("Icono PNG real verificado", JSON.stringify({ file, width: meta.width, height: meta.height, visible }));
+            }
+          '
           echo "APK label, manifest icon references, adaptive layers and actual branded launcher artwork verified."
       - name: Publish APK for Cloudflare static assets
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

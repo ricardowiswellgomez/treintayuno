@@ -3962,6 +3962,7 @@ function AuthenticatedApp() {
         const customersById = Object.fromEntries((customersResult.data || []).map((customer) => [customer.id, customer]));
         const itemsBySale = {};
         const paymentsBySale = {};
+        let memberNamesById = new Map();
         if (salesRows.length) {
           const saleIds = salesRows.map((sale) => sale.id);
           const [itemsResult, paymentsResult, membersResult] = await Promise.all([
@@ -3974,7 +3975,7 @@ function AuthenticatedApp() {
           if (itemsResult.error) throw itemsResult.error;
           if (paymentsResult.error) throw paymentsResult.error;
           if (membersResult.error) throw membersResult.error;
-          const memberNames = new Map((membersResult.data || []).map((member) => [member.user_id, member.display_name]));
+          memberNamesById = new Map((membersResult.data || []).map((member) => [member.user_id, member.display_name]));
 
           for (const item of itemsResult.data || []) {
             if (!itemsBySale[item.sale_id]) itemsBySale[item.sale_id] = [];
@@ -3986,22 +3987,12 @@ function AuthenticatedApp() {
           }
         }
         setCustomers(customersResult.data || []);
-        if (!salesRows.length) {
-          const { data: members, error: memberError } = await supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id });
-          if (memberError) throw memberError;
-          const memberNames = new Map((members || []).map((member) => [member.user_id, member.display_name]));
-          setSalesData(salesRows.map((sale) => ({ ...sale, seller_name: memberNames.get(sale.created_by) || "Usuario del negocio", items: [], payments: [] })));
-        } else {
-          const memberRows = await supabase.rpc("get_business_member_names", { p_business_id: activeBusiness.id });
-          if (memberRows.error) throw memberRows.error;
-          const memberNames = new Map((memberRows.data || []).map((member) => [member.user_id, member.display_name]));
-          setSalesData(salesRows.map((sale) => ({ ...sale,
-            customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
-            seller_name: memberNames.get(sale.created_by) || "Usuario del negocio",
-            items: itemsBySale[sale.id] || [],
-            payments: paymentsBySale[sale.id] || []
-          })));
-        }
+        setSalesData(salesRows.map((sale) => ({ ...sale,
+          customer_name: customersById[sale.customer_id]?.full_name || customersById[sale.customer_id]?.company_name || (sale.customer_id ? "Cliente registrado" : "Venta sin cliente"),
+          seller_name: memberNamesById.get(sale.created_by) || "Usuario del negocio",
+          items: itemsBySale[sale.id] || [],
+          payments: paymentsBySale[sale.id] || []
+        })));
       }
     } catch (e) {
       setError(friendlyError(e));

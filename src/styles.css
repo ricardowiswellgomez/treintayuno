@@ -9652,3 +9652,65 @@ body { background: #F5F7FC; color: #19243A; }
     font-size:9px!important;
   }
 }
+
+
+/* The phone layout intentionally renders one comparative pie, not two nested pies. */
+.home-pie-mobile-wrapper { display:none; min-width:0; width:100%; }
+.home-pie-mobile-wrapper .simple-pie-chart-compact {
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:12px!important;
+  border-radius:13px!important;
+}
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-layout {
+  grid-template-columns:minmax(86px,.42fr) minmax(0,1fr)!important;
+  gap:10px!important;
+}
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-visual {
+  width:min(100%,132px)!important;
+}
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend { gap:8px!important; }
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend-row {
+  grid-template-columns:8px minmax(0,1fr) auto!important;
+  gap:5px!important;
+}
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-swatch {
+  width:8px!important; height:8px!important; margin-top:4px;
+}
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend-name,
+.home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend-row strong {
+  font-size:11px!important;
+}
+@media (min-width:901px) {
+  .home-pie-mobile-wrapper { display:none!important; }
+}
+@media (min-width:601px) and (max-width:900px) {
+  .home-pie-mobile-wrapper { display:none!important; }
+}
+@media (max-width:600px) {
+  .home-pie-mobile-wrapper { display:block!important; }
+  .home-pie-mobile-wrapper .simple-pie-chart-compact {
+    padding:11px!important;
+  }
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-layout {
+    grid-template-columns:minmax(80px,.42fr) minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-visual {
+    width:min(100%,112px)!important;
+  }
+}
+@media (max-width:360px) {
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-layout {
+    grid-template-columns:minmax(68px,.38fr) minmax(0,1fr)!important;
+    gap:6px!important;
+  }
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-visual {
+    width:min(100%,94px)!important;
+  }
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend-name,
+  .home-pie-mobile-wrapper .simple-pie-chart-compact .simple-pie-legend-row strong {
+    font-size:10px!important;
+  }
+}

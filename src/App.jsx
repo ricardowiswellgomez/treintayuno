@@ -1605,7 +1605,7 @@ function AuthenticatedApp() {
   const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
-  const [profitabilityChartType, setProfitabilityChartType] = useState("pie");
+
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminData, setPlatformAdminData] = useState(null);
   const [platformAdminLoading, setPlatformAdminLoading] = useState(false);

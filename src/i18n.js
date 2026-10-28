@@ -874,6 +874,21 @@ Object.assign(ENGLISH_TEXT, {
 "Dom": "Sun"
 });
 
+Object.assign(ENGLISH_TEXT, {
+  "Correo de acceso": "Sign-in email",
+  "Correo registrado": "Registered email",
+  "Este es el correo asociado a tu usuario. Lo puedes usar para iniciar sesión y recuperar el acceso a treseiscinco.": "This is the email address associated with your user profile. Use it to sign in or recover access to treseiscinco.",
+  "El acceso queda vinculado al correo que aparece arriba.": "Sign-in remains tied to the email shown above.",
+  "Organiza la información pública, los horarios, las entregas y la forma en que recibes pedidos.": "Manage public information, opening hours, delivery options, and how you receive orders.",
+  "Importar / exportar": "Import / export",
+  "Descarga la plantilla, importa tu inventario inicial o exporta el inventario completo con sus variantes a Excel o PDF.": "Download the template, import your starting inventory, or export all items and variants to Excel or PDF.",
+  "Recogida en el negocio": "Pickup at the business",
+  "Entrega a domicilio": "Home delivery",
+  "Opciones de entrega": "Delivery options",
+  "Agrégalo al carrito para preparar tu pedido.": "Add it to your cart to prepare your order.",
+  "El fondo y los textos usan los colores seleccionados.": "The background and text use the selected colors."
+});
+
 export function applyAppLanguage(language) {
   if (typeof document === "undefined") return () => {};
   const lang = ["en","pt","it","fr"].includes(language) ? language : "es";

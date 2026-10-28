@@ -1729,6 +1729,9 @@ function AuthenticatedApp() {
   const [simulateAllocations, setSimulateAllocations] = useState(false);
   const [statsSales, setStatsSales] = useState([]);
   const [statsPayments, setStatsPayments] = useState([]);
+  const [statsSaleItems, setStatsSaleItems] = useState([]);
+  const [statsCustomers, setStatsCustomers] = useState([]);
+  const [statsSuppliers, setStatsSuppliers] = useState([]);
   const [statsExpenses, setStatsExpenses] = useState([]);
   const [statsPurchases, setStatsPurchases] = useState([]);
   const [statsPurchasePayments, setStatsPurchasePayments] = useState([]);
@@ -4048,14 +4051,14 @@ function AuthenticatedApp() {
       const [sales, payments, expenses, purchases, purchasePayments] = await Promise.all([
         fetchAllProfitabilityRows(
           () => supabase.from("sales")
-            .select("id,business_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
+            .select("id,business_id,customer_id,sale_number,status,total_minor,amount_paid_minor,sold_at,created_at")
             .eq("business_id", activeBusiness.id)
             .order("sold_at", { ascending: false }).order("id", { ascending: true }),
           "ventas para las estadísticas"
         ),
         fetchAllProfitabilityRows(
           () => supabase.from("sale_payments")
-            .select("id,business_id,sale_id,amount_minor,paid_at")
+            .select("id,business_id,sale_id,amount_minor,payment_method,created_by,paid_at")
             .eq("business_id", activeBusiness.id)
             .order("paid_at", { ascending: false }).order("id", { ascending: true }),
           "abonos para las estadísticas"
@@ -4069,7 +4072,7 @@ function AuthenticatedApp() {
         ),
         fetchAllProfitabilityRows(
           () => supabase.from("purchases")
-            .select("id,business_id,purchase_number,status,total_minor,amount_paid_minor,purchased_at,created_at")
+            .select("id,business_id,supplier_id,purchase_number,status,total_minor,amount_paid_minor,purchased_at,created_at")
             .eq("business_id", activeBusiness.id)
             .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
           "compras para las estadísticas"
@@ -4082,8 +4085,29 @@ function AuthenticatedApp() {
           "pagos de compras para las estadísticas"
         )
       ]);
+      const saleIds = sales.map((sale) => sale.id);
+      const [saleItems, customers, suppliers] = await Promise.all([
+        saleIds.length ? fetchAllProfitabilityRows(
+          () => supabase.from("sale_items").select("id,business_id,sale_id,product_id,item_name,quantity,unit_price_minor,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("sale_id").order("id"),
+          "artículos vendidos para estadísticas"
+        ) : Promise.resolve([]),
+        fetchAllProfitabilityRows(
+          () => supabase.from("customers").select("id,business_id,full_name,company_name")
+            .eq("business_id", activeBusiness.id).order("full_name"),
+          "clientes para estadísticas"
+        ),
+        fetchAllProfitabilityRows(
+          () => supabase.from("suppliers").select("id,business_id,name")
+            .eq("business_id", activeBusiness.id).order("name"),
+          "proveedores para estadísticas"
+        )
+      ]);
       setStatsSales(sales);
       setStatsPayments(payments);
+      setStatsSaleItems(saleItems);
+      setStatsCustomers(customers);
+      setStatsSuppliers(suppliers);
       setStatsExpenses(expenses);
       setStatsPurchases(purchases);
       setStatsPurchasePayments(purchasePayments);
@@ -4091,6 +4115,9 @@ function AuthenticatedApp() {
       setError(friendlyError(e));
       setStatsSales([]);
       setStatsPayments([]);
+      setStatsSaleItems([]);
+      setStatsCustomers([]);
+      setStatsSuppliers([]);
       setStatsExpenses([]);
       setStatsPurchases([]);
       setStatsPurchasePayments([]);
@@ -5280,6 +5307,8 @@ function AuthenticatedApp() {
     return Boolean(key && key >= statsRangeStart && key <= statsRangeEnd);
   };
   const statsPeriodSales = statsSales.filter((sale) => !["canceled", "refunded", "draft"].includes(sale.status) && statsInPeriod(sale.sold_at || sale.created_at));
+  const statsPeriodSaleIds = new Set(statsPeriodSales.map((sale) => sale.id));
+  const statsPeriodSaleItems = statsSaleItems.filter((item) => statsPeriodSaleIds.has(item.sale_id));
   const statsPeriodPayments = statsPayments.filter((payment) => statsInPeriod(payment.paid_at));
   const statsPeriodExpenses = statsExpenses.filter((expense) => statsInPeriod(expense.expense_date));
   const statsPeriodPurchases = statsPurchases.filter((purchase) => !["cancelled", "canceled", "draft"].includes(String(purchase.status || "").toLowerCase()) && statsInPeriod(purchase.purchased_at || purchase.created_at));
@@ -5293,6 +5322,41 @@ function AuthenticatedApp() {
   const statsPaidPurchases = statsPurchasePayments.length
     ? statsPeriodPurchasePayments.reduce((sum, payment) => sum + Number(payment.amount_minor || 0), 0)
     : statsPeriodPurchases.reduce((sum, purchase) => sum + Number(purchase.amount_paid_minor || 0), 0);
+  const statsTopProducts = Object.values(statsPeriodSaleItems.reduce((groups, item) => {
+    const key = item.product_id || item.item_name || "unknown";
+    if (!groups[key]) groups[key] = { name: item.item_name || "Artículo", quantity: 0, revenue: 0 };
+    groups[key].quantity += Number(item.quantity || 0);
+    groups[key].revenue += Number(item.line_total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.quantity - left.quantity || right.revenue - left.revenue).slice(0, 3);
+  const statsTopExpenses = Object.values(statsPeriodExpenses.reduce((groups, expense) => {
+    const key = String(expense.category || "Otros").trim() || "Otros";
+    if (!groups[key]) groups[key] = { name: key, count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(expense.amount_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.count - left.count || right.amount - left.amount).slice(0, 3);
+  const statsTopPaymentMethods = Object.values(statsPeriodPayments.reduce((groups, payment) => {
+    const key = String(payment.payment_method || "No especificado");
+    if (!groups[key]) groups[key] = { name: key, count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(payment.amount_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.count - left.count || right.amount - left.amount).slice(0, 3);
+  const customerNames = new Map(statsCustomers.map((customer) => [customer.id, customer.company_name || customer.full_name || "Cliente"]));
+  const statsTopCustomers = Object.values(statsPeriodSales.reduce((groups, sale) => {
+    if (!sale.customer_id) return groups;
+    const key = sale.customer_id;
+    if (!groups[key]) groups[key] = { name: customerNames.get(key) || "Cliente", count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(sale.total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.amount - left.amount || right.count - left.count).slice(0, 3);
+  const supplierNames = new Map(statsSuppliers.map((supplier) => [supplier.id, supplier.name || "Proveedor"]));
+  const statsTopSuppliers = Object.values(statsPeriodPurchases.reduce((groups, purchase) => {
+    if (!purchase.supplier_id) return groups;
+    const key = purchase.supplier_id;
+    if (!groups[key]) groups[key] = { name: supplierNames.get(key) || "Proveedor", count: 0, amount: 0 };
+    groups[key].count += 1; groups[key].amount += Number(purchase.total_minor || 0);
+    return groups;
+  }, {})).sort((left, right) => right.amount - left.amount || right.count - left.count).slice(0, 3);
   const statsCashBalance = statsCollected - statsExpensesTotal - statsPaidPurchases;
 
   function downloadStatsExcel() {

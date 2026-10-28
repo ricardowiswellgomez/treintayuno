@@ -541,6 +541,15 @@ const normalizeTaxProfile = (profile) => {
     showVatBreakdown: Boolean(profile?.showVatBreakdown)
   };
 };
+const PRODUCT_TAX_RATES = Object.freeze({ iva_19: 19, iva_5: 5, impoconsumo_8: 8, iva_exento: 0, iva_excluido: 0, none: 0 });
+const productTaxAmounts = (unitPriceMinor, quantity, taxCode, pricesIncludeVat) => {
+  const grossOrBase = Math.round(Number(unitPriceMinor || 0) * Number(quantity || 0));
+  const rate = Number(PRODUCT_TAX_RATES[taxCode] ?? 0);
+  const tax = rate > 0 ? Math.round(pricesIncludeVat ? grossOrBase * rate / (100 + rate) : grossOrBase * rate / 100) : 0;
+  const subtotal = pricesIncludeVat ? grossOrBase - tax : grossOrBase;
+  return { subtotal, tax, total: pricesIncludeVat ? grossOrBase : grossOrBase + tax, rate };
+};
+
 const getBusinessLogoUrl = (path) => {
   if (!path) return "";
   try { return supabase.storage.from("business-logos").getPublicUrl(path)?.data?.publicUrl || ""; } catch { return ""; }
@@ -5253,6 +5262,7 @@ function AuthenticatedApp() {
       if (exists) return current.map((item) => item.product_id === product.id ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)) } : item);
       return [...current, { product_id: product.id, name: product.name, quantity,
         unit_price_minor: Number(product.sale_price_minor || 0), unit_cost_minor: Number(product.cost_price_minor || 0),
+        tax_code: product.metadata?.tax_code || "none",
         unit_name: product.unit_name || "unidad", track_inventory: product.track_inventory, stock_on_hand: Number(product.stock_on_hand || 0) }];
     });
     setSaleProductChoice(""); setSaleQuantity("1"); setError("");
@@ -5262,7 +5272,8 @@ function AuthenticatedApp() {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     if (!saleItems.length) { setError("Añade al menos un producto a la venta."); return; }
-    const total = saleItems.reduce((sum, item) => sum + Math.round(item.unit_price_minor * Number(item.quantity)), 0);
+    const includeVat = normalizeTaxProfile(activeBusiness.settings?.tax_profile || settingsTaxProfile).pricesIncludeVat;
+    const total = saleItems.reduce((sum, item) => sum + productTaxAmounts(item.unit_price_minor, item.quantity, item.tax_code || "none", includeVat).total, 0);
     const payment = toMinorUnits(salePayment || 0, currencyCode);
     if (payment < 0 || payment > total) { setError("El abono debe estar entre cero y el total de la venta."); return; }
     setSaleSaving(true); setError(""); setNotice("");
@@ -6173,7 +6184,7 @@ function AuthenticatedApp() {
 {!saleProducts.length&&<p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
 {saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
-<div className="sale-total-line"><span>Total</span><strong>{money(saleItems.reduce((sum,item)=>sum+Math.round(item.unit_price_minor*Number(item.quantity||0)),0),currencyCode)}</strong></div></div>}
+<div className="sale-tax-summary"><span>Base de productos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).subtotal,0),currencyCode)}</strong></div>{saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0)>0&&<div className="sale-tax-summary"><span>Impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0),currencyCode)}</strong></div>}<div className="sale-total-line"><span>Total con impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0),currencyCode)}</strong></div></div>}
 <div className="sale-bottom-fields"><label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo recibes el primer pago de esta venta: efectivo, transferencia, tarjeta u otro medio." /></span><select value={saleInitialPaymentMethod} onChange={e=>setSaleInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label><label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
 {!saleItems.length && <p className="helper-text sale-empty-cart-hint">Todavía no hay productos agregados. Elige un producto y pulsa «+ Agregar». Si intentas guardar antes, te indicaremos qué falta.</p>}

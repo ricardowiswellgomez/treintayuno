@@ -8845,3 +8845,53 @@ body { background: #F5F7FC; color: #19243A; }
     line-height:1.1!important;
   }
 }
+
+
+/* Keep the mobile import action beside the "Sin stock" metric, never inside "Unidades disponibles". */
+.products-page .inventory-metric-grid>.inventory-import-stock-card { display:none!important; }
+@media (max-width:640px) {
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card {
+    display:flex!important;
+    min-height:0!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    gap:6px!important;
+    padding:8px!important;
+    border:1px solid var(--line,#DDE5E3)!important;
+    border-radius:14px!important;
+    background:var(--paper,#fff)!important;
+    color:var(--ink,#24352B)!important;
+    text-align:left!important;
+    cursor:pointer;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card.is-open {
+    border-color:var(--green,#167D82)!important;
+    background:var(--green-soft,#F1F8F7)!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label {
+    display:flex!important;
+    align-items:center!important;
+    gap:6px!important;
+    max-width:100%;
+    font-size:12px!important;
+    line-height:1.2!important;
+    font-weight:750!important;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label svg {
+    flex:0 0 auto;
+    width:16px;
+    height:16px;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card .inventory-import-stock-label strong {
+    font-size:12px!important;
+    line-height:1.2!important;
+    font-weight:750!important;
+    overflow-wrap:anywhere;
+  }
+  .app-shell .products-page .inventory-metric-grid>.inventory-import-stock-card>p {
+    margin:0!important;
+    font-size:10px!important;
+    line-height:1.25!important;
+    color:var(--muted,#64748B)!important;
+  }
+}

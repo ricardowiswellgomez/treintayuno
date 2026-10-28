@@ -1706,6 +1706,13 @@ function AuthenticatedApp() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [cashRegisterSession, setCashRegisterSession] = useState(null);
+  const [cashRegisterLoading, setCashRegisterLoading] = useState(false);
+  const [cashRegisterSaving, setCashRegisterSaving] = useState(false);
+  const [cashRegisterOpenAmount, setCashRegisterOpenAmount] = useState("0");
+  const [cashRegisterCloseAmount, setCashRegisterCloseAmount] = useState("");
+  const [cashRegisterCloseNotes, setCashRegisterCloseNotes] = useState("");
+  const [cashRegisterSummary, setCashRegisterSummary] = useState({received:0,expenses:0,expected:0,count:0});
   const [salesPeriod, setSalesPeriod] = useState("day");
   const [salesDateFrom, setSalesDateFrom] = useState(() => todayInBogota());
   const [salesDateTo, setSalesDateTo] = useState(() => todayInBogota());
@@ -3753,6 +3760,82 @@ function AuthenticatedApp() {
   }
 
   const customerFields = "id,full_name,first_name,last_name,company_name,document_type,document_number,email,phone,whatsapp,city,address,notes,created_at";
+
+  async function loadCashRegisterSession() {
+    if (!activeBusiness?.id || !session?.user?.id || !canAccessScreen("sales")) { setCashRegisterSession(null); return; }
+    setCashRegisterLoading(true);
+    try {
+      const { data, error: queryError } = await supabase.from("cash_register_sessions")
+        .select("id,business_id,opened_by,closed_by,currency_code,opening_cash_minor,closing_cash_minor,expected_cash_minor,difference_minor,close_notes,status,opened_at,closed_at")
+        .eq("business_id", activeBusiness.id).eq("opened_by", session.user.id).eq("status", "open")
+        .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+      if (queryError) throw queryError;
+      setCashRegisterSession(data || null);
+      if (data) setCashRegisterCloseAmount("");
+    } catch (error) {
+      setError(friendlyError(error));
+      setCashRegisterSession(null);
+    } finally { setCashRegisterLoading(false); }
+  }
+
+  useEffect(() => {
+    if (screen === "sales" && activeBusiness?.id && session?.user?.id) loadCashRegisterSession();
+  }, [screen, activeBusiness?.id, session?.user?.id]);
+
+  async function openCashRegister(event) {
+    event?.preventDefault();
+    if (!activeBusiness?.id || !session?.user?.id || !canManageSales || cashRegisterSaving) return;
+    const opening = toMinorUnits(cashRegisterOpenAmount, currencyCode);
+    if (!Number.isSafeInteger(opening) || opening < 0) { setError("Escribe un monto inicial de caja válido."); return; }
+    setCashRegisterSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: insertError } = await supabase.from("cash_register_sessions")
+        .insert({business_id:activeBusiness.id,opened_by:session.user.id,currency_code:currencyCode,opening_cash_minor:opening})
+        .select("id,business_id,opened_by,closed_by,currency_code,opening_cash_minor,closing_cash_minor,expected_cash_minor,difference_minor,close_notes,status,opened_at,closed_at").single();
+      if (insertError) throw insertError;
+      setCashRegisterSession(data);
+      setCashRegisterOpenAmount("0");
+      setNotice("Caja abierta. Los cobros en efectivo de este turno quedarán asociados a tu usuario.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setCashRegisterSaving(false); }
+  }
+
+  async function closeCashRegister(event) {
+    event?.preventDefault();
+    const register = cashRegisterSession;
+    if (!activeBusiness?.id || !session?.user?.id || !register || !canManageSales || cashRegisterSaving) return;
+    const closing = toMinorUnits(cashRegisterCloseAmount, currencyCode);
+    if (!Number.isSafeInteger(closing) || closing < 0) { setError("Escribe el efectivo contado al cerrar la caja."); return; }
+    setCashRegisterSaving(true); setError(""); setNotice("");
+    try {
+      const [{data:payments,error:paymentsError},{data:expenses,error:expensesError}] = await Promise.all([
+        supabase.from("sale_payments").select("amount_minor,payment_method,paid_at")
+          .eq("business_id",activeBusiness.id).eq("created_by",session.user.id)
+          .eq("payment_method","Efectivo").gte("paid_at",register.opened_at).lte("paid_at",new Date().toISOString()),
+        supabase.from("expenses").select("amount_minor,payment_method,created_at")
+          .eq("business_id",activeBusiness.id).eq("created_by",session.user.id)
+          .eq("payment_method","Efectivo").gte("created_at",register.opened_at).lte("created_at",new Date().toISOString())
+      ]);
+      if (paymentsError) throw paymentsError;
+      if (expensesError) throw expensesError;
+      const received=(payments||[]).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+      const expenseTotal=(expenses||[]).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+      const expected=Number(register.opening_cash_minor||0)+received-expenseTotal;
+      const {data,error:updateError}=await supabase.from("cash_register_sessions").update({
+        closed_by:session.user.id,closed_at:new Date().toISOString(),status:"closed",
+        closing_cash_minor:closing,expected_cash_minor:expected,difference_minor:closing-expected,
+        close_notes:cashRegisterCloseNotes.trim()||null,updated_at:new Date().toISOString()
+      }).eq("business_id",activeBusiness.id).eq("id",register.id).eq("status","open")
+        .select("id").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("La caja ya se cerró o no tienes permiso para modificarla.");
+      setCashRegisterSummary({received,expenses:expenseTotal,expected,count:(payments||[]).length});
+      setCashRegisterSession(null);
+      setCashRegisterCloseAmount(""); setCashRegisterCloseNotes("");
+      setNotice("Caja cerrada. Efectivo esperado: " + money(expected,currencyCode) + "; diferencia: " + money(closing-expected,currencyCode) + ".");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setCashRegisterSaving(false); }
+  }
 
   async function loadSalesModuleData() {
     if (!activeBusiness?.id || (screen !== "sales" && screen !== "customers")) return;
@@ -5825,7 +5908,13 @@ function AuthenticatedApp() {
 ) : screen === "sales" ? (
 <section className="sales-page">
 <SalesModuleCards active="sales" onChoose={navigate} showQuotes={canAccessScreen("quotes")} />
-<div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Por defecto ves las ventas de hoy. Cambia rápidamente a otra fecha o consulta un rango.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+<div className="products-intro"><div><h2>Movimientos de ventas</h2><p>Identifica qué se vendió, quién lo registró y en qué momento.</p></div>{canManageSales && <button type="button" className="primary-button compact-button" onClick={() => { if(showSaleForm) clearSaleDraft(); else {setShowSaleForm(true);setError("");setNotice("");} }}>{showSaleForm?"Cancelar venta":"+ Nueva venta"}</button>}</div>
+<section className="cash-register-panel panel">
+  <div className="cash-register-heading"><div><span className="eyebrow">CONTROL DE TURNO</span><h3>{cashRegisterSession ? "Tu caja está abierta" : "Apertura y cierre de caja"}</h3><p>{cashRegisterSession ? "Abierta el " + new Date(cashRegisterSession.opened_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"}) : "Cada trabajador puede abrir su caja, registrar operaciones y cerrarla al terminar."}</p></div><span className={"status-pill "+(cashRegisterSession?"status-active":"status-inactive")}>{cashRegisterLoading?"Consultando…":cashRegisterSession?"Abierta":"Cerrada"}</span></div>
+  {canManageSales && !cashRegisterSession && <form className="cash-register-form" onSubmit={openCashRegister}><label><span className="field-label-heading">Efectivo inicial</span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={cashRegisterOpenAmount} onChange={(event)=>setCashRegisterOpenAmount(event.target.value)} required /></label><button type="submit" className="primary-button" disabled={cashRegisterSaving||cashRegisterLoading}>{cashRegisterSaving?"Abriendo…":"Abrir mi caja"}</button></form>}
+  {cashRegisterSession && <form className="cash-register-form cash-register-close-form" onSubmit={closeCashRegister}><label><span className="field-label-heading">Efectivo contado al cierre</span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={cashRegisterCloseAmount} onChange={(event)=>setCashRegisterCloseAmount(event.target.value)} required placeholder="Total de efectivo en caja" /></label><label><span className="field-label-heading">Notas del turno</span><input value={cashRegisterCloseNotes} onChange={(event)=>setCashRegisterCloseNotes(event.target.value)} maxLength={500} placeholder="Diferencias, novedades o entrega de turno" /></label><button type="submit" className="primary-button" disabled={cashRegisterSaving}>{cashRegisterSaving?"Cerrando…":"Cerrar caja"}</button></form>}
+  {cashRegisterSummary.count>0 && <p className="cash-register-summary">Último cierre: recibido en efectivo {money(cashRegisterSummary.received,currencyCode)} · salidas en efectivo {money(cashRegisterSummary.expenses,currencyCode)} · esperado {money(cashRegisterSummary.expected,currencyCode)}.</p>}
+</section>
 <div className="sales-date-toolbar panel"><div className="stats-period-buttons" role="group" aria-label="Periodo de ventas">{[["day","Hoy"],["date","Fecha"],["week","Semana"],["month","Mes"],["year","Año"],["custom","Rango"],["all","Todo"]].map(([value,label]) => <button type="button" key={value} className={salesPeriod === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={salesPeriod === value} onClick={() => {if(value==="date"&&salesPeriod!=="date")setSalesSelectedDate(todayInBogota());setSalesPeriod(value);setSalesPage(1);}}>{label}</button>)}</div>{salesPeriod === "date" && <div className="sales-single-date"><button type="button" className="secondary-button" aria-label="Día anterior" onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>← Anterior</button><label><span>Ver movimientos del día</span><input type="date" value={salesSelectedDate} max={todayInBogota()} onChange={(e)=>{setSalesSelectedDate(e.target.value);setSalesPage(1);}} /></label><button type="button" className="secondary-button" aria-label="Día siguiente" disabled={salesSelectedDate>=todayInBogota()} onClick={() => {const d=new Date(salesSelectedDate+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);setSalesSelectedDate(d.toISOString().slice(0,10));setSalesPage(1);}}>Siguiente →</button></div>}{salesPeriod === "custom" && <div className="stats-custom-dates"><label><span>Desde</span><input type="date" value={salesDateFrom} max={salesDateTo || todayInBogota()} onChange={(e) => {setSalesDateFrom(e.target.value);setSalesPage(1);}} /></label><label><span>Hasta</span><input type="date" value={salesDateTo} min={salesDateFrom || undefined} max={todayInBogota()} onChange={(e) => {setSalesDateTo(e.target.value);setSalesPage(1);}} /></label></div>}<p>{salesPeriod === "day" ? "Ventas de hoy" : salesPeriod === "date" ? "Movimientos del " + new Date(salesSelectedDate+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : salesPeriod === "all" ? "Todo el historial" : salesPeriod === "custom" ? "Del " + salesDateFrom + " al " + salesDateTo : salesPeriod === "week" ? "Desde el lunes de esta semana" : salesPeriod === "month" ? "Desde el primer día del mes" : "Desde el primer día del año"}</p></div>
 {canManageSales && showSaleForm && <form className="sale-form panel" onSubmit={createSale}>
 <h3>Nueva venta</h3>

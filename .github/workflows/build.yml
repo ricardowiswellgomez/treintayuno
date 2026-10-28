@@ -44,6 +44,19 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - name: Verify Android loads the live production UI
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const config = JSON.parse(readFileSync('capacitor.config.json', 'utf8'));
+          if (config.server?.url !== 'https://treseiscinco.com') {
+            throw new Error('The Android APK must load the live production UI from https://treseiscinco.com');
+          }
+          if (config.server?.cleartext !== false) {
+            throw new Error('The Android live URL must use HTTPS only');
+          }
+          console.log('Verified: Android UI updates from https://treseiscinco.com');
+          NODE
       - name: Build installable Android APK
         run: |
           # Avoid packaging a previously published APK inside the next APK.

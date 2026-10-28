@@ -1283,7 +1283,7 @@ function PublicCatalog({ businessId }) {
             {product.commercial_presentation && <span className="public-catalog-presentation">{product.commercial_presentation}</span>}
             <div className="public-catalog-price"><strong>{money(product.sale_price_minor, business.currency_code || "COP")}</strong><span>por {product.unit_name || "unidad"}</span></div>
             {product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" && <span className="public-catalog-out-of-stock">Agotado</span>}
-            {Array.isArray(product.variants) && product.variants.length > 0 && <div className="public-catalog-variant-tags" aria-label="Variantes disponibles">{product.variants.slice(0,3).map((variant) => <span key={variant.id}>{variant.variant_name}: {variant.variant_value}</span>)}</div>}
+            {Array.isArray(product.variants) && product.variants.length > 0 && <div className="public-catalog-variants" aria-label="Variantes disponibles">{product.variants.slice(0,4).map((variant) => <div className="public-catalog-variant" key={variant.id}><span>{variant.variant_name}: {variant.variant_value}</span>{(variant.image_paths||[]).slice(0,2).map((imageKey) => <ProductVariantImagePreview key={imageKey} businessId={businessId} productId={product.id} variantId={variant.id} imageKey={imageKey} alt={"Foto de "+variant.variant_name+" "+variant.variant_value} publicMode />)}</div>)}</div>}
             <button type="button" className="public-catalog-add-button" disabled={product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable"} onClick={() => addToCart(product)}>{product.is_out_of_stock && business?.commercial_profile?.stockVisibility === "show_unavailable" ? "Agotado" : <><span aria-hidden="true">＋</span> Añadir al carrito</>}</button>
           </div>
         </article>)}</div>
@@ -7097,6 +7097,7 @@ function AuthenticatedApp() {
                   {canManageCustomers && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setCustomerDraft(blankCustomer); setEditingCustomerId(null); setShowCustomerForm(true); navigate("customers"); }}><span className="home-create-item-icon"><AppIcon name="customers" size={18}/></span><span><strong>Crear cliente</strong><small>Guardar los datos de un cliente</small></span></button>}
                 </div>}
               </div>}
+              <button type="button" className="home-utility-action home-share-card-button" onClick={sharePersonalBusinessCard}><AppIcon name="card" size={17}/> Compartir tarjeta</button>
               {!appInstalled && <button type="button" className="home-utility-action install-app-button" onClick={requestPwaInstall}><AppIcon name="grid" size={16}/>{installPrompt ? "Instalar aplicación" : "Cómo instalar"}</button>}
             </div>
           </section>

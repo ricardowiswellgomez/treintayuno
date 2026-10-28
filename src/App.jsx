@@ -202,7 +202,7 @@ const normalizeSidebarLayout = (layout) => {
   // Coupons and suppliers are destinations within the canonical groups, never standalone group headings.
   for (let index = groups.length - 1; index >= 0; index -= 1) {
     const group = groups[index];
-    const numericHeading = /^\\d+$/.test(String(group.title || "").trim());
+    const numericHeading = /^[0-9]+$/.test(String(group.title || "").trim());
     if (!group.items.length && (numericHeading || group.id === "coupons" || group.id === "suppliers")) {
       groups.splice(index, 1);
     }

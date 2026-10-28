@@ -7546,3 +7546,52 @@ body { background: #F5F7FC; color: #19243A; }
 .sale-date-row { display: flex; justify-content: flex-end; margin: 0 0 12px; }
 .sale-date-row label { width: min(100%, 260px); display: flex; flex-direction: column; gap: 6px; }
 .sale-date-row input { min-height: 43px; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--paper); color: var(--ink); }
+
+
+/* Final alignment: keep the catalog actions at the far right and the logo in its bottom info bar. */
+.public-catalog-header { justify-content: space-between !important; }
+.public-catalog-header > div:not(.public-catalog-header-actions) { flex: 1 1 auto; }
+.public-catalog-header-actions { flex: 0 0 auto !important; margin-left: auto !important; justify-content: flex-end !important; }
+.public-catalog-cart-trigger { margin-left: 0 !important; }
+.public-catalog-bottom-bar.has-whatsapp { grid-template-columns: 54px repeat(3, minmax(0,1fr)) !important; }
+.public-catalog-bottom-bar:not(.has-whatsapp) { grid-template-columns: 54px repeat(2, minmax(0,1fr)) !important; }
+.public-catalog-bottom-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 12px;
+  text-decoration: none;
+}
+.public-catalog-bottom-brand img { width: 30px; height: 30px; object-fit: contain; }
+.public-catalog-bottom-brand:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.public-catalog-bottom-whatsapp { justify-content: center !important; color: #16804A !important; text-decoration: none; }
+@media (max-width: 760px) {
+  .public-catalog-bottom-bar.has-whatsapp { grid-template-columns: 42px repeat(3, minmax(0,1fr)) !important; }
+  .public-catalog-bottom-bar:not(.has-whatsapp) { grid-template-columns: 42px repeat(2, minmax(0,1fr)) !important; }
+  .public-catalog-bottom-brand img { width: 26px; height: 26px; }
+  .public-catalog-bottom-tab strong { font-size: 11px; }
+}
+
+/* Selected payment methods keep their own category color instead of inheriting a green selection tint. */
+.payment-method-tile-ef.is-selected { background: #FFFFFF !important; border-color: #DDE7EA !important; }
+.payment-method-tile-nq.is-selected { background: #F4ECFF !important; border-color: #B48AF5 !important; color: #54219A !important; }
+.payment-method-tile-dv.is-selected { background: #FFF0EF !important; border-color: #E58B84 !important; color: #B42318 !important; }
+.payment-method-tile-tr.is-selected { background: #ECF3FF !important; border-color: #83A9F5 !important; color: #174EA6 !important; }
+.payment-method-tile-tc.is-selected { background: #EAF5F3 !important; border-color: #77BDB0 !important; color: #14685C !important; }
+.payment-method-tile-ot.is-selected { background: #F0F3F5 !important; border-color: #AAB9C1 !important; color: #4A5961 !important; }
+
+/* Inline tips are enabled, and the two floating helpers are stacked without covering each other. */
+.field-help-wrap { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; }
+.field-help-trigger { display: inline-grid !important; visibility: visible !important; opacity: 1 !important; }
+.ai-assistant-layer { right: 18px !important; bottom: calc(82px + env(safe-area-inset-bottom,0px)) !important; z-index: 2147483645 !important; }
+.ai-assistant-layer.ai-with-help { bottom: calc(82px + env(safe-area-inset-bottom,0px)) !important; }
+.context-help-layer { right: 18px !important; bottom: calc(12px + env(safe-area-inset-bottom,0px)) !important; z-index: 2147483646 !important; }
+.context-help-panel { bottom: calc(74px + env(safe-area-inset-bottom,0px)) !important; }
+@media (max-width: 760px) {
+  .ai-assistant-layer { right: 12px !important; bottom: calc(80px + env(safe-area-inset-bottom,0px)) !important; }
+  .ai-assistant-layer.ai-with-help { bottom: calc(80px + env(safe-area-inset-bottom,0px)) !important; }
+  .context-help-layer { right: 12px !important; bottom: calc(10px + env(safe-area-inset-bottom,0px)) !important; }
+  .context-help-panel { right: 10px !important; bottom: calc(68px + env(safe-area-inset-bottom,0px)) !important; }
+}

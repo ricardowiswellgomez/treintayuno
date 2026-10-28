@@ -29,7 +29,7 @@ test("Mi empresa conserva su identidad y las preferencias del catálogo viven en
 
 test("el menú de importar/exportar abre con estado explícito y funciona fuera de contenedores que lo recortan", () => {
   const heading = app.indexOf('className="inventory-page-heading"');
-  const trigger = app.indexOf('className="inventory-import-trigger"');
+  const trigger = app.indexOf('className={"inventory-import-trigger"');
   const metrics = app.indexOf('className="inventory-metric-grid"', heading);
   assert.ok(heading >= 0 && trigger > heading && metrics > trigger);
   assert.match(app.slice(heading, metrics), /Importar \/ exportar/);

@@ -5895,14 +5895,11 @@ function AuthenticatedApp() {
     return top.length ? top : [{label:"Ventas",value:profitLineRevenue}];
   })();
   const profitPurchasesPaid = periodPurchasePayments.reduce((sum,payment)=>sum+Number(payment.amount_minor||0),0);
-  const profitCostPieRows = [
-    {label:"Compras pagadas",value:profitPurchasesPaid},
-    ...Object.entries(periodExpenses.reduce((groups,expense)=>{
-      const category=String(expense.category||"Otros").trim()||"Otros";
-      groups[category]=(groups[category]||0)+Number(expense.amount_minor||0);
-      return groups;
-    },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5)
-  ];
+  const profitCostPieRows = Object.entries(periodExpenses.reduce((groups,expense)=>{
+    const category=String(expense.category||"Otros").trim()||"Otros";
+    groups[category]=(groups[category]||0)+Number(expense.amount_minor||0);
+    return groups;
+  },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
@@ -6835,11 +6832,11 @@ function AuthenticatedApp() {
                 <article className="profit-metric panel"><span>Gastos registrados</span><strong>{money(profitExpenseTotal, currencyCode)}</strong><small>{periodExpenses.length} {periodExpenses.length === 1 ? "gasto" : "gastos"}</small></article>
                 <article className="profit-metric panel profit-metric-primary"><span>Resultado estimado</span><strong className={profitNet < 0 ? "profit-negative" : "profit-positive"}>{money(profitNet, currencyCode)}</strong><small>Ganancia bruta menos gastos registrados</small></article>
               </div>
-              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={profitabilityChartType === "bars" ? "active" : ""} aria-pressed={profitabilityChartType === "bars"} onClick={() => setProfitabilityChartType("bars")}>Barras</button><button type="button" className={profitabilityChartType === "pie" ? "active" : ""} aria-pressed={profitabilityChartType === "pie"} onClick={() => setProfitabilityChartType("pie")}>Pastel</button></div>
-              {profitabilityChartType === "pie" ? <div className="profitability-pie-grid">
+              <div className="profitability-pie-grid">
                 <SimplePie title="Distribución de ingresos" description="Ventas agrupadas por artículo según el periodo elegido." data={profitIncomePieRows} formatValue={(value)=>money(value,currencyCode)} />
-                <SimplePie title="Compras y gastos" description="Pagos de compras de inventario y gastos registrados, sin duplicar el costo de lo vendido." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
-              </div> : <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />}
+                <SimplePie title="Distribución de gastos" description="Gastos registrados, agrupados por categoría en el periodo elegido. Las compras de inventario se muestran aparte para no confundirlas con gastos." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
+              </div>
+              <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />
               <div className="profitability-secondary-metrics">
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>

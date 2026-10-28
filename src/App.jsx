@@ -2565,6 +2565,126 @@ function AuthenticatedApp() {
     if (screen === "home" && activeBusiness?.id) loadHomeSummary();
   }, [screen, activeBusiness?.id, loadHomeSummary]);
 
+  const loadHomePieData = useCallback(async () => {
+    if (!activeBusiness?.id || screen !== "home") return;
+    setHomePieData((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const range = getHomeChartRange(homeChartPeriod);
+      const fromStamp = range.start + "T00:00:00-05:00";
+      const toStamp = range.endExclusive + "T00:00:00-05:00";
+      const permissions = activeBusiness?.permissions || {};
+      const isManager = ["owner", "admin"].includes(activeBusiness?.role);
+      const canReadSales = isManager || Boolean(permissions.sales_view);
+      const canReadPurchases = isManager || Boolean(permissions.purchases_view);
+      const canReadExpenses = isManager || Boolean(permissions.expenses_view);
+      const canReadSuppliers = isManager || Boolean(permissions.suppliers_view) || canReadPurchases;
+
+      const [salesRows, purchaseRows, expenseRows] = await Promise.all([
+        canReadSales ? fetchAllProfitabilityRows(
+          () => supabase.from("sales")
+            .select("id,business_id,total_minor,status,sold_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .gte("sold_at", fromStamp).lt("sold_at", toStamp)
+            .order("sold_at", { ascending: false }).order("id", { ascending: true }),
+          "ventas del panel de Inicio"
+        ) : Promise.resolve([]),
+        canReadPurchases ? fetchAllProfitabilityRows(
+          () => supabase.from("purchases")
+            .select("id,business_id,supplier_id,total_minor,status,purchased_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .gte("purchased_at", range.start).lte("purchased_at", range.today)
+            .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
+          "compras del panel de Inicio"
+        ) : Promise.resolve([]),
+        canReadExpenses ? fetchAllProfitabilityRows(
+          () => supabase.from("expenses")
+            .select("id,business_id,amount_minor,expense_date,category")
+            .eq("business_id", activeBusiness.id)
+            .gte("expense_date", range.start).lt("expense_date", range.endExclusive)
+            .order("expense_date", { ascending: false }).order("id", { ascending: true }),
+          "gastos del panel de Inicio"
+        ) : Promise.resolve([])
+      ]);
+
+      const validSales = salesRows.filter((sale) =>
+        !["cancelled", "canceled", "refunded", "draft"].includes(String(sale.status || "").toLowerCase())
+      );
+      const saleIds = validSales.map((sale) => sale.id);
+      const saleItems = [];
+      for (let index = 0; index < saleIds.length; index += 100) {
+        const ids = saleIds.slice(index, index + 100);
+        const rows = await fetchAllProfitabilityRows(
+          () => supabase.from("sale_items")
+            .select("id,business_id,sale_id,item_name,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("sale_id", ids).order("id", { ascending: true }),
+          "artículos vendidos para el panel de Inicio"
+        );
+        saleItems.push(...rows);
+      }
+
+      const incomeByItem = new Map();
+      const addAmount = (map, label, amount) => {
+        const key = String(label || "").trim() || "Otros";
+        const value = Number(amount || 0);
+        if (value > 0) map.set(key, (map.get(key) || 0) + value);
+      };
+      for (const item of saleItems) addAmount(incomeByItem, item.item_name || "Artículo sin nombre", item.line_total_minor);
+      const salesWithDetails = new Set(saleItems.map((item) => item.sale_id));
+      for (const sale of validSales) {
+        if (!salesWithDetails.has(sale.id)) addAmount(incomeByItem, "Ventas sin detalle", sale.total_minor);
+      }
+
+      const validPurchases = purchaseRows.filter((purchase) =>
+        !["cancelled", "canceled", "draft", "refunded"].includes(String(purchase.status || "").toLowerCase())
+      );
+      const supplierNames = new Map();
+      const supplierIds = [...new Set(validPurchases.map((purchase) => purchase.supplier_id).filter(Boolean))];
+      if (canReadSuppliers && supplierIds.length) {
+        try {
+          const suppliers = await fetchAllProfitabilityRows(
+            () => supabase.from("suppliers").select("id,business_id,name")
+              .eq("business_id", activeBusiness.id).in("id", supplierIds).order("name", { ascending: true }),
+            "proveedores del panel de Inicio"
+          );
+          for (const supplier of suppliers) supplierNames.set(supplier.id, supplier.name || "Proveedor");
+        } catch {
+          // Supplier names are helpful labels, but must not prevent the financial charts from loading.
+        }
+      }
+
+      const purchasesBySupplier = new Map();
+      for (const purchase of validPurchases) {
+        addAmount(purchasesBySupplier, purchase.supplier_id
+          ? (supplierNames.get(purchase.supplier_id) || "Proveedor registrado")
+          : "Sin proveedor", purchase.total_minor);
+      }
+
+      const expensesByCategory = new Map();
+      for (const expense of expenseRows) {
+        addAmount(expensesByCategory, String(expense.category || "").trim() || "Otros gastos", expense.amount_minor);
+      }
+
+      setHomePieData({
+        loading: false,
+        error: "",
+        income: summarizeHomePieMap(incomeByItem),
+        purchases: summarizeHomePieMap(purchasesBySupplier),
+        expenses: summarizeHomePieMap(expensesByCategory)
+      });
+    } catch (e) {
+      setHomePieData({ loading: false, error: friendlyError(e), income: [], purchases: [], expenses: [] });
+    }
+  }, [
+    activeBusiness?.id, activeBusiness?.role,
+    activeBusiness?.permissions?.sales_view, activeBusiness?.permissions?.purchases_view,
+    activeBusiness?.permissions?.expenses_view, activeBusiness?.permissions?.suppliers_view,
+    screen, homeChartPeriod
+  ]);
+
+  useEffect(() => {
+    if (screen === "home" && activeBusiness?.id) loadHomePieData();
+  }, [screen, activeBusiness?.id, homeChartPeriod, loadHomePieData]);
+
 
   useEffect(() => {
     let alive = true;

@@ -45,6 +45,7 @@ test("el catálogo muestra opciones de entrega y conserva la identidad propia de
   assert.match(app, /Entrega a domicilio/);
   assert.match(css, /\.public-catalog-brand\s*\{[^}]*width:\s*132px/s);
   assert.match(css, /\.public-catalog-image\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*3/s);
+  assert.match(css, /\.public-catalog-grid\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
   assert.match(css, /\.sidebar-nav-row \.nav-item\.active/);
   assert.match(css, /\.sidebar-contact-action/);
 });

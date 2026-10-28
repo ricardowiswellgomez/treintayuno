@@ -1643,6 +1643,12 @@ function AuthenticatedApp() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
   const [stagedImages, setStagedImages] = useState([]);
+  const [taxBulkProducts, setTaxBulkProducts] = useState([]);
+  const [taxBulkProductIds, setTaxBulkProductIds] = useState([]);
+  const [taxBulkCode, setTaxBulkCode] = useState("iva_19");
+  const [taxBulkSearch, setTaxBulkSearch] = useState("");
+  const [taxBulkLoading, setTaxBulkLoading] = useState(false);
+  const [taxBulkSaving, setTaxBulkSaving] = useState(false);
   const [productImageUrls, setProductImageUrls] = useState({});
   const [variantsByProduct, setVariantsByProduct] = useState({});
   const [viewingVariantsFor, setViewingVariantsFor] = useState(null);
@@ -3686,6 +3692,47 @@ function AuthenticatedApp() {
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   }
+
+  async function loadTaxBulkProducts() {
+    if (!activeBusiness?.id || !canManageProducts || taxBulkLoading) return;
+    setTaxBulkLoading(true); setError("");
+    try {
+      const rows = await fetchAllProfitabilityRows(
+        () => supabase.from("products").select("id,business_id,name,sku,metadata,archived_at")
+          .eq("business_id",activeBusiness.id).is("archived_at",null).order("name"),
+        "productos para asignar impuestos"
+      );
+      setTaxBulkProducts(rows);
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setTaxBulkLoading(false); }
+  }
+
+  async function applyBulkTaxToProducts() {
+    if (!activeBusiness?.id || !canManageProducts || taxBulkSaving) return;
+    const ids = [...new Set(taxBulkProductIds)];
+    if (!ids.length) { setError("Selecciona al menos un producto para aplicar el impuesto."); return; }
+    if (ids.length > 250) { setError("Puedes aplicar el impuesto a un máximo de 250 productos por operación."); return; }
+    setTaxBulkSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: rpcError } = await supabase.rpc("set_products_tax_code", {
+        p_business_id: activeBusiness.id, p_product_ids: ids, p_tax_code: taxBulkCode
+      });
+      if (rpcError) throw rpcError;
+      if (Number(data) !== ids.length) throw new Error("No se actualizaron todos los productos seleccionados.");
+      setTaxBulkProductIds([]);
+      setTaxBulkSearch("");
+      setInventoryOverviewRefresh((current) => current + 1);
+      await loadProducts();
+      await loadTaxBulkProducts();
+      setNotice("Impuesto actualizado en " + ids.length + (ids.length===1 ? " producto." : " productos."));
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setTaxBulkSaving(false); }
+  }
+
+  const taxBulkFilteredProducts = taxBulkProducts.filter((product) => {
+    const term = taxBulkSearch.trim().toLocaleLowerCase("es-CO");
+    return !term || String(product.name || "").toLocaleLowerCase("es-CO").includes(term) || String(product.sku || "").toLocaleLowerCase("es-CO").includes(term);
+  });
 
   async function addProduct(event) {
     event.preventDefault();
@@ -6667,6 +6714,18 @@ function AuthenticatedApp() {
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
+            {canManageProducts && <details className="bulk-tax-disclosure" onToggle={(event)=>{if(event.currentTarget.open && !taxBulkProducts.length && !taxBulkLoading) loadTaxBulkProducts();}}>
+              <summary><strong>Asignar impuesto a varios productos</strong><span>Elige los artículos y aplica un mismo impuesto</span></summary>
+              <div className="bulk-tax-content">
+                <div className="bulk-tax-controls">
+                  <label><span>Impuesto que se aplicará</span><select value={taxBulkCode} onChange={(event)=>setTaxBulkCode(event.target.value)}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
+                  <label><span>Buscar producto</span><input value={taxBulkSearch} onChange={(event)=>setTaxBulkSearch(event.target.value)} placeholder="Nombre o código…" /></label>
+                </div>
+                <div className="bulk-tax-list-heading"><span>{taxBulkLoading?"Cargando productos…":taxBulkFilteredProducts.length+" productos encontrados"}</span><span>{taxBulkProductIds.length}/250 seleccionados</span></div>
+                <div className="bulk-tax-product-list">{taxBulkFilteredProducts.map((product)=>{const checked=taxBulkProductIds.includes(product.id);return <label key={product.id} className="bulk-tax-product-option"><input type="checkbox" checked={checked} disabled={taxBulkSaving||(!checked&&taxBulkProductIds.length>=250)} onChange={(event)=>setTaxBulkProductIds((current)=>event.target.checked?[...current,product.id]:current.filter((id)=>id!==product.id))}/><span><strong>{product.name}</strong><small>{product.sku||"Sin código"} · Actual: {product.metadata?.tax_code||"none"}</small></span></label>;})}{!taxBulkFilteredProducts.length&&!taxBulkLoading&&<p className="stats-empty-note">No encontramos productos con esa búsqueda.</p>}</div>
+                <div className="bulk-tax-footer"><p>El cambio queda guardado en cada ficha y se usará en las ventas nuevas. No modifica las ventas históricas.</p><button type="button" className="primary-button compact-button" onClick={applyBulkTaxToProducts} disabled={taxBulkSaving||taxBulkLoading||!taxBulkProductIds.length}>{taxBulkSaving?"Guardando…":"Aplicar impuesto a seleccionados"}</button></div>
+              </div>
+            </details>}
             <details className="inventory-import-disclosure">
               <summary><strong>Importar inventario</strong><span>Plantilla Excel / CSV · hasta 500 artículos por archivo</span></summary>
               <div className="inventory-data-actions"><div><strong>Carga inicial del inventario</strong><p>Descarga una plantilla compatible con Excel y carga hasta 500 artículos por archivo CSV. Los códigos repetidos o filas inválidas se omiten y se informan.</p></div><div className="inventory-data-action-buttons"><button type="button" className="secondary-button" onClick={downloadInventoryTemplateExcel}>Plantilla Excel</button><button type="button" className="secondary-button" onClick={downloadInventoryTemplate}>CSV para importar</button><label className={"secondary-button inventory-import-label"+(inventoryImportBusy?" disabled":"")}>{inventoryImportBusy?"Importando…":"Importar CSV"}<input type="file" accept=".csv,text/csv" onChange={importInventoryFile} disabled={inventoryImportBusy||!canManageProducts} /></label><button type="button" className="secondary-button" onClick={downloadInventoryReportExcel} disabled={busy}>Reporte Excel</button><button type="button" className="secondary-button" onClick={printInventoryReportPdf} disabled={busy}>Reporte PDF</button></div>{inventoryImportProgress&&<span className="inventory-import-progress">{inventoryImportProgress}</span>}</div>

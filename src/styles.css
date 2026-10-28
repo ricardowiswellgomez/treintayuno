@@ -6877,3 +6877,21 @@ body { background: #F5F7FC; color: #19243A; }
  .public-catalog-grid{grid-template-columns:minmax(0,1fr)}
  .public-catalog-header-actions .public-catalog-cart-trigger>span:nth-child(2){display:none}
 }
+
+
+/* Direct Android package download; retain browser installation for iOS and desktop. */
+.landing-install-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:175px}
+.landing-install-actions .landing-install-button{width:100%;text-align:center}
+.landing-install-secondary,.auth-install-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 10px;border:1px solid #D1E2E2;border-radius:10px;background:#FFFFFF;color:#26636A;font-size:11.5px;font-weight:750;cursor:pointer}
+.landing-install-secondary:hover,.auth-install-secondary:hover{background:#F1F8F7;border-color:#9ECAC7}
+.auth-install-actions{display:flex;flex-direction:column;gap:6px;min-width:130px}
+.auth-install-actions .auth-install-button{width:100%;text-decoration:none}
+.auth-apk-download{display:flex}
+.auth-install-secondary{width:100%;min-height:32px;padding:6px 8px;font-size:10.5px}
+.landing-apk-download,.auth-apk-download{background:#167D82;color:#FFFFFF}
+.landing-apk-download:hover,.auth-apk-download:hover{background:#11666B}
+@media(max-width:700px){
+ .landing-install-actions{grid-column:1/-1;width:100%;min-width:0}
+ .landing-install-actions .landing-install-button{width:100%}
+ .auth-install-actions{grid-column:1/-1;width:100%;min-width:0}
+}

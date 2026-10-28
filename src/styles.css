@@ -9714,3 +9714,99 @@ body { background: #F5F7FC; color: #19243A; }
     font-size:10px!important;
   }
 }
+
+
+/* Cotizaciones: una propuesta por fila completa, nunca tarjetas en dos columnas. */
+.app-shell .quotes-page .quotes-list {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.app-shell .quotes-page .quotes-list>.quote-record {
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+}
+.app-shell .quotes-page .quote-record-items>div {
+  min-width:0!important;
+}
+.app-shell .quotes-page .quote-record-actions,
+.app-shell .quotes-page .quote-share-actions {
+  min-width:0!important;
+  max-width:100%!important;
+}
+.app-shell .quotes-page .quote-share-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:7px;
+}
+.app-shell .quotes-page .quote-record-actions>label {
+  min-width:min(100%,160px);
+}
+@media (max-width:760px) {
+  .app-shell .quotes-page .quotes-list {
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  .app-shell .quotes-page .quote-record {
+    padding:12px!important;
+    gap:10px!important;
+    border-radius:12px!important;
+  }
+  .app-shell .quotes-page .quote-record-top {
+    flex-wrap:nowrap!important;
+    align-items:flex-start!important;
+    gap:8px!important;
+  }
+  .app-shell .quotes-page .quote-record-top .status-pill {
+    flex:0 0 auto!important;
+    max-width:54%!important;
+    white-space:normal!important;
+    text-align:center!important;
+  }
+  .app-shell .quotes-page .quote-record-customer strong {
+    overflow-wrap:anywhere!important;
+    font-size:14px!important;
+  }
+  .app-shell .quotes-page .quote-record-bottom {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  .app-shell .quotes-page .quote-record-actions {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:9px!important;
+  }
+  .app-shell .quotes-page .quote-record-actions>label {
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+  }
+  .app-shell .quotes-page .quote-share-actions {
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  .app-shell .quotes-page .quote-share-actions .action-small {
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:8px 6px!important;
+    font-size:11px!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+}
+@media (max-width:380px) {
+  .app-shell .quotes-page .quote-share-actions {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}

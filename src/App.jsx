@@ -6171,6 +6171,19 @@ function AuthenticatedApp() {
     return groups;
   },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 
+  const homePurchaseExpensePieRows = (() => {
+    const combined = new Map();
+    for (const item of homePieData.purchases) {
+      const label = item.label === "Otros" ? "Otras compras" : "Compra · " + item.label;
+      combined.set(label, (combined.get(label) || 0) + Number(item.value || 0));
+    }
+    for (const item of homePieData.expenses) {
+      const label = item.label === "Otros" ? "Otros gastos" : "Gasto · " + item.label;
+      combined.set(label, (combined.get(label) || 0) + Number(item.value || 0));
+    }
+    return summarizeHomePieMap(combined, 4, "Otros movimientos");
+  })();
+
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
   const businessPermissions = activeBusiness?.permissions || {};

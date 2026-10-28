@@ -154,3 +154,20 @@ test("Inicio conserva el botón de compartir con su clase de estilo anterior", (
   assert.doesNotMatch(app, /className="home-utility-action home-share-business-card"/);
   assert.match(css, /\.home-share-card-button\s*\{/);
 });
+
+
+test("Ventas muestra iconos de ayuda reales en el bloque de caja visible al entrar", () => {
+  const start = app.indexOf('<section className="cash-register-panel panel">');
+  const end = app.indexOf('<div className="sales-date-toolbar panel">', start);
+  assert.ok(start >= 0 && end > start, "debe localizarse el bloque de caja de Ventas");
+  const cashPanel = app.slice(start, end);
+  assert.match(cashPanel, /className="cash-register-title-row"[\s\S]*?<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  assert.match(cashPanel, /Efectivo inicial<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  assert.match(cashPanel, /Efectivo contado al cierre<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  assert.match(cashPanel, /Notas del turno<FieldHelp enabled=\{contextualHelpEnabled\}/);
+  const visibleHelp = css.slice(css.lastIndexOf("/* Contextual help icons visibly present"));
+  assert.match(visibleHelp, /\.app-shell \.field-help-wrap\s*\{[\s\S]*?display:\s*inline-flex\s*!important/);
+  assert.match(visibleHelp, /\.app-shell \.field-help-trigger\s*\{[\s\S]*?display:\s*inline-grid\s*!important/);
+  assert.match(visibleHelp, /background:\s*var\(--paper,\s*#FFFFFF\)\s*!important/);
+});
+

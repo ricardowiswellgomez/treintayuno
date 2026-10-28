@@ -9982,3 +9982,50 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell .cash-register-heading h3{font-size:12.5px!important}
   .app-shell .cash-register-heading p{font-size:10px!important}
 }
+
+
+/* Contextual help icons visibly present in the business UI, including compact cash-register controls. */
+.app-shell .field-label-heading {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0;
+  overflow: visible !important;
+}
+.app-shell .field-help-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 21px !important;
+  width: 21px !important;
+  height: 21px !important;
+  min-width: 21px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.app-shell .field-help-trigger {
+  appearance: none !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  box-sizing: border-box !important;
+  width: 21px !important;
+  height: 21px !important;
+  min-width: 21px !important;
+  min-height: 21px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1.5px solid var(--green, #174580) !important;
+  border-radius: 50% !important;
+  background: var(--paper, #FFFFFF) !important;
+  color: var(--green, #174580) !important;
+  font: 800 12px/1 "DM Sans", sans-serif !important;
+  text-align: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex: 0 0 21px !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(20, 38, 45, .16) !important;
+}
+.cash-register-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cash-register-title-row h3 { margin: 0; }

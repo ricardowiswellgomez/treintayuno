@@ -79,12 +79,12 @@ function SimpleBars({ title, description, data, formatValue }) {
 }
 
 
-function SimplePie({ title, description, data, formatValue }) {
+function SimplePie({ title, description, data, formatValue, compact = false }) {
   const entries = (data || []).map((item) => ({ ...item, value: Math.max(0, Number(item.value) || 0) })).filter((item) => item.value > 0);
   const total = entries.reduce((sum, item) => sum + item.value, 0);
   const colors = ["#64748B", "#0F766E", "#D97706", "#7C3AED", "#DB2777", "#0284C7"];
   let cumulative = 0;
-  return <section className="simple-chart panel simple-pie-chart">
+  return <section className={"simple-chart panel simple-pie-chart" + (compact ? " simple-pie-chart-compact" : "")}>
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">Distribución</span></div>
     {total > 0 ? <div className="simple-pie-layout">
       <div className="simple-pie-visual" role="img" aria-label={title+" · "+entries.map((item)=>item.label+": "+(formatValue?formatValue(item.value):item.value)).join(", ")}>
@@ -99,6 +99,45 @@ function SimplePie({ title, description, data, formatValue }) {
     </div> : <p className="simple-chart-empty">Aún no hay importes positivos para formar el gráfico.</p>}
     <div className="simple-chart-footnote">Distribución calculada a partir de movimientos registrados.</div>
   </section>;
+}
+
+
+function shiftHomeDateKey(key, offset) {
+  const date = new Date(key + "T12:00:00Z");
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function getHomeChartRange(period) {
+  const today = todayInBogota();
+  const [year, month] = today.split("-").map(Number);
+  let start = today;
+  if (period === "week") {
+    const date = new Date(today + "T12:00:00Z");
+    start = shiftHomeDateKey(today, -((date.getUTCDay() + 6) % 7));
+  } else if (period === "month") {
+    start = today.slice(0, 7) + "-01";
+  } else if (period === "quarter") {
+    const firstMonth = Math.floor((month - 1) / 3) * 3 + 1;
+    start = year + "-" + String(firstMonth).padStart(2, "0") + "-01";
+  } else if (period === "semester") {
+    start = year + (month <= 6 ? "-01-01" : "-07-01");
+  } else if (period === "year") {
+    start = year + "-01-01";
+  }
+  return { start, today, endExclusive: shiftHomeDateKey(today, 1) };
+}
+
+function summarizeHomePieMap(values, maxVisible = 4, otherLabel = "Otros") {
+  const sorted = [...values.entries()]
+    .map(([label, value]) => ({ label: String(label || "Otros").trim() || "Otros", value: Number(value) || 0 }))
+    .filter((entry) => entry.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const visible = sorted.slice(0, maxVisible);
+  if (sorted.length > maxVisible) {
+    visible.push({ label: otherLabel, value: sorted.slice(maxVisible).reduce((sum, entry) => sum + entry.value, 0) });
+  }
+  return visible;
 }
 
 function escapeHtml(value) {
@@ -677,29 +716,6 @@ function FieldHelp({ text, enabled = true }) {
     </>
   );
 }
-
-const contextualHelpContent = {
-  home: { title: "Inicio", intro: "Este es el punto de partida de treseiscinco. Cada módulo trabaja con la información real de tu negocio.", steps: ["En Productos registra lo que vendes y confirma su precio y existencias.", "En Ventas registra cada operación: el sistema calcula el total y descuenta inventario cuando corresponde.", "En Compras y gastos registra entradas y egresos para consultar la rentabilidad."], tip: "Mantén los productos y las existencias al día: las demás secciones dependen de esos datos." },
-  products: { title: "Productos", intro: "Aquí defines el catálogo interno que se usa en ventas, compras y rentabilidad.", steps: ["Crea o edita un producto con nombre, unidad, precio y costo.", "Activa «Se puede vender» para que aparezca en el formulario de ventas.", "Indica si controla inventario y registra las entradas o ajustes de existencias."], tip: "Antes de vender, revisa el precio, el estado de venta y las existencias." },
-  productForm: { title: "Crear o editar producto", intro: "Guarda la información comercial con la que se calcularán las ventas.", steps: ["Usa un nombre fácil de reconocer; el código es un identificador.", "Define precio de venta, costo, unidad y control de inventario.", "Revisa los campos y pulsa Guardar. Las fotos se optimizan antes de almacenarse."], tip: "Para servicios o productos digitales, desactiva el control de inventario si no corresponde." },
-  sales: { title: "Ventas", intro: "Registra ventas reales, consulta su estado de pago y registra abonos posteriores.", steps: ["Pulsa «Nueva venta». El cliente es opcional.", "Elige un producto, revisa cantidad y pulsa «+ Agregar» para incluirlo.", "Revisa el total, indica el abono si recibiste dinero y guarda."], tip: "Guardar requiere al menos un artículo agregado. Venta y salida de inventario se registran juntas." },
-  saleForm: { title: "Registrar una venta", intro: "El formulario solo vende productos activos. El inventario se descuenta al confirmar el registro.", steps: ["Elige un producto en la lista desplegable.", "Escribe la cantidad y pulsa «+ Agregar». Repite para otros productos.", "Revisa el carrito y el total; puedes dejar el cliente vacío.", "Registra el abono inicial, selecciona su forma de pago y pulsa Guardar venta."], tip: "Si el producto no aparece, revisa que esté activo para la venta. Si no hay existencias suficientes, el sistema explica el motivo." },
-  salePaymentForm: { title: "Registrar un abono", intro: "Añade un pago recibido a una venta existente y actualiza su saldo pendiente.", steps: ["Comprueba el número y el saldo de la venta.", "Escribe el importe recibido, la fecha y la forma de pago.", "Agrega una referencia si la necesitas y pulsa Guardar abono."], tip: "El abono debe ser mayor que cero y no superar el saldo pendiente." },
-  customers: { title: "Clientes", intro: "Guarda los datos de contacto para relacionarlos con las ventas cuando sea necesario.", steps: ["Pulsa «Nuevo cliente» y registra el nombre o empresa.", "Completa solo los datos de contacto que tengas.", "Guarda y luego podrás elegirlo en una venta."], tip: "También puedes registrar una venta sin cliente." },
-  customerForm: { title: "Guardar un cliente", intro: "Registra datos útiles para identificar o contactar a tu cliente.", steps: ["Escribe el nombre o la empresa.", "Añade teléfono, correo, ciudad u otros datos disponibles.", "Pulsa Guardar cliente y verifica el mensaje de confirmación."], tip: "No necesitas llenar los campos opcionales para guardar el cliente." },
-  purchases: { title: "Compras", intro: "Registra compras de mercancía o materiales y conserva su historial.", steps: ["Pulsa «Nueva compra».", "Añade descripción, cantidad y costo unitario de cada artículo.", "Vincula un producto cuando la compra deba aumentar sus existencias.", "Guarda la compra y registra el pago inicial si corresponde."], tip: "Solo los artículos vinculados a un producto modifican el inventario." },
-  purchaseForm: { title: "Registrar una compra", intro: "Esta entrada conserva los artículos, sus costos y los cambios reales de inventario.", steps: ["Selecciona proveedor y fecha si los conoces.", "Añade cada artículo con su cantidad y costo.", "Verifica total e importe pagado antes de guardar."], tip: "No vincules un material a un producto vendible si no debe aumentar las unidades de ese producto." },
-  purchasePaymentForm: { title: "Registrar un pago de compra", intro: "Registra el dinero que entregas a un proveedor para una compra existente.", steps: ["Comprueba la compra y su saldo pendiente.", "Escribe el importe, fecha y método de pago.", "Añade una referencia opcional y guarda el pago."], tip: "El pago no puede superar el saldo de la compra." },
-  suppliers: { title: "Proveedores", intro: "Centraliza quién te suministra productos, materiales o servicios.", steps: ["Pulsa «Nuevo proveedor».", "Registra el nombre y agrega NIT, correo, teléfono o dirección si los tienes.", "Guarda y selecciona ese proveedor en futuras compras o gastos."], tip: "El nombre del proveedor es imprescindible; el resto puede añadirse más adelante." },
-  supplierForm: { title: "Guardar un proveedor", intro: "Este registro ayuda a mantener las compras y gastos relacionados con su origen.", steps: ["Escribe el nombre del proveedor.", "Agrega los datos disponibles y cualquier nota útil.", "Pulsa Guardar proveedor."], tip: "Si cambia un dato, actualiza su ficha en lugar de duplicarla." },
-  expenses: { title: "Gastos", intro: "Registra salidas de dinero que no forman parte de la entrada de mercancía de una compra.", steps: ["Pulsa «Nuevo gasto».", "Describe el gasto, categoría, fecha e importe.", "Añade proveedor, método de pago o nota si aplica.", "Guarda y revisa el registro."], tip: "Registra cada gasto una sola vez. Los artículos de inventario corresponden a Compras." },
-  expenseForm: { title: "Registrar un gasto", intro: "Un gasto afecta los resultados de rentabilidad del período.", steps: ["Escribe una descripción concreta y un importe mayor que cero.", "Confirma la fecha y la categoría.", "Guarda cuando la información esté correcta."], tip: "Incluye la referencia o el soporte en Notas para facilitar una revisión posterior." },
-  profitability: { title: "Rentabilidad", intro: "Este módulo resume valores a partir de ventas, costos registrados y gastos.", steps: ["Elige el período que quieres revisar.", "Compara ventas con el costo de los productos vendidos.", "Revisa los gastos asociados antes de interpretar la utilidad."], tip: "Los resultados dependen de que hayas registrado los costos y gastos de forma completa." },
-  catalog: { title: "Catálogo", intro: "Controla qué productos activos quieres mostrar a tus clientes en el catálogo público.", steps: ["Revisa nombre, precio, fotos y descripción en Productos.", "Publica solo los artículos que quieres mostrar.", "Abre el enlace público para comprobar lo que verá un cliente."], tip: "El catálogo muestra productos publicados y disponibles para vender; no sustituye el registro interno." },
-  team: { title: "Equipo y permisos", intro: "Permite que cada colaborador vea o gestione solo los módulos que necesita.", steps: ["La persona debe tener primero una cuenta de treseiscinco.", "Escribe el mismo correo que usa para iniciar sesión.", "Marca los permisos necesarios y guarda los cambios."], tip: "Otorga solo los accesos que la persona necesita para trabajar." },
-  teamForm: { title: "Configurar acceso de un colaborador", intro: "Los permisos definen qué módulos puede consultar o administrar otra cuenta.", steps: ["Escribe el correo exacto de la cuenta de treseiscinco.", "Activa solo los permisos necesarios.", "Revisa la selección y guarda el acceso."], tip: "El colaborador debe haber creado su cuenta antes de poder ser vinculado al negocio." },
-  settings: { title: "Configuración y personalización", intro: "Los ajustes se conservan en el negocio y se aplican cuando vuelvas a entrar.", steps: ["Actualiza nombre y moneda si el negocio aún no tiene importes que impidan cambiarla.", "Carga un logo y elige colores para personalizar las pantallas.", "Activa o desactiva el panel en «Ayudas contextuales».", "Pulsa Guardar configuración al terminar."], tip: "Los cambios visuales no alteran las operaciones. La moneda se protege cuando ya existen datos financieros." }
-};
 
 const MAX_PRODUCT_IMAGE_BYTES = 1_500_000;
 
@@ -1630,6 +1646,17 @@ function PublicContactPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const fallbackMailBody = [
+    "Hola, equipo de soporte de treseiscinco.",
+    "",
+    "Nombre: " + form.name,
+    "Correo de respuesta: " + form.email,
+    "Tema: " + form.category,
+    "",
+    "Mensaje:",
+    (form.message || "").slice(0, 1200) + (form.message.length > 1200 ? "\n\n[El mensaje se ha abreviado. Vuelve a copiarlo completo desde el formulario si hace falta.]" : "")
+  ].join("\n");
+  const fallbackMailto = "mailto:hola.treseiscinco@gmail.com?subject=" + encodeURIComponent("[treseiscinco] " + form.category + " — " + form.name) + "&body=" + encodeURIComponent(fallbackMailBody);
 
   async function submitContact(event) {
     event.preventDefault();
@@ -1657,7 +1684,7 @@ function PublicContactPage() {
       <form className="public-contact-form" onSubmit={submitContact}>
         <div className="public-contact-form-title"><span className="landing-kicker">CONTACTO Y SOPORTE</span><h2>Envíanos un mensaje</h2><p>Completa los campos y pulsa enviar. Te responderemos al correo que dejes aquí.</p></div>
         {notice && <div className="public-contact-alert is-success" role="status">{notice}</div>}
-        {error && <div className="public-contact-alert is-error" role="alert">{error}</div>}
+        {error && <div className="public-contact-alert is-error" role="alert"><p>{error}</p><p>Para no dejarte sin soporte, también puedes enviar el mensaje desde la aplicación de correo del dispositivo.</p><a className="public-contact-fallback-link" href={fallbackMailto}>Abrir correo y enviar manualmente <span aria-hidden="true">↗</span></a></div>}
         <label><span>Tu nombre *</span><input name="name" required minLength={2} maxLength={100} autoComplete="name" value={form.name} onChange={(e) => setForm((v) => ({...v,name:e.target.value}))} placeholder="Nombre y apellido" /></label>
         <label><span>Correo electrónico *</span><input type="email" name="email" required maxLength={254} autoComplete="email" value={form.email} onChange={(e) => setForm((v) => ({...v,email:e.target.value}))} placeholder="tunombre@correo.com" /></label>
         <label><span>¿Sobre qué nos escribes? *</span><select name="category" value={form.category} onChange={(e) => setForm((v) => ({...v,category:e.target.value}))}><option>Uso de la app</option><option>Problema técnico</option><option>Cuenta y acceso</option><option>Inventario, ventas o gastos</option><option>Sugerencia</option><option>Otro</option></select></label>
@@ -1907,6 +1934,8 @@ function AuthenticatedApp() {
   const [inventoryOverviewLoading, setInventoryOverviewLoading] = useState(false);
   const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
   const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
+  const [homeChartPeriod, setHomeChartPeriod] = useState("month");
+  const [homePieData, setHomePieData] = useState({ loading: false, error: "", income: [], purchases: [], expenses: [] });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);
@@ -2208,28 +2237,7 @@ function AuthenticatedApp() {
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
   const [settingsRemoveLogo, setSettingsRemoveLogo] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  useEffect(() => {
-    const closeGlobalHelpWhenFieldHelpOpens = (event) => { if (event.detail?.source) setHelpOpen(false); };
-    document.addEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
-    return () => document.removeEventListener("treseiscinco:field-help-open", closeGlobalHelpWhenFieldHelpOpens);
-  }, []);
-  useEffect(() => {
-    if (!helpOpen) return;
-    const closeOnOutsidePointer = (event) => {
-      const panel = document.getElementById("contextual-help-panel");
-      if (panel?.contains(event.target) || event.target?.closest?.(".context-help-trigger")) return;
-      setHelpOpen(false);
-    };
-    const closeOnEscape = (event) => { if (event.key === "Escape") setHelpOpen(false); };
-    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [helpOpen]);
   const [aiMessage, setAiMessage] = useState("");
   const [aiHistory, setAiHistory] = useState([]);
   const aiMessagesRef = useRef(null);
@@ -2556,6 +2564,126 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (screen === "home" && activeBusiness?.id) loadHomeSummary();
   }, [screen, activeBusiness?.id, loadHomeSummary]);
+
+  const loadHomePieData = useCallback(async () => {
+    if (!activeBusiness?.id || screen !== "home") return;
+    setHomePieData((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const range = getHomeChartRange(homeChartPeriod);
+      const fromStamp = range.start + "T00:00:00-05:00";
+      const toStamp = range.endExclusive + "T00:00:00-05:00";
+      const permissions = activeBusiness?.permissions || {};
+      const isManager = ["owner", "admin"].includes(activeBusiness?.role);
+      const canReadSales = isManager || Boolean(permissions.sales_view);
+      const canReadPurchases = isManager || Boolean(permissions.purchases_view);
+      const canReadExpenses = isManager || Boolean(permissions.expenses_view);
+      const canReadSuppliers = isManager || Boolean(permissions.suppliers_view) || canReadPurchases;
+
+      const [salesRows, purchaseRows, expenseRows] = await Promise.all([
+        canReadSales ? fetchAllProfitabilityRows(
+          () => supabase.from("sales")
+            .select("id,business_id,total_minor,status,sold_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .gte("sold_at", fromStamp).lt("sold_at", toStamp)
+            .order("sold_at", { ascending: false }).order("id", { ascending: true }),
+          "ventas del panel de Inicio"
+        ) : Promise.resolve([]),
+        canReadPurchases ? fetchAllProfitabilityRows(
+          () => supabase.from("purchases")
+            .select("id,business_id,supplier_id,total_minor,status,purchased_at,created_at")
+            .eq("business_id", activeBusiness.id)
+            .gte("purchased_at", fromStamp).lt("purchased_at", toStamp)
+            .order("purchased_at", { ascending: false }).order("id", { ascending: true }),
+          "compras del panel de Inicio"
+        ) : Promise.resolve([]),
+        canReadExpenses ? fetchAllProfitabilityRows(
+          () => supabase.from("expenses")
+            .select("id,business_id,amount_minor,expense_date,category")
+            .eq("business_id", activeBusiness.id)
+            .gte("expense_date", range.start).lt("expense_date", range.endExclusive)
+            .order("expense_date", { ascending: false }).order("id", { ascending: true }),
+          "gastos del panel de Inicio"
+        ) : Promise.resolve([])
+      ]);
+
+      const validSales = salesRows.filter((sale) =>
+        !["cancelled", "canceled", "refunded", "draft"].includes(String(sale.status || "").toLowerCase())
+      );
+      const saleIds = validSales.map((sale) => sale.id);
+      const saleItems = [];
+      for (let index = 0; index < saleIds.length; index += 100) {
+        const ids = saleIds.slice(index, index + 100);
+        const rows = await fetchAllProfitabilityRows(
+          () => supabase.from("sale_items")
+            .select("id,business_id,sale_id,item_name,line_total_minor")
+            .eq("business_id", activeBusiness.id).in("sale_id", ids).order("id", { ascending: true }),
+          "artículos vendidos para el panel de Inicio"
+        );
+        saleItems.push(...rows);
+      }
+
+      const incomeByItem = new Map();
+      const addAmount = (map, label, amount) => {
+        const key = String(label || "").trim() || "Otros";
+        const value = Number(amount || 0);
+        if (value > 0) map.set(key, (map.get(key) || 0) + value);
+      };
+      for (const item of saleItems) addAmount(incomeByItem, item.item_name || "Artículo sin nombre", item.line_total_minor);
+      const salesWithDetails = new Set(saleItems.map((item) => item.sale_id));
+      for (const sale of validSales) {
+        if (!salesWithDetails.has(sale.id)) addAmount(incomeByItem, "Ventas sin detalle", sale.total_minor);
+      }
+
+      const validPurchases = purchaseRows.filter((purchase) =>
+        !["cancelled", "canceled", "draft", "refunded"].includes(String(purchase.status || "").toLowerCase())
+      );
+      const supplierNames = new Map();
+      const supplierIds = [...new Set(validPurchases.map((purchase) => purchase.supplier_id).filter(Boolean))];
+      if (canReadSuppliers && supplierIds.length) {
+        try {
+          const suppliers = await fetchAllProfitabilityRows(
+            () => supabase.from("suppliers").select("id,business_id,name")
+              .eq("business_id", activeBusiness.id).in("id", supplierIds).order("name", { ascending: true }),
+            "proveedores del panel de Inicio"
+          );
+          for (const supplier of suppliers) supplierNames.set(supplier.id, supplier.name || "Proveedor");
+        } catch {
+          // Supplier names are helpful labels, but must not prevent the financial charts from loading.
+        }
+      }
+
+      const purchasesBySupplier = new Map();
+      for (const purchase of validPurchases) {
+        addAmount(purchasesBySupplier, purchase.supplier_id
+          ? (supplierNames.get(purchase.supplier_id) || "Proveedor registrado")
+          : "Sin proveedor", purchase.total_minor);
+      }
+
+      const expensesByCategory = new Map();
+      for (const expense of expenseRows) {
+        addAmount(expensesByCategory, String(expense.category || "").trim() || "Otros gastos", expense.amount_minor);
+      }
+
+      setHomePieData({
+        loading: false,
+        error: "",
+        income: summarizeHomePieMap(incomeByItem),
+        purchases: summarizeHomePieMap(purchasesBySupplier),
+        expenses: summarizeHomePieMap(expensesByCategory)
+      });
+    } catch (e) {
+      setHomePieData({ loading: false, error: friendlyError(e), income: [], purchases: [], expenses: [] });
+    }
+  }, [
+    activeBusiness?.id, activeBusiness?.role,
+    activeBusiness?.permissions?.sales_view, activeBusiness?.permissions?.purchases_view,
+    activeBusiness?.permissions?.expenses_view, activeBusiness?.permissions?.suppliers_view,
+    screen, homeChartPeriod
+  ]);
+
+  useEffect(() => {
+    if (screen === "home" && activeBusiness?.id) loadHomePieData();
+  }, [screen, activeBusiness?.id, homeChartPeriod, loadHomePieData]);
 
 
   useEffect(() => {
@@ -3620,10 +3748,6 @@ function AuthenticatedApp() {
   useEffect(() => () => {
     if (settingsLogoPreview?.startsWith("blob:")) URL.revokeObjectURL(settingsLogoPreview);
   }, [settingsLogoPreview]);
-
-  useEffect(() => {
-    if (activeBusiness?.settings?.contextual_help_enabled === false) setHelpOpen(false);
-  }, [activeBusiness?.settings?.contextual_help_enabled]);
 
   function chooseBusinessLogo(event) {
     const file = event.target.files?.[0];
@@ -6047,6 +6171,26 @@ function AuthenticatedApp() {
     return groups;
   },{})).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 
+  const homePurchaseExpensePieRows = (() => {
+    const combined = new Map();
+    for (const item of homePieData.purchases) {
+      const label = item.label === "Otros" ? "Otras compras" : "Compra · " + item.label;
+      combined.set(label, (combined.get(label) || 0) + Number(item.value || 0));
+    }
+    for (const item of homePieData.expenses) {
+      const label = item.label === "Otros" ? "Otros gastos" : "Gasto · " + item.label;
+      combined.set(label, (combined.get(label) || 0) + Number(item.value || 0));
+    }
+    return summarizeHomePieMap(combined, 4, "Otros movimientos");
+  })();
+  const homeMobilePieRows = [
+    { label: "Ingresos", value: homePieData.income.reduce((sum, item) => sum + Number(item.value || 0), 0) },
+    { label: "Compras y gastos", value:
+      homePieData.purchases.reduce((sum, item) => sum + Number(item.value || 0), 0)
+      + homePieData.expenses.reduce((sum, item) => sum + Number(item.value || 0), 0)
+    }
+  ].filter((item) => item.value > 0);
+
   const isBusinessManager = ["owner", "admin"].includes(activeBusiness?.role);
   const isBusinessOwner = activeBusiness?.role === "owner";
   const businessPermissions = activeBusiness?.permissions || {};
@@ -6170,7 +6314,6 @@ function AuthenticatedApp() {
   }, [activeBusiness?.id]);
 
   useEffect(() => {
-    setHelpOpen(false);
     document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } }));
   }, [screen, activeBusiness?.id]);
 
@@ -6437,19 +6580,6 @@ function AuthenticatedApp() {
     color: safeAppText
   };
   const contextualHelpEnabled = activeBusiness?.settings?.contextual_help_enabled !== false;
-  const contextualHelpKey = screen === "products" && showProductForm ? "productForm"
-    : screen === "sales" && salePaymentFormFor ? "salePaymentForm"
-    : screen === "sales" && showSaleForm ? "saleForm"
-    : screen === "customers" && showCustomerForm ? "customerForm"
-    : screen === "purchases" && purchasePaymentFormFor ? "purchasePaymentForm"
-    : screen === "suppliers" ? (showSupplierForm ? "supplierForm" : "suppliers")
-    : screen === "purchases" && effectivePurchaseTab === "suppliers" ? (showSupplierForm ? "supplierForm" : "suppliers")
-    : screen === "purchases" && effectivePurchaseTab === "expenses" ? (showExpenseForm ? "expenseForm" : "expenses")
-    : screen === "purchases" && showPurchaseForm ? "purchaseForm"
-    : screen === "team" && teamFormOpen ? "teamForm"
-    : screen;
-  const contextualHelp = contextualHelpContent[contextualHelpKey] || contextualHelpContent.home;
-
   if (!authReady) return <div className="loading-screen"><div className="brand-mark"><img className="brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" /></div><p>Preparando tu espacio…</p></div>;
 
   if (!session && showPublicLanding && mode !== "update-password") return <PublicLanding
@@ -7242,7 +7372,7 @@ function AuthenticatedApp() {
                 <article className="inventory-metric-card"><span>Costo total del inventario</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.costMinor, currencyCode)}</strong><p>Costo de las unidades en stock</p></article>
                 <article className="inventory-metric-card"><span>Valor de venta estimado</span><strong>{inventoryOverviewLoading ? "Calculando…" : money(inventoryOverview.retailMinor, currencyCode)}</strong><p>Si se vende todo el stock disponible</p></article>
                 <button type="button" className={"inventory-metric-card inventory-metric-action" + (productStockFilter === "out_of_stock" ? " selected" : "")} onClick={() => { setProductStockFilter((current) => current === "out_of_stock" ? "all" : "out_of_stock"); setProductPage(1); }} aria-pressed={productStockFilter === "out_of_stock"}><span>Sin stock</span><strong>{inventoryOverviewLoading ? "…" : inventoryOverview.outOfStockCount.toLocaleString("es-CO")}</strong><p>{productStockFilter === "out_of_stock" ? "Mostrar todos los artículos" : "Ver artículos agotados"}</p></button>
-                <button ref={inventoryDataMobileTriggerRef} type="button" className={"inventory-metric-card inventory-import-stock-card" + (inventoryDataMenuOpen ? " is-open" : "")} aria-label="Importar inventario" aria-haspopup="dialog" aria-expanded={inventoryDataMenuOpen} aria-controls="inventory-data-menu" onClick={() => setInventoryDataMenuOpen((open) => !open)}><span className="inventory-import-stock-label"><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span><p>Plantilla Excel, CSV y reportes</p></button>
+                <button ref={inventoryDataMobileTriggerRef} type="button" className={"inventory-metric-card inventory-import-stock-card" + (inventoryDataMenuOpen ? " is-open" : "")} aria-label="Importar inventario" title="Importar inventario" aria-haspopup="dialog" aria-expanded={inventoryDataMenuOpen} aria-controls="inventory-data-menu" onClick={() => setInventoryDataMenuOpen((open) => !open)}><span className="inventory-import-stock-label"><AppIcon name="file-spreadsheet" size={17}/><strong>Importar inventario</strong></span></button>
               </div>
               {inventoryOverview.lowStockCount > 0 && <button type="button" className="inventory-low-stock-notice" onClick={() => { setProductStockFilter((current) => current === "low_stock" ? "all" : "low_stock"); setProductPage(1); }}><span><strong>{inventoryOverview.lowStockCount} {inventoryOverview.lowStockCount === 1 ? "artículo necesita" : "artículos necesitan"} reposición</strong><small>Según el mínimo definido en cada ficha.</small></span><span>{productStockFilter === "low_stock" ? "Ver todos" : "Revisar"} ›</span></button>}
             </section>
@@ -7784,6 +7914,34 @@ function AuthenticatedApp() {
             {inventoryOverview.lowStockCount > 0 && canAccessScreen("products") && <button type="button" className="home-stock-warning" onClick={() => { setProductStockFilter("low_stock"); setProductPage(1); navigate("products"); }}><span><strong>{inventoryOverview.lowStockCount} artículos están en su mínimo o por debajo</strong><small>Abre el filtro y revisa qué necesitas reponer.</small></span><b>Ver inventario ↗</b></button>}
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
+          <section className="home-pie-dashboard" aria-label="Distribución de ingresos, compras y gastos">
+            <div className="home-pie-toolbar">
+              <div className="home-pie-title">
+                <h2>Ingresos, compras y gastos</h2>
+                <p>Distribución de movimientos registrados del periodo.</p>
+              </div>
+              <div className="home-pie-period-controls" role="group" aria-label="Periodo de los gráficos de Inicio">
+                {[[ "day", "Hoy" ], [ "week", "Semana" ], [ "month", "Mes" ], [ "quarter", "Trimestre" ], [ "semester", "Semestre" ], [ "year", "Año" ]].map(([value, label]) =>
+                  <button type="button" key={value} className={homeChartPeriod === value ? "active" : ""} aria-pressed={homeChartPeriod === value} onClick={() => setHomeChartPeriod(value)}>{label}</button>
+                )}
+              </div>
+            </div>
+            {homePieData.error && <p className="home-pie-error" role="alert">No se pudieron cargar los gráficos de este periodo: {homePieData.error}</p>}
+            {homePieData.loading ? <div className="home-pie-loading panel" role="status">Actualizando los gráficos con los movimientos registrados…</div> : <>
+              <div className="home-pie-grid home-pie-desktop">
+                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                {canViewPurchases && <SimplePie title="Compras" description="Compras registradas agrupadas por proveedor." data={homePieData.purchases} formatValue={(value) => money(value, currencyCode)} />}
+                {canViewExpenses && <SimplePie title="Gastos" description="Gastos registrados agrupados por categoría." data={homePieData.expenses} formatValue={(value) => money(value, currencyCode)} />}
+              </div>
+              <div className="home-pie-grid home-pie-tablet">
+                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
+              </div>
+              <div className="home-pie-mobile-wrapper">
+                <SimplePie compact title="Ingresos y compras-gastos" description="Participación de los ingresos frente a las compras y los gastos del periodo." data={homeMobilePieRows} formatValue={(value) => money(value, currencyCode)} />
+              </div>
+            </>}
+          </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>
       </section>
@@ -7798,17 +7956,12 @@ function AuthenticatedApp() {
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
           <p className="ai-assistant-disclaimer">Uso la información registrada en este negocio y no invento cifras. Si algún dato no está disponible, te lo diré con claridad.</p>
         </section>}
-        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { setHelpOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
+        <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
-      <div className={"context-help-layer" + (helpOpen ? " is-open" : "")}>
-        <button type="button" className="context-help-trigger" aria-expanded={helpOpen} aria-controls="contextual-help-panel" onClick={() => { setAiOpen(false); document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setHelpOpen((open) => !open); }}><span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span></button>
-        {helpOpen && <aside id="contextual-help-panel" className="context-help-panel" role="dialog" aria-modal="false" aria-label={"Ayuda: " + contextualHelp.title}>
-          <header className="context-help-header"><div><p>AYUDA CONTEXTUAL</p><h2>{contextualHelp.title}</h2></div><button type="button" className="context-help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button></header>
-          <p className="context-help-intro">{contextualHelp.intro}</p>
-          <div className="context-help-section"><strong>Cómo hacerlo</strong><ol>{contextualHelp.steps.map((step, index) => <li key={index}><span>{index + 1}</span><p>{step}</p></li>)}</ol></div>
-          <div className="context-help-tip"><strong><span aria-hidden="true">✦</span> Consejo útil</strong><p>{contextualHelp.tip}</p></div>
-          <footer className="context-help-footer"><button type="button" className="primary-button" onClick={() => setHelpOpen(false)}>Entendido</button></footer>
-        </aside>}
+      <div className="context-help-layer">
+        <a className="context-help-trigger" href="/ayuda" aria-label="Abrir centro de ayuda" title="Centro de ayuda">
+          <span className="context-help-trigger-icon" aria-hidden="true">?</span><span>Ayuda</span>
+        </a>
       </div>
 
       {selectedRecordDetail && <div className="customer-detail-backdrop record-detail-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelectedRecordDetail(null); }}><section className="customer-detail-card record-detail-card" role="dialog" aria-modal="true" aria-labelledby="record-detail-title"><header className="customer-detail-header"><div><span className="customer-detail-kicker">DETALLE DEL REGISTRO · {selectedRecordDetail.type}</span><h2 id="record-detail-title">{selectedRecordDetail.title}</h2></div><button type="button" className="customer-detail-close" aria-label="Cerrar detalle" onClick={() => setSelectedRecordDetail(null)}>×</button></header><div className="customer-detail-content">{selectedRecordDetail.fields.filter(field => field.value !== undefined && field.value !== null && String(field.value).trim() !== "").map((field,index)=><div className="customer-detail-field record-detail-field" key={field.label+index}><span>{field.label}</span><strong>{String(field.value)}</strong></div>)}{selectedRecordDetail.notes && <section className="customer-detail-group"><h3>Notas</h3><p className="customer-detail-notes">{selectedRecordDetail.notes}</p></section>}</div><footer className="customer-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedRecordDetail(null)}>Cerrar ficha</button></footer></section></div>}

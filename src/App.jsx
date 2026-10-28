@@ -2413,9 +2413,91 @@ function AuthenticatedApp() {
 
   function downloadInventoryTemplate() {
     const rows = [["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"]];
-    const csv = "\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\r\n");
+    const csv = "\\uFEFF" + rows.map((row)=>row.map((cell)=>"\"" + String(cell).replace(/"/g,'""') + "\"").join(",")).join("\\r\\n");
     downloadBlobFile("plantilla-inventario-treseiscinco.csv",csv,"text/csv;charset=utf-8");
-    setNotice("Plantilla descargada. Puedes abrirla y editarla en Excel; guarda el resultado como CSV UTF-8 para importarlo.");
+    setNotice("CSV descargado. Si prefieres columnas con ancho ajustado, descarga la plantilla Excel.");
+  }
+
+  function inventoryExcelDocument(headers, rows, title) {
+    const widths = [180,110,140,100,80,95,95,90,100,95,230,150,130,130,110,110];
+    const colgroup = headers.map((_, index) => "<col width=\"" + (widths[index] || 120) + "\" style=\"width:" + (widths[index] || 120) + "px;mso-width-source:userset\">").join("");
+    const th = headers.map((value) => "<th>" + escapeHtml(value) + "</th>").join("");
+    const body = rows.map((row) => "<tr>" + headers.map((_, index) => "<td>" + escapeHtml(row[index] ?? "") + "</td>").join("") + "</tr>").join("");
+    return "\\uFEFF<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head><meta charset=\"utf-8\"><title>" + escapeHtml(title) + "</title><style>body{font-family:Calibri,Arial,sans-serif}h1{font-size:18pt;color:#164E63}table{border-collapse:collapse;table-layout:fixed}th{background:#DDF1EE;color:#163B45;font-weight:bold;border:1px solid #AFC9CC;padding:7px;text-align:left}td{border:1px solid #D9E2E5;padding:6px;vertical-align:top;mso-number-format:\\\"\\@\\\";overflow-wrap:anywhere}tr:nth-child(even) td{background:#F6FAFA}</style></head><body><h1>" + escapeHtml(title) + "</h1><table><colgroup>" + colgroup + "</colgroup><thead><tr>" + th + "</tr></thead><tbody>" + body + "</tbody></table></body></html>";
+  }
+
+  function downloadInventoryTemplateExcel() {
+    const headers = ["Nombre","Código","Categoría","Tipo","Unidad","Precio","Costo","Cantidad","Controla inventario","Stock mínimo","Descripción","Presentación"];
+    const sample = [["Ej. Camiseta blanca","SKU-001","Ropa","Producto físico","Unidad","35000","18000","10","Sí","2","Descripción breve","Talla M"]];
+    downloadBlobFile("plantilla-inventario-treseiscinco.xls", inventoryExcelDocument(headers, sample, "Plantilla de inventario treseiscinco"), "application/vnd.ms-excel;charset=utf-8");
+    setNotice("Plantilla Excel descargada con anchos de columna. Para importarla, guárdala desde Excel como CSV UTF-8.");
+  }
+
+  async function getInventoryReportData() {
+    if (!activeBusiness?.id || !canAccessScreen("products")) throw new Error("No tienes acceso al inventario de este negocio.");
+    const [products, variants, categoriesResult] = await Promise.all([
+      fetchAllProfitabilityRows(() => supabase.from("products").select("id,business_id,category_id,sku,name,description,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,track_inventory,low_stock_threshold,is_sellable,is_published,metadata,archived_at").eq("business_id", activeBusiness.id).is("archived_at", null).order("name"), "productos del inventario"),
+      fetchAllProfitabilityRows(() => supabase.from("product_variants").select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,image_paths").eq("business_id", activeBusiness.id).order("variant_name").order("variant_value"), "variantes del inventario"),
+      supabase.from("product_categories").select("id,name").eq("business_id", activeBusiness.id).order("name")
+    ]);
+    if (categoriesResult.error) throw categoriesResult.error;
+    const categoryNames = new Map((categoriesResult.data || []).map((category) => [category.id, category.name]));
+    const byProduct = new Map();
+    for (const variant of variants) {
+      if (!byProduct.has(variant.product_id)) byProduct.set(variant.product_id, []);
+      byProduct.get(variant.product_id).push(variant);
+    }
+    const rows = [];
+    for (const product of products) {
+      const productBase = [
+        product.name, product.sku || "", categoryNames.get(product.category_id) || "", product.product_type || "",
+        product.unit_name || "", Number(product.sale_price_minor || 0) / (10 ** currencyDigits(currencyCode)),
+        Number(product.cost_price_minor || 0) / (10 ** currencyDigits(currencyCode)),
+        product.track_inventory ? Number(product.stock_on_hand || 0) : "No aplica",
+        product.track_inventory ? "Sí" : "No",
+        product.low_stock_threshold == null ? "" : product.low_stock_threshold,
+        product.description || "", product.is_published ? "Publicado" : "No publicado",
+        product.is_sellable ? "Vendible" : "No vendible", product.metadata?.tax_code || "none"
+      ];
+      const productVariants = byProduct.get(product.id) || [];
+      if (!productVariants.length) rows.push([...productBase, "", "", "", "", ""]);
+      else for (const variant of productVariants) rows.push([
+        ...productBase, variant.variant_name, variant.variant_value, variant.sku || "",
+        variant.sale_price_minor == null ? "" : Number(variant.sale_price_minor) / (10 ** currencyDigits(currencyCode)),
+        variant.stock_on_hand == null ? "" : variant.stock_on_hand, (variant.image_paths || []).length + " foto(s)"
+      ]);
+    }
+    return rows;
+  }
+
+  async function downloadInventoryReportExcel() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const rows = await getInventoryReportData();
+      const headers = ["Artículo","Código","Categoría","Tipo","Unidad","Precio","Costo","Existencias","Controla inventario","Stock mínimo","Descripción","Estado de catálogo","Estado de venta","Impuesto","Tipo de variante","Valor de variante","Código de variante","Precio de variante","Existencias de variante","Fotos de variante"];
+      downloadBlobFile("reporte-inventario-treseiscinco.xls", inventoryExcelDocument(headers, rows, "Reporte completo de inventario · " + (activeBusiness?.name || "treseiscinco")), "application/vnd.ms-excel;charset=utf-8");
+      setNotice("Reporte Excel generado: " + rows.length + " fila(s), incluyendo las variantes.");
+    } catch (error) { setError(friendlyError(error)); }
+    finally { setBusy(false); }
+  }
+
+  async function printInventoryReportPdf() {
+    const reportWindow = window.open("", "_blank");
+    if (!reportWindow) { setError("Permite las ventanas emergentes para preparar el PDF del inventario."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const rows = await getInventoryReportData();
+      const headers = ["Artículo","Código","Categoría","Precio","Costo","Existencias","Impuesto","Variante","Valor","SKU variante","Precio variante","Stock variante","Fotos"];
+      const mapRows = rows.map((row) => [row[0],row[1],row[2],row[5],row[6],row[7],row[13],row[14],row[15],row[16],row[17],row[18],row[19]]);
+      const table = "<table><thead><tr>" + headers.map((value) => "<th>" + escapeHtml(value) + "</th>").join("") + "</tr></thead><tbody>" + mapRows.map((row) => "<tr>" + row.map((cell) => "<td>" + escapeHtml(cell ?? "") + "</td>").join("") + "</tr>").join("") + "</tbody></table>";
+      reportWindow.document.open();
+      reportWindow.document.write("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Inventario · treseiscinco</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#173744;font-size:8pt}h1{font-size:17pt;margin:0 0 5mm}p{color:#60757C;font-size:9pt}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #C9DADD;padding:4px;overflow-wrap:anywhere;vertical-align:top}th{background:#DDF1EE;text-align:left}tr:nth-child(even) td{background:#F6FAFA}@media print{button{display:none}}</style></head><body><h1>Reporte de inventario · " + escapeHtml(activeBusiness?.name || "treseiscinco") + "</h1><p>" + rows.length + " fila(s), incluye productos y variantes. Generado el " + new Date().toLocaleString("es-CO",{timeZone:"America/Bogota"}) + ".</p>" + table + "</body></html>");
+      reportWindow.document.close();
+      reportWindow.focus();
+      reportWindow.setTimeout(() => reportWindow.print(), 250);
+      setNotice("Reporte preparado para guardar como PDF.");
+    } catch (error) { reportWindow.close(); setError(friendlyError(error)); }
+    finally { setBusy(false); }
   }
 
   async function importInventoryFile(event) {
@@ -6316,6 +6398,7 @@ function AuthenticatedApp() {
                 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <label><span className="field-label-heading">Impuesto del artículo<FieldHelp enabled={contextualHelpEnabled} text="Elige el impuesto que corresponde a este artículo. Esta asignación se conserva en su ficha." /></span><select value={productForm.tax_code || "none"} onChange={(e) => setProductForm({ ...productForm, tax_code: e.target.value })}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
                 <label><span className="field-label-heading">Unidad<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo mides o vendes este producto, por ejemplo unidad, par, kilogramo o servicio." /></span><select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 <label><span className="field-label-heading">Presentación comercial<FieldHelp enabled={contextualHelpEnabled} text="Anota el formato comercial para distinguir presentaciones, por ejemplo caja por 12 o botella de 500 ml." /></span><input value={productForm.commercial_presentation} onChange={(e) => setProductForm({ ...productForm, commercial_presentation: e.target.value })} maxLength={120} placeholder="Ej. 80 g, caja x 12, 500 ml" /></label>
                 {productForm.unit_name === "personalizada" && <label><span className="field-label-heading">Nombre de la unidad<FieldHelp enabled={contextualHelpEnabled} text="Si eliges una unidad personalizada, escribe aquí su nombre." /></span><input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}

@@ -1261,7 +1261,6 @@ function PublicCatalog({ businessId }) {
       <a href={window.location.origin} className="public-catalog-brand" aria-label={business?.name || "treseiscinco"}>{catalogLogoUrl ? <img src={catalogLogoUrl} alt={business?.name || "Logo del negocio"} /> : <img className="catalog-brand-symbol" src="/symbol-treseiscinco.svg" alt="treseiscinco" />}</a>
       <div><span>CATÁLOGO DE PRODUCTOS</span><h1>{business?.commercial_profile?.tradeName || business?.name || "Catálogo"}</h1></div>
       <div className="public-catalog-header-actions">
-        {hasWhatsappContact && <a className="public-catalog-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Contactar al negocio por WhatsApp" title="Contactar por WhatsApp"><AppIcon name="whatsapp" size={20}/></a>}
         <button type="button" className="public-catalog-cart-trigger" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${cartCount} artículos`}>
           <span aria-hidden="true">🛒</span><span>Carrito</span><b>{cartCount}</b>
         </button>
@@ -1305,9 +1304,9 @@ function PublicCatalog({ businessId }) {
         </nav>}
       </section>}
     <nav className="public-catalog-bottom-bar" aria-label="Navegación del catálogo">
-      <button type="button" className={"public-catalog-bottom-tab"+(!businessInfoOpen&&!cartOpen?" is-active":"")} aria-current={!businessInfoOpen&&!cartOpen?"page":undefined} onClick={() => { setBusinessInfoOpen(false); setCartOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
+      <button type="button" className={"public-catalog-bottom-tab"+(!businessInfoOpen?" is-active":"")} aria-current={!businessInfoOpen?"page":undefined} onClick={() => { setBusinessInfoOpen(false); setCartOpen(false); document.querySelector(".public-catalog-header")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span aria-hidden="true">▦</span><strong>Catálogo</strong></button>
       <button type="button" className={"public-catalog-bottom-tab"+(businessInfoOpen?" is-active":"")} onClick={() => { setCartOpen(false); setBusinessInfoOpen(true); }} aria-haspopup="dialog" aria-expanded={businessInfoOpen}><span aria-hidden="true">ⓘ</span><strong>Información</strong></button>
-      <button type="button" className={"public-catalog-bottom-tab"+(cartOpen?" is-active":"")} onClick={() => { setBusinessInfoOpen(false); setCartOpen(true); }} aria-expanded={cartOpen}><span aria-hidden="true">🛒</span><strong>Carrito</strong>{cartCount > 0 && <b>{cartCount}</b>}</button>
+      {hasWhatsappContact && <a className="public-catalog-bottom-tab public-catalog-bottom-whatsapp" href={"https://wa.me/" + whatsappPhone + "?text=" + encodeURIComponent("Hola, quisiera consultar sobre los productos de " + (business?.commercial_profile?.tradeName || business?.name || "su catálogo") + ".")} target="_blank" rel="noopener noreferrer" aria-label="Consultar por WhatsApp" title="Consultar por WhatsApp"><AppIcon name="whatsapp" size={22}/><strong>WhatsApp</strong></a>}
     </nav>
     {businessInfoOpen && business && <div className="public-business-info-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBusinessInfoOpen(false); }}>
       <section className="public-business-info-sheet" role="dialog" aria-modal="true" aria-labelledby="public-business-info-title">
@@ -1323,7 +1322,7 @@ function PublicCatalog({ businessId }) {
         <button type="button" className="public-business-info-done" onClick={() => setBusinessInfoOpen(false)}>Volver al catálogo</button>
       </section>
     </div>}
-    <footer className="public-catalog-footer">Catálogo compartido con treseiscinco</footer>
+    <footer className="public-catalog-footer"><img src="/brand-treseiscinco.svg" alt="treseiscinco" /><span>Catálogo compartido con treseiscinco</span></footer>
 
     {cartOpen && <div className="public-cart-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCartOpen(false); }}>
       <section className="public-cart-panel" role="dialog" aria-modal="true" aria-labelledby="public-cart-title">
@@ -1864,6 +1863,7 @@ function AuthenticatedApp() {
   const [saleItems, setSaleItems] = useState([]);
   const [saleSaving, setSaleSaving] = useState(false);
   const [salePayment, setSalePayment] = useState("");
+  const [saleCashTendered, setSaleCashTendered] = useState("");
   const [saleInitialPaymentMethod, setSaleInitialPaymentMethod] = useState("Efectivo");
   const [salePaymentFormFor, setSalePaymentFormFor] = useState(null);
   const [expandedSaleId, setExpandedSaleId] = useState(null);
@@ -2681,71 +2681,136 @@ function AuthenticatedApp() {
     finally { setInventoryImportBusy(false); setInventoryImportProgress(""); }
   }
 
+  async function fetchImageAsDataUri(url) {
+    if (!url) return "";
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
+      if (!response.ok) return "";
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) return "";
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(blob);
+      });
+    } catch { return ""; }
+  }
+
+  function buildBusinessCardSvg(profile, businessName, logoDataUri) {
+    const primary = /^#[0-9a-f]{6}$/i.test(profile.cardPrimary || "") ? profile.cardPrimary : "#159F92";
+    const surface = /^#[0-9a-f]{6}$/i.test(profile.cardSurface || "") ? profile.cardSurface : "#FFFFFF";
+    const textColor = /^#[0-9a-f]{6}$/i.test(profile.cardText || "") ? profile.cardText : "#1F2937";
+    const fields = [
+      { text: businessName, size: 34, weight: 800, max: 25, lineHeight: 38, maxLines: 2 },
+      { text: profile.ownerName, size: 21, weight: 750, max: 34, lineHeight: 29, maxLines: 2 },
+      { text: profile.publicDescription, size: 16, weight: 400, max: 43, lineHeight: 23, maxLines: 2 },
+      { text: profile.phone, size: 18, weight: 500, max: 42, lineHeight: 25, maxLines: 1 },
+      { text: profile.email, size: 17, weight: 400, max: 42, lineHeight: 24, maxLines: 1 },
+      { text: [profile.address, profile.city].filter(Boolean).join(", "), size: 16, weight: 400, max: 43, lineHeight: 23, maxLines: 2 },
+      { text: profile.website, size: 17, weight: 700, max: 42, lineHeight: 24, maxLines: 1 }
+    ];
+    const rows = [];
+    for (const field of fields) {
+      const value = String(field.text || "").trim();
+      if (!value || rows.length >= 11) continue;
+      const words = value.split(/\s+/);
+      const wrapped = [];
+      let line = "";
+      for (const word of words) {
+        const candidate = line ? line + " " + word : word;
+        if (candidate.length > field.max && line) { wrapped.push(line); line = word; }
+        else line = candidate;
+      }
+      if (line) wrapped.push(line);
+      for (const piece of wrapped.slice(0, field.maxLines)) {
+        if (rows.length >= 11) break;
+        rows.push({ text: piece, size: field.size, weight: field.weight, lineHeight: field.lineHeight });
+      }
+    }
+    const totalHeight = rows.reduce((sum, row) => sum + row.lineHeight, 0);
+    let cursor = Math.max(70, Math.round((500 - totalHeight) / 2));
+    const textRows = rows.map((row) => {
+      const baseline = cursor + Math.round(row.lineHeight * 0.73);
+      cursor += row.lineHeight;
+      return '<text x="625" y="' + baseline + '" text-anchor="middle" fill="' + textColor + '" font-family="Arial, sans-serif" font-size="' + row.size + '" font-weight="' + row.weight + '">' + escapeHtml(row.text) + '</text>';
+    }).join("");
+    const logoMarkup = logoDataUri
+      ? '<image href="' + escapeHtml(logoDataUri) + '" x="25" y="159" width="270" height="182" preserveAspectRatio="xMidYMid meet" />'
+      : '<svg x="67" y="159" width="182" height="182" viewBox="0 0 128 128" aria-label="Logo de treseiscinco"><g fill="none" stroke-width="17" stroke-linecap="butt"><path d="M 26 39 A 45 45 0 0 1 89 22" stroke="#F5C928"/><path d="M 99 29 A 45 45 0 0 1 103 94" stroke="#0A9D9F"/><path d="M 92 103 A 45 45 0 0 1 22 54" stroke="#174580"/></g><circle cx="64" cy="64" r="26" fill="#fff"/></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 900 500" role="img" aria-label="Tarjeta de ' + escapeHtml(businessName) + '">' +
+      '<rect x="0" y="0" width="900" height="500" rx="26" fill="' + surface + '"/>' +
+      '<rect x="0" y="0" width="900" height="16" fill="' + primary + '"/>' +
+      '<rect x="2" y="2" width="896" height="496" rx="25" fill="none" stroke="' + primary + '" stroke-width="3"/>' +
+      logoMarkup + textRows + '</svg>';
+  }
+
+  async function createBusinessCardImageFile(profile, businessName) {
+    const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const logoDataUri = await fetchImageAsDataUri(logoUrl);
+    const svg = buildBusinessCardSvg(profile, businessName, logoDataUri);
+    const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(svgBlob);
+    try {
+      const image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("No pudimos preparar la imagen de la tarjeta."));
+        image.src = objectUrl;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = 1800;
+      canvas.height = 1000;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Este navegador no permite crear la imagen de la tarjeta.");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const png = await new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("No se pudo generar el PNG de la tarjeta.")), "image/png"));
+      return { file: new File([png], "tarjeta-treseiscinco.png", { type: "image/png" }), svg };
+    } finally { URL.revokeObjectURL(objectUrl); }
+  }
+
   async function sharePersonalBusinessCard() {
     if (!activeBusiness) return;
     const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
     const name = profile.tradeName || activeBusiness.name || "Mi negocio";
-    const slug = String(activeBusiness.slug || "").trim();
-    const url = slug ? window.location.origin + "/" + slug : window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
-    const details = [name, profile.phone ? "Celular / WhatsApp: " + profile.phone : "", profile.email ? "Correo: " + profile.email : "", profile.address ? "Dirección: " + profile.address : "", profile.city || "", profile.website || "", url].filter(Boolean).join("\n");
     try {
-      if (navigator.share) await navigator.share({ title: name, text: details, url });
-      else { await navigator.clipboard.writeText(details); setNotice("Datos de la tarjeta copiados para compartir."); }
+      const { file } = await createBusinessCardImageFile(profile, name);
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: name, files: [file] });
+        setNotice("Tarjeta compartida como imagen PNG.");
+      } else {
+        downloadBlobFile(file.name, file, "image/png");
+        setNotice("La tarjeta se descargó como imagen PNG para adjuntarla en WhatsApp o enviarla por otro medio.");
+      }
     } catch (error) {
-      if (error?.name !== "AbortError") setError("No se pudo compartir automáticamente. Copia la dirección del catálogo desde Configuración → Mi empresa.");
+      if (error?.name !== "AbortError") setError(error?.message || "No se pudo preparar la imagen de la tarjeta.");
     }
   }
 
-  function printBusinessCard() {
+  async function printBusinessCard() {
     if (!activeBusiness) return;
-    const profile = settingsCommercialProfile || {};
+    const profile = { ...(activeBusiness.settings?.commercial_profile || {}), ...(settingsCommercialProfile || {}) };
     const businessName = String(profile.tradeName || settingsBusinessName || activeBusiness.name || "Mi negocio").trim();
-    const logoUrl = getBusinessLogoUrl(activeBusiness.logo_path) || "";
-    const cardPrimary = /^#[0-9a-f]{6}$/i.test(profile.cardPrimary || "") ? profile.cardPrimary : "#475569";
-    const cardSurface = /^#[0-9a-f]{6}$/i.test(profile.cardSurface || "") ? profile.cardSurface : "#FFFFFF";
-    const cardText = /^#[0-9a-f]{6}$/i.test(profile.cardText || "") ? profile.cardText : "#1F2937";
-    const safeColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : "#1F2937";
-    const lines = [];
-    let y = 112;
-    const addWrapped = (value, maxChars, fontSize, gap, color, weight = 400) => {
-      const text = String(value || "").trim();
-      if (!text || y > 465) return;
-      const words = text.split(/\s+/);
-      let line = "";
-      const wrapped = [];
-      for (const word of words) {
-        const candidate = line ? line + " " + word : word;
-        if (candidate.length > maxChars && line) { wrapped.push(line); line = word; }
-        else line = candidate;
-      }
-      if (line) wrapped.push(line);
-      for (const part of wrapped.slice(0, 2)) {
-        if (y > 465) break;
-        lines.push('<text x="320" y="' + y + '" fill="' + safeColor(color) + '" font-family="Arial, sans-serif" font-size="' + fontSize + '" font-weight="' + weight + '">' + escapeHtml(part) + '</text>');
-        y += gap;
-      }
-    };
-    addWrapped("INFORMACIÓN COMERCIAL", 42, 18, 0, cardPrimary, 700);
-    y += 52;
-    addWrapped(businessName, 26, 37, 42, cardText, 700);
-    addWrapped(profile.ownerName, 38, 20, 29, cardText, 700);
-    addWrapped(profile.publicDescription, 42, 18, 27, cardText, 400);
-    addWrapped(profile.phone, 42, 18, 28, cardText, 400);
-    addWrapped(profile.email, 42, 18, 28, cardText, 400);
-    addWrapped([profile.address, profile.city].filter(Boolean).join(", "), 42, 18, 28, cardText, 400);
-    addWrapped(profile.website, 42, 18, 28, cardText, 700);
-    const logoOrInitial = logoUrl
-      ? '<image href="' + escapeHtml(logoUrl) + '" x="25" y="165" width="245" height="165" preserveAspectRatio="xMidYMid meet" />'
-      : '<circle cx="145" cy="248" r="68" fill="' + cardPrimary + '" fill-opacity=".13"/><text x="145" y="272" text-anchor="middle" fill="' + cardPrimary + '" font-family="Arial, sans-serif" font-size="74" font-weight="800">' + escapeHtml(businessName.slice(0,1).toLocaleUpperCase("es-CO")) + '</text>';
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 900 500" role="img" aria-label="Tarjeta de presentación">' +
-      '<rect x="0" y="0" width="900" height="500" rx="26" fill="' + cardSurface + '"/>' +
-      '<rect x="0" y="0" width="900" height="16" fill="' + cardPrimary + '"/>' +
-      '<rect x="2" y="2" width="896" height="496" rx="25" fill="none" stroke="' + cardPrimary + '" stroke-width="3"/>' +
-      logoOrInitial + lines.join("") + '</svg>';
-    const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta de presentación · ' + escapeHtml(businessName) + '</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
     const printWindow = window.open("", "_blank");
-    if (!printWindow) { setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta."); return; }
-    printWindow.document.open(); printWindow.document.write(html); printWindow.document.close();
+    if (!printWindow) {
+      setError("Tu navegador bloqueó la ventana de impresión. Permite ventanas emergentes para generar la tarjeta.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Preparando tarjeta…</title></head><body style=\"font-family:Arial,sans-serif;padding:24px\">Preparando la tarjeta…</body></html>");
+    printWindow.document.close();
+    try {
+      const logoDataUri = await fetchImageAsDataUri(getBusinessLogoUrl(activeBusiness.logo_path));
+      const svg = buildBusinessCardSvg(profile, businessName, logoDataUri);
+      const svgData = btoa(unescape(encodeURIComponent(svg)));
+      const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tarjeta · ' + escapeHtml(businessName) + '</title><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}body{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.card-svg{display:block;width:90mm;height:50mm;max-width:100%;object-fit:contain;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-hint{font-size:12px;color:#555;text-align:center;padding:0 12px}@media print{@page{size:90mm 50mm;margin:0}body{min-height:0;display:block}.card-svg{width:90mm;height:50mm;max-width:none}.print-hint{display:none}}</style></head><body><img class="card-svg" alt="Tarjeta comercial con colores personalizados" src="data:image/svg+xml;base64,' + svgData + '"><p class="print-hint">Elige «Guardar como PDF» para conservar el formato de 9 × 5 cm. Si el fondo no aparece, activa «Gráficos de fondo» en las opciones de impresión.</p><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script></body></html>';
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+    } catch (error) {
+      printWindow.close();
+      setError(error?.message || "No se pudo preparar la tarjeta para imprimir.");
+    }
   }
 
   async function downloadBusinessBackup() {
@@ -3247,8 +3312,14 @@ function AuthenticatedApp() {
         if (authError) throw authError;
         setSession(data.session); await loadBusinesses(data.user.id);
       }
-    } catch (e) { setError(friendlyError(e)); }
-    finally { setBusy(false); }
+    } catch (e) {
+      const rawMessage = String(e?.message || "");
+      if (mode === "phone" && /unable to get sms provider|sms provider|sms.*provider/i.test(rawMessage)) {
+        setError("El acceso por SMS todavía no está habilitado en treseiscinco: falta configurar el proveedor de mensajes del sistema. Mientras se activa, entra con tu correo y contraseña; no se enviará ningún código hasta completar esa configuración.");
+      } else {
+        setError(friendlyError(e));
+      }
+    } finally { setBusy(false); }
   }
 
   async function createBusiness(event) {
@@ -5356,8 +5427,13 @@ function AuthenticatedApp() {
     if (!saleItems.length) { setError("Añade al menos un producto a la venta."); return; }
     const includeVat = normalizeTaxProfile(activeBusiness.settings?.tax_profile || settingsTaxProfile).pricesIncludeVat;
     const total = saleItems.reduce((sum, item) => sum + productTaxAmounts(item.unit_price_minor, item.quantity, item.tax_code || "none", includeVat).total, 0);
-    const payment = toMinorUnits(salePayment || 0, currencyCode);
+    const cashTendered = saleInitialPaymentMethod === "Efectivo" && String(saleCashTendered).trim() !== ""
+      ? toMinorUnits(saleCashTendered, currencyCode)
+      : null;
+    const payment = cashTendered !== null ? Math.min(cashTendered, total) : toMinorUnits(salePayment || 0, currencyCode);
+    const cashChange = cashTendered !== null ? Math.max(0, cashTendered - total) : 0;
     if (payment < 0 || payment > total) { setError("El abono debe estar entre cero y el total de la venta."); return; }
+    if (cashTendered !== null && cashTendered < 0) { setError("El efectivo recibido no puede ser negativo."); return; }
     setSaleSaving(true); setError(""); setNotice("");
     try {
       const { data, error: saleError } = await supabase.rpc("create_sale", {
@@ -5370,8 +5446,8 @@ function AuthenticatedApp() {
       const wasOnFirstSalesPage = salesPage === 1;
       setSalesPage(1);
       setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-      setSaleItems([]); setSalePayment(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
-      setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó.");
+      setSaleItems([]); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
+      setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó." + (cashChange > 0 ? " Devuelta: " + money(cashChange, currencyCode) + "." : ""));
       if (wasOnFirstSalesPage) await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
     finally { setSaleSaving(false); }
@@ -5418,7 +5494,7 @@ function AuthenticatedApp() {
 
   function clearSaleDraft() {
     setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-    setSaleItems([]); setSalePayment(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
+    setSaleItems([]); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
   }
 
   function saleStatusLabel(status) {
@@ -6117,7 +6193,7 @@ function AuthenticatedApp() {
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
           {mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
-          {mode === "phone" && <label><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+57 300 123 4567" required /></label>}
+          {mode === "phone" && <label><span className="field-label-heading">Celular con prefijo de país</span><input type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+57 300 123 4567" required /><small className="auth-phone-format-help">Incluye el signo + y el código del país antes del número. Para Colombia usa +57; ejemplo: +57 300 123 4567. Solo números ya vinculados y verificados pueden entrar por este método.</small></label>}
           {mode === "phone" && phoneOtpSent && <label><span className="field-label-heading">Código SMS</span><input type="text" inputMode="numeric" autoComplete="one-time-code" value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="Código de verificación" required minLength={4} maxLength={8} /></label>}
           {mode !== "forgot" && mode !== "update-password" && mode !== "phone" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
           {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button><button type="button" className="text-button" onClick={() => { setMode("phone"); setPhoneOtpSent(false); setPhoneOtp(""); setError(""); setNotice(""); }}>Entrar con celular</button></p>}
@@ -6267,7 +6343,11 @@ function AuthenticatedApp() {
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
 {saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
 <div className="sale-tax-summary"><span>Base de productos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).subtotal,0),currencyCode)}</strong></div>{saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0)>0&&<div className="sale-tax-summary"><span>Impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0),currencyCode)}</strong></div>}<div className="sale-total-line"><span>Total con impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0),currencyCode)}</strong></div></div>}
-<div className="sale-bottom-fields"><label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0"/></label><label><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo recibes el primer pago de esta venta: efectivo, transferencia, tarjeta u otro medio." /></span><select value={saleInitialPaymentMethod} onChange={e=>setSaleInitialPaymentMethod(e.target.value)}><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Otro</option></select></label><label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
+<div className="sale-bottom-fields">
+<label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0" /></label>
+<div className="sale-payment-method-field"><span className="field-label-heading">Medio de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo recibiste el dinero de esta venta. Esta selección registra el medio, pero no procesa el pago." /></span><div className="payment-method-tiles" role="group" aria-label="Medio de pago inicial">{[["Efectivo","EF"],["Transferencia","TR"],["Tarjeta","TC"],["Nequi","NQ"],["Daviplata","DV"],["Otro","OT"]].map(([method,mark])=><button key={method} type="button" className={"payment-method-tile"+(saleInitialPaymentMethod===method?" is-selected":"")} aria-pressed={saleInitialPaymentMethod===method} onClick={()=>setSaleInitialPaymentMethod(method)}><span className={"payment-method-mark payment-method-mark-"+mark.toLowerCase()}>{mark}</span><strong>{method}</strong></button>)}</div></div>
+{saleInitialPaymentMethod === "Efectivo" && <label className="cash-tendered-field"><span className="field-label-heading">Efectivo recibido (opcional)<FieldHelp enabled={contextualHelpEnabled} text="Escribe el billete o total entregado por el cliente. Si supera el saldo de la venta, calculamos la devuelta y registramos solo el importe de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={saleCashTendered} onChange={event=>setSaleCashTendered(event.target.value)} placeholder="Ej. 20000" />{String(saleCashTendered).trim()!=="" && <small className="cash-change-preview">Abono a registrar: {money(Math.min(toMinorUnits(saleCashTendered,currencyCode),saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)} · Devuelta: {money(Math.max(0,toMinorUnits(saleCashTendered,currencyCode)-saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)}</small>}</label>}
+<label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
 {!saleItems.length && <p className="helper-text sale-empty-cart-hint">Todavía no hay productos agregados. Elige un producto y pulsa «+ Agregar». Si intentas guardar antes, te indicaremos qué falta.</p>}
 <div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={saleSaving}>{saleSaving?"Guardando…":"Guardar venta"}</button></div>
@@ -7100,7 +7180,7 @@ function AuthenticatedApp() {
               </div>
               {settingsChecking ? <p className="helper-text">Comprobando si ya hay importes guardados…</p> : <>
                 <label className="settings-field"><span className="field-label-heading">Nombre del negocio<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que se mostrará tu negocio en treseiscinco." /></span><input value={settingsBusinessName} onChange={(e) => setSettingsBusinessName(e.target.value)} maxLength={160} required disabled={activeBusiness?.role !== "owner"} placeholder="Nombre de tu negocio" /></label>
-                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{currencyOptions.map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de treseiscinco solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y treseiscinco no lo verifica.</p>
+                <label className="settings-field"><span className="field-label-heading">Moneda principal<FieldHelp enabled={contextualHelpEnabled} text="Moneda usada para nuevos importes y reportes. Si ya hay operaciones registradas, cambiarla requiere conversión." /></span><select value={settingsCurrency} disabled={activeBusiness?.role !== "owner"} onChange={(e) => setSettingsCurrency(e.target.value)}>{[...currencyOptions].sort((a, b) => a[1].localeCompare(b[1], "es", { sensitivity: "base" }) || a[0].localeCompare(b[0])).map(([code, name]) => <option key={code} value={code}>{name} ({code})</option>)}</select></label><p className="settings-payment-currency-note"><strong>Importante sobre los pagos:</strong> los pagos en línea dentro de treseiscinco solo se procesan mediante Wompi y, actualmente, Wompi admite COP. Si eliges otra moneda o no quieres usar Wompi, selecciona <strong>Pedidos por WhatsApp</strong> en “Mi empresa”; en ese caso, el cliente acuerda el pago directamente contigo y treseiscinco no lo verifica.</p>
                 {settingsHasData && settingsCurrency !== currencyCode ? <div className="settings-conversion-box"><p className="helper-text">Se convertirán los precios de venta y costo del catálogo y sus variantes. Las ventas, compras, gastos y cotizaciones existentes conservarán sus importes y moneda históricos.</p><label className="settings-field"><span>Tasa de conversión</span><span className="helper-text">¿Cuántas unidades de {settingsCurrency} equivalen a 1 {currencyCode}?</span><input type="number" min="0.00000001" step="any" inputMode="decimal" value={settingsConversionRate} onChange={(e) => setSettingsConversionRate(e.target.value)} placeholder="Ej. 0,00024" required /></label><p className="helper-text">Confirma la tasa antes de guardar. La conversión se ejecuta en una sola transacción en la base de datos.</p></div> : settingsHasData ? <p className="helper-text">Puedes cambiar la moneda principal. Si eliges otra, te pediremos una tasa para convertir los precios actuales del catálogo sin modificar los movimientos históricos.</p> : <p className="helper-text">Elige la moneda para los precios del catálogo y los próximos movimientos de dinero.</p>}
                 {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar estos ajustes.</p>}
               </>}
@@ -7110,7 +7190,7 @@ function AuthenticatedApp() {
               <h3>Logo del negocio</h3>
               <p>Tu logo se conservará para las próximas sesiones y se mostrará en la navegación y el catálogo público.</p>
               <div className="settings-logo-editor">
-                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}</div>
+                <div className="settings-logo-preview">{(settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path)) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="Vista previa del logo del negocio" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }} /> : <img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco" />}</div>
                 <div className="settings-logo-controls">
                   <label className="settings-field"><span className="field-label-heading">Elegir logo<FieldHelp enabled={contextualHelpEnabled} text="Sube el logo de tu negocio para identificarlo en la aplicación y el catálogo compartido." /></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseBusinessLogo} disabled={activeBusiness?.role !== "owner" || busy} /></label>
                   <p className="helper-text">JPG, PNG o WebP; máximo 5 MB. Se optimiza al guardar.</p>
@@ -7130,7 +7210,7 @@ function AuthenticatedApp() {
               </div>
               <p className="settings-contrast-note"><span aria-hidden="true">✓</span> Contraste automático activado: no necesitas elegir manualmente el color de las letras ni el del texto al pasar el cursor.</p>
               <div className="settings-theme-preview" style={{ "--preview-primary": settingsTheme.primary, "--preview-button-text": readableText(settingsTheme.primary, "#FFFFFF"), "--preview-background": settingsTheme.background, "--preview-surface": settingsTheme.surface, "--preview-text": readableText(settingsTheme.background, settingsTheme.text), "--preview-surface-text": readableText(settingsTheme.surface, settingsTheme.text), "--preview-sidebar-background": settingsTheme.sidebarBackground, "--preview-sidebar-text": readableText(settingsTheme.sidebarBackground, settingsTheme.sidebarText), "--button-hover": shadeHex(settingsTheme.primary), "--button-hover-text": readableText(shadeHex(settingsTheme.primary), "#FFFFFF") }}>
-                <div className="settings-theme-preview-brand">{settingsLogoPreview || activeBusiness?.logo_path ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" /> : <span>{(settingsBusinessName || activeBusiness?.name || "Tu negocio").trim().charAt(0).toLocaleUpperCase("es-CO") || "•"}</span>}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
+                <div className="settings-theme-preview-brand">{settingsLogoPreview || (!settingsRemoveLogo && activeBusiness?.logo_path) ? <img src={settingsLogoPreview || getBusinessLogoUrl(activeBusiness?.logo_path)} alt="" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }} /> : <img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco" />}<strong>{settingsBusinessName || activeBusiness?.name || "Tu negocio"}</strong></div>
                 <div className="settings-theme-preview-sidebar"><strong className="settings-app-brand"><img src="/symbol-treseiscinco.svg" alt="" /> <span>treseiscinco</span></strong><span>Inicio</span><span>Productos</span><span>Ventas</span></div>
                 <p>Comprueba el aspecto general, el color propio del sidebar y los colores de los botones.</p><button type="button">Acción principal</button>
               </div>
@@ -7208,8 +7288,8 @@ function AuthenticatedApp() {
                 </div>
                 <div className="business-card-preview-wrap">
                   <div className="business-card-preview" style={{ background: settingsCommercialProfile.cardSurface || "#FFFFFF", color: settingsCommercialProfile.cardText || "#1F2937", borderColor: settingsCommercialProfile.cardPrimary || "#475569", borderTop: "4px solid " + (settingsCommercialProfile.cardPrimary || "#475569"), "--business-card-primary": settingsCommercialProfile.cardPrimary || "#475569", "--business-card-text": settingsCommercialProfile.cardText || "#1F2937" }}>
-                    <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa"/>:<span>{(settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"T").slice(0,1).toUpperCase()}</span>}</div>
-                    <div className="business-card-preview-copy"><small style={{color:settingsCommercialProfile.cardPrimary||"#475569"}}>INFORMACIÓN COMERCIAL</small><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
+                    <div className="business-card-preview-logo">{activeBusiness?.logo_path?<img src={getBusinessLogoUrl(activeBusiness.logo_path)} alt="Logo de la empresa" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/symbol-treseiscinco.svg"; }}/>:<img className="default-business-logo" src="/symbol-treseiscinco.svg" alt="Logo de treseiscinco"/>}</div>
+                    <div className="business-card-preview-copy"><h3 style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.tradeName||settingsBusinessName||activeBusiness?.name||"Tu negocio"}</h3>{settingsCommercialProfile.ownerName&&<span className="business-card-owner" style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.ownerName}</span>}{settingsCommercialProfile.publicDescription&&<p style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.publicDescription}</p>}{settingsCommercialProfile.phone&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.phone}</span>}{settingsCommercialProfile.email&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.email}</span>}{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{[settingsCommercialProfile.address,settingsCommercialProfile.city].filter(Boolean).join(", ")}</span>}{settingsCommercialProfile.website&&<span style={{color:settingsCommercialProfile.cardText||"#1F2937"}}>{settingsCommercialProfile.website}</span>}</div>
                   </div>
                   <div className="business-card-preview-actions"><span>Vista previa · 9 × 5 cm</span><button type="button" className="secondary-button" onClick={printBusinessCard}>Imprimir o guardar como PDF</button></div>
                 </div>

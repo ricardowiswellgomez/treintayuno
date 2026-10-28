@@ -16,9 +16,12 @@ function AppIcon({ name, size = 20 }) {
     profitability: <><path d="M4 19V5M4 19h17" /><path d="m7 15 4-4 3 2 5-6" /><path d="M16 7h3v3" /></>,
     purchases: <><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></>,
     catalog: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
+    store: <><path d="M3 10h18l-2-6H5l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /><path d="M3 10h18" /></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
     whatsapp: <><path d="M20.2 11.6a8.2 8.2 0 0 1-12.1 7.2L4 20l1.2-4a8.2 8.2 0 1 1 15-4.4Z" /><path d="M8.2 8.4c.4-.8.8-.8 1.2-.1l.8 1.4c.2.3.1.6-.2.9l-.5.5c.8 1.5 1.9 2.5 3.4 3.1l.5-.6c.2-.3.5-.4.9-.2l1.4.7c.6.3.7.6.4 1.2-.4.8-1.3 1.1-2.2 1-3.1-.4-6.8-3.7-7.1-6.6-.1-.6.4-1.1 1.4-1.3Z" /></>,
     smartphone: <><rect x="6" y="2.5" width="12" height="19" rx="2.3" /><path d="M10 5h4M11 18.5h2" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    truck: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     download: <><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></>,
     list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="3" /></>,
     audit: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
@@ -6330,7 +6333,7 @@ function AuthenticatedApp() {
             ))}
           </section>)}
         </nav>
-        <div className="sidebar-bottom"><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div>
+        <div className="sidebar-bottom"><div className="sidebar-bottom-actions"><a className="sidebar-contact-action" href="mailto:ricardowiswellgomez@gmail.com?subject=Soporte%20treseiscinco" title="Contacto" aria-label="Contacto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></a><button className="logout-button" onClick={signOut} disabled={busy}>Cerrar sesión</button></div></div>
       </aside>
       <section className={"main-content" + (screen === "home" ? " main-content-home" : "")}>
         <header className="main-header"><button type="button" className="mobile-nav-toggle" aria-expanded={mobileNavOpen} aria-controls="mobile-module-navigation" onClick={() => setMobileNavOpen((open) => !open)}><span aria-hidden="true">{mobileNavOpen ? "×" : "☷"}</span>{mobileNavOpen ? "Cerrar módulos" : "Módulos"}</button><div>{screen !== "home" && <p className="eyebrow">{screen === "products" ? "CATÁLOGO Y EXISTENCIAS" : screen === "sales" || screen === "quotes" ? "ACTIVIDAD COMERCIAL" : screen === "accounts" ? "CUENTAS POR COBRAR Y PAGAR" : screen === "stats" ? "ESTADÍSTICAS Y BALANCE" : screen === "quotes" ? "PROPUESTAS COMERCIALES" : screen === "customers" ? "RELACIONES CON CLIENTES" : screen === "profitability" ? "RENTABILIDAD" : screen === "purchases" ? "COMPRAS Y GASTOS" : screen === "suppliers" ? "PROVEEDORES" : screen === "catalog" ? "CATÁLOGO" : screen === "team" ? "PERSONAL" : screen === "settings" ? "CONFIGURACIÓN" : "TU ESPACIO DE TRABAJO"}</p>}<h1>{screen === "products" ? "Productos" : screen === "settings" ? "Configuración" : screen === "suppliers" ? "Proveedores" : screen === "home" ? "Inicio" : screen === "quotes" ? "Ventas" : areas.find((a) => a.screen === screen)?.title || "Tu negocio"}</h1></div>{businesses.length > 1 && <label className="mobile-business-switcher"><span>Negocio activo</span><select aria-label="Cambiar de negocio" value={activeBusiness?.id || ""} onChange={(event) => switchActiveBusiness(event.target.value)}>{businesses.map((business) => <option value={business.id} key={business.id}>{business.name} · {business.role === "owner" ? "Propietario" : business.role === "admin" ? "Administrador" : "Empleado"}</option>)}</select></label>}<span className="role-pill">{activeBusiness?.role === "owner" ? "Propietario" : activeBusiness?.role === "admin" ? "Administrador" : "Empleado"}</span></header>

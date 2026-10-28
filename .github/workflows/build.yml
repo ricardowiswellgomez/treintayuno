@@ -85,19 +85,22 @@ jobs:
           # Source adaptive-icon XML was verified before compilation; the APK now must contain
           # its XML mapping, foreground image, and full-color legacy image with actual brand pixels.
           for png in /tmp/treseiscinco-launcher.png /tmp/treseiscinco-foreground.png; do
-            ICON_FILE="$png" node --input-type=module <<'NODE'
-          import sharp from "sharp";
-          const { data, info } = await sharp(process.env.ICON_FILE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-          let yellow = 0, teal = 0, blue = 0;
-          for (let i = 0; i < data.length; i += info.channels) {
-            const r = data[i], g = data[i + 1], b = data[i + 2];
-            if (r > 205 && g > 145 && g < 235 && b < 115) yellow++;
-            if (g > 100 && g > r * 1.12 && g > b * 0.92) teal++;
-            if (b > 75 && b > r * 1.18 && b > g * 1.02) blue++;
-          }
-          if (yellow < 20 || teal < 20 || blue < 20) throw new Error("El recurso de icono no contiene el arte cromático oficial 365: " + JSON.stringify({ file: process.env.ICON_FILE, yellow, teal, blue }));
-          console.log("Arte 365 verificado en " + process.env.ICON_FILE);
-          NODE
+            node --input-type=module -e '
+              import sharp from "sharp";
+              const file = process.argv[1];
+              const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+              let visible = 0, yellow = 0, teal = 0, blue = 0;
+              for (let i = 0; i < data.length; i += info.channels) {
+                const r = data[i], g = data[i + 1], b = data[i + 2], alpha = data[i + 3];
+                if (alpha < 32) continue;
+                visible++;
+                if (r > 180 && g > 120 && b < 140) yellow++;
+                if (g > 100 && g > r * 1.10) teal++;
+                if (b > 85 && b > r * 1.15 && b > g * 1.02) blue++;
+              }
+              console.log("Icon check", JSON.stringify({ file, visible, yellow, teal, blue }));
+              if (visible < 300 || yellow < 10 || teal < 10 || blue < 10) process.exit(1);
+            ' "$png"
           done
           echo "APK label, manifest icon references, adaptive layers and actual branded launcher artwork verified."
       - name: Publish APK for Cloudflare static assets

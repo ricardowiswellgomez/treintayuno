@@ -8096,3 +8096,10 @@ body { background: #F5F7FC; color: #19243A; }
 .payment-method-tile-dv.is-selected { background: #FFF0F0 !important; border-color: #DD141D !important; }
 
 /* Compact icon-only contact action shares the logout row to preserve a no-scroll sidebar. */
+
+.public-catalog-card-description.is-guidance {
+  color: var(--muted, #718087) !important;
+  font-size: 10px !important;
+  font-style: italic;
+  line-height: 1.4 !important;
+}

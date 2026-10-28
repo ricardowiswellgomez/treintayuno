@@ -44,18 +44,37 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-      - name: Verify Android loads the live production UI
+      - name: Verify live Android UI and downloadable APK route
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           const config = JSON.parse(readFileSync('capacitor.config.json', 'utf8'));
+          const app = readFileSync('src/App.jsx', 'utf8');
+          const worker = readFileSync('src/worker.js', 'utf8');
+          readFileSync('public/offline.html', 'utf8');
           if (config.server?.url !== 'https://treseiscinco.com') {
             throw new Error('The Android APK must load the live production UI from https://treseiscinco.com');
           }
           if (config.server?.cleartext !== false) {
             throw new Error('The Android live URL must use HTTPS only');
           }
-          console.log('Verified: Android UI updates from https://treseiscinco.com');
+          if (!config.server?.allowNavigation?.includes('treseiscinco.com')) {
+            throw new Error('The production domain must be permitted in the Android WebView.');
+          }
+          if (config.server?.errorPath !== 'offline.html') {
+            throw new Error('The live Android app must have a local offline fallback.');
+          }
+          if (app.split('href="/download/apk"').length - 1 < 2) {
+            throw new Error('Both public landing and login pages must use the verified APK download route.');
+          }
+          for (const marker of [
+            'u.pathname==="/download/apk"',
+            'application/vnd.android.package-archive',
+            'attachment; filename="treseiscinco.apk"'
+          ]) {
+            if (!worker.includes(marker)) throw new Error('Missing APK download safeguard: ' + marker);
+          }
+          console.log('Verified: live Android UI, offline fallback, and explicit APK download headers.');
           NODE
       - name: Build installable Android APK
         run: |
@@ -169,3 +188,15 @@ jobs:
             exit 0
           fi
           npx wrangler deploy
+      - name: Verify downloadable APK in production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSI https://treseiscinco.com/download/apk -o /tmp/treseiscinco-apk-headers.txt
+          grep -Eiq '^content-type:[[:space:]]*application/vnd.android.package-archive' /tmp/treseiscinco-apk-headers.txt
+          grep -Eiq '^content-disposition:[[:space:]]*attachment;[[:space:]]*filename="treseiscinco.apk"' /tmp/treseiscinco-apk-headers.txt
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://treseiscinco.com/download/apk -o /tmp/treseiscinco-downloaded.apk
+          test -s /tmp/treseiscinco-downloaded.apk
+          unzip -t /tmp/treseiscinco-downloaded.apk >/dev/null
+          echo "Verified: production APK endpoint sends a valid APK attachment."
+

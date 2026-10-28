@@ -198,6 +198,16 @@ const normalizeSidebarLayout = (layout) => {
     if (item && !existing) target.items.push(item);
   }
 
+  // Retire stale empty module groups left by older menu layouts (for example, a group titled "4").
+  // Coupons and suppliers are destinations within the canonical groups, never standalone group headings.
+  for (let index = groups.length - 1; index >= 0; index -= 1) {
+    const group = groups[index];
+    const numericHeading = /^\\d+$/.test(String(group.title || "").trim());
+    if (!group.items.length && (numericHeading || group.id === "coupons" || group.id === "suppliers")) {
+      groups.splice(index, 1);
+    }
+  }
+
   const placed = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
   const missing = orderedItems.filter((item) => !placed.has(item.id));
   for (const item of missing) {

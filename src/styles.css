@@ -10387,3 +10387,15 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell .quotes-page .quote-record-bottom>div>strong {text-align:left!important}
   .app-shell .quotes-page .quote-record-details .quote-share-actions {grid-template-columns:minmax(0,1fr)!important}
 }
+
+
+/* En móvil, Cotizaciones y Ventas comparten el mismo ancho de fila y margen lateral. */
+@media (max-width:700px) {
+  .app-shell .quotes-page .quotes-list {
+    width:calc(100% - 16px)!important;
+    max-width:560px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    align-items:stretch!important;
+  }
+}

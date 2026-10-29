@@ -33,6 +33,8 @@ try{raw=await req.text();if(raw.length>16384)return send({msg:"El registro super
 if(!data||typeof data!=="object"||Array.isArray(data))return send({msg:"El formulario no tiene un formato válido."},400);
 const email=String(data.email||"").trim().toLowerCase();
 if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return send({msg:"Escribe un correo electrónico válido."},400);
+const password=String(data.password||"");
+if(password.length<12||password.length>128)return send({msg:"La contraseña debe tener entre 12 y 128 caracteres."},400);
 const domain=email.slice(email.lastIndexOf("@")+1).replace(/\.$/,"");
 if([...DISPOSABLE_SIGNUP_DOMAINS].some(d=>domain===d||domain.endsWith("."+d)))return send({msg:"Ese dominio de correo es temporal. Usa un correo permanente al que tengas acceso para crear tu cuenta."},400);
 const apiKey=req.headers.get("apikey")||"";

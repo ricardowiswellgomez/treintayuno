@@ -5490,7 +5490,7 @@ function AuthenticatedApp() {
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
     const documentCurrency = quote.currency_code || currencyCode;
-    const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\\"num\\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\\"num\\">" + escapeHtml(money(item.unit_price_minor, documentCurrency)) + "</td><td class=\\"num\\">" + escapeHtml(money(item.line_total_minor, documentCurrency)) + "</td></tr>").join("");
+    const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, documentCurrency)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, documentCurrency)) + "</td></tr>").join("");
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     const subtotal = Number(quote.subtotal_minor || (quote.items || []).reduce((sum,item)=>sum+Number(item.line_total_minor||0),0));
     const discount = Number(quote.discount_minor || 0);
@@ -5499,7 +5499,7 @@ function AuthenticatedApp() {
     const summaryRows = "<div><span>Subtotal</span><strong>" + escapeHtml(money(subtotal, documentCurrency)) + "</strong></div>"
       + (discount > 0 ? "<div><span>Descuento</span><strong>− " + escapeHtml(money(discount, documentCurrency)) + "</strong></div>" : "")
       + (tax > 0 ? "<div><span>Impuestos</span><strong>" + escapeHtml(money(tax, documentCurrency)) + "</strong></div>" : "")
-      + "<div class=\\"balance\\"><span>Total de la cotización</span><strong>" + escapeHtml(money(total, documentCurrency)) + "</strong></div>";
+      + "<div class=\"balance\"><span>Total de la cotización</span><strong>" + escapeHtml(money(total, documentCurrency)) + "</strong></div>";
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(quote.quote_number)} - ${escapeHtml(brand)}</title><style>
        @page{size:letter portrait;margin:14mm}
        *{box-sizing:border-box}
@@ -5527,12 +5527,12 @@ function AuthenticatedApp() {
        .footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}
        @media print{body{margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}header,.meta,.summary,.notes{break-inside:avoid;page-break-inside:avoid}a{color:inherit;text-decoration:none}}
        @media screen{body{margin:24px auto;padding:0 24px}}
-     </style></head><body><header>${logoUrl ? "<img src=\\"" + escapeHtml(logoUrl) + "\\" alt=\\"Logo\\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
+     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Cotización comercial</h2><div class="document-number">${escapeHtml(quote.quote_number || "")}</div><p>Fecha de emisión: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name || "Cliente sin nombre")}</p>${quote.customer_email ? "<p>" + escapeHtml(quote.customer_email) + "</p>" : ""}${quote.customer_phone ? "<p>" + escapeHtml(quote.customer_phone) + "</p>" : ""}</div><div><strong>Condiciones</strong><p>Válida hasta: ${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
       <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table>
       <div class="summary">${summaryRows}</div>
-      ${quote.notes ? "<div class=\\"notes\\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Cotización comercial generada desde treseiscinco · ${escapeHtml(brand)}. Este documento es una propuesta comercial, no una factura ni comprobante de pago.</div>
+      ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Cotización comercial generada desde treseiscinco · ${escapeHtml(brand)}. Este documento es una propuesta comercial, no una factura ni comprobante de pago.</div>
       <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\\/script></body></html>`;
     const win = window.open(window.location.href, "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }

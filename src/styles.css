@@ -10779,3 +10779,56 @@ body { background: #F5F7FC; color: #19243A; }
 .platform-event-business strong,
 .platform-event-transition strong,
 .platform-event-when strong { overflow-wrap:anywhere; }
+
+
+/* Inicio presenta dos gráficos comparables, en paralelo y con un único tipo visible por panel. */
+.home-chart-pair {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+  gap:16px;
+  width:100%;
+  min-width:0;
+}
+.home-chart-cell { display:flex; flex-direction:column; min-width:0; gap:8px; }
+.home-chart-cell-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:0 2px; }
+.home-chart-cell-heading h3 { margin:0 0 4px; color:var(--ink); font-size:16px; line-height:1.35; }
+.home-chart-cell-heading p { margin:0; color:var(--muted); font-size:12px; line-height:1.45; }
+.home-chart-cell .chart-type-picker { justify-content:flex-start; margin:0 0 2px; }
+.home-chart-cell .chart-type-picker button { flex:0 1 auto; min-width:70px; }
+.home-chart-cell>.simple-chart { width:100%; min-width:0; max-width:100%; height:100%; }
+.home-chart-cell .simple-pie-layout { grid-template-columns:minmax(100px,.6fr) minmax(0,1.4fr); gap:12px; }
+.home-chart-cell .simple-pie-visual { width:min(100%,170px); }
+.home-chart-cell .simple-pie-legend-row { grid-template-columns:8px minmax(0,1fr) auto; gap:7px; }
+.home-chart-cell .simple-pie-legend-row small { grid-column:2 / -1; }
+.home-chart-cell .simple-chart-heading h3 { font-size:15px; }
+.home-chart-cell .simple-chart-heading p { font-size:12px; }
+@media(max-width:900px) {
+  .home-chart-pair { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:600px) {
+  .home-chart-pair { gap:12px; }
+  .home-chart-cell .chart-type-picker { width:100%; }
+  .home-chart-cell .chart-type-picker button { flex:1 1 0; min-width:0; padding:8px 7px; }
+  .home-chart-cell .simple-pie-layout { grid-template-columns:minmax(86px,.5fr) minmax(0,1.5fr); gap:8px; }
+}
+
+/* Altura acotada y escala estable para que los gráficos de área no crezcan con el ancho. */
+.simple-area-visual { height:250px!important; max-height:250px!important; overflow:hidden!important; }
+.simple-area-visual svg { display:block; width:100%!important; min-width:0!important; height:250px!important; max-height:250px!important; }
+@media(max-width:600px) {
+  .simple-area-visual { height:205px!important; max-height:205px!important; }
+  .simple-area-visual svg { height:205px!important; max-height:205px!important; min-width:0!important; }
+}
+
+/* La ayuda de Clientes queda inmediatamente junto al buscador, no separada por el contador. */
+.customer-toolbar { justify-content:flex-start!important; }
+.customer-toolbar>.search-box { flex:0 1 520px; max-width:520px; }
+.customer-toolbar>.field-help-wrap { order:2; flex:0 0 auto; margin-left:0!important; }
+.customer-toolbar>.count-label { order:3; margin-left:auto; flex:0 0 auto; white-space:nowrap; }
+@media(max-width:600px) {
+  .customer-toolbar { align-items:center; justify-content:flex-start!important; }
+  .customer-toolbar>.search-box { order:1; flex:1 1 100%; max-width:none; width:100%; }
+  .customer-toolbar>.field-help-wrap { order:2; margin-left:0!important; }
+  .customer-toolbar>.count-label { order:3; margin-left:auto; }
+}

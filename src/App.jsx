@@ -7073,8 +7073,11 @@ function AuthenticatedApp() {
                   <div><span>Válida hasta</span><strong>{quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Sin fecha límite"}</strong></div>
                 </div>
                 <div className="quote-record-disclosure-bar">
-                  <span>{quote.items.length} {quote.items.length === 1 ? "artículo" : "artículos"}</span>
-                  <button type="button" className="text-button" aria-expanded={expandedQuoteId === quote.id} onClick={() => setExpandedQuoteId((current) => current === quote.id ? null : quote.id)}>{expandedQuoteId === quote.id ? "Ocultar detalles" : "Ver detalles"}</button>
+                  <span className="quote-record-item-count">{quote.items.length} {quote.items.length === 1 ? "artículo" : "artículos"}</span>
+                  <div className="quote-record-inline-actions">
+                    <button type="button" className="text-button" aria-expanded={expandedQuoteId === quote.id} onClick={() => setExpandedQuoteId((current) => current === quote.id ? null : quote.id)}>{expandedQuoteId === quote.id ? "Ocultar detalles" : "Ver detalles"}</button>
+                    {canManageSales && <button type="button" className="secondary-button action-small quote-share-inline" onClick={() => shareQuoteImage(quote)}>Compartir imagen</button>}
+                  </div>
                 </div>
                 <div className="quote-record-details" hidden={expandedQuoteId !== quote.id}>
                   {quote.items.length > 0 && <div className="quote-record-items">{quote.items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, quote.currency_code || currencyCode)}</strong></div>)}</div>}
@@ -7083,7 +7086,7 @@ function AuthenticatedApp() {
                     <div className="quote-share-actions">
                       {quote.status !== "converted" && quote.status !== "cancelled" && <button type="button" className="secondary-button action-small" onClick={() => editQuote(quote)}>Ajustar propuesta</button>}
                       <button type="button" className="secondary-button action-small" onClick={() => printQuoteDocument(quote)}>PDF / Imprimir</button>
-                      <button type="button" className="primary-button action-small" onClick={() => shareQuoteImage(quote)}>Compartir imagen</button>
+                      
                     </div>
                     <label><span className="field-label-heading">Estado<FieldHelp enabled={contextualHelpEnabled} text="Actualiza el estado comercial. Cambiarlo no crea una venta por sí solo." /></span><select value={quote.status} onChange={(e) => updateQuoteStatus(quote, e.target.value)}><option value="draft">Borrador</option><option value="sent">Enviada</option><option value="accepted">Aceptada</option><option value="rejected">Rechazada</option><option value="expired">Vencida</option><option value="converted">Convertida en venta</option><option value="cancelled">Cancelada</option></select></label>
                   </div>}

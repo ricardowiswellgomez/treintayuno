@@ -190,5 +190,11 @@ test("las cotizaciones muestran filas alineadas y proveedores conserva su módul
   assert.match(alignedRows, /grid-template-areas:"meta customer totals toggle toggle"/);
   assert.match(alignedRows, /grid-area:details/);
   assert.match(app, /className="quote-record-disclosure-bar"/);
+  const quoteDisclosureStart = app.indexOf('className="quote-record-disclosure-bar"');
+  const quoteDetailsStart = app.indexOf('className="quote-record-details"', quoteDisclosureStart);
+  const quoteDisclosure = app.slice(quoteDisclosureStart, quoteDetailsStart);
+  assert.match(quoteDisclosure, /className="quote-record-inline-actions"/);
+  assert.match(quoteDisclosure, /onClick=\{\(\) => shareQuoteImage\(quote\)\}>Compartir imagen<\/button>/);
+  assert.match(css, /\.app-shell \.quotes-page \.quote-share-inline/);
   assert.match(app, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);
 });

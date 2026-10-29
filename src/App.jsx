@@ -495,7 +495,7 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "", is_bundle: false, bundle_components: [{ product_id: "", quantity: "1" }, { product_id: "", quantity: "1" }], bundle_discount: "0" };
 const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
@@ -539,7 +539,7 @@ const employeePermissionProfiles = {
     permissions: {}
   }
 };
-const blankCustomer = { first_name: "", last_name: "", company_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
+const blankCustomer = { first_name: "", last_name: "", company_name: "", advisor_name: "", document_type: "", document_number: "", email: "", phone: "", whatsapp: "", city: "", address: "", notes: "" };
 
 const defaultBusinessTheme = Object.freeze({ primary: "#475569", background: "#F6F7F9", surface: "#FFFFFF", text: "#1F2937", sidebarBackground: "#FFFFFF", sidebarText: "#1F2937", buttonHover: "#334155", buttonHoverText: "#FFFFFF" });
 const treseiscincoTheme = Object.freeze({ primary: "#159F92", background: "#F5F7FC", surface: "#FFFFFF", text: "#19243A", sidebarBackground: "#FFFFFF", sidebarText: "#19243A", buttonHover: "#0D7E75", buttonHoverText: "#FFFFFF" });
@@ -1970,6 +1970,8 @@ function AuthenticatedApp() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
+  const [bundleProductOptions, setBundleProductOptions] = useState([]);
+  const [bundleOptionsLoading, setBundleOptionsLoading] = useState(false);
   const [stagedImages, setStagedImages] = useState([]);
   const [taxBulkProducts, setTaxBulkProducts] = useState([]);
   const [taxBulkProductIds, setTaxBulkProductIds] = useState([]);
@@ -2158,6 +2160,7 @@ function AuthenticatedApp() {
   const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [saleCustomerId, setSaleCustomerId] = useState("");
+  const [saleAdvisorName, setSaleAdvisorName] = useState("");
   const [showQuickCustomerForm, setShowQuickCustomerForm] = useState(false);
   const [quickCustomerName, setQuickCustomerName] = useState("");
   const [quickCustomerPhone, setQuickCustomerPhone] = useState("");
@@ -4145,8 +4148,12 @@ function AuthenticatedApp() {
       cost_price: String(Number(product.cost_price_minor || 0) / (10 ** digits)),
       stock: String(product.stock_on_hand ?? 0),
       low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold),
-      tax_code: product.metadata?.tax_code || "none"
+      tax_code: product.metadata?.tax_code || "none",
+      is_bundle: product.metadata?.is_bundle === true || product.metadata?.is_bundle === "true",
+      bundle_components: Array.isArray(product.metadata?.bundle_components) && product.metadata.bundle_components.length ? product.metadata.bundle_components.map(component=>({product_id:component.product_id||"",quantity:String(component.quantity||"1")})) : [{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}],
+      bundle_discount: String(Number(product.metadata?.bundle_discount_minor||0)/(10**digits))
     });
+    if (product.metadata?.is_bundle) loadBundleProductOptions().catch(error=>setError(friendlyError(error)));
     setError("");
     setNotice("");
   }
@@ -4353,13 +4360,82 @@ function AuthenticatedApp() {
     const term = taxBulkSearch.trim().toLocaleLowerCase("es-CO");
     return !term || String(product.name || "").toLocaleLowerCase("es-CO").includes(term) || String(product.sku || "").toLocaleLowerCase("es-CO").includes(term);
   });
+  const availableBundleComponents = (bundleProductOptions.length ? bundleProductOptions : products).filter(product =>
+    product.id !== editingProductId && product.product_type === "physical" && product.is_sellable !== false &&
+    !product.archived_at && product.metadata?.is_bundle !== true && product.metadata?.is_bundle !== "true"
+  );
+  const bundleDraftRows = (productForm.bundle_components || []).map(component => ({
+    product_id: component.product_id,
+    quantity: Number(component.quantity),
+    product: availableBundleComponents.find(product => product.id === component.product_id)
+  })).filter(component => component.product_id && component.product);
+  const bundleSubtotalMinor = bundleDraftRows.reduce((sum, component) => sum + Math.round(Number(component.product.sale_price_minor || 0) * component.quantity), 0);
+  const bundleCostMinor = bundleDraftRows.reduce((sum, component) => sum + Math.round(Number(component.product.cost_price_minor || 0) * component.quantity), 0);
+  const bundleDiscountMinor = Math.max(0, toMinorUnits(productForm.bundle_discount || "0", currencyCode));
+  const bundleSalePriceMinor = Math.max(0, bundleSubtotalMinor - bundleDiscountMinor);
+
+  async function loadBundleProductOptions() {
+    if (!activeBusiness?.id) return [];
+    setBundleOptionsLoading(true);
+    try {
+      const { data, error: optionsError } = await supabase.from("products")
+        .select("id,business_id,name,product_type,sale_price_minor,cost_price_minor,stock_on_hand,track_inventory,is_sellable,archived_at,metadata")
+        .eq("business_id", activeBusiness.id).eq("product_type", "physical")
+        .eq("is_sellable", true).is("archived_at", null).order("name").limit(500);
+      if (optionsError) throw optionsError;
+      const options = (data || []).filter(product => product.metadata?.is_bundle !== true && product.metadata?.is_bundle !== "true");
+      setBundleProductOptions(options);
+      return options;
+    } finally { setBundleOptionsLoading(false); }
+  }
 
   async function addProduct(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
+    const currentProduct = editingProductId ? products.find(product => product.id === editingProductId) : null;
+    const selectedBundleComponents = (productForm.bundle_components || []).filter(component => component.product_id);
+    const selectedBundleIds = selectedBundleComponents.map(component => component.product_id);
+    const discountMinor = Math.max(0, toMinorUnits(productForm.bundle_discount || "0", currencyCode));
+    if (productForm.is_bundle) {
+      if (currentProduct?.track_inventory && Number(currentProduct.stock_on_hand || 0) > 0) {
+        setError("Antes de convertir este artículo en conjunto, registra la salida de sus existencias actuales.");
+        return;
+      }
+      if (selectedBundleComponents.length < 2 || selectedBundleIds.length !== new Set(selectedBundleIds).size) {
+        setError("Selecciona al menos 2 prendas distintas para crear el conjunto.");
+        return;
+      }
+      if (selectedBundleComponents.some(component => !Number.isInteger(Number(component.quantity)) || Number(component.quantity) < 1)) {
+        setError("Cada cantidad del conjunto debe ser un número entero mayor que cero.");
+        return;
+      }
+      if (bundleDraftRows.length !== selectedBundleComponents.length) {
+        setError("Elige una prenda válida en cada línea del conjunto.");
+        return;
+      }
+      if (discountMinor > bundleSubtotalMinor) {
+        setError("El descuento no puede superar el precio combinado de las prendas.");
+        return;
+      }
+    }
     setBusy(true); setError(""); setNotice("");
     try {
       const pendingImages = [...stagedImages];
+      const existingMetadata = { ...(currentProduct?.metadata || {}) };
+      delete existingMetadata.is_bundle;
+      delete existingMetadata.bundle_components;
+      delete existingMetadata.bundle_discount_minor;
+      const productMetadata = {
+        ...existingMetadata,
+        tax_code: productForm.tax_code || "none",
+        ...(productForm.is_bundle ? {
+          is_bundle: true,
+          bundle_components: selectedBundleComponents.map(component => ({ product_id: component.product_id, quantity: Number(component.quantity) })),
+          bundle_discount_minor: discountMinor
+        } : {})
+      };
+      const salePriceMinor = productForm.is_bundle ? bundleSalePriceMinor : toMinorUnits(productForm.sale_price, currencyCode);
+      const costPriceMinor = productForm.is_bundle ? bundleCostMinor : toMinorUnits(productForm.cost_price, currencyCode);
       if (editingProductId) {
         const { data: updated, error: updateError } = await supabase.from("products")
           .update({
@@ -4369,10 +4445,11 @@ function AuthenticatedApp() {
             description: productForm.description.trim() || null,
             commercial_presentation: productForm.commercial_presentation.trim() || null,
             unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
-            sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
-            cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
-            low_stock_threshold: productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null,
-            metadata: { ...(products.find((item) => item.id === editingProductId)?.metadata || {}), tax_code: productForm.tax_code || "none" }
+            sale_price_minor: salePriceMinor,
+            cost_price_minor: costPriceMinor,
+            low_stock_threshold: productForm.is_bundle ? null : (productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null),
+            metadata: productMetadata,
+            ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : currentProduct?.metadata?.is_bundle ? { track_inventory: productForm.product_type === "physical", stock_on_hand: 0 } : {})
           })
           .eq("business_id", activeBusiness.id).eq("id", editingProductId)
           .select("id").maybeSingle();
@@ -4385,7 +4462,7 @@ function AuthenticatedApp() {
         pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
         setInventoryOverviewRefresh((current) => current + 1);
         await loadProducts();
-        setNotice("Producto actualizado. El historial de existencias se conservó.");
+        setNotice(productForm.is_bundle ? "Conjunto actualizado. Su descuento se aplica únicamente al conjunto; el precio de cada prenda permanece igual." : "Producto actualizado. El historial de existencias se conservó.");
         return;
       }
       const { data: newProductId, error: rpcError } = await supabase.rpc("create_product_with_opening_stock", {
@@ -4396,14 +4473,14 @@ function AuthenticatedApp() {
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
         p_unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
-        p_sale_price_minor: toMinorUnits(productForm.sale_price, currencyCode),
-        p_cost_price_minor: toMinorUnits(productForm.cost_price, currencyCode),
-        p_opening_stock: Number(productForm.stock || 0),
-        p_low_stock_threshold: productForm.low_stock === "" ? null : Number(productForm.low_stock),
+        p_sale_price_minor: salePriceMinor,
+        p_cost_price_minor: costPriceMinor,
+        p_opening_stock: productForm.is_bundle ? 0 : Number(productForm.stock || 0),
+        p_low_stock_threshold: productForm.is_bundle || productForm.low_stock === "" ? null : Number(productForm.low_stock),
         p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
-      const { error: metadataError } = await supabase.from("products").update({ metadata: { tax_code: productForm.tax_code || "none" } }).eq("business_id", activeBusiness.id).eq("id", newProductId);
+      const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
       if (metadataError) throw metadataError;
       setProductForm(blankProduct); setShowProductForm(false);
       setStagedImages([]);
@@ -4415,7 +4492,7 @@ function AuthenticatedApp() {
         catch { imageFailures += 1; }
       }
       setInventoryOverviewRefresh((current) => current + 1);
-      setNotice("Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
+      setNotice(productForm.is_bundle ? "Conjunto guardado. El precio especial aplica solo al conjunto y sus prendas se descuentan al venderlo." : "Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
       if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
       setSearch(""); setProductPage(1);
       await loadProducts();
@@ -4510,7 +4587,7 @@ function AuthenticatedApp() {
     </div>;
   }
 
-  const customerFields = "id,full_name,first_name,last_name,company_name,document_type,document_number,email,phone,whatsapp,city,address,notes,created_at";
+  const customerFields = "id,full_name,first_name,last_name,company_name,document_type,document_number,email,phone,whatsapp,city,address,notes,advisor_name,created_at";
 
   async function loadCashRegisterSession() {
     if (!activeBusiness?.id || !session?.user?.id || !canAccessScreen("sales")) { setCashRegisterSession(null); return; }
@@ -4599,7 +4676,7 @@ function AuthenticatedApp() {
           .eq("business_id", activeBusiness.id).order("full_name");
         const safeTerm = customerSearch.trim().replace(/[^\p{L}\p{N}@.+\-_\s]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
         if (safeTerm) {
-          const filter = ["full_name", "company_name", "email", "phone", "whatsapp", "document_number", "city"]
+          const filter = ["full_name", "company_name", "email", "phone", "whatsapp", "document_number", "city", "advisor_name"]
             .map((field) => field + ".ilike.%" + safeTerm + "%").join(",");
           query = query.or(filter);
         }
@@ -4609,7 +4686,7 @@ function AuthenticatedApp() {
         setCustomers(result.data || []);
         setCustomersCount(result.count || 0);
       } else {
-        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,created_by,sale_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
+        let salesQuery = supabase.from("sales").select("id,business_id,customer_id,created_by,advisor_name,sale_number,status,currency_code,subtotal_minor,tax_minor,total_minor,amount_paid_minor,notes,sold_at,created_at", { count: "exact" }).eq("business_id", activeBusiness.id);
         const salesToday = todayInBogota();
         const shiftSalesDate = (key, offset) => { const date = new Date(key + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0,10); };
         const salesWeekStart = shiftSalesDate(salesToday, -((new Date(salesToday + "T12:00:00Z").getUTCDay() + 6) % 7));
@@ -4620,9 +4697,9 @@ function AuthenticatedApp() {
         const [salesResult, productsResult, customersResult] = await Promise.all([
           salesQuery.order("sold_at", { ascending: false }).order("created_at", { ascending: false })
             .range((salesPage - 1) * salesPageSize, (salesPage - 1) * salesPageSize + salesPageSize - 1),
-          supabase.from("products").select("id,name,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable,archived_at")
+          supabase.from("products").select("id,name,product_type,metadata,sale_price_minor,cost_price_minor,unit_name,stock_on_hand,track_inventory,is_sellable,archived_at")
             .eq("business_id", activeBusiness.id).eq("is_sellable", true).is("archived_at", null).order("name").limit(500),
-          supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp")
+          supabase.from("customers").select("id,full_name,company_name,email,phone,whatsapp,advisor_name")
             .eq("business_id", activeBusiness.id).order("full_name").limit(500)
         ]);
         if (salesResult.error) throw salesResult.error;
@@ -5415,7 +5492,7 @@ function AuthenticatedApp() {
     const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, quote.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, quote.currency_code || currencyCode)) + "</td></tr>").join("");
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(quote.quote_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:letter portrait;margin:14mm}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Cotización ${escapeHtml(quote.quote_number)}</h2><small>Fecha: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</small>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name)}</p><p>${escapeHtml(quote.customer_email || "")}</p><p>${escapeHtml(quote.customer_phone || "")}</p></div><div><strong>Válida hasta</strong><p>${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
@@ -5504,7 +5581,7 @@ function AuthenticatedApp() {
     const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:#174580}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:A4;margin:14mm}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:#174580}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:letter portrait;margin:14mm}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
@@ -5727,6 +5804,7 @@ function AuthenticatedApp() {
       first_name: customer.first_name || "",
       last_name: customer.last_name || "",
       company_name: customer.company_name || "",
+      advisor_name: customer.advisor_name || "",
       document_type: customer.document_type || "",
       document_number: customer.document_number || "",
       email: customer.email || "",
@@ -5754,6 +5832,7 @@ function AuthenticatedApp() {
       first_name: customerDraft.first_name.trim() || null,
       last_name: customerDraft.last_name.trim() || null,
       company_name: customerDraft.company_name.trim() || null,
+      advisor_name: customerDraft.advisor_name.trim() || null,
       document_type: customerDraft.document_type || null,
       document_number: customerDraft.document_number.trim() || null,
       email: customerDraft.email.trim() || null,
@@ -5900,13 +5979,14 @@ function AuthenticatedApp() {
         p_items: saleItems.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })),
         p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null,
         p_initial_payment_method: saleInitialPaymentMethod,
-        p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString()
+        p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
+        p_advisor_name: saleAdvisorName.trim() || null
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;
       const wasOnFirstSalesPage = salesPage === 1;
       setSalesPage(1);
-      setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
+      setShowSaleForm(false); setSaleCustomerId(""); setSaleAdvisorName(""); setSaleProductChoice(""); setSaleQuantity("1");
       setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó." + (cashChange > 0 ? " Devuelta: " + money(cashChange, currencyCode) + "." : ""));
       if (wasOnFirstSalesPage) await loadSalesModuleData();
@@ -6771,13 +6851,14 @@ function AuthenticatedApp() {
   <div className="sale-builder-related-field">
     <span className="field-label-heading">Cliente<FieldHelp enabled={contextualHelpEnabled} text="Relaciona la venta con un cliente registrado. Déjalo vacío si es una venta sin cliente." /></span>
     <div className="sale-builder-control-line">
-      <select aria-label="Cliente" value={saleCustomerId} onChange={e=>{setSaleCustomerId(e.target.value);}}>
+      <select aria-label="Cliente" value={saleCustomerId} onChange={e=>{const customerId=e.target.value;setSaleCustomerId(customerId);setSaleAdvisorName(customers.find(customer=>customer.id===customerId)?.advisor_name||"");}}>
         <option value="">Venta sin cliente</option>
         {customers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}{customer.company_name&&customer.company_name!==customer.full_name?" · "+customer.company_name:""}</option>)}
       </select>
       {canManageCustomers && <button type="button" className="sale-builder-inline-button" title="Crear cliente" aria-label="Crear cliente" onClick={()=>{setShowQuickCustomerForm(v=>!v);setError("");}}><AppIcon name="plus" size={16}/></button>}
     </div>
   </div>
+  <label className="sale-builder-related-field"><span className="field-label-heading">Asesora que atendió<FieldHelp enabled={contextualHelpEnabled} text="Guarda quién remitió o atendió a esta clienta. Se copiará a la venta aunque luego cambies la ficha del cliente." /></span><input value={saleAdvisorName} onChange={event=>setSaleAdvisorName(event.target.value)} maxLength={160} placeholder="Nombre de la asesora (opcional)" /></label>
   <div className="sale-builder-related-field">
     <span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span>
     <div className="sale-builder-control-line">
@@ -6832,9 +6913,9 @@ function AuthenticatedApp() {
 <div className="form-actions"><button type="button" className="secondary-button" onClick={clearSaleDraft}>Cancelar</button><button type="submit" className="primary-button" disabled={saleSaving}>{saleSaving?"Guardando…":"Guardar venta"}</button></div>
 </form>}
 <div className="sales-toolbar"><span>{salesCount} {salesCount===1?"venta":"ventas"} · Página {salesPage} de {Math.max(1,Math.ceil(salesCount/salesPageSize))}</span><label className="sales-page-size"><span className="field-label-heading">Mostrar<FieldHelp enabled={contextualHelpEnabled} text="Define cuántas ventas aparecen en cada página de la lista." /></span><select value={salesPageSize} onChange={(e)=>{setSalesPageSize(Number(e.target.value));setSalesPage(1);}}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label></div>
-{salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel mobile-detail-trigger" key={sale.id} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedRecordDetail({type:"Venta",title:sale.sale_number || "Venta",fields:[{label:"Cliente",value:sale.customer_name},{label:"Fecha",value:new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})},{label:"Estado",value:saleStatusLabel(sale.status)},{label:"Total",value:money(sale.total_minor,sale.currency_code||currencyCode)},{label:"Abonado",value:money(sale.amount_paid_minor,sale.currency_code||currencyCode)},{label:"Pendiente",value:money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)},{label:"Artículos",value:(sale.items||[]).map(item=>item.item_name+" × "+Number(item.quantity).toLocaleString("es-CO")+" — "+money(item.line_total_minor,sale.currency_code||currencyCode)).join("\n")||"Sin artículos"},{label:"Historial de abonos",value:(sale.payments||[]).map(p=>money(p.amount_minor,sale.currency_code||currencyCode)+" · "+p.payment_method+" · "+new Date(p.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})+(p.notes?" · "+p.notes:"")).join("\n")||"Sin abonos"}],notes:sale.notes}); }}>
+{salesLoading?<div className="empty-state">Cargando ventas…</div>:salesData.length?<div className="sales-list">{salesData.map(sale=><article className="sale-record panel mobile-detail-trigger" key={sale.id} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedRecordDetail({type:"Venta",title:sale.sale_number || "Venta",fields:[{label:"Cliente",value:sale.customer_name},{label:"Asesora que atendió",value:sale.advisor_name||"Sin asignar"},{label:"Fecha",value:new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"})},{label:"Estado",value:saleStatusLabel(sale.status)},{label:"Total",value:money(sale.total_minor,sale.currency_code||currencyCode)},{label:"Abonado",value:money(sale.amount_paid_minor,sale.currency_code||currencyCode)},{label:"Pendiente",value:money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)},{label:"Artículos",value:(sale.items||[]).map(item=>item.item_name+" × "+Number(item.quantity).toLocaleString("es-CO")+" — "+money(item.line_total_minor,sale.currency_code||currencyCode)).join("\n")||"Sin artículos"},{label:"Historial de abonos",value:(sale.payments||[]).map(p=>money(p.amount_minor,sale.currency_code||currencyCode)+" · "+p.payment_method+" · "+new Date(p.paid_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"})+(p.notes?" · "+p.notes:"")).join("\n")||"Sin abonos"}],notes:sale.notes}); }}>
 <div className="sale-record-top"><div><strong>{sale.sale_number}</strong><span>{new Date(sale.sold_at||sale.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}</span><small>Registró: {sale.seller_name||"Usuario del negocio"}</small></div><span className={"status-pill "+(sale.status==="paid"?"status-active":sale.status==="canceled"||sale.status==="refunded"?"status-inactive":"status-unpublished")}>{saleStatusLabel(sale.status)}</span></div>
-<div className="sale-record-customer">{sale.customer_name}</div>
+<div className="sale-record-customer">{sale.customer_name}{sale.advisor_name&&<span className="sale-advisor-name">Atendió: {sale.advisor_name}</span>}</div>
 
 <div className="sale-record-bottom"><div><span>Total</span><strong>{money(sale.total_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Abonado</span><strong>{money(sale.amount_paid_minor,sale.currency_code||currencyCode)}</strong></div><div><span>Pendiente</span><strong>{money(Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor)),sale.currency_code||currencyCode)}</strong></div></div>
 <div className="sale-record-disclosure-bar">
@@ -6870,6 +6951,7 @@ function AuthenticatedApp() {
 <label><span className="field-label-heading">Nombre{!customerDraft.company_name.trim()?" *":""}<FieldHelp enabled={contextualHelpEnabled} text="Nombre de la persona de contacto. Si registras una empresa, puedes usar el campo Empresa." /></span><input autoComplete="given-name" value={customerDraft.first_name} onChange={e=>setCustomerDraft(current=>({...current,first_name:e.target.value}))} maxLength={100} required={!customerDraft.company_name.trim()} placeholder="Nombre"/></label>
 <label><span className="field-label-heading">Apellidos<FieldHelp enabled={contextualHelpEnabled} text="Apellidos de la persona de contacto; es opcional." /></span><input autoComplete="family-name" value={customerDraft.last_name} onChange={e=>setCustomerDraft(current=>({...current,last_name:e.target.value}))} maxLength={120} placeholder="Apellidos"/></label>
 <label><span className="field-label-heading">Empresa{!customerDraft.first_name.trim()&&!customerDraft.last_name.trim()?" *":""}<FieldHelp enabled={contextualHelpEnabled} text="Escribe el nombre de la empresa si el registro corresponde a un negocio." /></span><input autoComplete="organization" value={customerDraft.company_name} onChange={e=>setCustomerDraft(current=>({...current,company_name:e.target.value}))} maxLength={180} required={!customerDraft.first_name.trim()&&!customerDraft.last_name.trim()} placeholder="Nombre de la empresa"/></label>
+<label><span className="field-label-heading">Asesora habitual<FieldHelp enabled={contextualHelpEnabled} text="Asigna la asesora de la que normalmente proviene esta clienta. Podrás cambiarla para cada venta." /></span><input value={customerDraft.advisor_name} onChange={e=>setCustomerDraft(current=>({...current,advisor_name:e.target.value}))} maxLength={160} placeholder="Nombre de la asesora"/></label>
 <label><span className="field-label-heading">Tipo de documento<FieldHelp enabled={contextualHelpEnabled} text="Elige el tipo de identificación del cliente, si necesitas registrarlo." /></span><select value={customerDraft.document_type} onChange={e=>setCustomerDraft(current=>({...current,document_type:e.target.value}))}><option value="">Selecciona el tipo…</option><option value="CC">Cédula de ciudadanía (CC)</option><option value="CE">Cédula de extranjería (CE)</option><option value="NIT">NIT</option><option value="TI">Tarjeta de identidad (TI)</option><option value="PP">Pasaporte</option><option value="PPT">Permiso por protección temporal (PPT)</option><option value="OTHER">Otro</option></select></label>
 <label><span className="field-label-heading">Documento<FieldHelp enabled={contextualHelpEnabled} text="Documento de identidad o identificación tributaria del cliente, si necesitas conservar ese dato." /></span><input value={customerDraft.document_number} onChange={e=>setCustomerDraft(current=>({...current,document_number:e.target.value}))} maxLength={60} autoComplete="off" placeholder="Número de documento"/></label>
 <label><span className="field-label-heading">Correo<FieldHelp enabled={contextualHelpEnabled} text="Correo del cliente para contacto o envío de información." /></span><input type="email" autoComplete="email" value={customerDraft.email} onChange={e=>setCustomerDraft(current=>({...current,email:e.target.value}))} maxLength={254} placeholder="cliente@correo.com"/></label>
@@ -6884,7 +6966,7 @@ function AuthenticatedApp() {
 {salesLoading?<div className="empty-state">Cargando clientes…</div>:customers.length?<div className="customer-list panel">
 <div className="customer-list-heading"><span>Cliente / empresa</span><span>Celular</span><span>E-mail</span><span>Documento</span><span>Ciudad</span><span></span></div>
 {customers.map(customer=><article className="customer-row" key={customer.id} tabIndex={0} onClick={(event) => { if (event.target.closest("button,a,input,select,textarea,[data-stop-record-open]")) return; setSelectedCustomer(customer); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCustomer(customer); } }}>
-<div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}</div>
+<div className="customer-name-cell"><strong>{customer.full_name||customer.company_name}</strong>{customer.company_name&&customer.company_name!==customer.full_name&&<span>{customer.company_name}</span>}{customer.advisor_name&&<span className="customer-advisor-tag">Asesora: {customer.advisor_name}</span>}</div>
 <span>{customer.phone||customer.whatsapp||"Sin celular"}</span><span>{customer.email||"Sin correo"}</span>
 <span>{[customer.document_type,customer.document_number].filter(Boolean).join(" ")||"Sin documento"}</span><span>{customer.city||"—"}</span>
 {canManageCustomers && <button type="button" className="icon-action-button customer-edit-icon" title="Editar cliente" aria-label={"Editar "+(customer.full_name||customer.company_name)} onClick={(event)=>{event.stopPropagation();startEditCustomer(customer);setSelectedCustomer(null);}}><AppIcon name="edit" size={16}/></button>}
@@ -7466,8 +7548,23 @@ function AuthenticatedApp() {
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
                 <div className="product-category-field"><label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => { if (e.target.value === "__create_category__") { setShowQuickCategoryForm(true); return; } setProductForm((current) => ({ ...current, category_id: e.target.value })); }}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="__create_category__">＋ Nueva categoría…</option></select></label>{showQuickCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" autoFocus /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !categoryName.trim()} onClick={() => addCategory()}>{busy ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickCategoryForm(false); setCategoryName(""); }}>Cancelar</button></div></div>}<details className="product-categories-inline"><summary><AppIcon name="chevron-down" size={15}/> Administrar categorías existentes</summary><div className="product-categories-inline-list">{categories.length ? categories.map((category) => <div className="product-categories-inline-row" key={category.id}>{editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button type="submit" className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <><span>{category.name}</span><div><button type="button" className="icon-action-button" title={"Editar categoría "+category.name} aria-label={"Editar categoría "+category.name} onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={14}/></button>{confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title={"Eliminar categoría "+category.name} aria-label={"Eliminar categoría "+category.name} onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={14}/></button>}</div></>}</div>) : <p>No hay categorías existentes.</p>}</div></details></div>
-                <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
-                <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text="Precio que cobras al cliente por una unidad. Se usa al calcular el total de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
+                <div className="bundle-editor full-span">
+  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Es un conjunto de prendas</strong><small>Véndelo con un precio especial sin modificar el precio individual de sus prendas.</small></span></label>
+  {productForm.is_bundle && <div className="bundle-builder">
+    <div className="bundle-heading"><strong>Prendas que incluye</strong><span>Selecciona al menos 2 productos distintos.</span></div>
+    {productForm.bundle_components.map((component,index)=><div className="bundle-component-row" key={"bundle-component-"+index}>
+      <label><span className="field-label-heading">Prenda {index+1}</span><select value={component.product_id} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,product_id:event.target.value}:row)}))}><option value="">Elige una prenda…</option>{availableBundleComponents.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}</option>)}</select></label>
+      <label><span className="field-label-heading">Cantidad</span><input type="number" min="1" step="1" value={component.quantity} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,quantity:event.target.value}:row)}))}/></label>
+      <button type="button" className="secondary-button bundle-remove-button" aria-label={"Quitar prenda "+(index+1)} title="Quitar prenda" disabled={productForm.bundle_components.length<=2} onClick={()=>setProductForm(current=>({...current,bundle_components:current.bundle_components.filter((_,rowIndex)=>rowIndex!==index)}))}>Quitar</button>
+    </div>)}
+    <button type="button" className="secondary-button action-small" disabled={productForm.bundle_components.length>=20} onClick={()=>setProductForm(current=>({...current,bundle_components:[...current.bundle_components,{product_id:"",quantity:"1"}]}))}>+ Añadir prenda</button>
+    <label><span className="field-label-heading">Descuento del conjunto ({currencyCode})<FieldHelp enabled={contextualHelpEnabled} text="Es un descuento fijo sobre la suma de las prendas. No cambia sus precios cuando se venden individualmente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={productForm.bundle_discount} onChange={event=>setProductForm(current=>({...current,bundle_discount:event.target.value}))}/></label>
+    <div className="bundle-price-summary"><div><span>Precio de las prendas</span><strong>{money(bundleSubtotalMinor,currencyCode)}</strong></div><div><span>Descuento del conjunto</span><strong>− {money(bundleDiscountMinor,currencyCode)}</strong></div><div className="bundle-final-price"><span>Precio del conjunto</span><strong>{money(bundleSalePriceMinor,currencyCode)}</strong></div></div>
+    <p className="helper-text">Se descuentan del inventario las prendas incluidas al registrar la venta. Si cambia el precio de una prenda, edita y guarda el conjunto para actualizar su precio.</p>
+  </div>}
+</div>
+<label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
+                <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text={productForm.is_bundle?"Se calcula sumando las prendas y restando el descuento fijo del conjunto.":"Precio que cobras al cliente por una unidad."} /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.is_bundle?String(bundleSalePriceMinor/(10**currencyDigits(currencyCode))):productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} disabled={!!productForm.is_bundle} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Impuesto del artículo<FieldHelp enabled={contextualHelpEnabled} text="Elige el impuesto que corresponde a este artículo. Esta asignación se conserva en su ficha." /></span><select value={productForm.tax_code || "none"} onChange={(e) => setProductForm({ ...productForm, tax_code: e.target.value })}><option value="iva_19">IVA general · 19 %</option><option value="iva_5">IVA reducido · 5 %</option><option value="impoconsumo_8">Impuesto al consumo · 8 %</option><option value="iva_exento">IVA exento · 0 %</option><option value="iva_excluido">IVA excluido · 0 %</option><option value="none">Sin impuesto · 0 %</option></select></label>
                 <label><span className="field-label-heading">Unidad<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo mides o vendes este producto, por ejemplo unidad, par, kilogramo o servicio." /></span><select value={productForm.unit_name} onChange={(e) => setProductForm({ ...productForm, unit_name: e.target.value })} required>{unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

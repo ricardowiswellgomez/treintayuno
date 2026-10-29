@@ -2200,6 +2200,8 @@ function AuthenticatedApp() {
   const [saleVariantsLoading, setSaleVariantsLoading] = useState(false);
   const [showQuickSaleProductForm, setShowQuickSaleProductForm] = useState(false);
   const [quickSaleProductName, setQuickSaleProductName] = useState("");
+  const [quickSaleProductSkuMode, setQuickSaleProductSkuMode] = useState("auto");
+  const [quickSaleProductSku, setQuickSaleProductSku] = useState("");
   const [quickSaleProductCategoryId, setQuickSaleProductCategoryId] = useState("");
   const [showQuickSaleCategoryForm, setShowQuickSaleCategoryForm] = useState(false);
   const [quickSaleCategoryName, setQuickSaleCategoryName] = useState("");
@@ -4283,7 +4285,7 @@ function AuthenticatedApp() {
       setError("Las existencias de la variante deben ser cero o un número positivo.");
       return;
     }
-    if (!editingVariantId && existingProduct?.track_inventory && Number(existingProduct.stock_on_hand || 0) > 0) {
+    if (existingProduct?.track_inventory && Number(existingProduct.stock_on_hand || 0) > 0) {
       setError("Este producto tiene existencias generales. Registra primero su salida o ajuste a cero antes de pasar a controlar stock por combinaciones.");
       return;
     }
@@ -4306,26 +4308,41 @@ function AuthenticatedApp() {
           variant_value: payload.variant_value,
           sku: payload.sku,
           sale_price_minor: payload.sale_price_minor,
-          stock_on_hand: payload.stock_on_hand,
           is_active: payload.is_active,
           updated_at: new Date().toISOString()
         }).eq("id", editingVariantId).eq("business_id", activeBusiness.id).eq("product_id", viewingVariantsFor).select("id").maybeSingle();
         if (saveError) throw saveError;
         if (!data?.id) throw new Error("No se pudo guardar la variante.");
         variantId = data.id;
+        if (payload.stock_on_hand !== null) {
+          const { error: stockError } = await supabase.rpc("set_product_variant_stock", {
+            p_business_id: activeBusiness.id, p_product_id: viewingVariantsFor,
+            p_variant_id: variantId, p_quantity: payload.stock_on_hand,
+            p_notes: "Ajuste manual desde el editor de variantes"
+          });
+          if (stockError) throw stockError;
+        }
       } else {
-        const { data, error: saveError } = await supabase.from("product_variants").insert(payload).select("id").single();
+        const { data, error: saveError } = await supabase.from("product_variants").insert({ ...payload, stock_on_hand: null }).select("id").single();
         if (saveError) throw saveError;
         if (!data?.id) throw new Error("No se pudo crear la variante.");
         variantId = data.id;
-        const { error: parentError } = await supabase.from("products").update({
-          track_inventory: false, stock_on_hand: 0, low_stock_threshold: null,
-          metadata: { ...(existingProduct?.metadata || {}), has_variants: true, sku_mode: existingProduct?.metadata?.sku_mode || "manual" },
-          updated_at: new Date().toISOString()
-        }).eq("business_id", activeBusiness.id).eq("id", viewingVariantsFor);
-        if (parentError) throw parentError;
-        await loadProducts();
+        if (payload.stock_on_hand !== null) {
+          const { error: stockError } = await supabase.rpc("set_product_variant_stock", {
+            p_business_id: activeBusiness.id, p_product_id: viewingVariantsFor,
+            p_variant_id: variantId, p_quantity: payload.stock_on_hand,
+            p_notes: "Existencias iniciales al crear la combinación"
+          });
+          if (stockError) throw stockError;
+        }
       }
+      const { error: parentError } = await supabase.from("products").update({
+        track_inventory: false, stock_on_hand: 0, low_stock_threshold: null,
+        metadata: { ...(existingProduct?.metadata || {}), has_variants: true, sku_mode: existingProduct?.metadata?.sku_mode || "manual" },
+        updated_at: new Date().toISOString()
+      }).eq("business_id", activeBusiness.id).eq("id", viewingVariantsFor);
+      if (parentError) throw parentError;
+      await loadProducts();
       let photosSaved = 0;
       let photosFailed = 0;
       for (const photo of (variantDraft.staged_images || []).slice(0, Math.max(0, 2 - (variantDraft.image_paths || []).length))) {
@@ -4638,11 +4655,24 @@ function AuthenticatedApp() {
           variant_value: String(variant.variant_value).trim(),
           sku: productCodeMode === "auto" ? makeInternalVariantSku(effectiveProductSku) : String(variant.sku || "").trim() || null,
           sale_price_minor: String(variant.sale_price || "").trim() === "" ? null : toMinorUnits(variant.sale_price, currencyCode),
-          stock_on_hand: String(variant.stock_on_hand || "").trim() === "" ? null : Number(variant.stock_on_hand),
+          stock_on_hand: null,
           is_active: true
         }));
-        const { error: variantsError } = await supabase.from("product_variants").insert(variantPayloads);
-        if (variantsError) variantSaveWarning = friendlyError(variantsError);
+        const { data: insertedVariants, error: variantsError } = await supabase.from("product_variants").insert(variantPayloads).select("id,product_id");
+        if (variantsError) {
+          variantSaveWarning = friendlyError(variantsError);
+        } else if (productForm.product_type === "physical") {
+          for (let index = 0; index < (insertedVariants || []).length; index += 1) {
+            const createdVariant = insertedVariants[index];
+            const quantity = Number(variantsToCreate[index]?.stock_on_hand || 0);
+            const { error: stockError } = await supabase.rpc("set_product_variant_stock", {
+              p_business_id: activeBusiness.id, p_product_id: newProductId,
+              p_variant_id: createdVariant.id, p_quantity: quantity,
+              p_notes: "Existencias iniciales al crear el producto"
+            });
+            if (stockError) { variantSaveWarning = friendlyError(stockError); break; }
+          }
+        }
       }
       setProductForm(blankProduct); setShowProductForm(false);
       setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
@@ -4884,7 +4914,7 @@ function AuthenticatedApp() {
         if (salesRows.length) {
           const saleIds = salesRows.map((sale) => sale.id);
           const [itemsResult, paymentsResult, membersResult] = await Promise.all([
-            supabase.from("sale_items").select("id,sale_id,item_name,quantity,unit_price_minor,line_total_minor,tax_minor")
+            supabase.from("sale_items").select("id,sale_id,product_id,variant_id,item_name,sku_snapshot,quantity,unit_price_minor,line_total_minor,tax_minor")
               .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("created_at"),
             supabase.from("sale_payments").select("id,sale_id,amount_minor,payment_method,created_by,paid_at,notes")
               .eq("business_id", activeBusiness.id).in("sale_id", saleIds).order("paid_at", { ascending: true }),
@@ -6298,24 +6328,27 @@ function AuthenticatedApp() {
     const costPrice = Number(quickSaleProductCost);
     const openingStock = quickSaleProductType === "physical" ? Number(quickSaleProductStock) : 0;
     if (!name) { setError("Escribe el nombre del artículo."); return; }
+    if (quickSaleProductSkuMode === "manual" && !quickSaleProductSku.trim()) { setError("Escribe el código del artículo o elige la generación automática."); return; }
     if (quickSaleProductPrice === "" || quickSaleProductCost === "" || !Number.isFinite(salePrice) || salePrice < 0 || !Number.isFinite(costPrice) || costPrice < 0) { setError("Escribe un precio y un costo válidos, sin valores negativos."); return; }
     if (quickSaleProductType === "physical" && (!Number.isFinite(openingStock) || openingStock < 0)) { setError("Escribe una cantidad inicial válida."); return; }
     setQuickSaleProductSaving(true); setError(""); setNotice("");
     try {
       const { data: productId, error: createError } = await supabase.rpc("create_product_with_opening_stock", {
-        p_business_id: activeBusiness.id, p_name: name, p_category_id: quickSaleProductCategoryId || null, p_sku: null,
+        p_business_id: activeBusiness.id, p_name: name, p_category_id: quickSaleProductCategoryId || null, p_sku: quickSaleProductSkuMode === "auto" ? null : quickSaleProductSku.trim(),
         p_description: null, p_product_type: quickSaleProductType, p_unit_name: "unidad",
         p_sale_price_minor: toMinorUnits(salePrice, currencyCode), p_cost_price_minor: toMinorUnits(costPrice, currencyCode),
         p_opening_stock: openingStock, p_low_stock_threshold: null, p_commercial_presentation: null
       });
       if (createError) throw createError;
+      const { error: skuMetadataError } = await supabase.from("products").update({ metadata: { sku_mode: quickSaleProductSkuMode, tax_code: "none", has_variants: false }, updated_at: new Date().toISOString() }).eq("business_id", activeBusiness.id).eq("id", productId);
+      if (skuMetadataError) throw skuMetadataError;
       const { data: created, error: readError } = await supabase.from("products")
         .select("id,business_id,category_id,sku,slug,name,description,commercial_presentation,product_type,unit_name,sale_price_minor,cost_price_minor,stock_on_hand,low_stock_threshold,track_inventory,is_sellable,is_published,image_paths,archived_at,created_at")
         .eq("business_id", activeBusiness.id).eq("id", productId).single();
       if (readError) throw readError;
       setSaleProducts((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setSaleProductChoice(created.id); setSaleQuantity("1");
-      setQuickSaleProductName(""); setQuickSaleProductCategoryId(""); setShowQuickSaleCategoryForm(false); setQuickSaleCategoryName(""); setQuickSaleProductType("physical"); setQuickSaleProductPrice(""); setQuickSaleProductCost(""); setQuickSaleProductStock("1");
+      setQuickSaleProductName(""); setQuickSaleProductSkuMode("auto"); setQuickSaleProductSku(""); setQuickSaleProductCategoryId(""); setShowQuickSaleCategoryForm(false); setQuickSaleCategoryName(""); setQuickSaleProductType("physical"); setQuickSaleProductPrice(""); setQuickSaleProductCost(""); setQuickSaleProductStock("1");
       setShowQuickSaleProductForm(false);
       setNotice("Artículo creado y seleccionado para esta venta. Completa los demás datos antes de guardar.");
     } catch (e) { setError(friendlyError(e)); }
@@ -7277,7 +7310,7 @@ function AuthenticatedApp() {
 {showQuickSaleProductForm && canManageProducts && <div className="panel quick-customer-form quick-sale-product-form" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>
   <strong>Nuevo artículo</strong><p className="inline-create-hint">Se creará y quedará seleccionado en esta venta. El registro completo lo puedes ampliar después desde Productos.</p>
   <div className="sale-builder quick-product-fields">
-    <label><span className="field-label-heading">Nombre *</span><input value={quickSaleProductName} onChange={(event) => setQuickSaleProductName(event.target.value)} maxLength={160} /></label>
+    <label><span className="field-label-heading">Nombre *</span><input value={quickSaleProductName} onChange={(event) => setQuickSaleProductName(event.target.value)} maxLength={160} /></label><label><span className="field-label-heading">Código del artículo</span><select value={quickSaleProductSkuMode} onChange={(event) => setQuickSaleProductSkuMode(event.target.value)}><option value="auto">Generarlo automáticamente</option><option value="manual">Lo escribiré yo</option></select><input value={quickSaleProductSku} onChange={(event) => setQuickSaleProductSku(event.target.value)} disabled={quickSaleProductSkuMode === "auto"} required={quickSaleProductSkuMode === "manual"} maxLength={100} placeholder={quickSaleProductSkuMode === "auto" ? "Se asigna al guardar" : "Ej. SKU-001"} /></label>
     <div className="quick-product-category-field"><label><span className="field-label-heading">Categoría</span><select value={quickSaleProductCategoryId} onChange={(event) => { if (event.target.value === "__create_sale_category__") { setShowQuickSaleCategoryForm(true); return; } setQuickSaleProductCategoryId(event.target.value); }}><option value="">Sin categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}<option value="__create_sale_category__">＋ Nueva categoría…</option></select></label>{showQuickSaleCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={quickSaleCategoryName} onChange={(event) => setQuickSaleCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={quickSaleCategorySaving || !quickSaleCategoryName.trim()} onClick={addQuickSaleCategory}>{quickSaleCategorySaving ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickSaleCategoryForm(false); setQuickSaleCategoryName(""); }}>Cancelar</button></div></div>}</div>
     <label><span className="field-label-heading">Tipo</span><select value={quickSaleProductType} onChange={(event) => setQuickSaleProductType(event.target.value)}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Digital</option></select></label>
     <label><span className="field-label-heading">Precio de venta *</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={quickSaleProductPrice} onChange={(event) => setQuickSaleProductPrice(event.target.value)} /></label>
@@ -8100,7 +8133,7 @@ function AuthenticatedApp() {
                       <label><span className="field-label-heading">Valor 2 (opcional)</span><input value={variantDraft.variant_value_2} onChange={(event) => setVariantDraft((draft) => ({ ...draft, variant_value_2: event.target.value }))} maxLength={120} placeholder="Ej. S" /></label>
                       <label><span className="field-label-heading">Código de variante<FieldHelp enabled={contextualHelpEnabled} text="Se genera al guardar si el producto usa códigos automáticos; si usa códigos manuales, escribe el código aquí." /></span><input value={variantDraft.sku} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sku: event.target.value }))} disabled={products.find((product) => product.id === viewingVariantsFor)?.metadata?.sku_mode === "auto"} maxLength={100} placeholder={products.find((product) => product.id === viewingVariantsFor)?.metadata?.sku_mode === "auto" ? "Código automático" : "Código de variante"} /></label>
                       <label><span className="field-label-heading">Precio propio<FieldHelp enabled={contextualHelpEnabled} text="Deja vacío para usar el precio general del producto; escribe un valor si esta variante tiene otro precio." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={variantDraft.sale_price} onChange={(event) => setVariantDraft((draft) => ({ ...draft, sale_price: event.target.value }))} placeholder="Usar precio del producto" /></label>
-                      <label><span className="field-label-heading">Existencias propias<FieldHelp enabled={contextualHelpEnabled} text="Existencias reservadas para esta variante, cuando cada variante lleva inventario separado." /></span><input type="number" min="0" step="0.001" value={variantDraft.stock_on_hand} onChange={(event) => setVariantDraft((draft) => ({ ...draft, stock_on_hand: event.target.value }))} required={products.find((product) => product.id === viewingVariantsFor)?.product_type === "physical"} placeholder="Unidades disponibles (puede ser 0)" /></label>
+                      <label><span className="field-label-heading">Existencias de esta combinación<FieldHelp enabled={contextualHelpEnabled} text="Cada combinación, por ejemplo Rojo / Talla S, tiene sus propias unidades. Los cambios se guardan en el historial." /></span><input type="number" min="0" step="0.001" value={variantDraft.stock_on_hand} onChange={(event) => setVariantDraft((draft) => ({ ...draft, stock_on_hand: event.target.value }))} required={products.find((product) => product.id === viewingVariantsFor)?.product_type === "physical"} placeholder="Unidades disponibles (puede ser 0)" /></label>
                     </div>
                     <p className="helper-text">Cada combinación física tiene su propio stock. En productos físicos, registra las unidades disponibles; al vender una combinación se descuentan esas unidades y no las existencias generales.</p>
                     <div className="form-actions"><button type="button" className="secondary-button" onClick={resetVariantDraft}>Limpiar</button><button type="submit" className="primary-button" disabled={variantBusy}>{variantBusy ? "Guardando…" : editingVariantId ? "Guardar cambios" : "Añadir variante"}</button></div>

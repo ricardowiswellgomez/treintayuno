@@ -1820,7 +1820,12 @@ function AuthenticatedApp() {
   const [businessName, setBusinessName] = useState("");
   const [businesses, setBusinesses] = useState([]);
   const [activeBusiness, setActiveBusiness] = useState(null);
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState(() => {
+    try {
+      const saved = window.history.state;
+      return saved?.treseiscinco && typeof saved.screen === "string" ? saved.screen : "home";
+    } catch { return "home"; }
+  });
   const [salesWorkspaceTab, setSalesWorkspaceTab] = useState("sales");
   const dirtyFormsRef = useRef(new WeakSet());
   const [statsChartType, setStatsChartType] = useState("bars");
@@ -5781,7 +5786,7 @@ function AuthenticatedApp() {
     setQuoteImagePreview(null);
   }
 
-  function downloadQuoteImagePreview() {
+  function downloadQuoteImagePreview(showNotice = true) {
     if (!quoteImagePreview?.blob) return;
     const url = quoteImagePreview.url || URL.createObjectURL(quoteImagePreview.blob);
     const downloadLink = document.createElement("a");
@@ -5790,14 +5795,19 @@ function AuthenticatedApp() {
     document.body.appendChild(downloadLink);
     downloadLink.click();
     downloadLink.remove();
-    setNotice("Imagen descargada. Puedes adjuntarla al mensaje que vayas a enviar.");
+    if (showNotice) setNotice("Imagen descargada. Puedes adjuntarla al mensaje que vayas a enviar.");
   }
 
   async function confirmShareQuoteImage() {
     if (!quoteImagePreview?.blob) return;
     const file = new File([quoteImagePreview.blob], quoteImagePreview.fileName || "cotizacion-carta.png", { type: "image/png" });
     if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
-      setError("Este navegador no permite compartir archivos directamente. Pulsa «Descargar imagen» y adjúntala a tu mensaje.");
+      downloadQuoteImagePreview(false);
+      const shareUrl = "https://wa.me/?text=" + encodeURIComponent("Te comparto la cotización " + quoteImagePreview.quoteNumber + " de " + quoteImagePreview.brand + ". Adjunta la imagen descargada para enviarla completa.");
+      const shareWindow = window.open(shareUrl, "_blank", "noopener,noreferrer");
+      setNotice(shareWindow
+        ? "La imagen se descargó y WhatsApp está listo. Adjunta la imagen descargada antes de enviar."
+        : "La imagen se descargó. Adjunta el archivo a tu mensaje para enviarlo.");
       return;
     }
     try {
@@ -6063,10 +6073,8 @@ function AuthenticatedApp() {
       });
       const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi, "-") + "-carta.png";
       const url = URL.createObjectURL(blob);
-      setQuoteImagePreview((current) => {
-        if (current?.url) URL.revokeObjectURL(current.url);
-        return { blob, url, fileName: filename, quoteNumber: quote.quote_number || "Cotización", brand };
-      });
+      if (quoteImagePreview?.url) URL.revokeObjectURL(quoteImagePreview.url);
+      setQuoteImagePreview({ blob, url, fileName: filename, quoteNumber: quote.quote_number || "Cotización", brand });
       setNotice("Vista previa preparada. Revisa el documento antes de compartirlo.");
     } catch {
       setError("No se pudo generar la imagen. Usa PDF / Imprimir para guardar la cotización.");
@@ -8097,21 +8105,6 @@ function AuthenticatedApp() {
                   <p className="helper-text">Cada fila es una combinación exacta (por ejemplo Color: Rojo · Talla: S). Registra sus existencias por separado; luego podrás editarla desde «Variantes».</p>
                   <div className="new-product-variant-actions"><button type="button" className="secondary-button" onClick={() => setNewProductVariantDraft(blankNewProductVariant)}>Limpiar campos</button><button type="button" className="primary-button" onClick={addNewProductVariantDraft}>＋ Añadir combinación</button></div>
                 </section>}
-                <div className="bundle-editor full-span">
-  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Crear paquete con precio especial</strong><small>Elige dos o más productos que se venden juntos. El descuento solo se aplica al paquete; cada artículo conserva su precio individual.</small></span></label>
-  {productForm.is_bundle && <div className="bundle-builder">
-    <div className="bundle-heading"><strong>Productos que incluye el paquete</strong><span>Selecciona al menos 2 productos distintos y la cantidad de cada uno.</span></div>
-    {productForm.bundle_components.map((component,index)=><div className="bundle-component-row" key={"bundle-component-"+index}>
-      <label><span className="field-label-heading">Producto {index+1}</span><select value={component.product_id} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,product_id:event.target.value}:row)}))}><option value="">Elige un producto…</option>{availableBundleComponents.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}</option>)}</select></label>
-      <label><span className="field-label-heading">Cantidad</span><input type="number" min="1" step="1" value={component.quantity} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,quantity:event.target.value}:row)}))}/></label>
-      <button type="button" className="secondary-button bundle-remove-button" aria-label={"Quitar producto "+(index+1)} title="Quitar producto" disabled={productForm.bundle_components.length<=2} onClick={()=>setProductForm(current=>({...current,bundle_components:current.bundle_components.filter((_,rowIndex)=>rowIndex!==index)}))}>Quitar</button>
-    </div>)}
-    <button type="button" className="secondary-button action-small" disabled={productForm.bundle_components.length>=20} onClick={()=>setProductForm(current=>({...current,bundle_components:[...current.bundle_components,{product_id:"",quantity:"1"}]}))}>+ Añadir producto</button>
-    <label><span className="field-label-heading">Descuento del paquete ({currencyCode})<FieldHelp enabled={contextualHelpEnabled} text="Es un descuento fijo sobre el valor de los productos incluidos. No cambia sus precios si se venden individualmente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={productForm.bundle_discount} onChange={event=>setProductForm(current=>({...current,bundle_discount:event.target.value}))}/></label>
-    <div className="bundle-price-summary"><div><span>Precio de los productos</span><strong>{money(bundleSubtotalMinor,currencyCode)}</strong></div><div><span>Descuento del paquete</span><strong>− {money(bundleDiscountMinor,currencyCode)}</strong></div><div className="bundle-final-price"><span>Precio del paquete</span><strong>{money(bundleSalePriceMinor,currencyCode)}</strong></div></div>
-    <p className="helper-text">Al vender el paquete, se descontará del inventario cada producto incluido que controle existencias. Si cambia un precio, edita y guarda el paquete para actualizarlo.</p>
-  </div>}
-</div>
 <label><span className="field-label-heading">Tipo<FieldHelp enabled={contextualHelpEnabled} text="El tipo determina si el artículo maneja inventario físico, corresponde a un servicio o es digital." /></span><select value={productForm.product_type} disabled={!!editingProductId} onChange={(e) => setProductForm({ ...productForm, product_type: e.target.value, stock: e.target.value === "physical" ? productForm.stock : "0" })}><option value="physical">Producto físico</option><option value="service">Servicio</option><option value="digital">Producto digital</option></select></label>
                 <label><span className="field-label-heading">Precio de venta<FieldHelp enabled={contextualHelpEnabled} text={productForm.is_bundle?"Se calcula sumando los productos incluidos y restando el descuento del paquete.":"Precio que cobras al cliente por una unidad."} /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.is_bundle?String(bundleSalePriceMinor/(10**currencyDigits(currencyCode))):productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} disabled={!!productForm.is_bundle} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
                 <label><span className="field-label-heading">Costo por unidad<FieldHelp enabled={contextualHelpEnabled} text="Cuánto te cuesta adquirir o elaborar una unidad. Este dato ayuda a calcular la utilidad." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} required placeholder={currencyDigits(currencyCode) === 0 ? "0" : "0.00"} /></label>
@@ -8127,6 +8120,21 @@ function AuthenticatedApp() {
                 <section className="edit-subpanel"><div className="edit-subpanel-heading"><strong>Fotografías</strong><span>Hasta 3 fotos</span></div>{renderPhotoManager(products.find((item) => item.id === editingProductId))}</section>
               </div>}
               {!categories.length && <p className="helper-text full-span">Puedes añadir categorías desde el botón «Categorías».</p>}
+                <div className="bundle-editor full-span">
+  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Crear paquete con precio especial</strong><small>Elige dos o más productos que se venden juntos. El descuento solo se aplica al paquete; cada artículo conserva su precio individual.</small></span></label>
+  {productForm.is_bundle && <div className="bundle-builder">
+    <div className="bundle-heading"><strong>Productos que incluye el paquete</strong><span>Selecciona al menos 2 productos distintos y la cantidad de cada uno.</span></div>
+    {productForm.bundle_components.map((component,index)=><div className="bundle-component-row" key={"bundle-component-"+index}>
+      <label><span className="field-label-heading">Producto {index+1}</span><select value={component.product_id} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,product_id:event.target.value}:row)}))}><option value="">Elige un producto…</option>{availableBundleComponents.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}</option>)}</select></label>
+      <label><span className="field-label-heading">Cantidad</span><input type="number" min="1" step="1" value={component.quantity} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,quantity:event.target.value}:row)}))}/></label>
+      <button type="button" className="secondary-button bundle-remove-button" aria-label={"Quitar producto "+(index+1)} title="Quitar producto" disabled={productForm.bundle_components.length<=2} onClick={()=>setProductForm(current=>({...current,bundle_components:current.bundle_components.filter((_,rowIndex)=>rowIndex!==index)}))}>Quitar</button>
+    </div>)}
+    <button type="button" className="secondary-button action-small" disabled={productForm.bundle_components.length>=20} onClick={()=>setProductForm(current=>({...current,bundle_components:[...current.bundle_components,{product_id:"",quantity:"1"}]}))}>+ Añadir producto</button>
+    <label><span className="field-label-heading">Descuento del paquete ({currencyCode})<FieldHelp enabled={contextualHelpEnabled} text="Es un descuento fijo sobre el valor de los productos incluidos. No cambia sus precios si se venden individualmente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={productForm.bundle_discount} onChange={event=>setProductForm(current=>({...current,bundle_discount:event.target.value}))}/></label>
+    <div className="bundle-price-summary"><div><span>Precio de los productos</span><strong>{money(bundleSubtotalMinor,currencyCode)}</strong></div><div><span>Descuento del paquete</span><strong>− {money(bundleDiscountMinor,currencyCode)}</strong></div><div className="bundle-final-price"><span>Precio del paquete</span><strong>{money(bundleSalePriceMinor,currencyCode)}</strong></div></div>
+    <p className="helper-text">Al vender el paquete, se descontará del inventario cada producto incluido que controle existencias. Si cambia un precio, edita y guarda el paquete para actualizarlo.</p>
+  </div>}
+</div>
               <p className="helper-text">{editingProductId ? "Las existencias se ajustan aquí y las fotos se administran dentro de esta ficha." : "La presentación comercial es opcional. El inventario inicial queda guardado en el historial; luego puedes completar los datos desde Editar."}</p>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={cancelProductForm}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? "Guardando…" : editingProductId ? "Guardar cambios" : "Guardar producto"}</button></div>
             </form>}
@@ -8560,7 +8568,7 @@ function AuthenticatedApp() {
                 {platformPaymentBusiness===x.business_id&&<form className="platform-payment-form" onSubmit={e=>submitPlatformPayment(e,x)}><h4>Confirmar pago recibido</h4><p>Confirma solo después de verificar el ingreso en Nequi o tu cuenta bancaria.</p><div className="platform-payment-grid"><label><span>Periodo</span><select value={platformPaymentDraft.interval} onChange={e=>setPlatformPaymentDraft(v=>({...v,interval:e.target.value}))}><option value="month">Mensual</option><option value="quarter">Trimestral</option><option value="year">Anual</option></select></label><label><span>Valor (COP)</span><input type="number" min="1" value={platformPaymentDraft.amount} onChange={e=>setPlatformPaymentDraft(v=>({...v,amount:e.target.value}))} required/></label><label><span>Medio</span><select value={platformPaymentDraft.method} onChange={e=>setPlatformPaymentDraft(v=>({...v,method:e.target.value}))}><option>Nequi</option><option>Transferencia bancaria</option><option>Efectivo</option><option>Wompi manual</option><option>Tarjeta manual</option><option>Otro</option></select></label><label><span>Referencia única{["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)?" *":""}</span><input value={platformPaymentDraft.reference} onChange={e=>setPlatformPaymentDraft(v=>({...v,reference:e.target.value}))} maxLength={180} required={["Nequi","Transferencia bancaria","Wompi manual","Tarjeta manual"].includes(platformPaymentDraft.method)}/></label><label><span>Notas</span><input value={platformPaymentDraft.notes} onChange={e=>setPlatformPaymentDraft(v=>({...v,notes:e.target.value}))} maxLength={2000}/></label></div><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setPlatformPaymentBusiness("")}>Cancelar</button><button type="submit" className="primary-button" disabled={platformAdminSaving}>Confirmar y activar</button></div></form>}
               </article>})}</div>
               <section className="platform-history-section panel"><h3>Historial de pagos</h3>{(platformAdminData?.payments||[]).length?<div className="platform-history-table-wrap"><table className="platform-history-table"><thead><tr><th>Fecha</th><th>Negocio</th><th>Medio / referencia</th><th>Periodo</th><th>Valor</th><th>Estado</th></tr></thead><tbody>{platformAdminData.payments.map(p=><tr key={p.id}><td>{new Date(p.received_at||p.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota"})}</td><td>{p.business_name}<small>{p.owner_email}</small></td><td>{p.payment_method}<small>{p.external_reference||"Sin referencia"}</small></td><td>{{month:"Mensual",quarter:"Trimestral",year:"Anual"}[p.billing_interval]}</td><td>{money(p.amount_minor,p.currency_code||"COP")}</td><td>{p.status}</td></tr>)}</tbody></table></div>:<p>No hay pagos registrados.</p>}</section>
-              <section className="platform-history-section panel"><h3>Historial de suscripciones</h3>{(platformAdminData?.events||[]).length?<div className="platform-events-list">{platformAdminData.events.slice(0,100).map(e=><article className="platform-event-row" key={e.id}><div><strong>{e.business_name}</strong><span>{e.event_type.replaceAll("_"," ")} · {e.old_status||"—"} → {e.new_status||"—"}</span><small>{new Date(e.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}{e.actor_email?" · "+e.actor_email:""}</small>{e.metadata?.note&&<p>{e.metadata.note}</p>}</div>{e.amount_minor!=null&&<strong>{money(e.amount_minor,e.currency_code||"COP")}</strong>}</article>)}</div>:<p>El historial aparecerá aquí cuando se creen pruebas, cambios y pagos.</p>}</section>
+              <section className="platform-history-section panel"><h3>Historial de suscripciones</h3>{(platformAdminData?.events||[]).length?<div className="platform-events-list">{platformAdminData.events.slice(0,100).map(e=><article className="platform-event-row" key={e.id}><div className="platform-event-business"><strong>{e.business_name}</strong>{e.metadata?.business_email&&<span>{e.metadata.business_email}</span>}</div><div className="platform-event-transition"><strong>{e.event_type.replaceAll("_"," ")}</strong><span>{e.old_status||"—"} → {e.new_status||"—"}</span></div><div className="platform-event-when"><strong>{new Date(e.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium",timeStyle:"short"})}</strong>{e.actor_email&&<span>{e.actor_email}</span>}{e.metadata?.note&&<p>{e.metadata.note}</p>}</div>{e.amount_minor!=null&&<strong>{money(e.amount_minor,e.currency_code||"COP")}</strong>}</article>)}</div>:<p>El historial aparecerá aquí cuando se creen pruebas, cambios y pagos.</p>}</section>
             </>}
           </section>
         ) : screen === "home" ? <div className="home-dashboard">
@@ -8650,14 +8658,14 @@ function AuthenticatedApp() {
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
-      {quoteImagePreview && <div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
+      {quoteImagePrev      {quoteImagePreview && createPortal(<div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
         <section className="quote-image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="quote-image-preview-title">
           <div className="quote-image-preview-heading"><div><h3 id="quote-image-preview-title">Vista previa de la cotización</h3><p>{quoteImagePreview.quoteNumber} · Revisa el formato antes de compartir o descargar.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar vista previa" onClick={closeQuoteImagePreview}>×</button></div>
           <div className="quote-image-preview-visual"><img src={quoteImagePreview.url} alt={"Vista previa vertical de la cotización " + quoteImagePreview.quoteNumber}/></div>
           <div className="quote-image-preview-actions"><button type="button" className="secondary-button" onClick={closeQuoteImagePreview}>Volver</button><button type="button" className="secondary-button" onClick={downloadQuoteImagePreview}>Descargar imagen</button><button type="button" className="primary-button" onClick={confirmShareQuoteImage}>Enviar / compartir</button></div>
         </section>
-      </div>}
-      <div className="context-help-layer" ref={contextHelpLayerRef}>
+      </div>, document.body)}
+"context-help-layer" ref={contextHelpLayerRef}>
         {contextHelpOpen && (() => {
           const pageHelp = inAppPageHelp[screen] || {
             title: areas.find((area) => area.screen === screen)?.title || "Esta sección",

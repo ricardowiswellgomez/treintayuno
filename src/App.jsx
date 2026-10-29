@@ -7073,9 +7073,8 @@ function AuthenticatedApp() {
                   <div><span>Válida hasta</span><strong>{quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Sin fecha límite"}</strong></div>
                 </div>
                 <div className="quote-record-disclosure-bar">
-                  <span className="quote-record-item-count">{quote.items.length} {quote.items.length === 1 ? "artículo" : "artículos"}</span>
                   <div className="quote-record-inline-actions">
-                    <button type="button" className="text-button" aria-expanded={expandedQuoteId === quote.id} onClick={() => setExpandedQuoteId((current) => current === quote.id ? null : quote.id)}>{expandedQuoteId === quote.id ? "Ocultar detalles" : "Ver detalles"}</button>
+                    <button type="button" className="text-button" aria-expanded={expandedQuoteId === quote.id} onClick={() => setExpandedQuoteId((current) => current === quote.id ? null : quote.id)}>{expandedQuoteId === quote.id ? "Ocultar detalles" : `Ver detalles (${quote.items.length})`}</button>
                     {canManageSales && <button type="button" className="secondary-button action-small quote-share-inline" onClick={() => shareQuoteImage(quote)}>Compartir imagen</button>}
                   </div>
                 </div>

@@ -10671,3 +10671,23 @@ body { background: #F5F7FC; color: #19243A; }
   .platform-event-when { grid-column:auto; }
   .product-form .bundle-toggle,.product-publication-toggle { padding:12px; }
 }
+
+
+/* Gráfico de área: escalas, eje temporal y leyenda legibles en escritorio y móvil. */
+.simple-area-visual { width:100%; min-width:0; overflow-x:auto; padding:4px 0 0; }
+.simple-area-visual svg { display:block; width:100%; min-width:540px; height:auto; overflow:visible; }
+.simple-area-gridline { stroke:var(--line,#E2E8F0); stroke-width:1; stroke-dasharray:3 4; }
+.simple-area-x-label { fill:var(--muted,#64748B); font-size:10px; }
+.simple-area-legend { display:flex; flex-wrap:wrap; align-items:center; gap:9px 16px; margin:9px 0 2px; }
+.simple-area-legend span { display:inline-flex; align-items:center; gap:7px; color:var(--muted,#64748B); font-size:12px; line-height:1.4; }
+.simple-area-legend i { display:inline-block; width:9px; height:9px; flex:0 0 9px; border-radius:3px; }
+.home-chart-type-picker { justify-content:flex-start; margin:0 0 13px; }
+.home-chart-type-picker button { flex:0 0 auto; min-width:76px; }
+.simple-chart .simple-chart-footnote { margin-top:12px; }
+@media(max-width:600px) {
+  .simple-area-visual svg { min-width:500px; }
+  .simple-area-legend { gap:8px 12px; }
+  .simple-area-legend span { font-size:11px; }
+  .home-chart-type-picker { width:100%; overflow-x:auto; }
+  .home-chart-type-picker button { min-width:70px; }
+}

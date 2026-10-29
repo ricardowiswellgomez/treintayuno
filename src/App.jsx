@@ -8658,14 +8658,14 @@ function AuthenticatedApp() {
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
-      {quoteImagePrev      {quoteImagePreview && createPortal(<div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
+      {quoteImagePreview && createPortal(<div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
         <section className="quote-image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="quote-image-preview-title">
           <div className="quote-image-preview-heading"><div><h3 id="quote-image-preview-title">Vista previa de la cotización</h3><p>{quoteImagePreview.quoteNumber} · Revisa el formato antes de compartir o descargar.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar vista previa" onClick={closeQuoteImagePreview}>×</button></div>
           <div className="quote-image-preview-visual"><img src={quoteImagePreview.url} alt={"Vista previa vertical de la cotización " + quoteImagePreview.quoteNumber}/></div>
           <div className="quote-image-preview-actions"><button type="button" className="secondary-button" onClick={closeQuoteImagePreview}>Volver</button><button type="button" className="secondary-button" onClick={downloadQuoteImagePreview}>Descargar imagen</button><button type="button" className="primary-button" onClick={confirmShareQuoteImage}>Enviar / compartir</button></div>
         </section>
       </div>, document.body)}
-"context-help-layer" ref={contextHelpLayerRef}>
+<div className="context-help-layer" ref={contextHelpLayerRef}>
         {contextHelpOpen && (() => {
           const pageHelp = inAppPageHelp[screen] || {
             title: areas.find((area) => area.screen === screen)?.title || "Esta sección",

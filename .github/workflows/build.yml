@@ -10,6 +10,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# APK publication pushes a generated binary back to main. Serialize builds so two
+# runs cannot race while updating that file or deploying the Worker.
+concurrency:
+  group: treseiscinco-build-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 

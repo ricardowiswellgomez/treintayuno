@@ -63,10 +63,81 @@ function PaymentMethodTiles({ value, onChange, ariaLabel = "Medio de pago" }) {
   </div>;
 }
 
-function SimpleBars({ title, description, data, formatValue }) {
+
+function SimpleArea({ title, description, data, series, formatValue, badge = "Evolución", footnote = "Evolución calculada a partir de movimientos registrados." }) {
+  const width=760,height=250,left=72,right=18,top=18,bottom=34;
+  const plotWidth=width-left-right,plotHeight=height-top-bottom,rows=data||[],seriesList=series||[];
+  const values=rows.flatMap((row)=>seriesList.map((item)=>Number(row[item.key])||0));
+  const minValue=Math.min(0,...values),maxValue=Math.max(1,...values),span=Math.max(1,maxValue-minValue);
+  const xAt=(index)=>rows.length<2?left+plotWidth/2:left+index*plotWidth/(rows.length-1);
+  const yAt=(value)=>top+((maxValue-value)/span)*plotHeight,zeroY=yAt(0);
+  const stride=Math.max(1,Math.ceil(rows.length/7));
+  const valueText=(value)=>formatValue?formatValue(value):Number(value).toLocaleString("es-CO");
+  return <section className="simple-chart panel simple-area-chart">
+    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
+    {rows.length ? <>
+      <div className="simple-area-visual"><svg viewBox={"0 0 "+width+" "+height} role="img" aria-label={title} preserveAspectRatio="xMidYMid meet">
+        {[0,1,2,3,4].map((step)=>{const y=top+step*plotHeight/4;return <line key={step} x1={left} x2={width-right} y1={y} y2={y} className="simple-area-gridline"/>;})}
+        {seriesList.map((item)=>{const points=rows.map((row,index)=>({x:xAt(index),y:yAt(Number(row[item.key])||0),value:Number(row[item.key])||0,label:row.label||row.key||""}));if(!points.length)return null;const line=points.map((point,index)=>(index?"L":"M")+point.x.toFixed(2)+" "+point.y.toFixed(2)).join(" ");const areaPath="M"+points[0].x.toFixed(2)+" "+zeroY.toFixed(2)+" "+points.map((point)=>"L"+point.x.toFixed(2)+" "+point.y.toFixed(2)).join(" ")+" L"+points[points.length-1].x.toFixed(2)+" "+zeroY.toFixed(2)+" Z";return <g key={item.key}><path d={areaPath} fill={item.color} fillOpacity=".13"/><path d={line} fill="none" stroke={item.color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>{points.map((point,index)=><circle key={index} cx={point.x} cy={point.y} r={rows.length>45?2.2:3.2} fill={item.color}><title>{item.label} · {point.label}: {valueText(point.value)}</title></circle>)}</g>;})}
+        {rows.map((row,index)=>(index===0||index===rows.length-1||index%stride===0)?<text key={row.key||index} x={xAt(index)} y={height-10} textAnchor="middle" className="simple-area-x-label">{row.label}</text>:null)}
+      </svg></div>
+      <div className="simple-area-legend">{seriesList.map((item)=><span key={item.key}><i style={{background:item.color}}/>{item.label}</span>)}</div>
+    </>:<p className="simple-chart-empty">Aún no hay movimientos en este periodo para formar la evolución.</p>}
+    <div className="simple-chart-footnote">{footnote}</div>
+  </section>;
+}
+
+function getDateKeyInBogota(value) {
+  if(!value)return todayInBogota();
+  if(typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value))return value;
+  const date=new Date(value);if(Number.isNaN(date.getTime()))return todayInBogota();
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date);
+  const item=(type)=>parts.find((part)=>part.type===type)?.value||"";
+  return item("year")+"-"+item("month")+"-"+item("day");
+}
+function getHourInBogota(value) {
+  const date=new Date(value);if(Number.isNaN(date.getTime()))return 12;
+  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"America/Bogota",hour:"2-digit",hourCycle:"h23"}).formatToParts(date);
+  return Number(parts.find((part)=>part.type==="hour")?.value||12);
+}
+function buildHomeTrendData(period,range,sales,purchases,expenses) {
+  const hourly=period==="day",monthly=["quarter","semester","year"].includes(period),keys=[];
+  if(hourly){for(let hour=0;hour<24;hour++)keys.push("h:"+String(hour).padStart(2,"0"));}
+  else if(monthly){const cursor=new Date(range.start.slice(0,7)+"-01T12:00:00Z"),end=new Date(range.endExclusive+"T12:00:00Z");while(cursor<end&&keys.length<24){keys.push(cursor.toISOString().slice(0,7));cursor.setUTCMonth(cursor.getUTCMonth()+1);}}
+  else{let cursor=range.start,safe=0;while(cursor<range.endExclusive&&safe++<400){keys.push(cursor);cursor=shiftHomeDateKey(cursor,1);}}
+  const labelFor=(key)=>key.startsWith("h:")?key.slice(2)+":00":/^\d{4}-\d{2}$/.test(key)?new Date(key+"-01T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",month:"short"}):new Date(key+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",day:"2-digit",weekday:keys.length<=10?"short":undefined});
+  const rows=new Map(keys.map((key)=>[key,{key,label:labelFor(key),income:0,purchases:0,expenses:0}]));
+  const keyFor=(value,expenseDate=false)=>{if(hourly)return "h:"+String(expenseDate?12:getHourInBogota(value)).padStart(2,"0");const dateKey=getDateKeyInBogota(value);return monthly?dateKey.slice(0,7):dateKey;};
+  const addRows=(source,field,amountField,dateField,expenseDate=false,excludedStatuses=[])=>{for(const item of source||[]){if(excludedStatuses.includes(String(item.status||"").toLowerCase()))continue;const bucket=rows.get(keyFor(item[dateField],expenseDate));if(bucket)bucket[field]+=Math.max(0,Number(item[amountField])||0);}};
+  addRows(sales,"income","total_minor","sold_at",false,["cancelled","canceled","refunded","draft"]);
+  addRows(purchases,"purchases","total_minor","purchased_at",false,["cancelled","canceled","draft","refunded"]);
+  addRows(expenses,"expenses","amount_minor","expense_date",true);
+  return [...rows.values()];
+}
+function buildProfitabilityTrendData(sales,saleItems,expenses,period) {
+  const rowsByDate=new Map(),itemTotals=new Map();
+  for(const item of saleItems||[]){const value=itemTotals.get(item.sale_id)||{revenue:0,cost:0};value.revenue+=Number(item.line_total_minor)||0;value.cost+=Math.round((Number(item.unit_cost_minor)||0)*(Number(item.quantity)||0));itemTotals.set(item.sale_id,value);}
+  const records=[...(sales||[]).map((sale)=>({type:"sale",date:getDateKeyInBogota(sale.sold_at||sale.created_at),sale})),...(expenses||[]).map((expense)=>({type:"expense",date:getDateKeyInBogota(expense.expense_date),expense}))];
+  if(!records.length)return [];
+  const dates=records.map((record)=>record.date).sort(),minDate=new Date(dates[0]+"T12:00:00Z"),maxDate=new Date(dates[dates.length-1]+"T12:00:00Z");
+  const spanDays=Math.max(1,Math.round((maxDate-minDate)/86400000)+1),monthly=period==="all"||period==="year"||spanDays>62,hourly=period==="day",keys=[];
+  if(hourly){for(let hour=0;hour<24;hour++)keys.push("h:"+String(hour).padStart(2,"0"));}
+  else if(monthly){const cursor=new Date(Date.UTC(minDate.getUTCFullYear(),minDate.getUTCMonth(),1)),end=new Date(Date.UTC(maxDate.getUTCFullYear(),maxDate.getUTCMonth()+1,1));while(cursor<end&&keys.length<600){keys.push(cursor.getUTCFullYear()+"-"+String(cursor.getUTCMonth()+1).padStart(2,"0"));cursor.setUTCMonth(cursor.getUTCMonth()+1);}}
+  else{let date=dates[0],safe=0;while(date<=dates[dates.length-1]&&safe++<400){keys.push(date);date=shiftHomeDateKey(date,1);}}
+  const labelFor=(key)=>key.startsWith("h:")?key.slice(2)+":00":/^\d{4}-\d{2}$/.test(key)?new Date(key+"-01T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",month:"short"}):new Date(key+"T12:00:00Z").toLocaleDateString("es-CO",{timeZone:"America/Bogota",day:"2-digit",weekday:keys.length<=10?"short":undefined});
+  const bucketKey=(date,stamp,expense=false)=>hourly?"h:"+String(expense?12:getHourInBogota(stamp)).padStart(2,"0"):monthly?date.slice(0,7):date;
+  for(const key of keys)rowsByDate.set(key,{key,label:labelFor(key),revenue:0,cost:0,expenses:0,result:0});
+  for(const sale of sales||[]){const date=getDateKeyInBogota(sale.sold_at||sale.created_at),bucket=rowsByDate.get(bucketKey(date,sale.sold_at||sale.created_at));if(!bucket)continue;const totals=itemTotals.get(sale.id);if(totals){bucket.revenue+=totals.revenue;bucket.cost+=totals.cost;}else bucket.revenue+=Number(sale.total_minor)||0;}
+  for(const expense of expenses||[]){const date=getDateKeyInBogota(expense.expense_date),bucket=rowsByDate.get(bucketKey(date,expense.expense_date,true));if(bucket)bucket.expenses+=Number(expense.amount_minor)||0;}
+  for(const row of rowsByDate.values())row.result=row.revenue-row.cost-row.expenses;
+  return [...rowsByDate.values()];
+}
+
+
+function SimpleBars({ title, description, data, formatValue, badge = "7 días", footnote = "Valores calculados a partir de movimientos registrados, no de estimaciones." }) {
   const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
   return <section className="simple-chart panel">
-    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">7 días</span></div>
+    <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
     {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title}>
       {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
         <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
@@ -74,7 +145,7 @@ function SimpleBars({ title, description, data, formatValue }) {
         <span className="simple-chart-label">{item.label}</span>
       </div>)}
     </div> : <p className="simple-chart-empty">Aún no hay datos suficientes para formar el gráfico.</p>}
-    <div className="simple-chart-footnote">Valores calculados a partir de movimientos registrados, no de estimaciones.</div>
+    <div className="simple-chart-footnote">{footnote}</div>
   </section>;
 }
 
@@ -1656,12 +1727,14 @@ const publicHelpArticles = [
   {category:"Ventas y dinero",title:"¿Cómo registro un abono y reviso un saldo pendiente?",summary:"Un abono registra dinero recibido; el saldo muestra cuánto queda por cobrar o pagar.",steps:["Abre la venta o la sección de Cuentas para localizar el registro.","Revisa el total original, los abonos guardados y el saldo actual.","Registra el nuevo abono desde la opción disponible y confirma fecha y medio de pago.","Vuelve a comprobar el estado de la cuenta."],tip:"Un valor por cobrar no es dinero recibido. Mantenlo separado de los ingresos realmente cobrados.",keywords:"abono abonar pago saldo pendiente cobrar cuenta deuda"},
   {category:"Compras y gastos",title:"¿Cómo registro una compra de inventario?",summary:"Anota lo que compraste, el proveedor y el pago correspondiente.",steps:["Abre Compras y elige la acción para registrar una compra.","Añade los artículos o conceptos, las cantidades y el costo unitario; selecciona proveedor si aplica.","Revisa el total, la fecha, el pago realizado y el saldo por pagar.","Guarda y comprueba el movimiento y las existencias, si la compra quedó vinculada al inventario."],tip:"Una compra de inventario no es lo mismo que un gasto de funcionamiento. Evita registrarla dos veces.",keywords:"compra proveedor inventario costo existencias factura compras pagada"},
   {category:"Compras y gastos",title:"¿Cómo registro un gasto del negocio?",summary:"Registra salidas como transporte, servicios y materiales de consumo.",steps:["Abre Compras y gastos y selecciona la sección de gastos.","Pulsa «Nuevo gasto» y escribe una descripción clara, categoría, fecha e importe.","Selecciona el medio de pago y añade proveedor o notas cuando sea útil.","Guarda el movimiento y comprueba que aparezca en el listado y en el periodo correspondiente."],tip:"Registra cada salida una sola vez; no dupliques una compra que ya quedó contabilizada en otro movimiento.",keywords:"gasto egreso salida dinero categoría transporte servicios pago"},
+  {category:"Informes y rentabilidad",title:"¿Cómo uso los gráficos de Inicio, Rentabilidad y Estadísticas?",summary:"Cambia entre pastel, barras y área para ver distribuciones, comparaciones y evolución de los movimientos registrados.",steps:["En Inicio, elige el periodo (hoy, semana, mes, trimestre, semestre o año).","Pulsa Pastel para comparar categorías o productos; Barras para comparar importes; Área para observar la evolución en el tiempo.","En Rentabilidad, revisa el gráfico de área para contrastar ingresos, costos, gastos y resultado; el gráfico de planificación compara el resultado con la meta porcentual que definas.","En Estadísticas y balance, usa Pastel, Barras o Área y elige el periodo correspondiente.","Si un gráfico aparece vacío, comprueba las fechas, los permisos de tu usuario y si hay movimientos registrados en ese periodo."],tip:"Los gráficos se basan en datos del negocio activo. La meta de crecimiento de Planificación es una simulación; no representa dinero ya recibido.",keywords:"gráficos pastel barras área inicio ingresos compras gastos rentabilidad planificación estadísticas reportes evolución"},
   {category:"Informes y rentabilidad",title:"¿Qué significa el resultado en Rentabilidad?",summary:"La pantalla compara ventas, costos de artículos vendidos y gastos registrados.",steps:["En Finanzas, abre Rentabilidad y selecciona el periodo o rango de fechas.","Revisa ventas registradas y costo de lo vendido usando los costos guardados en los productos o ventas.","La ganancia bruta estimada compara el ingreso con el costo registrado de los artículos vendidos.","Los gastos registrados se tienen en cuenta para obtener el resultado estimado; revisa los gráficos y desgloses."],tip:"El cálculo depende de que los costos y gastos estén registrados. No incluye movimientos que aún no hayas anotado ni reemplaza una revisión contable.",keywords:"rentabilidad utilidad margen ganancia costo venta resultado ingresos gastos gráfico pastel"},
   {category:"Informes y rentabilidad",title:"¿Cómo leo Estadísticas y el balance?",summary:"Consulta las cifras por periodo y distingue dinero recibido de valores pendientes.",steps:["Abre Estadísticas y selecciona el periodo que quieres analizar.","Revisa ingresos cobrados, gastos y compras pagadas, junto con los desgloses disponibles.","Consulta el detalle para identificar qué movimientos componen una cifra.","Si un valor parece incorrecto, comprueba la fecha y el estado del movimiento original."],tip:"Ventas pendientes de cobro no equivalen a dinero que ya entró en caja.",keywords:"estadísticas balance gráficos periodo ventas ingresos gastos compras total"},
   {category:"Clientes y proveedores",title:"¿Cómo creo un cliente y lo relaciono con una venta?",summary:"La ficha mantiene los datos de contacto y ayuda a relacionar operaciones.",steps:["Abre Clientes y pulsa «Nuevo cliente».","Registra el nombre o empresa y los datos de contacto disponibles.","Guarda la ficha y selecciónala al crear una venta cuando quieras relacionarla con ese cliente."],tip:"No crees una segunda venta solo para relacionar un cliente con una operación existente.",keywords:"cliente comprador contacto empresa agregar crear relación venta"},
   {category:"Clientes y proveedores",title:"¿Dónde administro los proveedores?",summary:"Proveedores es un módulo propio para consultar y mantener esos registros.",steps:["Abre Proveedores en el menú principal.","Crea o edita los datos del proveedor disponibles.","Selecciona el proveedor en compras o gastos cuando quieras dejar constancia de su origen."],tip:"Mantener los nombres consistentes facilita encontrar registros y revisar movimientos.",keywords:"proveedor proveedores suministrador compras gastos contacto"},
   {category:"Ventas y catálogo",title:"¿Cómo imprimir una cotización en tamaño carta?",summary:"Usa la salida PDF/impresión para obtener una propuesta vertical con el formato de los documentos de venta.",steps:["Abre Ventas y entra a Cotizaciones.","Despliega «Ver detalles» de la cotización correspondiente.","Pulsa «PDF / Imprimir» para abrir el documento y escoger «Carta» como tamaño de papel y orientación vertical en el diálogo de impresión.","Si prefieres enviarla como imagen, pulsa «Compartir imagen»: se genera una imagen vertical en proporción carta."],tip:"Si la vista previa muestra media carta, comprueba la opción de papel del diálogo de impresión. La impresión HTML y la imagen compartida son salidas distintas.",keywords:"cotización imprimir PDF papel carta media carta vertical compartir imagen factura"},
   {category:"Clientes y proveedores",title:"¿Cómo agregar una clienta desde una venta o cotización?",summary:"Puedes crear la ficha sin salir del formulario donde estás trabajando.",steps:["Al crear una venta o cotización, abre el desplegable «Cliente».","Selecciona «＋ Agregar» dentro de la lista.","Completa los datos básicos y pulsa «Guardar y seleccionar»; el cliente quedará asociado a la operación."],tip:"En Clientes, «Asesora habitual» es opcional y sirve para registrar de qué asesora proviene normalmente la clienta.",keywords:"clientes agregar desde lista desplegable venta cotización asesora habitual opcional"},
+  {category:"Ventas y catálogo",title:"¿Cómo previsualizar y compartir una factura o venta?",summary:"Revisa el documento en pantalla antes de compartirlo o descargarlo como imagen.",steps:["Abre Ventas y busca la operación que deseas compartir.","Pulsa «Compartir imagen» para preparar una vista previa con el logo y los colores del negocio.","Revisa la factura. Pulsa «Volver» para cerrar la vista previa, «Descargar imagen» para adjuntarla manualmente o «Enviar / compartir» para abrir las opciones del dispositivo o navegador.","Para imprimir o guardar en PDF, usa «Factura / PDF / Imprimir» y elige Carta y orientación vertical en el diálogo de impresión."],tip:"La opción de compartir archivos depende del navegador o dispositivo. Si no permite compartir directamente, descarga la imagen desde la vista previa y adjúntala al mensaje.",keywords:"factura ventas compartir imagen vista previa enviar whatsapp imprimir pdf carta"},
   {category:"Ventas y catálogo",title:"¿Cómo preparo una cotización?",summary:"Prepara y comparte una propuesta antes de registrar una venta.",steps:["Abre Cotizaciones desde el módulo Ventas.","Crea una propuesta y añade cliente, conceptos, cantidades y precios según necesites.","Revisa el total y guarda la cotización.","Consulta su estado para continuar el seguimiento."],tip:"Comprueba los precios y la vigencia antes de compartir la propuesta con el cliente.",keywords:"cotización cotizaciones propuesta presupuesto cliente oferta"},
   {category:"Ventas y catálogo",title:"¿Cómo publico y comparto mi catálogo?",summary:"El catálogo público muestra los productos que hayas habilitado y publicado.",steps:["Abre Catálogo y revisa la configuración del enlace y los datos visibles del negocio.","Publica los artículos que deben aparecer y confirma que estén habilitados para la venta.","Copia o comparte el enlace público con tus clientes y comprueba la vista como visitante."],tip:"Antes de compartir el enlace, revisa fotos, descripciones, precios, métodos de entrega y visibilidad de existencias.",keywords:"catálogo público enlace compartir tienda publicar productos clientes"},
   {category:"Ventas y catálogo",title:"¿Cómo funcionan los cupones de descuento?",summary:"Los cupones permiten definir promociones con condiciones y vigencia.",steps:["Abre Cupones de descuento.","Crea el código y completa las condiciones, fechas y límites que permita el formulario.","Guarda la promoción y comprueba los detalles antes de compartirla."],tip:"Explica las condiciones del descuento y comprueba que el cupón siga vigente.",keywords:"cupón cupones descuento promoción código oferta"},
@@ -1996,7 +2069,8 @@ function AuthenticatedApp() {
   const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
   const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
   const [homeChartPeriod, setHomeChartPeriod] = useState("month");
-  const [homePieData, setHomePieData] = useState({ loading: false, error: "", income: [], purchases: [], expenses: [] });
+  const [homeChartType, setHomeChartType] = useState("pie");
+  const [homePieData, setHomePieData] = useState({ loading: false, error: "", income: [], purchases: [], expenses: [], trends: [] });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkProductRows, setBulkProductRows] = useState([]);
@@ -2839,10 +2913,11 @@ function AuthenticatedApp() {
         error: "",
         income: summarizeHomePieMap(incomeByItem),
         purchases: summarizeHomePieMap(purchasesBySupplier),
-        expenses: summarizeHomePieMap(expensesByCategory)
+        expenses: summarizeHomePieMap(expensesByCategory),
+        trends: buildHomeTrendData(homeChartPeriod, range, validSales, validPurchases, expenseRows)
       });
     } catch (e) {
-      setHomePieData({ loading: false, error: friendlyError(e), income: [], purchases: [], expenses: [] });
+      setHomePieData({ loading: false, error: friendlyError(e), income: [], purchases: [], expenses: [], trends: [] });
     }
   }, [
     activeBusiness?.id, activeBusiness?.role,
@@ -5849,7 +5924,7 @@ function AuthenticatedApp() {
        *{box-sizing:border-box}
        body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px;background:#fff}
        header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}
-       header img{max-width:110px;max-height:85px;object-fit:contain}
+       header img{width:102px;height:102px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 102px;object-fit:contain}
        h1{font-size:24px;margin:0 0 4px;color:${brandColor}}
        h2{margin:25px 0 8px;font-size:22px}
        h3{margin:24px 0 8px;font-size:16px}
@@ -5917,13 +5992,13 @@ function AuthenticatedApp() {
         image.crossOrigin = "anonymous";
         image.src = logoUrl;
         await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
-        ctx.drawImage(image, 72, 72, 150, 112);
+        ctx.drawImage(image, 72, 72, 134, 134);
       } catch { /* El resto del documento se conserva si el logo no se puede incrustar. */ }
     }
     ctx.fillStyle = brandColor;
     ctx.textAlign = "left";
     ctx.font = "bold 34px Arial";
-    ctx.fillText(brand, 255, headerY);
+    ctx.fillText(brand, 240, headerY);
     ctx.fillStyle = "#19243A";
     ctx.font = "20px Arial";
     const companyLines = [
@@ -5932,7 +6007,7 @@ function AuthenticatedApp() {
       [profile.address, profile.city].filter(Boolean).join(", "),
       profile.website
     ].filter(Boolean);
-    companyLines.slice(0, 5).forEach((line, index) => ctx.fillText(String(line).slice(0, 86), 255, headerY + 34 + index * 27));
+    companyLines.slice(0, 5).forEach((line, index) => ctx.fillText(String(line).slice(0, 86), 240, headerY + 34 + index * 27));
 
     ctx.strokeStyle = "#DCE6F3";
     ctx.lineWidth = 2;
@@ -6100,7 +6175,7 @@ function AuthenticatedApp() {
     const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:${brandColor}}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:${brandColor}}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}header img{width:102px;height:102px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 102px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:${brandColor}}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:${brandColor}}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
@@ -6140,12 +6215,12 @@ function AuthenticatedApp() {
       try {
         const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl;
         await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;});
-        ctx.drawImage(image,72,72,150,112);
+        ctx.drawImage(image,72,72,134,134);
       } catch { /* El documento se genera aunque el logo no se pueda cargar. */ }
     }
     ctx.textAlign="left"; ctx.fillStyle=brandColor; ctx.font="bold 34px Arial";
-    ctx.fillText(brand,255,105); ctx.fillStyle="#19243A"; ctx.font="20px Arial";
-    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,82),255,139+index*27));
+    ctx.fillText(brand,240,105); ctx.fillStyle="#19243A"; ctx.font="20px Arial";
+    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,82),240,139+index*27));
     ctx.strokeStyle="#DCE6F3"; ctx.beginPath(); ctx.moveTo(72,278); ctx.lineTo(width-72,278); ctx.stroke();
     ctx.fillStyle="#202820"; ctx.font="bold 30px Arial"; ctx.fillText("FACTURA / VENTA",72,345);
     ctx.fillStyle=brandColor; ctx.font="bold 22px Arial"; ctx.fillText(String(sale.sale_number||""),72,386);
@@ -6721,6 +6796,7 @@ function AuthenticatedApp() {
   const periodSaleItems = profitabilitySaleItems.filter((item) => periodSaleIds.has(item.sale_id));
   const periodExpenses = profitabilityExpenses.filter((expense) => profitInPeriod(expense.expense_date));
   const periodPurchasePayments = profitabilityPurchasePayments.filter((payment) => profitInPeriod(payment.paid_at));
+  const profitabilityTimelineData = useMemo(() => buildProfitabilityTrendData(periodSales, periodSaleItems, periodExpenses, profitabilityPeriod), [periodSales, periodSaleItems, periodExpenses, profitabilityPeriod]);
   const shiftDateKey = (key, offset) => {
     const date = new Date(key + "T12:00:00Z");
     date.setUTCDate(date.getUTCDate() + offset);
@@ -7787,7 +7863,7 @@ function AuthenticatedApp() {
                 <article className="stats-metric panel"><span>Compras pagadas</span><strong>{money(statsPaidPurchases, currencyCode)}</strong><small>Pagos de compras del periodo</small></article>
                 <article className={"stats-metric panel stats-balance" + (statsCashBalance < 0 ? " profit-negative" : " profit-positive")}><span>Balance</span><strong>{money(statsCashBalance, currencyCode)}</strong><small>Ingresos − gastos − compras pagadas</small></article>
               </div>
-              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={statsChartType === "bars" ? "active" : ""} aria-pressed={statsChartType === "bars"} onClick={() => setStatsChartType("bars")}>Barras</button><button type="button" className={statsChartType === "pie" ? "active" : ""} aria-pressed={statsChartType === "pie"} onClick={() => setStatsChartType("pie")}>Pastel</button></div>{statsChartType === "bars" ? <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} /> : <SimplePie title="Distribución del balance" description="Comparación de ingresos y salidas en el periodo seleccionado." data={[{label:"Ingresos",value:statsCollected},{label:"Gastos",value:statsExpensesTotal},{label:"Compras pagadas",value:statsPaidPurchases}]} formatValue={(value)=>money(value,currencyCode)} />}
+              <div className="chart-type-picker" role="group" aria-label="Tipo de gráfico"><button type="button" className={statsChartType === "bars" ? "active" : ""} aria-pressed={statsChartType === "bars"} onClick={() => setStatsChartType("bars")}>Barras</button><button type="button" className={statsChartType === "pie" ? "active" : ""} aria-pressed={statsChartType === "pie"} onClick={() => setStatsChartType("pie")}>Pastel</button><button type="button" className={statsChartType === "area" ? "active" : ""} aria-pressed={statsChartType === "area"} onClick={() => setStatsChartType("area")}>Área</button></div>{statsChartType === "bars" ? <SimpleBars title="Balance diario" description="Diferencia entre pagos recibidos y salidas registradas durante los últimos siete días." data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} formatValue={(value)=>money(value,currencyCode)} /> : statsChartType === "pie" ? <SimplePie title="Distribución del balance" description="Comparación de ingresos y salidas en el periodo seleccionado." data={[{label:"Ingresos",value:statsCollected},{label:"Gastos",value:statsExpensesTotal},{label:"Compras pagadas",value:statsPaidPurchases}]} formatValue={(value)=>money(value,currencyCode)} /> : <SimpleArea title="Evolución del balance" description="Pagos recibidos y salidas por día de los últimos siete días." badge="7 días" data={balanceChartData.map((item)=>({key:item.key,label:item.label,value:item.value}))} series={[{key:"value",label:"Balance",color:"#2563EB"}]} formatValue={(value)=>money(value,currencyCode)} />
               <section className="stats-insight-section">
                 <div className="stats-section-heading"><div><h3>Lo que más se mueve</h3><p>Resumen calculado con los registros del periodo elegido.</p></div></div>
                 <div className="stats-insight-grid">
@@ -7831,7 +7907,7 @@ function AuthenticatedApp() {
                 <SimplePie title="Distribución de ingresos" description="Ventas agrupadas por artículo según el periodo elegido." data={profitIncomePieRows} formatValue={(value)=>money(value,currencyCode)} />
                 <SimplePie title="Distribución de gastos" description="Gastos registrados, agrupados por categoría en el periodo elegido. Las compras de inventario se muestran aparte para no confundirlas con gastos." data={profitCostPieRows} formatValue={(value)=>money(value,currencyCode)} />
               </div>
-              <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} />
+              <SimpleBars title="Composición del resultado" description="Ingresos, costo de venta y gastos del periodo." badge={profitabilityPeriod} data={[{key:"revenue",label:"Ingresos",value:profitLineRevenue},{key:"cost",label:"Costo de ventas",value:profitCostOfSales},{key:"expenses",label:"Gastos",value:profitExpenseTotal},{key:"purchases",label:"Compras pagadas",value:profitPurchasesPaid},{key:"net",label:"Resultado",value:profitNet}]} formatValue={(value)=>money(value,currencyCode)} /><SimpleArea title="Evolución de la rentabilidad" description="Ingresos de los artículos vendidos, costo de venta, gastos y resultado por periodo." badge={profitabilityPeriod} data={profitabilityTimelineData} series={[{key:"revenue",label:"Ingresos",color:"#0F766E"},{key:"cost",label:"Costo vendido",color:"#D97706"},{key:"expenses",label:"Gastos",color:"#DB2777"},{key:"result",label:"Resultado",color:"#2563EB"}]} formatValue={(value)=>money(value,currencyCode)} footnote="Calculado con los artículos vendidos, sus costos guardados y los gastos registrados en el negocio activo." />
               <div className="profitability-secondary-metrics">
                 <div><span>Pendiente por cobrar</span><strong>{money(periodSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total_minor || 0) - Number(sale.amount_paid_minor || 0)), 0), currencyCode)}</strong></div>
                 <div><span>Margen bruto</span><strong>{profitLineRevenue > 0 ? Math.round((profitGross / profitLineRevenue) * 100) + "%" : "—"}</strong></div>
@@ -7846,6 +7922,11 @@ function AuthenticatedApp() {
                 </div> : <p className="profit-empty-note">El resultado del periodo no es positivo todavía. Primero identifica los gastos que puedes reducir y revisa el margen de tus productos; cuando tengas una base positiva, el simulador calculará la meta porcentual.</p>}
                 {profitNet > 0 && (profitByItem.length > 0 || expensesByCategory.length > 0) && <div className="profit-goal-actions"><strong>Por dónde empezar</strong>{profitByItem[0] && <p>Prioriza vender <b>{profitByItem[0].name}</b>: fue el artículo con mayor contribución bruta en este periodo ({money(profitByItem[0].revenue - profitByItem[0].cost, currencyCode)} en total). Mantén controlado su costo y evita descuentos que se coman el margen.</p>}{expensesByCategory[0] && <p>Revisa los gastos de <b>{expensesByCategory[0].name}</b>, la categoría con mayor valor registrado ({money(expensesByCategory[0].amount, currencyCode)}). Identifica qué parte se puede reducir sin afectar las ventas.</p>}</div>}
               </section>
+              {profitNet>0 && <SimpleBars title="Planificación: resultado actual y meta" description="Compara el resultado del periodo con la meta de crecimiento elegida." badge="Proyección" data={[
+                {key:"current",label:"Actual",value:profitNet},
+                {key:"target",label:"Meta",value:Math.round(profitNet*(1+Math.max(0,Number(targetProfitPercent||0))/100))},
+                {key:"increase",label:"Aumento",value:Math.round(profitNet*Math.max(0,Number(targetProfitPercent||0))/100)}
+              ]} formatValue={(value)=>money(value,currencyCode)} footnote="La meta es una simulación matemática basada en el porcentaje seleccionado; no es un ingreso registrado ni modifica tus operaciones." />}
               <section className="profit-allocations-panel panel">
                 <div className="profit-breakdown-heading"><div><h3>Distribución opcional de la ganancia</h3><p>Activa solo los porcentajes que uses. Se calculan sobre un resultado positivo y no se restan de la rentabilidad contable.</p></div></div>
                 <div className="profit-allocation-list">
@@ -8685,18 +8766,29 @@ function AuthenticatedApp() {
             </div>
             {homePieData.error && <p className="home-pie-error" role="alert">No se pudieron cargar los gráficos de este periodo: {homePieData.error}</p>}
             {homePieData.loading ? <div className="home-pie-loading panel" role="status">Actualizando los gráficos con los movimientos registrados…</div> : <>
-              <div className="home-pie-grid home-pie-desktop">
-                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
-                {canViewPurchases && <SimplePie title="Compras" description="Compras registradas agrupadas por proveedor." data={homePieData.purchases} formatValue={(value) => money(value, currencyCode)} />}
-                {canViewExpenses && <SimplePie title="Gastos" description="Gastos registrados agrupados por categoría." data={homePieData.expenses} formatValue={(value) => money(value, currencyCode)} />}
+              <div className="chart-type-picker home-chart-type-picker" role="group" aria-label="Tipo de gráfico del panel de Inicio">
+                <button type="button" className={homeChartType==="pie"?"active":""} aria-pressed={homeChartType==="pie"} onClick={()=>setHomeChartType("pie")}>Pastel</button>
+                <button type="button" className={homeChartType==="bars"?"active":""} aria-pressed={homeChartType==="bars"} onClick={()=>setHomeChartType("bars")}>Barras</button>
+                <button type="button" className={homeChartType==="area"?"active":""} aria-pressed={homeChartType==="area"} onClick={()=>setHomeChartType("area")}>Área</button>
               </div>
-              <div className="home-pie-grid home-pie-tablet">
-                {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
-                {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
-              </div>
-              <div className="home-pie-mobile-wrapper">
-                <SimplePie compact title="Ingresos y compras-gastos" description="Participación de los ingresos frente a las compras y los gastos del periodo." data={homeMobilePieRows} formatValue={(value) => money(value, currencyCode)} />
-              </div>
+              {homeChartType==="pie" ? <>
+                <div className="home-pie-grid home-pie-desktop">
+                  {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                  {canViewPurchases && <SimplePie title="Compras" description="Compras registradas agrupadas por proveedor." data={homePieData.purchases} formatValue={(value) => money(value, currencyCode)} />}
+                  {canViewExpenses && <SimplePie title="Gastos" description="Gastos registrados agrupados por categoría." data={homePieData.expenses} formatValue={(value) => money(value, currencyCode)} />}
+                </div>
+                <div className="home-pie-grid home-pie-tablet">
+                  {canAccessScreen("sales") && <SimplePie title="Ingresos" description="Ventas agrupadas por artículo." data={homePieData.income} formatValue={(value) => money(value, currencyCode)} />}
+                  {(canViewPurchases || canViewExpenses) && <SimplePie title="Compras y gastos" description="Compras por proveedor y gastos por categoría." data={homePurchaseExpensePieRows} formatValue={(value) => money(value, currencyCode)} />}
+                </div>
+                <div className="home-pie-mobile-wrapper"><SimplePie compact title="Ingresos y compras-gastos" description="Participación de los ingresos frente a las compras y los gastos del periodo." data={homeMobilePieRows} formatValue={(value) => money(value, currencyCode)} /></div>
+              </> : homeChartType==="bars" ? <SimpleBars title="Ingresos, compras y gastos" description="Compara los importes registrados en el periodo seleccionado." badge={homeChartPeriod} data={[
+                {key:"income",label:"Ingresos",value:homePieData.income.reduce((sum,item)=>sum+Number(item.value||0),0)},
+                {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
+                {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
+              ].filter((item)=>(item.key==="income"&&canAccessScreen("sales"))||(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses)} formatValue={(value)=>money(value,currencyCode)} /> : <SimpleArea title="Evolución de ingresos, compras y gastos" description="Sigue cómo cambian los importes a lo largo del periodo seleccionado." badge={homeChartPeriod} data={homePieData.trends} series={[
+                {key:"income",label:"Ingresos",color:"#0F766E"},{key:"purchases",label:"Compras",color:"#D97706"},{key:"expenses",label:"Gastos",color:"#DB2777"}
+              ].filter((item)=>(item.key==="income"&&canAccessScreen("sales"))||(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses)} formatValue={(value)=>money(value,currencyCode)} footnote="La evolución usa ventas registradas, compras registradas y gastos anotados en el negocio activo." />
             </>}
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}

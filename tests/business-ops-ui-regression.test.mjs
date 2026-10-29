@@ -187,7 +187,7 @@ test("las cotizaciones muestran filas alineadas y proveedores conserva su módul
   assert.match(app, /className="field-label-heading">Válida hasta<FieldHelp enabled=\{contextualHelpEnabled\}/);
   assert.match(app, /className="field-label-heading">Valor por hora \(COP\)<FieldHelp enabled=\{contextualHelpEnabled\}/);
   const alignedRows = css.slice(css.lastIndexOf("/* Cotizaciones: filas alineadas por bloques"));
-  assert.match(alignedRows, /grid-template-areas:"meta customer totals toggle"/);
+  assert.match(alignedRows, /grid-template-areas:"meta customer totals toggle toggle"/);
   assert.match(alignedRows, /grid-area:details/);
   assert.match(app, /className="quote-record-disclosure-bar"/);
   assert.match(app, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);

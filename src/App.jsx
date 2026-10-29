@@ -511,6 +511,20 @@ const parseVariantCombination = (variant) => {
   const values = String(variant?.variant_value || "").split(" / ");
   return { variant_name: names[0] || "", variant_value: values[0] || "", variant_name_2: names.length > 1 ? names.slice(1).join(" + ") : "", variant_value_2: values.length > 1 ? values.slice(1).join(" / ") : "" };
 };
+const summarizeProductVariantStock = (product, variants = []) => {
+  const activeVariants = (variants || []).filter((variant) => variant?.is_active !== false);
+  const usesVariantStock = product?.product_type === "physical" && (
+    product?.metadata?.has_variants === true ||
+    product?.metadata?.has_variants === "true" ||
+    activeVariants.length > 0
+  );
+  if (!usesVariantStock) {
+    return { usesVariantStock: false, known: Boolean(product?.track_inventory), units: Math.max(0, Number(product?.stock_on_hand || 0)), activeVariants, empty: false };
+  }
+  const known = activeVariants.length > 0 && activeVariants.every((variant) => variant.stock_on_hand != null);
+  const units = activeVariants.reduce((sum, variant) => sum + (variant.stock_on_hand == null ? 0 : Math.max(0, Number(variant.stock_on_hand || 0))), 0);
+  return { usesVariantStock: true, known, units, activeVariants, empty: activeVariants.length === 0 };
+};
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
@@ -2477,7 +2491,7 @@ function AuthenticatedApp() {
     const safeTerm = search.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").slice(0, 100);
     const sortColumn = ({ name: "name", name_desc: "name", code: "sku", code_desc: "sku", price: "sale_price_minor", price_desc: "sale_price_minor", cost: "cost_price_minor", cost_desc: "cost_price_minor", stock: "stock_on_hand", stock_desc: "stock_on_hand" })[productSort] || "name";
     const descending = productSort.endsWith("_desc");
-    const needsClientRanking = productStockFilter === "low_stock" || ["profit", "profit_asc", "margin", "margin_asc"].includes(productSort);
+    const needsClientRanking = ["low_stock", "in_stock", "out_of_stock"].includes(productStockFilter) || ["profit", "profit_asc", "margin", "margin_asc", "stock", "stock_desc"].includes(productSort);
     try {
       const makeBaseQuery = () => {
         let query = supabase.from("products").select(columns, { count: "exact" }).eq("business_id", activeBusiness.id);
@@ -2488,8 +2502,8 @@ function AuthenticatedApp() {
         }
         if (productCategoryFilter !== "all") query = query.eq("category_id", productCategoryFilter);
         if (productTypeFilter !== "all") query = query.eq("product_type", productTypeFilter);
-        if (productStockFilter === "out_of_stock") query = query.eq("track_inventory", true).lte("stock_on_hand", 0);
-        if (productStockFilter === "in_stock") query = query.eq("track_inventory", true).gt("stock_on_hand", 0);
+
+
         return query;
       };
       const [categoryResult, productResult] = await Promise.all([
@@ -2510,10 +2524,57 @@ function AuthenticatedApp() {
             if (batch.length < chunkSize) break;
             if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos. Usa la búsqueda para limitar los resultados.");
           }
-          const filtered = productStockFilter === "low_stock"
-            ? all.filter((product) => product.track_inventory && Number(product.stock_on_hand || 0) > 0 && product.low_stock_threshold != null && Number(product.stock_on_hand || 0) <= Number(product.low_stock_threshold))
-            : all;
-          filtered.sort((a, b) => compareInventoryProducts(a, b, productSort));
+          const needsVariantStock = ["in_stock", "out_of_stock"].includes(productStockFilter) || ["stock", "stock_desc"].includes(productSort);
+          const stockVariantsByProduct = new Map();
+          if (needsVariantStock) {
+            const allVariants = [];
+            for (let offset = 0; offset < 50000; offset += chunkSize) {
+              const { data: variantBatch, error: variantError } = await supabase.from("product_variants")
+                .select("id,product_id,stock_on_hand,is_active")
+                .eq("business_id", activeBusiness.id).eq("is_active", true)
+                .order("product_id").order("id").range(offset, offset + chunkSize - 1);
+              if (variantError) throw variantError;
+              const rows = variantBatch || [];
+              allVariants.push(...rows);
+              if (rows.length < chunkSize) break;
+              if (offset + chunkSize >= 50000) throw new Error("Hay más de 50.000 variantes activas; usa la búsqueda del inventario para acotar los resultados.");
+            }
+            for (const variant of allVariants) {
+              if (!stockVariantsByProduct.has(variant.product_id)) stockVariantsByProduct.set(variant.product_id, []);
+              stockVariantsByProduct.get(variant.product_id).push(variant);
+            }
+          }
+          const stockValue = (product) => {
+            const variants = stockVariantsByProduct.get(product.id) || [];
+            const summary = summarizeProductVariantStock(product, variants);
+            if (summary.usesVariantStock) {
+              if (!summary.known) return summary.empty ? 0 : null;
+              return summary.units;
+            }
+            return product.track_inventory ? Math.max(0, Number(product.stock_on_hand || 0)) : null;
+          };
+          let filtered = all;
+          if (productStockFilter === "low_stock") {
+            filtered = all.filter((product) => product.track_inventory && Number(product.stock_on_hand || 0) > 0 && product.low_stock_threshold != null && Number(product.stock_on_hand || 0) <= Number(product.low_stock_threshold));
+          } else if (productStockFilter === "in_stock" || productStockFilter === "out_of_stock") {
+            filtered = all.filter((product) => {
+              const stock = stockValue(product);
+              if (stock == null) return false;
+              return productStockFilter === "in_stock" ? stock > 0 : stock <= 0;
+            });
+          }
+          if (productSort === "stock" || productSort === "stock_desc") {
+            filtered.sort((a, b) => {
+              const aStock = stockValue(a), bStock = stockValue(b);
+              if (aStock == null && bStock == null) return String(a.name || "").localeCompare(String(b.name || ""), "es");
+              if (aStock == null) return 1;
+              if (bStock == null) return -1;
+              const difference = aStock - bStock;
+              return (descending ? -difference : difference) || String(a.name || "").localeCompare(String(b.name || ""), "es");
+            });
+          } else {
+            filtered.sort((a, b) => compareInventoryProducts(a, b, productSort));
+          }
           return { data: filtered.slice((productPage - 1) * productPageSize, productPage * productPageSize), count: filtered.length, error: null };
         })()
       ]);
@@ -2551,7 +2612,7 @@ function AuthenticatedApp() {
       const chunkSize = 500;
       for (let offset = 0; offset < 50000; offset += chunkSize) {
         const { data, error: queryError } = await supabase.from("products")
-          .select("id,cost_price_minor,sale_price_minor,stock_on_hand,track_inventory,low_stock_threshold")
+          .select("id,cost_price_minor,sale_price_minor,stock_on_hand,track_inventory,low_stock_threshold,product_type,metadata")
           .eq("business_id", activeBusiness.id).is("archived_at", null)
           .order("name").range(offset, offset + chunkSize - 1);
         if (queryError) throw queryError;
@@ -2560,7 +2621,38 @@ function AuthenticatedApp() {
         if (batch.length < chunkSize) break;
         if (offset + chunkSize >= 50000) throw new Error("Este inventario supera los 50.000 artículos y no se pudo resumir completo.");
       }
+      const allVariantRows = [];
+      for (let offset = 0; offset < 50000; offset += chunkSize) {
+        const { data: variantBatch, error: variantError } = await supabase.from("product_variants")
+          .select("product_id,stock_on_hand,sale_price_minor,is_active")
+          .eq("business_id", activeBusiness.id).eq("is_active", true)
+          .order("product_id").range(offset, offset + chunkSize - 1);
+        if (variantError) throw variantError;
+        const rows = variantBatch || [];
+        allVariantRows.push(...rows);
+        if (rows.length < chunkSize) break;
+        if (offset + chunkSize >= 50000) throw new Error("Este inventario supera las 50.000 variantes y no se pudo resumir completo.");
+      }
+      const variantsMap = new Map();
+      for (const variant of allVariantRows) {
+        if (!variantsMap.has(variant.product_id)) variantsMap.set(variant.product_id, []);
+        variantsMap.get(variant.product_id).push(variant);
+      }
       const summary = all.reduce((totals, product) => {
+        const variants = variantsMap.get(product.id) || [];
+        const variantSummary = summarizeProductVariantStock(product, variants);
+        if (variantSummary.usesVariantStock) {
+          if (!variants.length) return totals;
+          for (const variant of variants) {
+            if (variant.stock_on_hand == null) continue;
+            const stock = Math.max(0, Number(variant.stock_on_hand || 0));
+            totals.trackedUnits += stock;
+            totals.costMinor += stock * Number(product.cost_price_minor || 0);
+            totals.retailMinor += stock * Number(variant.sale_price_minor ?? product.sale_price_minor ?? 0);
+          }
+          if (variantSummary.known && variantSummary.units <= 0) totals.outOfStockCount += 1;
+          return totals;
+        }
         if (!product.track_inventory) return totals;
         const stock = Math.max(0, Number(product.stock_on_hand || 0));
         totals.trackedUnits += stock;
@@ -3767,6 +3859,7 @@ function AuthenticatedApp() {
 
   function openProductDetail(product) {
     const variants = variantsByProduct[product.id] || [];
+    const stockSummary = summarizeProductVariantStock(product, variants);
     setSelectedRecordDetail({
       type: "Producto",
       title: product.name,
@@ -3779,12 +3872,12 @@ function AuthenticatedApp() {
         { label: "Costo", value: money(product.cost_price_minor, currencyCode) },
         { label: "Ganancia por unidad", value: money(Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0), currencyCode) },
         { label: "Margen", value: Number(product.sale_price_minor || 0) > 0 ? (((Number(product.sale_price_minor || 0) - Number(product.cost_price_minor || 0)) / Number(product.sale_price_minor || 0)) * 100).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + "%" : "—" },
-        { label: "Existencias", value: product.track_inventory ? Number(product.stock_on_hand).toLocaleString("es-CO") + " " + (product.unit_name || "unidades") : "No aplica" },
+        { label: "Existencias", value: stockSummary.usesVariantStock ? (stockSummary.known ? stockSummary.units.toLocaleString("es-CO") + " unidades en variantes" : stockSummary.empty ? "Sin combinaciones activas" : "Stock de variantes por configurar") : product.track_inventory ? Number(product.stock_on_hand).toLocaleString("es-CO") + " " + (product.unit_name || "unidades") : "No aplica" },
         { label: "Alerta de stock", value: product.track_inventory && product.low_stock_threshold != null ? Number(product.low_stock_threshold).toLocaleString("es-CO") : "No configurada" },
         { label: "Estado", value: product.archived_at ? "Archivado" : product.is_sellable ? "Activo" : "Inactivo" },
         { label: "Catálogo", value: product.is_published ? "Publicado" : "No publicado" },
         { label: "Presentación", value: product.commercial_presentation || "" },
-        { label: "Variantes", value: variants.length ? variants.map((variant) => [variant.variant_name, variant.variant_value].filter(Boolean).join(": ") || variant.sku || "Variante").join("\\n") : "Sin variantes" },
+        { label: "Variantes", value: variants.length ? variants.map((variant) => variantDisplayLabel(variant) || variant.sku || "Variante").join("\\n") : "Sin variantes" },
         { label: "Descripción", value: product.description || "" }
       ],
       notes: product.notes || ""
@@ -8149,7 +8242,7 @@ function AuthenticatedApp() {
                     <thead><tr>
                       <th>Producto</th><th>Código</th><th>Unidad</th><th>Precio {currencyCode}</th><th>Otras monedas</th><th>Presentación</th><th>Existencias</th><th>Estado</th><th>Catálogo</th><th>Compartir / acciones</th>
                     </tr></thead>
-                    <tbody>{filteredProducts.map((p) => <React.Fragment key={p.id}>
+                    <tbody>{filteredProducts.map((p) => { const productVariants = variantsByProduct[p.id] || []; const stockSummary = summarizeProductVariantStock(p, productVariants); return <React.Fragment key={p.id}>
                       <tr className="product-table-row mobile-detail-trigger" onClick={(event) => { if (!window.matchMedia("(max-width: 640px)").matches || event.target.closest("button,a,input,select,textarea")) return; openProductDetail(p); }}>
                         <td className="product-table-name"><div className="product-cell">
                           <div className="product-symbol product-thumb">{p.image_paths?.[0] && productImageUrls[p.id + "|" + p.image_paths[0]] ? <img src={productImageUrls[p.id + "|" + p.image_paths[0]]} alt={"Foto de " + p.name} onError={() => handleProductImageError(p.id, p.image_paths[0])} /> : <span>{p.product_type === "service" ? "◷" : p.product_type === "digital" ? "◇" : "▦"}</span>}</div>
@@ -8160,19 +8253,20 @@ function AuthenticatedApp() {
                         <td className="product-table-price"><strong>{money(p.sale_price_minor, currencyCode)}</strong><small>Costo {money(p.cost_price_minor, currencyCode)}</small></td>
                         <td><span className="muted-value">—</span></td>
                         <td>{p.commercial_presentation || <span className="muted-value">—</span>}</td>
-                        <td><div className="product-table-stock"><strong>{p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong>{p.track_inventory && <small>{p.unit_name || "unidades"}</small>}{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <span className="stock-alert">Pocas existencias</span>}</div></td>
+                        <td><div className="product-table-stock"><strong>{stockSummary.usesVariantStock ? (stockSummary.known ? stockSummary.units.toLocaleString("es-CO") : stockSummary.empty ? "Sin combinaciones" : "Por configurar") : p.track_inventory ? Number(p.stock_on_hand).toLocaleString("es-CO") : "No aplica"}</strong>{stockSummary.usesVariantStock ? <small>{stockSummary.known ? "unidades en variantes" : "stock por combinación"}</small> : p.track_inventory && <small>{p.unit_name || "unidades"}</small>}{stockSummary.usesVariantStock && stockSummary.known && stockSummary.units <= 0 && <span className="stock-alert">Sin existencias</span>}{!stockSummary.usesVariantStock && p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <span className="stock-alert">Pocas existencias</span>}</div></td>
                         <td><span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span></td>
                         <td><div className="catalog-cell"><span className={p.is_published ? "status-pill status-published" : "status-pill status-unpublished"}>{p.is_published ? "Publicado" : "No publicado"}</span></div></td>
                         <td><div className="product-row-actions">
                           <button type="button" className="icon-action-button share-product-button" title={"Compartir "+p.name} aria-label={"Compartir "+p.name} onClick={()=>shareProduct(p)}>↗</button>{canManageProducts && <button type="button" className="icon-action-button" title="Editar producto" aria-label="Editar producto" onClick={() => startEditProduct(p)}><AppIcon name="edit" size={16}/></button>}
                         </div></td>
                       </tr>
-                    </React.Fragment>)}</tbody>
+                    </React.Fragment>;})}</tbody>
                   </table>
                 </div>
               ) : (
                 <div className="product-list product-list-cards">{filteredProducts.map((p) => {
   const productVariants = variantsByProduct[p.id] || [];
+  const stockSummary = summarizeProductVariantStock(p, productVariants);
   const productProfitMinor = Number(p.sale_price_minor || 0) - Number(p.cost_price_minor || 0);
   const productMargin = Number(p.sale_price_minor || 0) > 0 ? (productProfitMinor / Number(p.sale_price_minor)) * 100 : 0;
   return <article className="product-card panel product-card-wa mobile-detail-trigger" key={p.id} onClick={(event) => { if (!window.matchMedia("(max-width: 640px)").matches || event.target.closest("button,a,input,select,textarea")) return; openProductDetail(p); }}>
@@ -8189,7 +8283,7 @@ function AuthenticatedApp() {
       <span className={p.archived_at ? "status-pill status-inactive" : p.is_sellable ? "status-pill status-active" : "status-pill status-inactive"}>{p.archived_at ? "Archivado" : p.is_sellable ? "Activo" : "Inactivo"}</span>
     </div>
     <div className="product-card-wa-details">
-      <div><span>Existencias</span><strong>{p.track_inventory ? <>{Number(p.stock_on_hand).toLocaleString("es-CO")}<span className="product-card-stock-unit"> {p.unit_name || "unidades"}</span></> : "No aplica"}</strong>{p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
+      <div><span>Existencias</span><strong>{stockSummary.usesVariantStock ? (stockSummary.known ? <>{stockSummary.units.toLocaleString("es-CO")}<span className="product-card-stock-unit"> unidades en variantes</span></> : stockSummary.empty ? "Sin combinaciones" : "Stock por configurar") : p.track_inventory ? <>{Number(p.stock_on_hand).toLocaleString("es-CO")}<span className="product-card-stock-unit"> {p.unit_name || "unidades"}</span></> : "No aplica"}</strong>{stockSummary.usesVariantStock && stockSummary.known && stockSummary.units <= 0 && <small className="stock-alert">Sin existencias en variantes</small>}{!stockSummary.usesVariantStock && p.track_inventory && p.low_stock_threshold !== null && Number(p.stock_on_hand) <= Number(p.low_stock_threshold) && <small className="stock-alert">Pocas existencias</small>}</div>
       <div className="product-card-wa-unit"><span>Unidad</span><strong>{p.unit_name || "unidad"}</strong></div>
       {p.commercial_presentation && <div className="product-card-wa-presentation"><span>Presentación</span><strong>{p.commercial_presentation}</strong></div>}
     </div>

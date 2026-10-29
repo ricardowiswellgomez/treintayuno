@@ -2114,6 +2114,7 @@ function AuthenticatedApp() {
   const [statsDateTo, setStatsDateTo] = useState(() => todayInBogota());
   const [quotesRows, setQuotesRows] = useState([]);
   const [expandedQuoteId, setExpandedQuoteId] = useState(null);
+  const [quoteImagePreview, setQuoteImagePreview] = useState(null);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [quotesPage, setQuotesPage] = useState(1);
   const [quotesPageSize, setQuotesPageSize] = useState(20);
@@ -5560,11 +5561,46 @@ function AuthenticatedApp() {
     } finally { setQuoteSaving(false); }
   }
 
+  function closeQuoteImagePreview() {
+    if (quoteImagePreview?.url) URL.revokeObjectURL(quoteImagePreview.url);
+    setQuoteImagePreview(null);
+  }
+
+  function downloadQuoteImagePreview() {
+    if (!quoteImagePreview?.blob) return;
+    const url = quoteImagePreview.url || URL.createObjectURL(quoteImagePreview.blob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    downloadLink.download = quoteImagePreview.fileName || "cotizacion-carta.png";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    setNotice("Imagen descargada. Puedes adjuntarla al mensaje que vayas a enviar.");
+  }
+
+  async function confirmShareQuoteImage() {
+    if (!quoteImagePreview?.blob) return;
+    const file = new File([quoteImagePreview.blob], quoteImagePreview.fileName || "cotizacion-carta.png", { type: "image/png" });
+    if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
+      setError("Este navegador no permite compartir archivos directamente. Pulsa «Descargar imagen» y adjúntala a tu mensaje.");
+      return;
+    }
+    try {
+      await navigator.share({ files: [file], title: "Cotización " + quoteImagePreview.quoteNumber, text: "Cotización de " + quoteImagePreview.brand });
+      closeQuoteImagePreview();
+      setNotice("Se abrió la opción de compartir la cotización.");
+    } catch (error) {
+      if (error?.name !== "AbortError") setError("No se pudo abrir la opción de compartir. Puedes descargar la imagen desde esta vista previa.");
+    }
+  }
+
   function printQuoteDocument(quote) {
     if (!quote) return;
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const documentTheme = normalizeBusinessTheme(activeBusiness?.theme);
+    const brandColor = documentTheme.primary;
     const documentCurrency = quote.currency_code || currencyCode;
     const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, documentCurrency)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, documentCurrency)) + "</td></tr>").join("");
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
@@ -5580,14 +5616,14 @@ function AuthenticatedApp() {
        @page{size:8.5in 11in;margin:0.55in}
        *{box-sizing:border-box}
        body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px;background:#fff}
-       header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}
+       header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}
        header img{max-width:110px;max-height:85px;object-fit:contain}
-       h1{font-size:24px;margin:0 0 4px;color:#174580}
+       h1{font-size:24px;margin:0 0 4px;color:${brandColor}}
        h2{margin:25px 0 8px;font-size:22px}
        h3{margin:24px 0 8px;font-size:16px}
        p{margin:4px 0;overflow-wrap:anywhere}
        small{color:#69758A}
-       .document-number{display:block;font-weight:700;color:#174580;margin-top:4px}
+       .document-number{display:block;font-weight:700;color:${brandColor};margin-top:4px}
        .meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}
        .meta>div{min-width:0}
        table{width:100%;border-collapse:collapse;margin-top:20px;page-break-inside:auto}
@@ -5598,7 +5634,7 @@ function AuthenticatedApp() {
        .num{text-align:right;white-space:nowrap}
        .summary{margin:20px 0 0 auto;max-width:320px}
        .summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}
-       .summary .balance{font-weight:700;color:#174580}
+       .summary .balance{font-weight:700;color:${brandColor};align-items:flex-start;gap:12px}.summary .balance span{flex:1;min-width:0;overflow-wrap:anywhere}.summary .balance strong{flex:0 0 auto;font-size:18px;line-height:1.25;white-space:nowrap;text-align:right}
        .notes{margin-top:24px;padding:14px;background:#f6f7f3;border:1px solid #E1E7F0;white-space:pre-wrap;break-inside:avoid;page-break-inside:avoid}
        .footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}
        @media print{html,body{width:auto;max-width:none;margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}header,.meta,.summary,.notes{break-inside:avoid;page-break-inside:avoid}a{color:inherit;text-decoration:none}}
@@ -5621,6 +5657,8 @@ function AuthenticatedApp() {
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const documentTheme = normalizeBusinessTheme(activeBusiness?.theme);
+    const brandColor = documentTheme.primary;
     const items = quote.items || [];
     const rowHeight = (item) => Math.max(64, Math.min(112, Math.ceil(String(item.item_name || "").length / 46) * 24 + 34));
     const rowsHeight = items.reduce((sum, item) => sum + rowHeight(item), 0);
@@ -5637,7 +5675,7 @@ function AuthenticatedApp() {
     ctx.strokeStyle = "#DCE6F3";
     ctx.lineWidth = 2;
     ctx.strokeRect(30, 30, width - 60, height - 60);
-    ctx.fillStyle = "#174580";
+    ctx.fillStyle = brandColor;
     ctx.fillRect(31, 31, width - 62, 14);
 
     let headerY = 105;
@@ -5650,7 +5688,7 @@ function AuthenticatedApp() {
         ctx.drawImage(image, 72, 72, 150, 112);
       } catch { /* El resto del documento se conserva si el logo no se puede incrustar. */ }
     }
-    ctx.fillStyle = "#174580";
+    ctx.fillStyle = brandColor;
     ctx.textAlign = "left";
     ctx.font = "bold 34px Arial";
     ctx.fillText(brand, 255, headerY);
@@ -5674,7 +5712,7 @@ function AuthenticatedApp() {
     ctx.fillStyle = "#202820";
     ctx.font = "bold 30px Arial";
     ctx.fillText("COTIZACIÓN COMERCIAL", 72, 355);
-    ctx.fillStyle = "#174580";
+    ctx.fillStyle = brandColor;
     ctx.font = "bold 22px Arial";
     ctx.fillText(String(quote.quote_number || ""), 72, 397);
     ctx.fillStyle = "#19243A";
@@ -5698,7 +5736,7 @@ function AuthenticatedApp() {
     ctx.fillText("Estado: " + quoteStatusLabel(quote.status), 690, 550);
 
     let y = 620;
-    ctx.fillStyle = "#F0F4ED";
+    ctx.fillStyle = documentTheme.background;
     ctx.fillRect(72, y, width - 144, 50);
     ctx.fillStyle = "#314236";
     ctx.font = "bold 17px Arial";
@@ -5758,14 +5796,15 @@ function AuthenticatedApp() {
     const tax = Number(quote.tax_minor || 0);
     const total = Number(quote.total_minor ?? Math.max(0, subtotal - discount + tax));
     const drawSummaryRow = (label, value, emph = false) => {
-      ctx.font = emph ? "bold 26px Arial" : "19px Arial";
-      ctx.fillStyle = emph ? "#174580" : "#202820";
+      ctx.font = emph ? "bold 16px Arial" : "19px Arial";
+      ctx.fillStyle = emph ? brandColor : "#202820";
       ctx.textAlign = "left";
       ctx.fillText(label, width - 505, y);
       ctx.textAlign = "right";
+      ctx.font = emph ? "bold 24px Arial" : "19px Arial";
       ctx.fillText(money(value, documentCurrency), width - 88, y);
       ctx.textAlign = "left";
-      ctx.strokeStyle = emph ? "#174580" : "#E1E7F0";
+      ctx.strokeStyle = emph ? brandColor : "#E1E7F0";
       ctx.lineWidth = emph ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(width - 505, y + 12);
@@ -5808,27 +5847,12 @@ function AuthenticatedApp() {
         catch (error) { reject(error); }
       });
       const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi, "-") + "-carta.png";
-      const file = new File([blob], filename, { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: "Cotización " + quote.quote_number, text: "Cotización vertical en formato carta de " + brand });
-        } catch (error) {
-          if (error?.name === "AbortError") return;
-          const url = URL.createObjectURL(blob);
-          const downloadLink = document.createElement("a");
-          downloadLink.href = url; downloadLink.download = filename;
-          document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
-          window.setTimeout(() => URL.revokeObjectURL(url), 1200);
-          setNotice("La cotización en formato vertical carta quedó descargada para compartirla o imprimirla.");
-        }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const downloadLink = document.createElement("a");
-        downloadLink.href = url; downloadLink.download = filename;
-        document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1200);
-        setNotice("Cotización en formato vertical carta descargada para compartirla o imprimirla.");
-      }
+      const url = URL.createObjectURL(blob);
+      setQuoteImagePreview((current) => {
+        if (current?.url) URL.revokeObjectURL(current.url);
+        return { blob, url, fileName: filename, quoteNumber: quote.quote_number || "Cotización", brand };
+      });
+      setNotice("Vista previa preparada. Revisa el documento antes de compartirlo.");
     } catch {
       setError("No se pudo generar la imagen. Usa PDF / Imprimir para guardar la cotización.");
     }
@@ -5839,12 +5863,14 @@ function AuthenticatedApp() {
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const documentTheme = normalizeBusinessTheme(activeBusiness?.theme);
+    const brandColor = documentTheme.primary;
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     const items = (sale.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, sale.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:#174580}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:${brandColor}}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:${brandColor}}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
@@ -5864,22 +5890,24 @@ function AuthenticatedApp() {
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
+    const documentTheme = normalizeBusinessTheme(activeBusiness?.theme);
+    const brandColor = documentTheme.primary;
     const rows = sale.items || [];
     const width = 1200, height = 650 + Math.max(1, rows.length) * 68;
     const canvas = document.createElement("canvas"); canvas.width=width; canvas.height=height;
     const ctx = canvas.getContext("2d");
     if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / Imprimir para compartir la venta."); return; }
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#DCE6F3"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle="#174580"; ctx.fillRect(27,27,width-54,12);
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#DCE6F3"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle=brandColor; ctx.fillRect(27,27,width-54,12);
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
     let y=86;
     if (logoUrl) { try { const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl; await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject}); ctx.drawImage(image,60,60,128,96); } catch { /* El comprobante sigue visible si el logo no puede cargarse. */ } }
-    ctx.fillStyle="#174580";ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#19243A";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
+    ctx.fillStyle=brandColor;ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#19243A";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
     y=260;ctx.strokeStyle="#DCE6F3";ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(width-60,y);ctx.stroke();y+=54;ctx.fillStyle="#202820";ctx.font="bold 30px Arial";ctx.fillText("FACTURA / VENTA "+String(sale.sale_number||""),60,y);
     y+=42;ctx.font="19px Arial";ctx.fillText("Cliente: "+String(sale.customer_name||"Venta sin cliente").slice(0,65),60,y);
     y+=32;ctx.fillText("Fecha: "+new Date(sale.sold_at||sale.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"}),60,y);
-    y+=42;ctx.fillStyle="#f0f4ed";ctx.fillRect(60,y,width-120,44);ctx.fillStyle="#314236";ctx.font="bold 17px Arial";ctx.fillText("ARTÍCULO",72,y+28);ctx.fillText("CANT.",700,y+28);ctx.fillText("VALOR",830,y+28);ctx.fillText("TOTAL",1010,y+28);y+=54;ctx.font="17px Arial";
+    y+=42;ctx.fillStyle=documentTheme.background;ctx.fillRect(60,y,width-120,44);ctx.fillStyle="#314236";ctx.font="bold 17px Arial";ctx.fillText("ARTÍCULO",72,y+28);ctx.fillText("CANT.",700,y+28);ctx.fillText("VALOR",830,y+28);ctx.fillText("TOTAL",1010,y+28);y+=54;ctx.font="17px Arial";
     for (const item of rows){ctx.fillStyle="#202820";ctx.fillText(String(item.item_name||"").slice(0,52),72,y);ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);ctx.fillText(money(item.unit_price_minor,sale.currency_code||currencyCode),830,y);ctx.fillText(money(item.line_total_minor,sale.currency_code||currencyCode),1010,y);y+=58;ctx.strokeStyle="#E1E7F0";ctx.beginPath();ctx.moveTo(60,y-22);ctx.lineTo(width-60,y-22);ctx.stroke();}
-    y+=8;ctx.fillStyle="#174580";ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
+    y+=8;ctx.fillStyle=brandColor;ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
     try {
       const blob = await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png")}catch(e){reject(e)}});
       const filename=String(sale.sale_number||"venta").replace(/[^a-z0-9_-]/gi,"-")+".png";const file=new File([blob],filename,{type:"image/png"});

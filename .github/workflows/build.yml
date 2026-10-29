@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -172,7 +174,20 @@ jobs:
             echo "The public APK is already up to date."
           else
             git commit -m "chore: publish latest Android APK"
-            git push origin HEAD:main
+            # Source/CSS commits can land while the APK is compiling. Rebase this
+            # APK-only commit onto the latest main so publication never rejects fresh app work.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "ERROR: could not publish APK after syncing with latest main."
+                exit 1
+              fi
+              echo "The main branch advanced during APK publication; syncing again."
+            done
           fi
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4

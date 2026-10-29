@@ -3829,7 +3829,9 @@ function AuthenticatedApp() {
   }
 
   async function submitAuth(event) {
-    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    event.preventDefault();
+    if (mode === "signup" && (password.length < 12 || password.length > 128)) { setBusy(false); setError("La contraseña de una cuenta nueva debe tener entre 12 y 128 caracteres."); setNotice(""); return; }
+    setBusy(true); setError(""); setNotice("");
     try {
       if (mode === "forgot") {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
@@ -7023,7 +7025,7 @@ function AuthenticatedApp() {
         <form onSubmit={submitAuth} className="form-stack">
           {mode === "signup" && <label><span className="field-label-heading">Tu nombre<FieldHelp text="Escribe el nombre que se mostrará en tu cuenta." /></span><input autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="¿Cómo te llamas?" required maxLength={120} /></label>}
           {mode !== "update-password" && <label><span className="field-label-heading">Correo electrónico<FieldHelp text="Usa un correo al que tengas acceso; servirá para iniciar sesión y recibir comunicaciones de la cuenta." /></span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" required /></label>}
-          {mode !== "forgot" && mode !== "update-password" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text="Usa una contraseña de al menos 6 caracteres." /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required /></label>}
+          {mode !== "forgot" && mode !== "update-password" && <label><span className="field-label-heading">{mode === "update-password" ? "Nueva contraseña" : "Contraseña"}<FieldHelp text={mode === "signup" ? "Para una cuenta nueva, usa al menos 12 caracteres. Una frase larga es fácil de recordar y difícil de adivinar." : "Usa una contraseña de al menos 6 caracteres."} /></span><input type="password" autoComplete={mode === "signup" || mode === "update-password" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === "signup" ? "Mínimo 12 caracteres" : "Mínimo 6 caracteres"} minLength={mode === "signup" ? 12 : 6} maxLength={128} required /></label>}
           {mode === "login" && <p className="forgot-password-row"><button type="button" className="text-button" onClick={() => { setMode("forgot"); setPassword(""); setError(""); setNotice(""); }}>Olvidé mi contraseña</button></p>}
           
         {error && <p className="message error" role="alert">{error}</p>}{notice && <p className="message success" role="status">{notice}</p>}

@@ -134,14 +134,14 @@ function buildProfitabilityTrendData(sales,saleItems,expenses,period) {
 }
 
 
-function SimpleBars({ title, description, data, formatValue, badge = "7 días", footnote = "Valores calculados a partir de movimientos registrados, no de estimaciones." }) {
+function SimpleBars({ title, description, data, formatValue, badge = "7 días", footnote = "Valores calculados a partir de movimientos registrados, no de estimaciones.", colors }) {
   const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
   return <section className="simple-chart panel">
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
     {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title} style={{gridTemplateColumns:"repeat("+Math.max(1,(data||[]).length)+",minmax(0,1fr))"}}>
       {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
         <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
-        <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%"}} /></div>
+        <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%",backgroundColor:colors?.length?colors[index%colors.length]:undefined}} /></div>
         <span className="simple-chart-label">{item.label}</span>
       </div>)}
     </div> : <p className="simple-chart-empty">Aún no hay datos suficientes para formar el gráfico.</p>}
@@ -150,10 +150,10 @@ function SimpleBars({ title, description, data, formatValue, badge = "7 días", 
 }
 
 
-function SimplePie({ title, description, data, formatValue, compact = false }) {
+function SimplePie({ title, description, data, formatValue, compact = false, colors: customColors }) {
   const entries = (data || []).map((item) => ({ ...item, value: Math.max(0, Number(item.value) || 0) })).filter((item) => item.value > 0);
   const total = entries.reduce((sum, item) => sum + item.value, 0);
-  const colors = ["#64748B", "#0F766E", "#D97706", "#7C3AED", "#DB2777", "#0284C7"];
+  const colors = customColors?.length ? customColors : ["#64748B", "#0F766E", "#D97706", "#7C3AED", "#DB2777", "#0284C7"];
   let cumulative = 0;
   return <section className={"simple-chart panel simple-pie-chart" + (compact ? " simple-pie-chart-compact" : "")}>
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">Distribución</span></div>
@@ -8799,8 +8799,8 @@ function AuthenticatedApp() {
                   <button type="button" className={homeIncomeChartType==="area"?"active":""} aria-pressed={homeIncomeChartType==="area"} onClick={()=>setHomeIncomeChartType("area")}>Área</button>
                 </div>
                 {!canAccessScreen("sales") ? <div className="simple-chart panel"><p className="simple-chart-empty">Tu perfil no tiene permiso para consultar ingresos.</p></div> :
-                  homeIncomeChartType==="pie" ? <SimplePie title="Distribución de ingresos" description="Participación de los artículos vendidos." data={homePieData.income} formatValue={(value)=>money(value,currencyCode)} compact /> :
-                  homeIncomeChartType==="bars" ? <SimpleBars title="Ingresos por artículo" description="Compara los artículos que generaron ingresos." badge={homeChartPeriod} data={homePieData.income.slice(0,8)} formatValue={(value)=>money(value,currencyCode)} /> :
+                  homeIncomeChartType==="pie" ? <SimplePie title="Distribución de ingresos" description="Participación de los artículos vendidos." data={homePieData.income} colors={["#0F766E","#14B8A6","#0D9488","#2DD4BF","#0284C7","#38BDF8","#0E7490","#5EEAD4"]} formatValue={(value)=>money(value,currencyCode)} compact /> :
+                  homeIncomeChartType==="bars" ? <SimpleBars title="Ingresos por artículo" description="Compara los artículos que generaron ingresos." badge={homeChartPeriod} data={homePieData.income.slice(0,8)} colors={["#0F766E","#14B8A6","#0D9488","#2DD4BF","#0284C7","#38BDF8","#0E7490","#5EEAD4"]} formatValue={(value)=>money(value,currencyCode)} /> :
                   <SimpleArea title="Evolución de ingresos" description="Ventas registradas a través del periodo." badge={homeChartPeriod} data={homePieData.trends} series={[{key:"income",label:"Ingresos",color:"#0F766E"}]} formatValue={(value)=>money(value,currencyCode)} footnote="Solo incluye ventas registradas no anuladas del negocio activo." />}
               </section>
               <section className="home-chart-cell" aria-label="Gráfico de compras y gastos">
@@ -8814,11 +8814,11 @@ function AuthenticatedApp() {
                   homeSpendingChartType==="pie" ? <SimplePie title="Distribución de compras y gastos" description="Participación de cada tipo de salida registrada." data={[
                     {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
                     {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
-                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} compact /> :
+                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} colors={["#D97706","#DB2777","#EA580C","#BE123C"]} formatValue={(value)=>money(value,currencyCode)} compact /> :
                   homeSpendingChartType==="bars" ? <SimpleBars title="Compras y gastos" description="Compara los importes de cada tipo de salida." badge={homeChartPeriod} data={[
                     {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
                     {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
-                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} /> :
+                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} colors={["#D97706","#DB2777"]} formatValue={(value)=>money(value,currencyCode)} /> :
                   <SimpleArea title="Evolución de compras y gastos" description="Salidas registradas durante el periodo." badge={homeChartPeriod} data={homePieData.trends} series={[
                     {key:"purchases",label:"Compras",color:"#D97706"},{key:"expenses",label:"Gastos",color:"#DB2777"}
                   ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} footnote="Compras y gastos se muestran por separado y no se duplican en el mismo indicador." />}

@@ -11141,3 +11141,21 @@ body { background: #F5F7FC; color: #19243A; }
     min-height: 205px !important;
   }
 }
+
+
+/* Rentabilidad: keep the optional profit allocation panel compact and centered. */
+.profit-allocations-panel {
+  width: min(100%, 820px);
+  max-width: 820px;
+  margin: 0 auto 18px;
+  box-sizing: border-box;
+  align-self: center;
+}
+@media (max-width: 600px) {
+  .profit-allocations-panel {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 18px;
+    padding: 16px;
+  }
+}

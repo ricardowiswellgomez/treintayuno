@@ -236,10 +236,14 @@ test("contextual help opens for the current workspace page and keeps the separat
   assert.match(appSource, /document\.addEventListener\("pointerdown", onOutsidePointer, true\)/);
 });
 
-test("quotation records use compact horizontal rows on desktop and stacked cards on mobile", () => {
+test("quotation records stay compact like sales rows and reveal actions only when expanded", () => {
+  const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
-  assert.match(cssSource, /\.app-shell \.quote-record\{display:grid!important;grid-template-columns:/);
-  assert.match(cssSource, /@media\(max-width:600px\)\{\s*\.app-shell \.quotes-list/);
+  assert.match(appSource, /className="quote-record-disclosure-bar"/);
+  assert.match(appSource, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);
+  assert.match(cssSource, /\.app-shell \.quotes-page \.quote-record\s*\{[\s\S]*?grid-template-areas:"meta customer totals toggle"/);
+  assert.match(cssSource, /\.app-shell \.quotes-page \.quote-record-details\[hidden\] \{display:none!important\}/);
+  assert.match(cssSource, /@media \(max-width:760px\)[\s\S]*?grid-template-areas:"meta totals" "customer customer" "toggle toggle"/);
 });
 
 test("support email delivery retries one transient provider failure and then succeeds", async () => {

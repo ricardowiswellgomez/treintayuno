@@ -10073,3 +10073,171 @@ body { background: #F5F7FC; color: #19243A; }
   .app-shell .quotes-page .quote-record-bottom>div { text-align:center!important; align-items:center!important; }
   .app-shell .quotes-page .quote-record-items>div { align-items:center!important; }
 }
+
+
+/* Cotizaciones: filas compactas como Ventas, con detalles desplegables. */
+.app-shell .quotes-page .quotes-list {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:8px!important;
+}
+.app-shell .quotes-page .quote-record {
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(155px,.95fr) minmax(190px,1.3fr) minmax(190px,1fr) minmax(150px,.8fr) auto;
+  grid-template-areas:"meta customer totals toggle toggle" "details details details details details";
+  align-items:center!important;
+  gap:8px 16px!important;
+  min-width:0!important;
+  width:100%!important;
+  min-height:0!important;
+  padding:10px 14px!important;
+  border-radius:12px!important;
+}
+.app-shell .quotes-page .quote-record-top {
+  grid-area:meta;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  gap:4px!important;
+  min-width:0!important;
+  text-align:left!important;
+}
+.app-shell .quotes-page .quote-record-top>div {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  gap:2px!important;
+  min-width:0!important;
+}
+.app-shell .quotes-page .quote-record-top>div strong {font-size:12.5px!important;line-height:1.3!important;overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-top>div span {font-size:11px!important;line-height:1.25!important;color:var(--muted)}
+.app-shell .quotes-page .quote-record-top .status-pill {font-size:10px!important;padding:3px 8px!important;line-height:1.2!important;max-width:100%;white-space:nowrap}
+.app-shell .quotes-page .quote-record-customer {
+  grid-area:customer;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  gap:2px!important;
+  min-width:0!important;
+  text-align:left!important;
+  overflow:hidden;
+}
+.app-shell .quotes-page .quote-record-customer strong {font-size:13px!important;line-height:1.3!important;overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-customer span {display:block;max-width:100%;font-size:10.5px!important;line-height:1.2!important;color:var(--muted);overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-bottom {
+  grid-area:totals;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  gap:8px!important;
+  min-width:0!important;
+  margin:0!important;
+}
+.app-shell .quotes-page .quote-record-bottom>div {
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+  gap:3px!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  text-align:left!important;
+}
+.app-shell .quotes-page .quote-record-bottom>div>span {font-size:9.5px!important;line-height:1.15!important;color:var(--muted);text-transform:uppercase;letter-spacing:.025em}
+.app-shell .quotes-page .quote-record-bottom>div>strong {font-size:12px!important;line-height:1.25!important;overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-disclosure-bar {
+  grid-area:toggle;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  gap:3px!important;
+  min-width:95px!important;
+  text-align:right!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.app-shell .quotes-page .quote-record-disclosure-bar .text-button {
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:4px 0!important;
+  font-size:11px!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+}
+.app-shell .quotes-page .quote-record-details {
+  grid-area:details;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+  text-align:left;
+}
+.app-shell .quotes-page .quote-record-details[hidden] {display:none!important}
+.app-shell .quotes-page .quote-record-details .quote-record-items {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding:0!important;
+  border:0!important;
+}
+.app-shell .quotes-page .quote-record-details .quote-record-items>div {
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  padding:6px 0!important;
+  border-bottom:1px solid var(--line);
+  font-size:12px!important;
+}
+.app-shell .quotes-page .quote-record-details .quote-record-items>div:last-child {border-bottom:0}
+.app-shell .quotes-page .quote-record-details .quote-record-items>div>span {min-width:0;overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-details .quote-record-items>div>strong {white-space:nowrap;font-size:12px!important}
+.app-shell .quotes-page .quote-record-details .quote-record-note {margin:0!important;font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.app-shell .quotes-page .quote-record-details .quote-record-actions {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(165px,220px);
+  align-items:center!important;
+  gap:12px!important;
+  padding-top:10px!important;
+  border-top:1px solid var(--line)!important;
+}
+.app-shell .quotes-page .quote-record-details .quote-record-actions>label {width:100%;max-width:none!important;margin:0!important}
+.app-shell .quotes-page .quote-record-details .quote-share-actions {display:flex!important;flex-wrap:wrap;align-items:center;gap:7px!important}
+@media (min-width:761px) and (max-width:1100px) {
+  .app-shell .quotes-page .quote-record {grid-template-columns:minmax(135px,.9fr) minmax(170px,1fr) minmax(180px,1fr) auto!important;grid-template-areas:"meta customer totals toggle" "details details details details"!important;gap:8px 12px!important;padding:10px 12px!important}
+  .app-shell .quotes-page .quote-record-disclosure-bar {min-width:80px!important}
+  .app-shell .quotes-page .quote-record-bottom {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .app-shell .quotes-page .quote-record-top .status-pill {font-size:9px!important;padding:3px 6px!important}
+}
+@media (max-width:760px) {
+  .app-shell .quotes-page .quote-record {grid-template-columns:minmax(0,1fr) minmax(0,.9fr)!important;grid-template-areas:"meta totals" "customer customer" "toggle toggle" "details details"!important;gap:8px 12px!important;padding:11px!important}
+  .app-shell .quotes-page .quote-record-top {align-items:flex-start!important}
+  .app-shell .quotes-page .quote-record-customer {padding:3px 0!important}
+  .app-shell .quotes-page .quote-record-customer strong {font-size:13px!important}
+  .app-shell .quotes-page .quote-record-customer span {font-size:10px!important}
+  .app-shell .quotes-page .quote-record-disclosure-bar {flex-direction:row!important;align-items:center!important;justify-content:space-between!important;width:100%!important;min-width:0!important;text-align:left!important;border-top:1px solid var(--line);padding-top:6px}
+  .app-shell .quotes-page .quote-record-bottom {gap:10px!important}
+  .app-shell .quotes-page .quote-record-bottom>div>strong {font-size:11.5px!important}
+  .app-shell .quotes-page .quote-record-details .quote-record-actions {grid-template-columns:minmax(0,1fr)!important}
+  .app-shell .quotes-page .quote-record-details .quote-share-actions {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .app-shell .quotes-page .quote-record-details .quote-share-actions .action-small {width:100%!important;min-width:0!important;padding:8px 6px!important;font-size:11px!important;white-space:normal!important}
+}
+@media (max-width:380px) {
+  .app-shell .quotes-page .quote-record-details .quote-share-actions {grid-template-columns:minmax(0,1fr)!important}
+}

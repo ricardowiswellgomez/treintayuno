@@ -2103,6 +2103,7 @@ function AuthenticatedApp() {
   const [statsDateFrom, setStatsDateFrom] = useState(() => todayInBogota().slice(0, 7) + "-01");
   const [statsDateTo, setStatsDateTo] = useState(() => todayInBogota());
   const [quotesRows, setQuotesRows] = useState([]);
+  const [expandedQuoteId, setExpandedQuoteId] = useState(null);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [quotesPage, setQuotesPage] = useState(1);
   const [quotesPageSize, setQuotesPageSize] = useState(20);
@@ -7067,17 +7068,26 @@ function AuthenticatedApp() {
               : quotesRows.length ? <div className="quotes-list">{quotesRows.map((quote) => <article className="quote-record panel" key={quote.id}>
                 <div className="quote-record-top"><div><strong>{quote.quote_number}</strong><span>{new Date(quote.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })}</span></div><span className={"status-pill " + (quote.status === "accepted" || quote.status === "converted" ? "status-active" : quote.status === "rejected" || quote.status === "cancelled" || quote.status === "expired" ? "status-inactive" : "status-unpublished")}>{quoteStatusLabel(quote.status)}</span></div>
                 <div className="quote-record-customer"><strong>{quote.customer_name}</strong>{quote.customer_email && <span>{quote.customer_email}</span>}{quote.customer_phone && <span>{quote.customer_phone}</span>}</div>
-                {quote.items.length > 0 && <div className="quote-record-items">{quote.items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, quote.currency_code || currencyCode)}</strong></div>)}</div>}
-                {quote.notes && <p className="quote-record-note">{quote.notes}</p>}
-                <div className="quote-record-bottom"><div><span>Total</span><strong>{money(quote.total_minor, quote.currency_code || currencyCode)}</strong></div><div><span>Válida hasta</span><strong>{quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Sin fecha límite"}</strong></div></div>
-                {canManageSales && <div className="quote-record-actions">
-                  <div className="quote-share-actions">
-                    {quote.status !== "converted" && quote.status !== "cancelled" && <button type="button" className="secondary-button action-small" onClick={() => editQuote(quote)}>Ajustar propuesta</button>}
-                    <button type="button" className="secondary-button action-small" onClick={() => printQuoteDocument(quote)}>PDF / Imprimir</button>
-                    <button type="button" className="primary-button action-small" onClick={() => shareQuoteImage(quote)}>Compartir imagen</button>
-                  </div>
-                  <label><span className="field-label-heading">Estado<FieldHelp enabled={contextualHelpEnabled} text="Actualiza el estado comercial. Cambiarlo no crea una venta por sí solo." /></span><select value={quote.status} onChange={(e) => updateQuoteStatus(quote, e.target.value)}><option value="draft">Borrador</option><option value="sent">Enviada</option><option value="accepted">Aceptada</option><option value="rejected">Rechazada</option><option value="expired">Vencida</option><option value="converted">Convertida en venta</option><option value="cancelled">Cancelada</option></select></label>
-                </div>}
+                <div className="quote-record-bottom">
+                  <div><span>Total</span><strong>{money(quote.total_minor, quote.currency_code || currencyCode)}</strong></div>
+                  <div><span>Válida hasta</span><strong>{quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" }) : "Sin fecha límite"}</strong></div>
+                </div>
+                <div className="quote-record-disclosure-bar">
+                  <span>{quote.items.length} {quote.items.length === 1 ? "artículo" : "artículos"}</span>
+                  <button type="button" className="text-button" aria-expanded={expandedQuoteId === quote.id} onClick={() => setExpandedQuoteId((current) => current === quote.id ? null : quote.id)}>{expandedQuoteId === quote.id ? "Ocultar detalles" : "Ver detalles"}</button>
+                </div>
+                <div className="quote-record-details" hidden={expandedQuoteId !== quote.id}>
+                  {quote.items.length > 0 && <div className="quote-record-items">{quote.items.map((item) => <div key={item.id}><span>{item.item_name} × {Number(item.quantity).toLocaleString("es-CO")}</span><strong>{money(item.line_total_minor, quote.currency_code || currencyCode)}</strong></div>)}</div>}
+                  {quote.notes && <p className="quote-record-note">{quote.notes}</p>}
+                  {canManageSales && <div className="quote-record-actions">
+                    <div className="quote-share-actions">
+                      {quote.status !== "converted" && quote.status !== "cancelled" && <button type="button" className="secondary-button action-small" onClick={() => editQuote(quote)}>Ajustar propuesta</button>}
+                      <button type="button" className="secondary-button action-small" onClick={() => printQuoteDocument(quote)}>PDF / Imprimir</button>
+                      <button type="button" className="primary-button action-small" onClick={() => shareQuoteImage(quote)}>Compartir imagen</button>
+                    </div>
+                    <label><span className="field-label-heading">Estado<FieldHelp enabled={contextualHelpEnabled} text="Actualiza el estado comercial. Cambiarlo no crea una venta por sí solo." /></span><select value={quote.status} onChange={(e) => updateQuoteStatus(quote, e.target.value)}><option value="draft">Borrador</option><option value="sent">Enviada</option><option value="accepted">Aceptada</option><option value="rejected">Rechazada</option><option value="expired">Vencida</option><option value="converted">Convertida en venta</option><option value="cancelled">Cancelada</option></select></label>
+                  </div>}
+                </div>
               </article>)}</div>
               : <div className="empty-state"><span className="empty-icon">▧</span><h3>{quotesCount ? "No hay resultados" : "Aún no hay cotizaciones"}</h3><p>{quotesCount ? "Prueba otro nombre o estado." : "Crea tu primera cotización para dejar por escrito lo que le estás ofreciendo a un cliente."}</p>{canManageSales && <button type="button" className="primary-button" onClick={() => setShowQuoteForm(true)}>+ Nueva cotización</button>}</div>}
             {!quotesLoading && quotesCount > 0 && <div className="pagination-bar quotes-pagination"><label className="page-size-control"><span className="field-label-heading">Mostrar</span><select value={quotesPageSize} onChange={(e) => { setQuotesPageSize(Number(e.target.value)); setQuotesPage(1); }}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select> por página</label><div className="pagination-controls"><button type="button" className="secondary-button" disabled={quotesPage <= 1} onClick={() => setQuotesPage((page) => Math.max(1, page - 1))}>Anterior</button><span className="pagination-status">Página {Math.min(quotesPage, Math.max(1, Math.ceil(quotesCount / quotesPageSize)))} de {Math.max(1, Math.ceil(quotesCount / quotesPageSize))}</span><button type="button" className="secondary-button" disabled={quotesPage >= Math.ceil(quotesCount / quotesPageSize)} onClick={() => setQuotesPage((page) => Math.min(Math.ceil(quotesCount / quotesPageSize), page + 1))}>Siguiente</button></div></div>}

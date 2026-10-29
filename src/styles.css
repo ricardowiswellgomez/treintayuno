@@ -10691,3 +10691,91 @@ body { background: #F5F7FC; color: #19243A; }
   .home-chart-type-picker { width:100%; overflow-x:auto; }
   .home-chart-type-picker button { min-width:70px; }
 }
+
+
+/* Gráficos de área: mantener una altura fija y evitar que el SVG crezca con el ancho de pantalla. */
+.simple-area-visual {
+  display:block;
+  position:relative;
+  width:100%;
+  height:250px;
+  max-height:250px;
+  min-height:0;
+  min-width:0;
+  overflow:hidden;
+  padding:4px 0 0;
+}
+.simple-area-visual svg {
+  display:block;
+  width:100%;
+  height:250px;
+  max-width:100%;
+  max-height:250px;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+.simple-area-legend { max-width:100%; }
+
+/* Mismo selector de tipo en Inicio, Rentabilidad, Planificación y Estadísticas. */
+.report-chart-type-picker {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px;
+  width:max-content;
+  max-width:100%;
+  padding:4px;
+  margin:10px 0 14px;
+  border:1px solid var(--line,#DCE3ED);
+  border-radius:12px;
+  background:var(--app-background,#F5F7FC);
+}
+.report-chart-type-picker button {
+  min-width:82px;
+  padding:8px 13px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:var(--muted,#64748B);
+  font-size:13px;
+  font-weight:700;
+}
+.report-chart-type-picker button.active {
+  background:var(--paper,#FFFFFF);
+  border-color:var(--line,#DCE3ED);
+  color:var(--ink,#19243A);
+  box-shadow:0 1px 3px rgba(15,23,42,.08);
+}
+.planning-chart-section { min-width:0; margin:10px 0 20px; }
+.planning-chart-section>.simple-chart { max-width:100%; }
+.profitability-page>.simple-area-visual,
+.profitability-page .simple-chart .simple-area-visual { max-width:100%; }
+
+/* El buscador de clientes va seguido de su ayuda contextual; el contador permanece al final. */
+.customer-toolbar { display:flex; align-items:center; gap:12px; min-width:0; }
+.customer-toolbar>.search-box { flex:1 1 360px; min-width:180px; }
+.customer-toolbar>.field-help-wrap { flex:0 0 auto; order:2; }
+.customer-toolbar>.count-label { flex:0 0 auto; order:3; white-space:nowrap; }
+.customer-toolbar>.search-box { order:1; }
+@media(max-width:600px) {
+  .simple-area-visual { height:205px; max-height:205px; }
+  .simple-area-visual svg { height:205px; max-height:205px; }
+  .report-chart-type-picker { width:100%; }
+  .report-chart-type-picker button { flex:1 1 0; min-width:0; padding:8px 7px; }
+  .customer-toolbar { flex-wrap:wrap; gap:8px; }
+  .customer-toolbar>.search-box { flex:1 1 100%; min-width:0; width:100%; }
+  .customer-toolbar>.field-help-wrap { margin-left:0; }
+  .customer-toolbar>.count-label { margin-left:auto; }
+}
+
+/* Los detalles del historial permanecen en tres columnas alineadas en escritorio. */
+.platform-event-row {
+  grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1.25fr) auto;
+}
+.platform-event-business,
+.platform-event-transition,
+.platform-event-when { min-width:0; }
+.platform-event-business strong,
+.platform-event-transition strong,
+.platform-event-when strong { overflow-wrap:anywhere; }

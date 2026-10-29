@@ -495,7 +495,7 @@ const unitOptions = [
   ["metro", "Metro (m)"], ["metro cuadrado", "Metro cuadrado (m²)"], ["hora", "Hora"],
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
-const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "", is_bundle: false, bundle_components: [{ product_id: "", quantity: "1" }, { product_id: "", quantity: "1" }], bundle_discount: "0" };
+const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "", is_published: true, is_bundle: false, bundle_components: [{ product_id: "", quantity: "1" }, { product_id: "", quantity: "1" }], bundle_discount: "0" };
 const blankVariantDraft = { variant_name: "", variant_value: "", variant_name_2: "", variant_value_2: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
 const blankNewProductVariant = { variant_name: "", variant_value: "", variant_name_2: "", variant_value_2: "", sku: "", sale_price: "", stock_on_hand: "" };
 const makeInternalProductSku = () => "PRD-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase();
@@ -1822,6 +1822,9 @@ function AuthenticatedApp() {
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [screen, setScreen] = useState(() => {
     try {
+      const remembered = window.sessionStorage.getItem("treseiscinco:last-screen");
+      const allowedScreens = ["home","products","sales","quotes","customers","purchases","suppliers","stats","audit","catalog","settings","accounts","receivables","payables","platform-admin","help"];
+      if (remembered && allowedScreens.includes(remembered)) return remembered;
       const saved = window.history.state;
       return saved?.treseiscinco && typeof saved.screen === "string" ? saved.screen : "home";
     } catch { return "home"; }
@@ -4281,6 +4284,7 @@ function AuthenticatedApp() {
       stock: String(product.stock_on_hand ?? 0),
       low_stock: product.low_stock_threshold == null ? "" : String(product.low_stock_threshold),
       tax_code: product.metadata?.tax_code || "none",
+      is_published: product.is_published === true,
       is_bundle: product.metadata?.is_bundle === true || product.metadata?.is_bundle === "true",
       bundle_components: Array.isArray(product.metadata?.bundle_components) && product.metadata.bundle_components.length ? product.metadata.bundle_components.map(component=>({product_id:component.product_id||"",quantity:String(component.quantity||"1")})) : [{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}],
       bundle_discount: String(Number(product.metadata?.bundle_discount_minor||0)/(10**digits))
@@ -4709,9 +4713,10 @@ function AuthenticatedApp() {
             unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
             sale_price_minor: salePriceMinor,
             cost_price_minor: costPriceMinor,
+            is_published: productForm.is_published === true,
             low_stock_threshold: productForm.is_bundle ? null : (productForm.product_type === "physical" && productForm.low_stock !== "" ? Number(productForm.low_stock) : null),
             metadata: productMetadata,
-            ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : currentProduct?.metadata?.is_bundle ? { track_inventory: productForm.product_type === "physical", stock_on_hand: 0 } : {})
+            ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0 } : currentProduct?.metadata?.is_bundle ? { track_inventory: productForm.product_type === "physical", stock_on_hand: 0 } : {})
           })
           .eq("business_id", activeBusiness.id).eq("id", editingProductId)
           .select("id").maybeSingle();
@@ -4742,7 +4747,7 @@ function AuthenticatedApp() {
         p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
-      const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : variantsToCreate.length && productForm.product_type === "physical" ? { track_inventory: false, stock_on_hand: 0, low_stock_threshold: null } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
+      const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, is_published: productForm.is_published === true, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0 } : variantsToCreate.length && productForm.product_type === "physical" ? { track_inventory: false, stock_on_hand: 0, low_stock_threshold: null } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
       if (metadataError) throw metadataError;
       let variantSaveWarning = "";
       if (variantsToCreate.length) {
@@ -5803,7 +5808,8 @@ function AuthenticatedApp() {
     const file = new File([quoteImagePreview.blob], quoteImagePreview.fileName || "cotizacion-carta.png", { type: "image/png" });
     if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
       downloadQuoteImagePreview(false);
-      const shareUrl = "https://wa.me/?text=" + encodeURIComponent("Te comparto la cotización " + quoteImagePreview.quoteNumber + " de " + quoteImagePreview.brand + ". Adjunta la imagen descargada para enviarla completa.");
+      const documentLabel = quoteImagePreview.documentType === "sale" ? "factura" : "cotización";
+      const shareUrl = "https://wa.me/?text=" + encodeURIComponent("Te comparto la " + documentLabel + " " + quoteImagePreview.quoteNumber + " de " + quoteImagePreview.brand + ". Adjunta la imagen descargada para enviarla completa.");
       const shareWindow = window.open(shareUrl, "_blank", "noopener,noreferrer");
       setNotice(shareWindow
         ? "La imagen se descargó y WhatsApp está listo. Adjunta la imagen descargada antes de enviar."
@@ -5811,7 +5817,8 @@ function AuthenticatedApp() {
       return;
     }
     try {
-      await navigator.share({ files: [file], title: "Cotización " + quoteImagePreview.quoteNumber, text: "Cotización de " + quoteImagePreview.brand });
+      const documentLabel = quoteImagePreview.documentType === "sale" ? "Factura" : "Cotización";
+      await navigator.share({ files: [file], title: documentLabel + " " + quoteImagePreview.quoteNumber, text: documentLabel + " de " + quoteImagePreview.brand });
       closeQuoteImagePreview();
       setNotice("Se abrió la opción de compartir la cotización.");
     } catch (error) {
@@ -6074,7 +6081,7 @@ function AuthenticatedApp() {
       const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi, "-") + "-carta.png";
       const url = URL.createObjectURL(blob);
       if (quoteImagePreview?.url) URL.revokeObjectURL(quoteImagePreview.url);
-      setQuoteImagePreview({ blob, url, fileName: filename, quoteNumber: quote.quote_number || "Cotización", brand });
+      setQuoteImagePreview({ blob, url, fileName: filename, quoteNumber: quote.quote_number || "Cotización", brand, documentType: "quote" });
       setNotice("Vista previa preparada. Revisa el documento antes de compartirlo.");
     } catch {
       setError("No se pudo generar la imagen. Usa PDF / Imprimir para guardar la cotización.");
@@ -6116,30 +6123,78 @@ function AuthenticatedApp() {
     const documentTheme = normalizeBusinessTheme(activeBusiness?.theme);
     const brandColor = documentTheme.primary;
     const rows = sale.items || [];
-    const width = 1200, height = 650 + Math.max(1, rows.length) * 68;
-    const canvas = document.createElement("canvas"); canvas.width=width; canvas.height=height;
+    const rowHeight = 58;
+    const width = 1275; // Carta: 8,5 in a 150 dpi
+    const tableStart = 610;
+    const contentHeight = tableStart + 50 + Math.max(1, rows.length) * rowHeight + 330;
+    const height = Math.max(1650, contentHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / Imprimir para compartir la venta."); return; }
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height); ctx.strokeStyle="#DCE6F3"; ctx.lineWidth=2; ctx.strokeRect(26,26,width-52,height-52); ctx.fillStyle=brandColor; ctx.fillRect(27,27,width-54,12);
-    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
-    let y=86;
-    if (logoUrl) { try { const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl; await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject}); ctx.drawImage(image,60,60,128,96); } catch { /* El comprobante sigue visible si el logo no puede cargarse. */ } }
-    ctx.fillStyle=brandColor;ctx.font="bold 32px Arial";ctx.fillText(brand,220,y);ctx.fillStyle="#19243A";ctx.font="18px Arial";companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
-    y=260;ctx.strokeStyle="#DCE6F3";ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(width-60,y);ctx.stroke();y+=54;ctx.fillStyle="#202820";ctx.font="bold 30px Arial";ctx.fillText("FACTURA / VENTA "+String(sale.sale_number||""),60,y);
-    y+=42;ctx.font="19px Arial";ctx.fillText("Cliente: "+String(sale.customer_name||"Venta sin cliente").slice(0,65),60,y);
-    y+=32;ctx.fillText("Fecha: "+new Date(sale.sold_at||sale.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"medium"}),60,y);
-    y+=42;ctx.fillStyle=documentTheme.background;ctx.fillRect(60,y,width-120,44);ctx.fillStyle="#314236";ctx.font="bold 17px Arial";ctx.fillText("ARTÍCULO",72,y+28);ctx.fillText("CANT.",700,y+28);ctx.fillText("VALOR",830,y+28);ctx.fillText("TOTAL",1010,y+28);y+=54;ctx.font="17px Arial";
-    for (const item of rows){ctx.fillStyle="#202820";ctx.fillText(String(item.item_name||"").slice(0,52),72,y);ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);ctx.fillText(money(item.unit_price_minor,sale.currency_code||currencyCode),830,y);ctx.fillText(money(item.line_total_minor,sale.currency_code||currencyCode),1010,y);y+=58;ctx.strokeStyle="#E1E7F0";ctx.beginPath();ctx.moveTo(60,y-22);ctx.lineTo(width-60,y-22);ctx.stroke();}
-    y+=8;ctx.fillStyle=brandColor;ctx.font="bold 28px Arial";ctx.textAlign="right";ctx.fillText("TOTAL: "+money(sale.total_minor,sale.currency_code||currencyCode),width-60,y);ctx.textAlign="left";y+=42;ctx.fillStyle="#202820";ctx.font="19px Arial";ctx.fillText("Pagado: "+money(sale.amount_paid_minor,sale.currency_code||currencyCode),60,y);ctx.fillText("Pendiente: "+money(Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)),sale.currency_code||currencyCode),650,y);
+    if (!ctx) { setError("No se pudo preparar la factura. Puedes usar Factura / PDF / Imprimir."); return; }
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height);
+    ctx.strokeStyle="#DCE6F3"; ctx.lineWidth=2; ctx.strokeRect(30,30,width-60,height-60);
+    ctx.fillStyle=brandColor; ctx.fillRect(31,31,width-62,14);
+    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "",profile.email,profile.phone,[profile.address,profile.city].filter(Boolean).join(", "),profile.website].filter(Boolean);
+    if (logoUrl) {
+      try {
+        const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl;
+        await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;});
+        ctx.drawImage(image,72,72,150,112);
+      } catch { /* El documento se genera aunque el logo no se pueda cargar. */ }
+    }
+    ctx.textAlign="left"; ctx.fillStyle=brandColor; ctx.font="bold 34px Arial";
+    ctx.fillText(brand,255,105); ctx.fillStyle="#19243A"; ctx.font="20px Arial";
+    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,82),255,139+index*27));
+    ctx.strokeStyle="#DCE6F3"; ctx.beginPath(); ctx.moveTo(72,278); ctx.lineTo(width-72,278); ctx.stroke();
+    ctx.fillStyle="#202820"; ctx.font="bold 30px Arial"; ctx.fillText("FACTURA / VENTA",72,345);
+    ctx.fillStyle=brandColor; ctx.font="bold 22px Arial"; ctx.fillText(String(sale.sale_number||""),72,386);
+    ctx.fillStyle="#19243A"; ctx.font="18px Arial";
+    ctx.fillText("Cliente: "+String(sale.customer_name||"Venta sin cliente").slice(0,72),72,426);
+    ctx.fillText("Fecha: "+new Date(sale.sold_at||sale.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}),72,458);
+    const currency = sale.currency_code || currencyCode;
+    let y=tableStart;
+    ctx.fillStyle=documentTheme.background; ctx.fillRect(72,y,width-144,50);
+    ctx.fillStyle="#314236"; ctx.font="bold 17px Arial"; ctx.textAlign="left";
+    ctx.fillText("ARTÍCULO / SERVICIO",88,y+31);
+    ctx.textAlign="center"; ctx.fillText("CANT.",735,y+31);
+    ctx.textAlign="right"; ctx.fillText("VALOR",985,y+31); ctx.fillText("TOTAL",width-88,y+31);
+    y+=50;
+    for(const item of rows){
+      ctx.fillStyle="#202820"; ctx.font="18px Arial"; ctx.textAlign="left";
+      const name=String(item.item_name||"");
+      ctx.fillText(name.length>52?name.slice(0,49)+"…":name,88,y+34);
+      ctx.textAlign="center"; ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),735,y+34);
+      ctx.textAlign="right"; ctx.fillText(money(item.unit_price_minor,currency),985,y+34); ctx.fillText(money(item.line_total_minor,currency),width-88,y+34);
+      y+=rowHeight; ctx.strokeStyle="#E1E7F0"; ctx.beginPath(); ctx.moveTo(72,y); ctx.lineTo(width-72,y); ctx.stroke();
+    }
+    y+=26;
+    const summaryRow=(label,value,emphasis=false)=>{
+      ctx.font=emphasis?"bold 16px Arial":"19px Arial";
+      ctx.fillStyle=emphasis?brandColor:"#202820"; ctx.textAlign="left";
+      ctx.fillText(label,width-500,y);
+      ctx.textAlign="right"; ctx.font=emphasis?"bold 24px Arial":"19px Arial";
+      ctx.fillText(money(value,currency),width-88,y);
+      ctx.strokeStyle=emphasis?brandColor:"#E1E7F0"; ctx.lineWidth=emphasis?2:1;
+      ctx.beginPath(); ctx.moveTo(width-500,y+11); ctx.lineTo(width-72,y+11); ctx.stroke();
+      y+=emphasis?56:40;
+    };
+    summaryRow("TOTAL DE LA VENTA",Number(sale.total_minor||0),true);
+    summaryRow("Pagado",Number(sale.amount_paid_minor||0));
+    summaryRow("Saldo pendiente",Math.max(0,Number(sale.total_minor||0)-Number(sale.amount_paid_minor||0)));
+    ctx.strokeStyle="#DCE6F3"; ctx.beginPath(); ctx.moveTo(72,height-100); ctx.lineTo(width-72,height-100); ctx.stroke();
+    ctx.fillStyle="#69758A"; ctx.font="14px Arial"; ctx.textAlign="left";
+    ctx.fillText("Comprobante de venta generado desde treseiscinco. Conserva la factura original como soporte de la operación.",72,height-70);
     try {
-      const blob = await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png")}catch(e){reject(e)}});
-      const filename=String(sale.sale_number||"venta").replace(/[^a-z0-9_-]/gi,"-")+".png";const file=new File([blob],filename,{type:"image/png"});
-      if(navigator.share&&navigator.canShare?.({files:[file]})){
-        try { await navigator.share({files:[file],title:"Venta "+sale.sale_number,text:"Comprobante de venta de "+brand}); return; }
-        catch(e) { if(e?.name==="AbortError") return; }
-      }
-      const url=URL.createObjectURL(blob);const downloadLink=document.createElement("a");downloadLink.href=url;downloadLink.download=filename;document.body.appendChild(downloadLink);downloadLink.click();downloadLink.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1200);setNotice("Imagen del comprobante descargada para compartir.");
-    } catch { setError("No se pudo generar la imagen. Usa PDF / Imprimir para compartir el comprobante."); }
+      const blob=await new Promise((resolve,reject)=>{try{canvas.toBlob((value)=>value?resolve(value):reject(new Error("No se pudo crear la imagen.")),"image/png");}catch(e){reject(e);}});
+      const filename=String(sale.sale_number||"factura").replace(/[^a-z0-9_-]/gi,"-")+"-carta.png";
+      const url=URL.createObjectURL(blob);
+      setQuoteImagePreview((current)=>{
+        if(current?.url) URL.revokeObjectURL(current.url);
+        return {blob,url,fileName:filename,quoteNumber:sale.sale_number||"Factura",brand,documentType:"sale"};
+      });
+      setNotice("Vista previa preparada. Revisa la factura antes de compartirla.");
+    } catch { setError("No se pudo generar la vista previa. Usa Factura / PDF / Imprimir para guardar el documento."); }
   }
 
   async function updateQuoteStatus(quote, nextStatus) {
@@ -6896,6 +6951,7 @@ function AuthenticatedApp() {
   }
 
   useEffect(() => {
+    try { window.sessionStorage.setItem("treseiscinco:last-screen", screen); } catch {}
     const markDirty = (event) => {
       const form = event.target?.closest?.("form");
       if (!form || !form.getClientRects().length) return;
@@ -7611,7 +7667,7 @@ function AuthenticatedApp() {
             </div>
             <div className="catalog-share-panel panel">
               <div><span className="eyebrow">ENLACE PÚBLICO</span><strong>{publishedCatalogCount} {publishedCatalogCount === 1 ? "producto publicado" : "productos publicados"}</strong><p>Solo se muestran productos publicados y activos. El enlace no revela costos ni existencias internas.</p></div>
-              <input aria-label="Enlace público del catálogo" readOnly value={window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} onFocus={(e) => e.target.select()} />
+              <input aria-label="Enlace público del catálogo" readOnly value={activeBusiness?.slug ? "https://treseiscinco.com/" + activeBusiness.slug : window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness?.id || "")} onFocus={(e) => e.target.select()} />
             </div>
             <div className="catalog-filter-row">
               <input aria-label="Buscar en productos del catálogo" value={catalogSearch} onChange={(e) => { setCatalogSearch(e.target.value); setCatalogPage(1); }} placeholder="Buscar producto o categoría…" />
@@ -8114,6 +8170,7 @@ function AuthenticatedApp() {
                 {productForm.unit_name === "personalizada" && <label><span className="field-label-heading">Nombre de la unidad<FieldHelp enabled={contextualHelpEnabled} text="Si eliges una unidad personalizada, escribe aquí su nombre." /></span><input value={productForm.unit_custom} onChange={(e) => setProductForm({ ...productForm, unit_custom: e.target.value })} maxLength={30} required placeholder="Ej. lámina, rollo, sesión" /></label>}
                 {productForm.product_type === "physical" && !( !editingProductId && newProductVariants.length > 0) && <><label><span className="field-label-heading">{editingProductId ? "Existencias actuales" : "Existencias iniciales"}<FieldHelp enabled={contextualHelpEnabled} text="Existencias generales del producto. Si manejas variantes, cada combinación tiene su propio stock." /></span><input type="number" min="0" step="0.001" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} readOnly={!!editingProductId} required /></label><label><span className="field-label-heading">Avisarme cuando queden<FieldHelp enabled={contextualHelpEnabled} text="Define el mínimo de existencias generales del producto." /></span><input type="number" min="0" step="0.001" value={productForm.low_stock} onChange={(e) => setProductForm({ ...productForm, low_stock: e.target.value })} placeholder="Ej. 3" /></label></>}{!editingProductId && newProductVariants.length > 0 && productForm.product_type === "physical" && <p className="helper-text full-span">Este producto se controlará por combinaciones. Las cantidades de color y talla se guardan en cada fila de «Variantes», no en las existencias generales.</p>}
                 <label className="full-span"><span className="field-label-heading">Descripción para el catálogo<FieldHelp enabled={contextualHelpEnabled} text="Este texto aparece en la tarjeta pública del producto. Puedes editarlo cuando quieras al abrir Productos y elegir Editar artículo." /></span><textarea rows="3" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} maxLength={2000} placeholder="Cuenta qué incluye, sus materiales, medidas, beneficios o qué lo hace especial."/><small className="product-description-guidance">La descripción se muestra a tus clientes en el catálogo. Edita este campo desde la ficha del artículo.</small></label>
+                <label className="product-publication-toggle full-span"><input type="checkbox" checked={productForm.is_published !== false} onChange={(event) => setProductForm((current) => ({ ...current, is_published: event.target.checked }))}/><span><strong>Mostrar en el catálogo público</strong><small>Activado por defecto. Desmárcalo para mantener este producto en el inventario sin mostrarlo en tu catálogo compartible.</small></span></label>
               </div>
               {editingProductId && products.find((item) => item.id === editingProductId) && <div className="product-edit-tools full-span">
                 {renderStockAdjustment(products.find((item) => item.id === editingProductId))}
@@ -8121,9 +8178,9 @@ function AuthenticatedApp() {
               </div>}
               {!categories.length && <p className="helper-text full-span">Puedes añadir categorías desde el botón «Categorías».</p>}
                 <div className="bundle-editor full-span">
-  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Crear paquete con precio especial</strong><small>Elige dos o más productos que se venden juntos. El descuento solo se aplica al paquete; cada artículo conserva su precio individual.</small></span></label>
+  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,is_published:current.is_published !== false,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Crear un paquete con precio especial</strong><small>Esta opción está al final del formulario porque convierte el artículo actual en un paquete compuesto por otros productos. El descuento se aplica solo al paquete; los productos por separado conservan su precio.</small></span></label>
   {productForm.is_bundle && <div className="bundle-builder">
-    <div className="bundle-heading"><strong>Productos que incluye el paquete</strong><span>Selecciona al menos 2 productos distintos y la cantidad de cada uno.</span></div>
+    <div className="bundle-heading"><strong>Productos incluidos en el paquete</strong><span>Selecciona dos o más productos distintos y define la cantidad de cada uno.</span></div>
     {productForm.bundle_components.map((component,index)=><div className="bundle-component-row" key={"bundle-component-"+index}>
       <label><span className="field-label-heading">Producto {index+1}</span><select value={component.product_id} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,product_id:event.target.value}:row)}))}><option value="">Elige un producto…</option>{availableBundleComponents.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}</option>)}</select></label>
       <label><span className="field-label-heading">Cantidad</span><input type="number" min="1" step="1" value={component.quantity} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,quantity:event.target.value}:row)}))}/></label>
@@ -8660,8 +8717,8 @@ function AuthenticatedApp() {
       </div>
       {quoteImagePreview && createPortal(<div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
         <section className="quote-image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="quote-image-preview-title">
-          <div className="quote-image-preview-heading"><div><h3 id="quote-image-preview-title">Vista previa de la cotización</h3><p>{quoteImagePreview.quoteNumber} · Revisa el formato antes de compartir o descargar.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar vista previa" onClick={closeQuoteImagePreview}>×</button></div>
-          <div className="quote-image-preview-visual"><img src={quoteImagePreview.url} alt={"Vista previa vertical de la cotización " + quoteImagePreview.quoteNumber}/></div>
+          <div className="quote-image-preview-heading"><div><h3 id="quote-image-preview-title">Vista previa {quoteImagePreview.documentType === "sale" ? "de la factura" : "de la cotización"}</h3><p>{quoteImagePreview.quoteNumber} · Revisa el formato antes de compartir o descargar.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar vista previa" onClick={closeQuoteImagePreview}>×</button></div>
+          <div className="quote-image-preview-visual"><img src={quoteImagePreview.url} alt={"Vista previa vertical de " + (quoteImagePreview.documentType === "sale" ? "la factura " : "la cotización ") + quoteImagePreview.quoteNumber}/></div>
           <div className="quote-image-preview-actions"><button type="button" className="secondary-button" onClick={closeQuoteImagePreview}>Volver</button><button type="button" className="secondary-button" onClick={downloadQuoteImagePreview}>Descargar imagen</button><button type="button" className="primary-button" onClick={confirmShareQuoteImage}>Enviar / compartir</button></div>
         </section>
       </div>, document.body)}

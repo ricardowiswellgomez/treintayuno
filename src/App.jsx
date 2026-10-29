@@ -1730,7 +1730,7 @@ const publicHelpArticles = [
   {category:"Informes y rentabilidad",title:"¿Cómo uso los gráficos de Inicio, Rentabilidad y Estadísticas?",summary:"Cambia entre pastel, barras y área para ver distribuciones, comparaciones y evolución de los movimientos registrados.",steps:["En Inicio, elige el periodo (hoy, semana, mes, trimestre, semestre o año).","Usa el selector para mostrar un solo gráfico: Pastel para distribución, Barras para comparar importes o Área para observar la evolución en el tiempo.","En Rentabilidad y Planificación puedes elegir Pastel, Barras o Área. Se muestra solo el tipo elegido; el gráfico de área mantiene una altura fija para que sea legible en escritorio y móvil.","En Estadísticas y balance, usa Pastel, Barras o Área y elige el periodo correspondiente.","Si un gráfico aparece vacío, comprueba las fechas, los permisos de tu usuario y si hay movimientos registrados en ese periodo."],tip:"Los gráficos se basan en datos del negocio activo. La meta de crecimiento de Planificación es una simulación; no representa dinero ya recibido.",keywords:"gráficos pastel barras área inicio ingresos compras gastos rentabilidad planificación estadísticas reportes evolución"},
   {category:"Informes y rentabilidad",title:"¿Qué significa el resultado en Rentabilidad?",summary:"La pantalla compara ventas, costos de artículos vendidos y gastos registrados.",steps:["En Finanzas, abre Rentabilidad y selecciona el periodo o rango de fechas.","Revisa ventas registradas y costo de lo vendido usando los costos guardados en los productos o ventas.","La ganancia bruta estimada compara el ingreso con el costo registrado de los artículos vendidos.","Los gastos registrados se tienen en cuenta para obtener el resultado estimado; revisa los gráficos y desgloses."],tip:"El cálculo depende de que los costos y gastos estén registrados. No incluye movimientos que aún no hayas anotado ni reemplaza una revisión contable.",keywords:"rentabilidad utilidad margen ganancia costo venta resultado ingresos gastos gráfico pastel"},
   {category:"Informes y rentabilidad",title:"¿Cómo leo Estadísticas y el balance?",summary:"Consulta las cifras por periodo y distingue dinero recibido de valores pendientes.",steps:["Abre Estadísticas y selecciona el periodo que quieres analizar.","Revisa ingresos cobrados, gastos y compras pagadas, junto con los desgloses disponibles.","Consulta el detalle para identificar qué movimientos componen una cifra.","Si un valor parece incorrecto, comprueba la fecha y el estado del movimiento original."],tip:"Ventas pendientes de cobro no equivalen a dinero que ya entró en caja.",keywords:"estadísticas balance gráficos periodo ventas ingresos gastos compras total"},
-  {category:"Clientes y proveedores",title:"¿Cómo creo un cliente y lo relaciono con una venta?",summary:"La ficha mantiene los datos de contacto y ayuda a relacionar operaciones.",steps:["Abre Clientes y pulsa «Nuevo cliente».","Registra el nombre o empresa y los datos de contacto disponibles.","Guarda la ficha y selecciónala al crear una venta cuando quieras relacionarla con ese cliente."],tip:"No crees una segunda venta solo para relacionar un cliente con una operación existente.",keywords:"cliente comprador contacto empresa agregar crear relación venta"},
+  {category:"Clientes y proveedores",title:"¿Cómo creo, busco y utilizo la ficha de un cliente?",summary:"Guarda una sola ficha por persona o empresa para encontrar sus datos y relacionar sus compras.",steps:["Abre Clientes. Justo después del cuadro de búsqueda encontrarás la ayuda de esta sección; puedes mantenerla abierta mientras completas el formulario.","Pulsa «Nuevo cliente». Registra el nombre y apellidos si es una persona. Si es una empresa, escribe su razón social en «Empresa»; basta con completar el nombre de la persona o la empresa para poder guardar.","Añade los datos que tengas: correo, teléfono, WhatsApp, ciudad y dirección. Documento y notas son opcionales. «Asesora habitual» también es opcional y sirve para indicar de qué asesora proviene normalmente la clienta.","Pulsa «Guardar cliente». Después, usa el cuadro de búsqueda para localizar la ficha por nombre, empresa, documento o contacto; abre la fila para ver el detalle y elige «Editar cliente» si necesitas corregir algún dato.","Para asociarlo a una venta o cotización, abre el desplegable «Cliente» y elige el registro existente. Para crear una ficha sin salir del formulario, selecciona «＋ Agregar» dentro de ese desplegable y guarda y selecciona la nueva ficha."],tip:"Antes de crear una ficha nueva, busca primero el nombre o teléfono para reducir duplicados. Asociar una ficha a una venta existente no requiere registrar otra venta.",keywords:"cliente clientes comprador contacto empresa agregar crear buscar editar relacionar venta cotización asesora habitual documento telefono whatsapp"},
   {category:"Clientes y proveedores",title:"¿Dónde administro los proveedores?",summary:"Proveedores es un módulo propio para consultar y mantener esos registros.",steps:["Abre Proveedores en el menú principal.","Crea o edita los datos del proveedor disponibles.","Selecciona el proveedor en compras o gastos cuando quieras dejar constancia de su origen."],tip:"Mantener los nombres consistentes facilita encontrar registros y revisar movimientos.",keywords:"proveedor proveedores suministrador compras gastos contacto"},
   {category:"Ventas y catálogo",title:"¿Cómo imprimir una cotización en tamaño carta?",summary:"Usa la salida PDF/impresión para obtener una propuesta vertical con el formato de los documentos de venta.",steps:["Abre Ventas y entra a Cotizaciones.","Despliega «Ver detalles» de la cotización correspondiente.","Pulsa «PDF / Imprimir» para abrir el documento y escoger «Carta» como tamaño de papel y orientación vertical en el diálogo de impresión.","Si prefieres enviarla como imagen, pulsa «Compartir imagen»: se genera una imagen vertical en proporción carta."],tip:"Si la vista previa muestra media carta, comprueba la opción de papel del diálogo de impresión. La impresión HTML y la imagen compartida son salidas distintas.",keywords:"cotización imprimir PDF papel carta media carta vertical compartir imagen factura"},
   {category:"Clientes y proveedores",title:"¿Cómo agregar una clienta desde una venta o cotización?",summary:"Puedes crear la ficha sin salir del formulario donde estás trabajando.",steps:["Al crear una venta o cotización, abre el desplegable «Cliente».","Selecciona «＋ Agregar» dentro de la lista.","Completa los datos básicos y pulsa «Guardar y seleccionar»; el cliente quedará asociado a la operación."],tip:"En Clientes, «Asesora habitual» es opcional y sirve para registrar de qué asesora proviene normalmente la clienta.",keywords:"clientes agregar desde lista desplegable venta cotización asesora habitual opcional"},
@@ -2069,7 +2069,8 @@ function AuthenticatedApp() {
   const [inventoryOverviewRefresh, setInventoryOverviewRefresh] = useState(0);
   const [homeSummary, setHomeSummary] = useState({ loading: false, todaySalesCount: 0, todaySalesMinor: 0, openQuotesCount: 0, error: "" });
   const [homeChartPeriod, setHomeChartPeriod] = useState("month");
-  const [homeChartType, setHomeChartType] = useState("pie");
+  const [homeIncomeChartType, setHomeIncomeChartType] = useState("pie");
+  const [homeSpendingChartType, setHomeSpendingChartType] = useState("bars");
   const [homePieData, setHomePieData] = useState({ loading: false, error: "", income: [], purchases: [], expenses: [], trends: [] });
   const [viewMode, setViewMode] = useState("cards");
   const [bulkEditMode, setBulkEditMode] = useState(false);
@@ -5926,7 +5927,7 @@ function AuthenticatedApp() {
        *{box-sizing:border-box}
        body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px;background:#fff}
        header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}
-       header img{width:112px;height:112px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 112px;object-fit:contain}
+       header img{width:123px;height:123px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 123px;object-fit:contain}
        h1{font-size:24px;margin:0 0 4px;color:${brandColor}}
        h2{margin:25px 0 8px;font-size:22px}
        h3{margin:24px 0 8px;font-size:16px}
@@ -5994,13 +5995,13 @@ function AuthenticatedApp() {
         image.crossOrigin = "anonymous";
         image.src = logoUrl;
         await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
-        ctx.drawImage(image, 72, 72, 147, 147);
+        ctx.drawImage(image, 72, 64, 162, 162);
       } catch { /* El resto del documento se conserva si el logo no se puede incrustar. */ }
     }
     ctx.fillStyle = brandColor;
     ctx.textAlign = "left";
     ctx.font = "bold 34px Arial";
-    ctx.fillText(brand, 240, headerY);
+    ctx.fillText(brand, 255, headerY);
     ctx.fillStyle = "#19243A";
     ctx.font = "20px Arial";
     const companyLines = [
@@ -6009,7 +6010,7 @@ function AuthenticatedApp() {
       [profile.address, profile.city].filter(Boolean).join(", "),
       profile.website
     ].filter(Boolean);
-    companyLines.slice(0, 5).forEach((line, index) => ctx.fillText(String(line).slice(0, 86), 240, headerY + 34 + index * 27));
+    companyLines.slice(0, 5).forEach((line, index) => ctx.fillText(String(line).slice(0, 86), 255, headerY + 34 + index * 27));
 
     ctx.strokeStyle = "#DCE6F3";
     ctx.lineWidth = 2;
@@ -6177,7 +6178,7 @@ function AuthenticatedApp() {
     const paymentRows = (sale.payments || []).map((payment) => "<tr><td>" + escapeHtml(new Date(payment.paid_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium" })) + "</td><td>" + escapeHtml(payment.payment_method || "Pago") + "</td><td class=\"num\">" + escapeHtml(money(payment.amount_minor, sale.currency_code || currencyCode)) + "</td></tr>").join("");
     const total = Number(sale.total_minor || 0), paid = Number(sale.amount_paid_minor || 0), outstanding = Math.max(0,total-paid);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Venta ${escapeHtml(sale.sale_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}header img{width:112px;height:112px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 112px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:${brandColor}}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:${brandColor}}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid ${brandColor};padding-bottom:18px}header img{width:123px;height:123px;max-width:none;max-height:none;aspect-ratio:1/1;flex:0 0 123px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:${brandColor}}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.summary{margin:20px 0 0 auto;max-width:320px}.summary>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #E1E7F0}.summary .balance{font-weight:700;color:${brandColor}}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@page{size:8.5in 11in;margin:0.55in}@media print{html,body{width:auto;max-width:none;margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Factura / comprobante de venta</h2><strong>${escapeHtml(sale.sale_number || "")}</strong><p>Fecha: ${new Date(sale.sold_at || sale.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })}</p>
       <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(sale.customer_name || "Venta sin cliente")}</p></div><div><strong>Estado</strong><p>${escapeHtml(saleStatusLabel(sale.status))}</p></div></div>
@@ -6217,12 +6218,12 @@ function AuthenticatedApp() {
       try {
         const image=new Image(); image.crossOrigin="anonymous"; image.src=logoUrl;
         await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;});
-        ctx.drawImage(image,72,72,147,147);
+        ctx.drawImage(image,72,64,162,162);
       } catch { /* El documento se genera aunque el logo no se pueda cargar. */ }
     }
     ctx.textAlign="left"; ctx.fillStyle=brandColor; ctx.font="bold 34px Arial";
-    ctx.fillText(brand,240,105); ctx.fillStyle="#19243A"; ctx.font="20px Arial";
-    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,82),240,139+index*27));
+    ctx.fillText(brand,255,105); ctx.fillStyle="#19243A"; ctx.font="20px Arial";
+    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,82),255,139+index*27));
     ctx.strokeStyle="#DCE6F3"; ctx.beginPath(); ctx.moveTo(72,278); ctx.lineTo(width-72,278); ctx.stroke();
     ctx.fillStyle="#202820"; ctx.font="bold 30px Arial"; ctx.fillText("FACTURA / VENTA",72,345);
     ctx.fillStyle=brandColor; ctx.font="bold 22px Arial"; ctx.fillText(String(sale.sale_number||""),72,386);
@@ -8776,37 +8777,53 @@ function AuthenticatedApp() {
             {inventoryOverview.lowStockCount > 0 && canAccessScreen("products") && <button type="button" className="home-stock-warning" onClick={() => { setProductStockFilter("low_stock"); setProductPage(1); navigate("products"); }}><span><strong>{inventoryOverview.lowStockCount} artículos están en su mínimo o por debajo</strong><small>Abre el filtro y revisa qué necesitas reponer.</small></span><b>Ver inventario ↗</b></button>}
             {homeSummary.error && <p className="helper-text">No se pudo actualizar toda la actividad: {homeSummary.error}</p>}
           </section>
-          <section className="home-pie-dashboard" aria-label="Distribución de ingresos, compras y gastos">
+          <section className="home-pie-dashboard" aria-label="Ingresos, compras y gastos">
             <div className="home-pie-toolbar">
               <div className="home-pie-title">
-                <h2>Ingresos, compras y gastos</h2>
-                <p>Distribución de movimientos registrados del periodo.</p>
+                <h2>Actividad financiera</h2>
+                <p>Dos gráficos independientes, con el mismo periodo y datos reales del negocio.</p>
               </div>
               <div className="home-pie-period-controls" role="group" aria-label="Periodo de los gráficos de Inicio">
-                {[[ "day", "Hoy" ], [ "week", "Semana" ], [ "month", "Mes" ], [ "quarter", "Trimestre" ], [ "semester", "Semestre" ], [ "year", "Año" ]].map(([value, label]) =>
-                  <button type="button" key={value} className={homeChartPeriod === value ? "active" : ""} aria-pressed={homeChartPeriod === value} onClick={() => setHomeChartPeriod(value)}>{label}</button>
+                {[["day","Hoy"],["week","Semana"],["month","Mes"],["quarter","Trimestre"],["semester","Semestre"],["year","Año"]].map(([value,label]) =>
+                  <button type="button" key={value} className={homeChartPeriod===value?"active":""} aria-pressed={homeChartPeriod===value} onClick={()=>setHomeChartPeriod(value)}>{label}</button>
                 )}
               </div>
             </div>
             {homePieData.error && <p className="home-pie-error" role="alert">No se pudieron cargar los gráficos de este periodo: {homePieData.error}</p>}
-            {homePieData.loading ? <div className="home-pie-loading panel" role="status">Actualizando los gráficos con los movimientos registrados…</div> : <>
-              <div className="chart-type-picker home-chart-type-picker" role="group" aria-label="Tipo de gráfico del panel de Inicio">
-                <button type="button" className={homeChartType==="pie"?"active":""} aria-pressed={homeChartType==="pie"} onClick={()=>setHomeChartType("pie")}>Pastel</button>
-                <button type="button" className={homeChartType==="bars"?"active":""} aria-pressed={homeChartType==="bars"} onClick={()=>setHomeChartType("bars")}>Barras</button>
-                <button type="button" className={homeChartType==="area"?"active":""} aria-pressed={homeChartType==="area"} onClick={()=>setHomeChartType("area")}>Área</button>
-              </div>
-              {homeChartType==="pie" ? <SimplePie title="Ingresos, compras y gastos" description="Distribución de los importes registrados en el periodo seleccionado." data={[
-                {key:"income",label:"Ingresos",value:homePieData.income.reduce((sum,item)=>sum+Number(item.value||0),0)},
-                {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
-                {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
-              ].filter((item)=>(item.key==="income"&&canAccessScreen("sales"))||(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} /> : homeChartType==="bars" ? <SimpleBars title="Ingresos, compras y gastos" description="Compara los importes registrados en el periodo seleccionado." badge={homeChartPeriod} data={[
-                {key:"income",label:"Ingresos",value:homePieData.income.reduce((sum,item)=>sum+Number(item.value||0),0)},
-                {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
-                {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
-              ].filter((item)=>(item.key==="income"&&canAccessScreen("sales"))||(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} /> : <SimpleArea title="Evolución de ingresos, compras y gastos" description="Sigue cómo cambian los importes a lo largo del periodo seleccionado." badge={homeChartPeriod} data={homePieData.trends} series={[
-                {key:"income",label:"Ingresos",color:"#0F766E"},{key:"purchases",label:"Compras",color:"#D97706"},{key:"expenses",label:"Gastos",color:"#DB2777"}
-              ].filter((item)=>(item.key==="income"&&canAccessScreen("sales"))||(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} footnote="La evolución usa ventas registradas, compras registradas y gastos anotados en el negocio activo." />}
-            </>}
+            {homePieData.loading ? <div className="home-pie-loading panel" role="status">Actualizando los gráficos con los movimientos registrados…</div> : <div className="home-chart-pair">
+              <section className="home-chart-cell" aria-label="Gráfico de ingresos">
+                <div className="home-chart-cell-heading"><div><h3>Ingresos</h3><p>Ventas registradas por artículo en el periodo elegido.</p></div></div>
+                <div className="chart-type-picker home-chart-type-picker" role="group" aria-label="Tipo de gráfico de ingresos">
+                  <button type="button" className={homeIncomeChartType==="pie"?"active":""} aria-pressed={homeIncomeChartType==="pie"} onClick={()=>setHomeIncomeChartType("pie")}>Pastel</button>
+                  <button type="button" className={homeIncomeChartType==="bars"?"active":""} aria-pressed={homeIncomeChartType==="bars"} onClick={()=>setHomeIncomeChartType("bars")}>Barras</button>
+                  <button type="button" className={homeIncomeChartType==="area"?"active":""} aria-pressed={homeIncomeChartType==="area"} onClick={()=>setHomeIncomeChartType("area")}>Área</button>
+                </div>
+                {!canAccessScreen("sales") ? <div className="simple-chart panel"><p className="simple-chart-empty">Tu perfil no tiene permiso para consultar ingresos.</p></div> :
+                  homeIncomeChartType==="pie" ? <SimplePie title="Distribución de ingresos" description="Participación de los artículos vendidos." data={homePieData.income} formatValue={(value)=>money(value,currencyCode)} compact /> :
+                  homeIncomeChartType==="bars" ? <SimpleBars title="Ingresos por artículo" description="Compara los artículos que generaron ingresos." badge={homeChartPeriod} data={homePieData.income.slice(0,8)} formatValue={(value)=>money(value,currencyCode)} /> :
+                  <SimpleArea title="Evolución de ingresos" description="Ventas registradas a través del periodo." badge={homeChartPeriod} data={homePieData.trends} series={[{key:"income",label:"Ingresos",color:"#0F766E"}]} formatValue={(value)=>money(value,currencyCode)} footnote="Solo incluye ventas registradas no anuladas del negocio activo." />}
+              </section>
+              <section className="home-chart-cell" aria-label="Gráfico de compras y gastos">
+                <div className="home-chart-cell-heading"><div><h3>Compras / Gastos</h3><p>Compara las compras y los gastos registrados.</p></div></div>
+                <div className="chart-type-picker home-chart-type-picker" role="group" aria-label="Tipo de gráfico de compras y gastos">
+                  <button type="button" className={homeSpendingChartType==="pie"?"active":""} aria-pressed={homeSpendingChartType==="pie"} onClick={()=>setHomeSpendingChartType("pie")}>Pastel</button>
+                  <button type="button" className={homeSpendingChartType==="bars"?"active":""} aria-pressed={homeSpendingChartType==="bars"} onClick={()=>setHomeSpendingChartType("bars")}>Barras</button>
+                  <button type="button" className={homeSpendingChartType==="area"?"active":""} aria-pressed={homeSpendingChartType==="area"} onClick={()=>setHomeSpendingChartType("area")}>Área</button>
+                </div>
+                {(!canViewPurchases && !canViewExpenses) ? <div className="simple-chart panel"><p className="simple-chart-empty">Tu perfil no tiene permiso para consultar compras ni gastos.</p></div> :
+                  homeSpendingChartType==="pie" ? <SimplePie title="Distribución de compras y gastos" description="Participación de cada tipo de salida registrada." data={[
+                    {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
+                    {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
+                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} compact /> :
+                  homeSpendingChartType==="bars" ? <SimpleBars title="Compras y gastos" description="Compara los importes de cada tipo de salida." badge={homeChartPeriod} data={[
+                    {key:"purchases",label:"Compras",value:homePieData.purchases.reduce((sum,item)=>sum+Number(item.value||0),0)},
+                    {key:"expenses",label:"Gastos",value:homePieData.expenses.reduce((sum,item)=>sum+Number(item.value||0),0)}
+                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} /> :
+                  <SimpleArea title="Evolución de compras y gastos" description="Salidas registradas durante el periodo." badge={homeChartPeriod} data={homePieData.trends} series={[
+                    {key:"purchases",label:"Compras",color:"#D97706"},{key:"expenses",label:"Gastos",color:"#DB2777"}
+                  ].filter((item)=>(item.key==="purchases"&&canViewPurchases)||(item.key==="expenses"&&canViewExpenses))} formatValue={(value)=>money(value,currencyCode)} footnote="Compras y gastos se muestran por separado y no se duplican en el mismo indicador." />}
+              </section>
+            </div>}
           </section>
         </div> : <section className="empty-state"><span className="empty-icon">{areas.find((a) => a.screen === screen)?.icon || "⌘"}</span><h3>{areas.find((a) => a.screen === screen)?.title || "Sección"}</h3><p>Estamos construyendo esta parte sobre la misma base segura. Tus datos no se simulan ni se inventan.</p><button className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>}
         <footer className="app-footer"><span>Los datos se separan por negocio.</span></footer>

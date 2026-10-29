@@ -497,6 +497,7 @@ const unitOptions = [
 ];
 const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "", is_bundle: false, bundle_components: [{ product_id: "", quantity: "1" }, { product_id: "", quantity: "1" }], bundle_discount: "0" };
 const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
+const blankNewProductVariant = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
@@ -1618,6 +1619,9 @@ const publicHelpArticles = [
   {category:"Primeros pasos",title:"¿Cómo empiezo a usar treseiscinco?",summary:"Crea tu cuenta, configura lo esencial y registra el primer artículo.",steps:["Crea una cuenta con un correo al que puedas acceder e inicia sesión.","Completa el nombre de tu negocio y revisa Configuración: moneda, datos comerciales y apariencia.","Abre Productos para registrar tus artículos. Después podrás añadir clientes, ventas, compras y gastos.","Vuelve a Inicio para revisar los indicadores de los movimientos que registres."],tip:"Usa tus datos reales desde el principio. Los indicadores no se rellenan con ventas ni gastos de ejemplo.",keywords:"crear registro cuenta negocio inicio empezar configurar"},
   {category:"Cuenta y acceso",title:"¿Cómo recupero mi contraseña?",summary:"Usa la opción de recuperación desde la pantalla de acceso.",steps:["En la pantalla de acceso, elige «Olvidé mi contraseña».","Escribe el correo asociado a tu cuenta y solicita el enlace de recuperación.","Revisa la bandeja de entrada y la carpeta de correo no deseado; abre el enlace y define una contraseña nueva.","Regresa a treseiscinco e inicia sesión con la contraseña nueva."],tip:"No compartas enlaces de recuperación, contraseñas ni códigos de verificación.",keywords:"contraseña olvidé recuperar restablecer login entrar acceso"},
   {category:"Productos e inventario",title:"¿Cómo registro o edito un producto?",summary:"La ficha reúne nombre, código, categoría, precio, costo y existencias.",steps:["Abre Productos y pulsa «Agregar artículo».","Completa el nombre y tipo; añade código, categoría, unidad, precio de venta y costo cuando correspondan.","Si controlas inventario físico, activa el seguimiento e indica existencias y mínimo de reposición.","Guarda el artículo. Para editar uno existente, abre su ficha y pulsa la acción de edición."],tip:"En celulares, toca la tarjeta para consultar los detalles completos del artículo.",keywords:"producto artículo sku código precio costo unidad existencias crear editar"},
+  {category:"Productos e inventario",title:"¿Cómo crear un paquete de productos con descuento?",summary:"Agrupa productos que se venden juntos y define un precio especial sin cambiar los precios individuales.",steps:["Abre Productos y pulsa «Agregar artículo».","Activa «Se vende junto a otros productos», dentro del formulario de creación del artículo.","Elige al menos dos productos ya registrados e indica la cantidad de cada uno.","Escribe el descuento fijo. Revisa el subtotal, el descuento y el precio final que se calculan automáticamente.","Guarda el paquete. Al venderlo se descuenta del inventario cada producto incluido que controle existencias."],tip:"El descuento solo afecta al paquete. Las ventas de cada producto por separado conservan su precio normal.",keywords:"paquete paquetes conjunto combo kit descuento productos vender juntos precio especial inventario"},
+  {category:"Productos e inventario",title:"¿Cómo agregar variantes al crear un producto?",summary:"Registra tallas, colores, tamaños u otras variantes desde el formulario inicial.",steps:["En Productos, pulsa «Agregar artículo».","En la sección «Variantes (opcional)», escribe el tipo, por ejemplo Talla o Color, y el valor, por ejemplo M o Azul.","Si hace falta, asigna código, precio propio o existencias separadas; puedes dejar esos datos vacíos para usar los valores generales del producto.","Pulsa «Añadir variante» y repite el proceso para cada opción. Después guarda el producto.","Más adelante podrás revisar y editar sus variantes desde la opción «Variantes» del producto."],tip:"Las variantes admiten fotos adicionales desde su editor. Revisa las existencias de cada variante antes de venderlas por separado.",keywords:"variantes crear producto talla color tamaño presentación sku precio inventario"},
+  {category:"Productos e inventario",title:"¿Cómo ajustar existencias y registrar el motivo?",summary:"Cada ajuste manual debe tener una cantidad y un motivo seleccionable.",steps:["Abre Productos, entra a la ficha del artículo y ve a la sección «Existencias».","Escribe una cantidad positiva para sumar unidades o negativa para restarlas.","En «Motivo», selecciona Compra (ajuste manual), Daño, Conteo físico, Devolución, Pérdida o robo, Uso interno, Ajuste inicial, Corrección de registro u Otro.","Si seleccionas «Otro», describe la razón y pulsa «Guardar ajuste».","Revisa el historial de movimientos para confirmar el cambio."],tip:"Cuando quieras registrar una compra completa con proveedor, costos y pagos, usa el módulo Compras. El ajuste manual sirve para corregir cantidades.",keywords:"inventario existencias motivo ajuste stock daño conteo físico compra devolución pérdida robo"},
   {category:"Productos e inventario",title:"¿Cómo importo muchos productos desde Excel o CSV?",summary:"La importación carga una plantilla con varias referencias.",steps:["En Productos, abre «Importar / exportar» o «Importar inventario», según el dispositivo.","Descarga la plantilla Excel o CSV y completa sus columnas sin cambiar los encabezados.","Sube el archivo .xls, .xlsx o .csv. La importación admite hasta 500 artículos por archivo.","Revisa el resultado y abre algunos productos para comprobar nombres, precios y cantidades."],tip:"La fila de muestra se omite al importar. Conserva una copia del archivo por si necesitas corregirlo.",keywords:"excel importar cargar csv plantilla inventario masivo archivo"},
   {category:"Productos e inventario",title:"¿Qué diferencia hay entre stock, mínimo y sin stock?",summary:"Las existencias muestran unidades actuales; el mínimo ayuda a anticipar reposiciones.",steps:["En Productos, revisa las existencias de cada artículo.","Define un mínimo de reposición en la ficha cuando quieras anticipar una alerta.","Usa el filtro de inventario para consultar los productos activos, con stock bajo o agotados.","Si un producto tiene variantes, revisa las existencias por talla, color u otra opción."],tip:"Los servicios o productos sin control de inventario pueden estar habilitados para la venta sin mostrar cantidades físicas.",keywords:"stock existencia unidades disponibles agotado reposición mínimo variantes"},
   {category:"Productos e inventario",title:"¿Cómo asigno impuestos a varios productos?",summary:"La asignación masiva guarda la tarifa para los artículos seleccionados.",steps:["En Productos, abre «Asignar impuesto a varios productos».","Selecciona la tarifa aplicable y busca productos por nombre o código.","Marca los artículos correspondientes y pulsa «Aplicar impuesto a seleccionados».","Abre una ficha para comprobar que se guardó la tarifa esperada."],tip:"IVA e impuesto al consumo son impuestos del producto. Retefuente, ReteIVA y ReteICA son retenciones distintas.",keywords:"impuesto IVA impoconsumo retefuente reteiva reteica tarifa"},
@@ -1629,6 +1633,8 @@ const publicHelpArticles = [
   {category:"Informes y rentabilidad",title:"¿Cómo leo Estadísticas y el balance?",summary:"Consulta las cifras por periodo y distingue dinero recibido de valores pendientes.",steps:["Abre Estadísticas y selecciona el periodo que quieres analizar.","Revisa ingresos cobrados, gastos y compras pagadas, junto con los desgloses disponibles.","Consulta el detalle para identificar qué movimientos componen una cifra.","Si un valor parece incorrecto, comprueba la fecha y el estado del movimiento original."],tip:"Ventas pendientes de cobro no equivalen a dinero que ya entró en caja.",keywords:"estadísticas balance gráficos periodo ventas ingresos gastos compras total"},
   {category:"Clientes y proveedores",title:"¿Cómo creo un cliente y lo relaciono con una venta?",summary:"La ficha mantiene los datos de contacto y ayuda a relacionar operaciones.",steps:["Abre Clientes y pulsa «Nuevo cliente».","Registra el nombre o empresa y los datos de contacto disponibles.","Guarda la ficha y selecciónala al crear una venta cuando quieras relacionarla con ese cliente."],tip:"No crees una segunda venta solo para relacionar un cliente con una operación existente.",keywords:"cliente comprador contacto empresa agregar crear relación venta"},
   {category:"Clientes y proveedores",title:"¿Dónde administro los proveedores?",summary:"Proveedores es un módulo propio para consultar y mantener esos registros.",steps:["Abre Proveedores en el menú principal.","Crea o edita los datos del proveedor disponibles.","Selecciona el proveedor en compras o gastos cuando quieras dejar constancia de su origen."],tip:"Mantener los nombres consistentes facilita encontrar registros y revisar movimientos.",keywords:"proveedor proveedores suministrador compras gastos contacto"},
+  {category:"Ventas y catálogo",title:"¿Cómo imprimir una cotización en tamaño carta?",summary:"Usa la salida PDF/impresión para obtener una propuesta vertical con el formato de los documentos de venta.",steps:["Abre Ventas y entra a Cotizaciones.","Despliega «Ver detalles» de la cotización correspondiente.","Pulsa «PDF / Imprimir» para abrir el documento y escoger «Carta» como tamaño de papel y orientación vertical en el diálogo de impresión.","Si prefieres enviarla como imagen, pulsa «Compartir imagen»: se genera una imagen vertical en proporción carta."],tip:"Si la vista previa muestra media carta, comprueba la opción de papel del diálogo de impresión. La impresión HTML y la imagen compartida son salidas distintas.",keywords:"cotización imprimir PDF papel carta media carta vertical compartir imagen factura"},
+  {category:"Clientes y proveedores",title:"¿Cómo agregar una clienta desde una venta o cotización?",summary:"Puedes crear la ficha sin salir del formulario donde estás trabajando.",steps:["Al crear una venta o cotización, abre el desplegable «Cliente».","Selecciona «＋ Agregar» dentro de la lista.","Completa los datos básicos y pulsa «Guardar y seleccionar»; el cliente quedará asociado a la operación."],tip:"En Clientes, «Asesora habitual» es opcional y sirve para registrar de qué asesora proviene normalmente la clienta.",keywords:"clientes agregar desde lista desplegable venta cotización asesora habitual opcional"},
   {category:"Ventas y catálogo",title:"¿Cómo preparo una cotización?",summary:"Prepara y comparte una propuesta antes de registrar una venta.",steps:["Abre Cotizaciones desde el módulo Ventas.","Crea una propuesta y añade cliente, conceptos, cantidades y precios según necesites.","Revisa el total y guarda la cotización.","Consulta su estado para continuar el seguimiento."],tip:"Comprueba los precios y la vigencia antes de compartir la propuesta con el cliente.",keywords:"cotización cotizaciones propuesta presupuesto cliente oferta"},
   {category:"Ventas y catálogo",title:"¿Cómo publico y comparto mi catálogo?",summary:"El catálogo público muestra los productos que hayas habilitado y publicado.",steps:["Abre Catálogo y revisa la configuración del enlace y los datos visibles del negocio.","Publica los artículos que deben aparecer y confirma que estén habilitados para la venta.","Copia o comparte el enlace público con tus clientes y comprueba la vista como visitante."],tip:"Antes de compartir el enlace, revisa fotos, descripciones, precios, métodos de entrega y visibilidad de existencias.",keywords:"catálogo público enlace compartir tienda publicar productos clientes"},
   {category:"Ventas y catálogo",title:"¿Cómo funcionan los cupones de descuento?",summary:"Los cupones permiten definir promociones con condiciones y vigencia.",steps:["Abre Cupones de descuento.","Crea el código y completa las condiciones, fechas y límites que permita el formulario.","Guarda la promoción y comprueba los detalles antes de compartirla."],tip:"Explica las condiciones del descuento y comprueba que el cupón siga vigente.",keywords:"cupón cupones descuento promoción código oferta"},
@@ -1970,6 +1976,8 @@ function AuthenticatedApp() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
+  const [newProductVariants, setNewProductVariants] = useState([]);
+  const [newProductVariantDraft, setNewProductVariantDraft] = useState(blankNewProductVariant);
   const [bundleProductOptions, setBundleProductOptions] = useState([]);
   const [bundleOptionsLoading, setBundleOptionsLoading] = useState(false);
   const [stagedImages, setStagedImages] = useState([]);
@@ -2357,6 +2365,7 @@ function AuthenticatedApp() {
   const [adjustingId, setAdjustingId] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
+  const [adjustOtherNote, setAdjustOtherNote] = useState("");
   const [stockMovementRows, setStockMovementRows] = useState([]);
   const [stockMovementsLoading, setStockMovementsLoading] = useState(false);
   const [stockMovementsCount, setStockMovementsCount] = useState(0);
@@ -4117,9 +4126,10 @@ function AuthenticatedApp() {
     stagedImages.forEach((image) => URL.revokeObjectURL(image.preview));
     setStagedImages([]);
     setProductForm(blankProduct);
+    setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
     if (editingProductId) setOpenProductGalleries((current) => ({ ...current, [editingProductId]: false }));
     setEditingProductId(null);
-    setAdjustDelta(""); setAdjustNote("");
+    setAdjustDelta(""); setAdjustNote(""); setAdjustOtherNote("");
     setStockMovementRows([]); setStockMovementsCount(0); setStockMovementPage(1);
     setShowProductForm(false);
     setError("");
@@ -4130,9 +4140,10 @@ function AuthenticatedApp() {
     const knownUnit = unitOptions.some(([value]) => value === product.unit_name);
     const digits = currencyDigits(currencyCode);
     setStagedImages([]);
+    setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
     setEditingProductId(product.id);
     setStockMovementPage(1);
-    setAdjustDelta(""); setAdjustNote("");
+    setAdjustDelta(""); setAdjustNote(""); setAdjustOtherNote("");
     setOpenProductGalleries((current) => ({ ...current, [product.id]: true }));
     setShowProductForm(true);
     setProductForm({
@@ -4389,12 +4400,55 @@ function AuthenticatedApp() {
     } finally { setBundleOptionsLoading(false); }
   }
 
+  function addNewProductVariantDraft() {
+    const draft = {
+      variant_name: String(newProductVariantDraft.variant_name || "").trim(),
+      variant_value: String(newProductVariantDraft.variant_value || "").trim(),
+      sku: String(newProductVariantDraft.sku || "").trim(),
+      sale_price: String(newProductVariantDraft.sale_price || "").trim(),
+      stock_on_hand: String(newProductVariantDraft.stock_on_hand || "").trim()
+    };
+    if (!draft.variant_name || !draft.variant_value) {
+      setError("Para añadir una variante, completa el tipo y el valor.");
+      return;
+    }
+    const duplicate = newProductVariants.some((variant) =>
+      String(variant.variant_name).trim().toLocaleLowerCase() === draft.variant_name.toLocaleLowerCase()
+      && String(variant.variant_value).trim().toLocaleLowerCase() === draft.variant_value.toLocaleLowerCase()
+    );
+    if (duplicate) {
+      setError("Esta variante ya está en la lista. Cambia el tipo o el valor para evitar duplicados.");
+      return;
+    }
+    setNewProductVariants((current) => [...current, draft]);
+    setNewProductVariantDraft(blankNewProductVariant);
+    setError("");
+  }
+
   async function addProduct(event) {
     event.preventDefault();
     if (!activeBusiness?.id) return;
     const currentProduct = editingProductId ? products.find(product => product.id === editingProductId) : null;
     const selectedBundleComponents = (productForm.bundle_components || []).filter(component => component.product_id);
     const selectedBundleIds = selectedBundleComponents.map(component => component.product_id);
+    const draftVariantTouched = Object.values(newProductVariantDraft || {}).some((value) => String(value || "").trim() !== "");
+    const variantsToCreate = !editingProductId ? [...newProductVariants] : [];
+    if (!editingProductId && draftVariantTouched) {
+      if (!String(newProductVariantDraft.variant_name || "").trim() || !String(newProductVariantDraft.variant_value || "").trim()) {
+        setError("Completa el tipo y el valor de la variante en curso o pulsa «Limpiar campos» antes de guardar el producto.");
+        return;
+      }
+      variantsToCreate.push({ ...newProductVariantDraft, variant_name: newProductVariantDraft.variant_name.trim(), variant_value: newProductVariantDraft.variant_value.trim() });
+    }
+    const variantKeys = variantsToCreate.map((variant) => String(variant.variant_name).trim().toLocaleLowerCase() + "::" + String(variant.variant_value).trim().toLocaleLowerCase());
+    if (new Set(variantKeys).size !== variantKeys.length) {
+      setError("Hay variantes repetidas. Deja una sola fila para cada tipo y valor.");
+      return;
+    }
+    if (variantsToCreate.some((variant) => (String(variant.sale_price || "").trim() !== "" && (!Number.isFinite(Number(variant.sale_price)) || Number(variant.sale_price) < 0)) || (String(variant.stock_on_hand || "").trim() !== "" && (!Number.isFinite(Number(variant.stock_on_hand)) || Number(variant.stock_on_hand) < 0)))) {
+      setError("Revisa los precios y las existencias de las variantes: deben ser valores iguales o mayores que cero.");
+      return;
+    }
     const discountMinor = Math.max(0, toMinorUnits(productForm.bundle_discount || "0", currencyCode));
     if (productForm.is_bundle) {
       if (currentProduct?.track_inventory && Number(currentProduct.stock_on_hand || 0) > 0) {
@@ -4482,7 +4536,24 @@ function AuthenticatedApp() {
       if (rpcError) throw rpcError;
       const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
       if (metadataError) throw metadataError;
+      let variantSaveWarning = "";
+      if (variantsToCreate.length) {
+        const variantPayloads = variantsToCreate.map((variant) => ({
+          business_id: activeBusiness.id,
+          product_id: newProductId,
+          variant_name: String(variant.variant_name).trim(),
+          variant_value: String(variant.variant_value).trim(),
+          sku: String(variant.sku || "").trim() || null,
+          sale_price_minor: String(variant.sale_price || "").trim() === "" ? null : toMinorUnits(variant.sale_price, currencyCode),
+          stock_on_hand: String(variant.stock_on_hand || "").trim() === "" ? null : Number(variant.stock_on_hand),
+          is_active: true
+        }));
+        const { error: variantsError } = await supabase.from("product_variants").insert(variantPayloads);
+        if (variantsError) variantSaveWarning = friendlyError(variantsError);
+      }
       setProductForm(blankProduct); setShowProductForm(false);
+      setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
+      setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
       setStagedImages([]);
       pendingImages.forEach((image) => URL.revokeObjectURL(image.preview));
       let uploaded = 0;
@@ -4493,7 +4564,10 @@ function AuthenticatedApp() {
       }
       setInventoryOverviewRefresh((current) => current + 1);
       setNotice(productForm.is_bundle ? "Paquete guardado. El precio especial aplica solo al paquete y se actualiza el inventario de sus productos al venderlo." : "Producto guardado. Las existencias iniciales quedaron registradas en el historial." + (uploaded ? " " + uploaded + (uploaded === 1 ? " foto guardada." : " fotos guardadas.") : ""));
-      if (imageFailures) setError("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
+      const postSaveWarnings = [];
+      if (imageFailures) postSaveWarnings.push("El producto sí se guardó, pero " + imageFailures + (imageFailures === 1 ? " foto no pudo subirse." : " fotos no pudieron subirse.") + " Puedes reintentarlo desde la ficha del producto.");
+      if (variantSaveWarning) postSaveWarnings.push("El producto sí se guardó, pero sus variantes no se pudieron guardar. Puedes añadirlas desde «Variantes» en la ficha del producto. " + variantSaveWarning);
+      if (postSaveWarnings.length) setError(postSaveWarnings.join(" "));
       setSearch(""); setProductPage(1);
       await loadProducts();
     } catch (e) { setError(friendlyError(e)); }
@@ -4504,17 +4578,19 @@ function AuthenticatedApp() {
     if (!productId || !activeBusiness?.id) return;
     const delta = Number(adjustDelta);
     if (!Number.isFinite(delta) || delta === 0) { setError("Escribe una cantidad distinta de cero."); return; }
+    if (!adjustNote) { setError("Selecciona el motivo del ajuste."); return; }
+    if (adjustNote === "Otro" && !adjustOtherNote.trim()) { setError("Describe el motivo del ajuste."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
       const { error: rpcError } = await supabase.rpc("adjust_product_stock", {
         p_business_id: activeBusiness.id, p_product_id: productId,
-        p_quantity_delta: delta, p_notes: adjustNote.trim() || null
+        p_quantity_delta: delta, p_notes: (adjustNote === "Otro" ? ("Otro: " + adjustOtherNote.trim()).trim() : adjustNote.trim()) || null
       });
       if (rpcError) throw rpcError;
       const { data: fresh, error: refreshError } = await supabase.from("products").select("stock_on_hand").eq("business_id", activeBusiness.id).eq("id", productId).single();
       if (refreshError) throw refreshError;
       setProductForm((current) => ({ ...current, stock: String(fresh.stock_on_hand) }));
-      setAdjustDelta(""); setAdjustNote("");
+      setAdjustDelta(""); setAdjustNote(""); setAdjustOtherNote("");
       setNotice("Existencias actualizadas. El movimiento quedó guardado en el historial.");
       setStockMovementPage(1); setStockMovementRefresh((value) => value + 1);
       setInventoryOverviewRefresh((current) => current + 1);
@@ -4540,7 +4616,7 @@ function AuthenticatedApp() {
       <div className="stock-adjust-form">
         <div>
           <label><span className="field-label-heading">Cambio (+ entra, − sale)<FieldHelp enabled={contextualHelpEnabled} text="Registra el ajuste de inventario: un número positivo suma unidades y uno negativo las resta." /></span><input type="number" step="0.001" value={adjustDelta} onChange={(e) => setAdjustDelta(e.target.value)} placeholder="Ej. 5 o -2" /></label>
-          <label><span className="field-label-heading">Motivo<FieldHelp enabled={contextualHelpEnabled} text="Explica por qué corriges el inventario, por ejemplo una compra, un daño o una diferencia de conteo." /></span><input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} maxLength={500} placeholder="Compra, daño, conteo…" /></label>
+          <label><span className="field-label-heading">Motivo<FieldHelp enabled={contextualHelpEnabled} text="Selecciona la causa del movimiento manual de existencias. Para registrar una compra completa, utiliza el módulo Compras." /></span><select value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} required><option value="">Selecciona un motivo…</option><option value="Compra (ajuste manual)">Compra (ajuste manual)</option><option value="Daño">Daño</option><option value="Conteo físico">Conteo físico</option><option value="Devolución">Devolución</option><option value="Pérdida o robo">Pérdida o robo</option><option value="Uso interno">Uso interno</option><option value="Ajuste inicial">Ajuste inicial</option><option value="Corrección de registro">Corrección de registro</option><option value="Otro">Otro</option></select></label>{adjustNote === "Otro" && <label><span className="field-label-heading">Detalle del motivo *</span><input value={adjustOtherNote} onChange={(e) => setAdjustOtherNote(e.target.value)} maxLength={500} placeholder="Explica el motivo" required /></label>}
         </div>
         <button type="button" className="primary-button" disabled={busy || !adjustDelta || Number(adjustDelta) === 0} onClick={() => saveInlineStock(product.id)}>{busy ? "Guardando…" : "Guardar ajuste"}</button>
       </div>
@@ -5525,7 +5601,7 @@ function AuthenticatedApp() {
        .summary .balance{font-weight:700;color:#174580}
        .notes{margin-top:24px;padding:14px;background:#f6f7f3;border:1px solid #E1E7F0;white-space:pre-wrap;break-inside:avoid;page-break-inside:avoid}
        .footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}
-       @media print{body{margin:0 auto;padding:0 12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}header,.meta,.summary,.notes{break-inside:avoid;page-break-inside:avoid}a{color:inherit;text-decoration:none}}
+       @media print{html,body{width:auto;max-width:none;margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}header,.meta,.summary,.notes{break-inside:avoid;page-break-inside:avoid}a{color:inherit;text-decoration:none}}
        @media screen{body{margin:24px auto;padding:0 24px}}
      </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
       <h2>Cotización comercial</h2><div class="document-number">${escapeHtml(quote.quote_number || "")}</div><p>Fecha de emisión: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</p>
@@ -5545,65 +5621,217 @@ function AuthenticatedApp() {
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
-    const width = 1200;
-    const height = 620 + Math.max(1, (quote.items || []).length) * 74 + (quote.notes ? 120 : 0);
+    const items = quote.items || [];
+    const rowHeight = (item) => Math.max(64, Math.min(112, Math.ceil(String(item.item_name || "").length / 46) * 24 + 34));
+    const rowsHeight = items.reduce((sum, item) => sum + rowHeight(item), 0);
+    const noteLines = quote.notes ? Math.max(1, Math.ceil(String(quote.notes).length / 100)) : 0;
+    const width = 1275; // 8.5 in at 150 dpi
+    const height = Math.max(1650, 1180 + rowsHeight + (noteLines ? noteLines * 26 + 55 : 0)); // 11 in minimum
     const canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = height;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) { setError("No se pudo preparar la imagen. Usa PDF / imprimir para compartir la cotización."); return; }
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height);
-    ctx.strokeStyle = "#DCE6F3"; ctx.lineWidth = 2; ctx.strokeRect(26,26,width-52,height-52);
-    ctx.fillStyle = "#174580"; ctx.fillRect(27,27,width-54,12);
-    let y = 86;
+    if (!ctx) { setError("No se pudo preparar la cotización. Usa PDF / Imprimir para guardarla."); return; }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "#DCE6F3";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(30, 30, width - 60, height - 60);
+    ctx.fillStyle = "#174580";
+    ctx.fillRect(31, 31, width - 62, 14);
+
+    let headerY = 105;
     if (logoUrl) {
       try {
-        const image = new Image(); image.crossOrigin = "anonymous"; image.src = logoUrl;
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.src = logoUrl;
         await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
-        ctx.drawImage(image, 60, 60, 128, 96);
-      } catch { /* Se conserva el documento aunque el navegador no permita incrustar el logo. */ }
+        ctx.drawImage(image, 72, 72, 150, 112);
+      } catch { /* El resto del documento se conserva si el logo no se puede incrustar. */ }
     }
-    ctx.fillStyle = "#174580"; ctx.font = "bold 32px Arial"; ctx.fillText(brand, 220, y);
-    ctx.fillStyle = "#19243A"; ctx.font = "18px Arial";
-    const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
-    companyLines.slice(0,5).forEach((line,index)=>ctx.fillText(String(line).slice(0,70),220,y+31+index*25));
-    y = 260;
-    ctx.strokeStyle = "#DCE6F3"; ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(width-60,y); ctx.stroke();
-    y += 54; ctx.fillStyle = "#202820"; ctx.font = "bold 30px Arial"; ctx.fillText("COTIZACIÓN " + quote.quote_number,60,y);
-    y += 38; ctx.font = "19px Arial"; ctx.fillText("Cliente: " + String(quote.customer_name || "").slice(0,70),60,y);
-    y += 32; ctx.fillText("Válida hasta: " + (quote.valid_until || "Sin fecha límite"),60,y);
-    y += 42; ctx.fillStyle = "#f0f4ed"; ctx.fillRect(60,y,width-120,44);
-    ctx.fillStyle = "#314236"; ctx.font = "bold 17px Arial"; ctx.fillText("ARTÍCULO / SERVICIO",72,y+28); ctx.fillText("CANT.",700,y+28); ctx.fillText("VALOR",830,y+28); ctx.fillText("TOTAL",1010,y+28);
-    y += 54; ctx.font = "17px Arial";
-    for (const item of (quote.items || [])) {
-      const itemName = String(item.item_name || "").slice(0,54);
-      ctx.fillStyle = "#202820"; ctx.fillText(itemName,72,y);
-      ctx.fillText(Number(item.quantity).toLocaleString("es-CO"),700,y);
-      ctx.fillText(money(item.unit_price_minor, quote.currency_code || currencyCode),830,y);
-      ctx.fillText(money(item.line_total_minor, quote.currency_code || currencyCode),1010,y);
-      y += 60; ctx.strokeStyle = "#E1E7F0"; ctx.beginPath(); ctx.moveTo(60,y-23); ctx.lineTo(width-60,y-23); ctx.stroke();
+    ctx.fillStyle = "#174580";
+    ctx.textAlign = "left";
+    ctx.font = "bold 34px Arial";
+    ctx.fillText(brand, 255, headerY);
+    ctx.fillStyle = "#19243A";
+    ctx.font = "20px Arial";
+    const companyLines = [
+      profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "",
+      profile.email, profile.phone,
+      [profile.address, profile.city].filter(Boolean).join(", "),
+      profile.website
+    ].filter(Boolean);
+    companyLines.slice(0, 5).forEach((line, index) => ctx.fillText(String(line).slice(0, 86), 255, headerY + 34 + index * 27));
+
+    ctx.strokeStyle = "#DCE6F3";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(72, 286);
+    ctx.lineTo(width - 72, 286);
+    ctx.stroke();
+
+    ctx.fillStyle = "#202820";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText("COTIZACIÓN COMERCIAL", 72, 355);
+    ctx.fillStyle = "#174580";
+    ctx.font = "bold 22px Arial";
+    ctx.fillText(String(quote.quote_number || ""), 72, 397);
+    ctx.fillStyle = "#19243A";
+    ctx.font = "18px Arial";
+    const issuedAt = quote.created_at
+      ? new Date(quote.created_at).toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })
+      : "Sin fecha";
+    ctx.fillText("Fecha de emisión: " + issuedAt, 72, 434);
+
+    ctx.font = "bold 18px Arial";
+    ctx.fillText("CLIENTE", 72, 490);
+    ctx.fillText("CONDICIONES", 690, 490);
+    ctx.font = "18px Arial";
+    ctx.fillText(String(quote.customer_name || "Cliente sin nombre").slice(0, 68), 72, 521);
+    if (quote.customer_email) ctx.fillText(String(quote.customer_email).slice(0, 64), 72, 550);
+    if (quote.customer_phone) ctx.fillText(String(quote.customer_phone).slice(0, 64), 72, 579);
+    const validDate = quote.valid_until
+      ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO", { timeZone: "America/Bogota", dateStyle: "long" })
+      : "Sin fecha límite";
+    ctx.fillText("Válida hasta: " + validDate, 690, 521);
+    ctx.fillText("Estado: " + quoteStatusLabel(quote.status), 690, 550);
+
+    let y = 620;
+    ctx.fillStyle = "#F0F4ED";
+    ctx.fillRect(72, y, width - 144, 50);
+    ctx.fillStyle = "#314236";
+    ctx.font = "bold 17px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("ARTÍCULO / SERVICIO", 88, y + 31);
+    ctx.textAlign = "center";
+    ctx.fillText("CANT.", 735, y + 31);
+    ctx.textAlign = "right";
+    ctx.fillText("PRECIO UNITARIO", 985, y + 31);
+    ctx.fillText("TOTAL", width - 88, y + 31);
+    ctx.textAlign = "left";
+    y += 50;
+
+    const drawWrappedText = (text, x, baseline, maxWidth, lineHeight, maxLines) => {
+      ctx.font = "18px Arial";
+      const words = String(text || "").split(/\s+/).filter(Boolean);
+      const wrapped = [];
+      let current = "";
+      for (const word of words) {
+        const candidate = current ? current + " " + word : word;
+        if (current && ctx.measureText(candidate).width > maxWidth) {
+          wrapped.push(current);
+          current = word;
+        } else current = candidate;
+      }
+      if (current) wrapped.push(current);
+      const visible = wrapped.slice(0, Math.max(1, maxLines));
+      if (wrapped.length > visible.length && visible.length) visible[visible.length - 1] = visible[visible.length - 1].replace(/[.…]*$/, "") + "…";
+      visible.forEach((line, index) => ctx.fillText(line, x, baseline + index * lineHeight));
+      return visible.length;
+    };
+
+    for (const item of items) {
+      const heightForRow = rowHeight(item);
+      const lines = Math.max(1, Math.floor((heightForRow - 18) / 24));
+      ctx.fillStyle = "#202820";
+      drawWrappedText(item.item_name, 88, y + 27, 545, 24, lines);
+      ctx.font = "18px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(Number(item.quantity).toLocaleString("es-CO"), 735, y + Math.round(heightForRow / 2) + 5);
+      ctx.textAlign = "right";
+      ctx.fillText(money(item.unit_price_minor, quote.currency_code || currencyCode), 985, y + Math.round(heightForRow / 2) + 5);
+      ctx.fillText(money(item.line_total_minor, quote.currency_code || currencyCode), width - 88, y + Math.round(heightForRow / 2) + 5);
+      ctx.textAlign = "left";
+      y += heightForRow;
+      ctx.strokeStyle = "#E1E7F0";
+      ctx.beginPath();
+      ctx.moveTo(72, y);
+      ctx.lineTo(width - 72, y);
+      ctx.stroke();
     }
-    y += 12; ctx.fillStyle = "#174580"; ctx.font = "bold 30px Arial"; ctx.textAlign = "right"; ctx.fillText("TOTAL: " + money(quote.total_minor, quote.currency_code || currencyCode),width-60,y); ctx.textAlign = "left";
-    if (quote.notes) { y += 48; ctx.fillStyle = "#19243A"; ctx.font = "17px Arial"; ctx.fillText("Notas: " + String(quote.notes).replace(/\s+/g," ").slice(0,130),60,y); }
+
+    y += 28;
+    const documentCurrency = quote.currency_code || currencyCode;
+    const subtotal = Number(quote.subtotal_minor ?? items.reduce((sum, item) => sum + Number(item.line_total_minor || 0), 0));
+    const discount = Number(quote.discount_minor || 0);
+    const tax = Number(quote.tax_minor || 0);
+    const total = Number(quote.total_minor ?? Math.max(0, subtotal - discount + tax));
+    const drawSummaryRow = (label, value, emph = false) => {
+      ctx.font = emph ? "bold 26px Arial" : "19px Arial";
+      ctx.fillStyle = emph ? "#174580" : "#202820";
+      ctx.textAlign = "left";
+      ctx.fillText(label, width - 505, y);
+      ctx.textAlign = "right";
+      ctx.fillText(money(value, documentCurrency), width - 88, y);
+      ctx.textAlign = "left";
+      ctx.strokeStyle = emph ? "#174580" : "#E1E7F0";
+      ctx.lineWidth = emph ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(width - 505, y + 12);
+      ctx.lineTo(width - 72, y + 12);
+      ctx.stroke();
+      y += emph ? 58 : 42;
+    };
+    drawSummaryRow("Subtotal", subtotal);
+    if (discount > 0) drawSummaryRow("Descuento", -discount);
+    if (tax > 0) drawSummaryRow("Impuestos", tax);
+    drawSummaryRow("TOTAL DE LA COTIZACIÓN", total, true);
+
+    if (quote.notes) {
+      y += 12;
+      ctx.fillStyle = "#F6F7F3";
+      const noteHeight = Math.max(76, noteLines * 26 + 48);
+      ctx.fillRect(72, y, width - 144, noteHeight);
+      ctx.strokeStyle = "#DCE6F3";
+      ctx.strokeRect(72, y, width - 144, noteHeight);
+      ctx.fillStyle = "#202820";
+      ctx.font = "bold 18px Arial";
+      ctx.fillText("NOTAS Y CONDICIONES", 90, y + 29);
+      drawWrappedText(quote.notes, 90, y + 57, width - 210, 26, Math.max(1, noteLines));
+      y += noteHeight;
+    }
+
+    ctx.strokeStyle = "#DCE6F3";
+    ctx.beginPath();
+    ctx.moveTo(72, height - 100);
+    ctx.lineTo(width - 72, height - 100);
+    ctx.stroke();
+    ctx.fillStyle = "#69758A";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Cotización comercial generada desde treseiscinco. Es una propuesta, no una factura ni comprobante de pago.", 72, height - 70);
+
     try {
-      const blob = await new Promise((resolve, reject) => { try { canvas.toBlob((value) => value ? resolve(value) : reject(new Error("No se pudo crear la imagen.")), "image/png"); } catch (e) { reject(e); } });
-      const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi,"-") + ".png";
+      const blob = await new Promise((resolve, reject) => {
+        try { canvas.toBlob((value) => value ? resolve(value) : reject(new Error("No se pudo crear la imagen.")), "image/png"); }
+        catch (error) { reject(error); }
+      });
+      const filename = String(quote.quote_number || "cotizacion").replace(/[^a-z0-9_-]/gi, "-") + "-carta.png";
       const file = new File([blob], filename, { type: "image/png" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: "Cotización " + quote.quote_number, text: "Propuesta comercial de " + brand }); }
-        catch (e) {
-          if (e?.name === "AbortError") return;
-          const url = URL.createObjectURL(blob); const downloadLink = document.createElement("a");
-          downloadLink.href = url; downloadLink.download = filename; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
+        try {
+          await navigator.share({ files: [file], title: "Cotización " + quote.quote_number, text: "Cotización vertical en formato carta de " + brand });
+        } catch (error) {
+          if (error?.name === "AbortError") return;
+          const url = URL.createObjectURL(blob);
+          const downloadLink = document.createElement("a");
+          downloadLink.href = url; downloadLink.download = filename;
+          document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
           window.setTimeout(() => URL.revokeObjectURL(url), 1200);
-          setNotice("La imagen quedó descargada para compartirla por WhatsApp o correo.");
+          setNotice("La cotización en formato vertical carta quedó descargada para compartirla o imprimirla.");
         }
       } else {
-        const url = URL.createObjectURL(blob); const downloadLink = document.createElement("a");
-        downloadLink.href = url; downloadLink.download = filename; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
+        const url = URL.createObjectURL(blob);
+        const downloadLink = document.createElement("a");
+        downloadLink.href = url; downloadLink.download = filename;
+        document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 1200);
-        setNotice("Imagen descargada. Ya puedes compartirla por WhatsApp o correo.");
+        setNotice("Cotización en formato vertical carta descargada para compartirla o imprimirla.");
       }
-    } catch (e) { setError("No se pudo generar la imagen en este navegador. Usa PDF / imprimir para compartir la cotización."); }
+    } catch {
+      setError("No se pudo generar la imagen. Usa PDF / Imprimir para guardar la cotización.");
+    }
   }
 
   function printSaleDocument(sale) {
@@ -7482,7 +7710,7 @@ function AuthenticatedApp() {
             <section className="inventory-overview">
               <div className="inventory-page-heading">
                 <div><p className="eyebrow">CATÁLOGO Y EXISTENCIAS</p><h2>Inventario</h2><p>Controla tus artículos, revisa el valor de las existencias y encuentra rápidamente lo que necesitas reponer.</p></div>
-                {canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "＋ Agregar artículo"}</button>}
+                {canManageProducts && <button className="primary-button compact-button" disabled={bulkEditMode || bulkProductsLoading || bulkProductsSaving} onClick={() => { if (showProductForm) cancelProductForm(); else { setShowProductForm(true); setEditingProductId(null); setProductForm(blankProduct); setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant); setError(""); } }}>{showProductForm ? (editingProductId ? "Cancelar edición" : "Cancelar") : "＋ Agregar artículo"}</button>}
                 <div className="inventory-import-actions">
                   <button
                     ref={inventoryDataTriggerRef}
@@ -7584,6 +7812,24 @@ function AuthenticatedApp() {
                 <label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre con el que identificas el producto o servicio en las listas y ventas." /></span><input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} maxLength={160} required placeholder="Ej. Camiseta blanca" /></label>
                 <label><span className="field-label-heading">Código del artículo<FieldHelp enabled={contextualHelpEnabled} text="Código interno o SKU para identificar y buscar este artículo. Puedes dejarlo vacío." /></span><input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} maxLength={100} placeholder="Ej. SKU-001" /></label>
                 <div className="product-category-field"><label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Clasifica el producto para organizarlo y encontrarlo con mayor facilidad." /></span><select value={productForm.category_id} onChange={(e) => { if (e.target.value === "__create_category__") { setShowQuickCategoryForm(true); return; } setProductForm((current) => ({ ...current, category_id: e.target.value })); }}><option value="">Sin categoría</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="__create_category__">＋ Nueva categoría…</option></select></label>{showQuickCategoryForm && <div className="inline-create-panel" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}><label><span>Nombre de la nueva categoría</span><input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={80} placeholder="Ej. Accesorios, insumos…" autoFocus /></label><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !categoryName.trim()} onClick={() => addCategory()}>{busy ? "Guardando…" : "Crear y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickCategoryForm(false); setCategoryName(""); }}>Cancelar</button></div></div>}<details className="product-categories-inline"><summary><AppIcon name="chevron-down" size={15}/> Administrar categorías existentes</summary><div className="product-categories-inline-list">{categories.length ? categories.map((category) => <div className="product-categories-inline-row" key={category.id}>{editingCategoryId === category.id ? <form className="category-edit-form" onSubmit={updateCategory}><input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} maxLength={80} required autoFocus aria-label="Nuevo nombre de categoría" /><button type="submit" className="secondary-button" disabled={busy}>Guardar</button><button type="button" className="text-button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }}>Cancelar</button></form> : <><span>{category.name}</span><div><button type="button" className="icon-action-button" title={"Editar categoría "+category.name} aria-label={"Editar categoría "+category.name} onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); setConfirmDeleteCategoryId(null); }}><AppIcon name="edit" size={14}/></button>{confirmDeleteCategoryId === category.id ? <><button type="button" className="text-button danger-text" disabled={busy} onClick={() => deleteCategory(category.id)}>Sí, eliminar</button><button type="button" className="text-button" onClick={() => setConfirmDeleteCategoryId(null)}>Cancelar</button></> : <button type="button" className="icon-action-button icon-action-danger" title={"Eliminar categoría "+category.name} aria-label={"Eliminar categoría "+category.name} onClick={() => setConfirmDeleteCategoryId(category.id)}><AppIcon name="trash" size={14}/></button>}</div></>}</div>) : <p>No hay categorías existentes.</p>}</div></details></div>
+                {!editingProductId && <section className="new-product-variants full-span">
+                  <div className="new-product-variants-heading"><div><strong>Variantes (opcional)</strong><p>Añade tallas, colores, tamaños u otras opciones desde la creación del producto.</p></div><FieldHelp enabled={contextualHelpEnabled} text="Cada variante distingue una opción concreta. Por ejemplo: tipo Talla, valor M. El precio y las existencias pueden usar los valores generales del producto." /></div>
+                  {newProductVariants.length > 0 && <div className="new-product-variant-list">
+                    {newProductVariants.map((variant, index) => <div className="new-product-variant-row" key={variant.variant_name + "-" + variant.variant_value + "-" + index}>
+                      <div><strong>{variant.variant_name}: {variant.variant_value}</strong><span>{variant.sku ? "Código " + variant.sku : "Sin código"} · {String(variant.sale_price || "").trim() === "" ? "Precio general" : money(toMinorUnits(variant.sale_price, currencyCode), currencyCode)} · {String(variant.stock_on_hand || "").trim() === "" ? "Existencias generales" : "Existencias " + Number(variant.stock_on_hand).toLocaleString("es-CO")}</span></div>
+                      <button type="button" className="text-button danger-text" onClick={() => setNewProductVariants((current) => current.filter((_, rowIndex) => rowIndex !== index))}>Quitar</button>
+                    </div>)}
+                  </div>}
+                  <div className="variant-form-grid">
+                    <label><span className="field-label-heading">Tipo de variante *</span><input value={newProductVariantDraft.variant_name} onChange={(event) => setNewProductVariantDraft((draft) => ({ ...draft, variant_name: event.target.value }))} maxLength={80} placeholder="Ej. Talla, Color" /></label>
+                    <label><span className="field-label-heading">Valor *</span><input value={newProductVariantDraft.variant_value} onChange={(event) => setNewProductVariantDraft((draft) => ({ ...draft, variant_value: event.target.value }))} maxLength={120} placeholder="Ej. M, Azul, 500 ml" /></label>
+                    <label><span className="field-label-heading">Código de variante</span><input value={newProductVariantDraft.sku} onChange={(event) => setNewProductVariantDraft((draft) => ({ ...draft, sku: event.target.value }))} maxLength={100} placeholder="Opcional" /></label>
+                    <label><span className="field-label-heading">Precio propio</span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={newProductVariantDraft.sale_price} onChange={(event) => setNewProductVariantDraft((draft) => ({ ...draft, sale_price: event.target.value }))} placeholder="Usar precio del producto" /></label>
+                    <label><span className="field-label-heading">Existencias propias</span><input type="number" min="0" step="0.001" value={newProductVariantDraft.stock_on_hand} onChange={(event) => setNewProductVariantDraft((draft) => ({ ...draft, stock_on_hand: event.target.value }))} placeholder="Usar existencias generales" /></label>
+                  </div>
+                  <p className="helper-text">Completa tipo y valor y pulsa «Añadir variante». Deja precio o existencias vacíos para heredar los del producto; las fotos se pueden añadir después desde el editor de variantes.</p>
+                  <div className="new-product-variant-actions"><button type="button" className="secondary-button" onClick={() => setNewProductVariantDraft(blankNewProductVariant)}>Limpiar campos</button><button type="button" className="primary-button" onClick={addNewProductVariantDraft}>＋ Añadir variante</button></div>
+                </section>}
                 <div className="bundle-editor full-span">
   <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Se vende junto a otros productos</strong><small>Agrupa dos o más productos con un precio especial, sin alterar sus precios individuales.</small></span></label>
   {productForm.is_bundle && <div className="bundle-builder">
@@ -8057,7 +8303,7 @@ function AuthenticatedApp() {
               {(canManageProducts || canManageSales || canManagePurchases || canManageExpenses || canManageCustomers) && <div className="home-create-menu" ref={homeCreateMenuRef}>
                 <button type="button" className={"secondary-button home-create-trigger"+(homeCreateMenuOpen?" is-open":"")} aria-haspopup="true" aria-expanded={homeCreateMenuOpen} onClick={() => setHomeCreateMenuOpen((open) => !open)}><AppIcon name="plus" size={17}/> Crear <AppIcon name="chevron-down" size={16}/></button>
                 {homeCreateMenuOpen && <div className="home-create-dropdown" role="group" aria-label="Acciones para crear">
-                  {canManageProducts && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setShowProductForm(true); }}><span className="home-create-item-icon"><AppIcon name="products" size={18}/></span><span><strong>Crear artículo</strong><small>Producto, servicio o artículo digital</small></span></button>}
+                  {canManageProducts && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); navigate("products"); setProductForm(blankProduct); setEditingProductId(null); setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant); setShowProductForm(true); }}><span className="home-create-item-icon"><AppIcon name="products" size={18}/></span><span><strong>Crear artículo</strong><small>Producto, servicio o artículo digital</small></span></button>}
                   {canManageSales && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); clearQuoteDraft(); setError(""); setNotice(""); navigate("quotes"); setShowQuoteForm(true); }}><span className="home-create-item-icon"><AppIcon name="quotes" size={18}/></span><span><strong>Crear cotización</strong><small>Preparar una propuesta para un cliente</small></span></button>}
                   {canManagePurchases && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setPurchaseModuleTab("purchases"); setShowPurchaseForm(true); navigate("purchases"); }}><span className="home-create-item-icon"><AppIcon name="purchases" size={18}/></span><span><strong>Registrar compra</strong><small>Ingresar una compra de proveedor</small></span></button>}
                   {canManageExpenses && <button type="button" onClick={() => { setHomeCreateMenuOpen(false); setPurchaseModuleTab("expenses"); setShowExpenseForm(true); navigate("purchases"); }}><span className="home-create-item-icon"><AppIcon name="expenses" size={18}/></span><span><strong>Registrar gasto</strong><small>Registrar una salida de dinero</small></span></button>}

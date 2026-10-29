@@ -186,10 +186,12 @@ test("las cotizaciones muestran filas alineadas y proveedores conserva su módul
   assert.match(app, /className="field-label-heading">Seleccionar cliente registrado<FieldHelp enabled=\{contextualHelpEnabled\}/);
   assert.match(app, /className="field-label-heading">Válida hasta<FieldHelp enabled=\{contextualHelpEnabled\}/);
   assert.match(app, /className="field-label-heading">Valor por hora \(COP\)<FieldHelp enabled=\{contextualHelpEnabled\}/);
-  const alignedRows = css.slice(css.lastIndexOf("/* Cotizaciones: filas alineadas por bloques"));
+  const alignedRows = css.slice(css.lastIndexOf("/* Cotizaciones: mismas dimensiones y ritmo visual que las filas de Ventas. */"));
   assert.match(alignedRows, /grid-template-areas:"meta customer totals toggle"/);
-  assert.match(alignedRows, /\.app-shell \.quotes-page \.quote-record\s*\{[\s\S]*?grid-template-columns:minmax\(125px,1fr\) minmax\(115px,.9fr\) minmax\(220px,1.35fr\) minmax\(215px,1.25fr\)!important;[\s\S]*?padding:12px 15px!important;[\s\S]*?border-radius:13px!important/);
+  assert.match(alignedRows, /\.app-shell \.quotes-page \.quote-record\s*\{[\s\S]*?grid-template-columns:minmax\(155px,.95fr\) minmax\(160px,1fr\) minmax\(270px,1.65fr\) minmax\(230px,1.25fr\)!important;[\s\S]*?min-height:136px!important;[\s\S]*?padding:18px 22px!important;[\s\S]*?border-radius:16px!important/);
   assert.match(alignedRows, /grid-area:details/);
+  assert.match(alignedRows, /@media \(max-width:680px\)[\s\S]*?min-height:0!important/);
+  assert.match(alignedRows, /\.app-shell \.quotes-page \.quote-record-bottom>div:first-child \{border-left:0!important\}/);
   assert.match(app, /className="quote-record-disclosure-bar"/);
   const quoteDisclosureStart = app.indexOf('className="quote-record-disclosure-bar"');
   const quoteDetailsStart = app.indexOf('className="quote-record-details"', quoteDisclosureStart);

@@ -6327,19 +6327,36 @@ function AuthenticatedApp() {
     const quantity = Number(saleQuantity);
     if (!product) { setError("Elige un producto."); return; }
     if (!Number.isFinite(quantity) || quantity <= 0) { setError("La cantidad debe ser mayor que cero."); return; }
-    if (product.track_inventory && quantity > Number(product.stock_on_hand)) {
-      setError("No hay existencias suficientes de " + product.name + ". Disponibles: " + Number(product.stock_on_hand).toLocaleString("es-CO") + ".");
+    const activeVariants = (variantsByProduct[product.id] || []).filter((variant) => variant.is_active);
+    const hasVariants = product.metadata?.has_variants === true || activeVariants.length > 0;
+    if (hasVariants && !saleVariantChoice) { setError("Elige la combinación exacta (por ejemplo, camiseta roja, talla S)."); return; }
+    const variant = hasVariants ? activeVariants.find((item) => item.id === saleVariantChoice) : null;
+    if (hasVariants && !variant) { setError("No encontramos esa combinación activa. Vuelve a elegirla."); return; }
+    if (variant && variant.stock_on_hand == null) { setError("Esta combinación no tiene existencias configuradas. Abre Productos → Variantes y registra su stock antes de vender."); return; }
+    const stock = variant ? Number(variant.stock_on_hand) : Number(product.stock_on_hand || 0);
+    const lineKey = product.id + ":" + (variant?.id || "base");
+    const currentQuantity = Number(saleItems.find((item) => item.line_key === lineKey)?.quantity || 0);
+    if ((variant || product.track_inventory) && currentQuantity + quantity > stock) {
+      setError("No hay suficientes existencias de " + (variant ? variantDisplayLabel(variant) : product.name) + ". Disponibles: " + stock.toLocaleString("es-CO") + ".");
       return;
     }
+    const unitPrice = Number(variant?.sale_price_minor ?? product.sale_price_minor ?? 0);
+    const lineName = product.name + (variant ? " · " + variantDisplayLabel(variant) : "");
     setSaleItems((current) => {
-      const exists = current.find((item) => item.product_id === product.id);
-      if (exists) return current.map((item) => item.product_id === product.id ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)) } : item);
-      return [...current, { product_id: product.id, name: product.name, quantity,
-        unit_price_minor: Number(product.sale_price_minor || 0), unit_cost_minor: Number(product.cost_price_minor || 0),
+      const exists = current.find((item) => item.line_key === lineKey);
+      if (exists) return current.map((item) => item.line_key === lineKey ? { ...item, quantity: Number((Number(item.quantity) + quantity).toFixed(3)) } : item);
+      return [...current, {
+        line_key: lineKey, product_id: product.id, variant_id: variant?.id || null,
+        name: lineName, quantity, unit_price_minor: unitPrice,
+        unit_cost_minor: Number(product.cost_price_minor || 0),
         tax_code: product.metadata?.tax_code || "none",
-        unit_name: product.unit_name || "unidad", track_inventory: product.track_inventory, stock_on_hand: Number(product.stock_on_hand || 0) }];
+        unit_name: product.unit_name || "unidad",
+        track_inventory: variant ? true : product.track_inventory,
+        stock_on_hand: stock,
+        sku: variant?.sku || product.sku || null
+      }];
     });
-    setSaleProductChoice(""); setSaleQuantity("1"); setError("");
+    setSaleProductChoice(""); setSaleVariantChoice(""); setSaleQuantity("1"); setError("");
   }
 
   async function createSale(event) {
@@ -6359,7 +6376,7 @@ function AuthenticatedApp() {
     try {
       const { data, error: saleError } = await supabase.rpc("create_sale_with_date", {
         p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
-        p_items: saleItems.map((item) => ({ product_id: item.product_id, quantity: Number(item.quantity) })),
+        p_items: saleItems.map((item) => ({ product_id: item.product_id, variant_id: item.variant_id || null, quantity: Number(item.quantity) })),
         p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null,
         p_initial_payment_method: saleInitialPaymentMethod,
         p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
@@ -6369,7 +6386,7 @@ function AuthenticatedApp() {
       const sale = Array.isArray(data) ? data[0] : data;
       const wasOnFirstSalesPage = salesPage === 1;
       setSalesPage(1);
-      setShowSaleForm(false); setSaleCustomerId(""); setSaleAdvisorName(""); setSaleProductChoice(""); setSaleQuantity("1");
+      setShowSaleForm(false); setSaleCustomerId(""); setSaleAdvisorName(""); setSaleProductChoice(""); setSaleVariantChoice(""); setSaleQuantity("1");
       setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó." + (cashChange > 0 ? " Devuelta: " + money(cashChange, currencyCode) + "." : ""));
       if (wasOnFirstSalesPage) await loadSalesModuleData();
@@ -7246,13 +7263,14 @@ function AuthenticatedApp() {
   <div className="sale-builder-related-field">
     <span className="field-label-heading">Producto<FieldHelp enabled={contextualHelpEnabled} text="Elige el producto que vas a vender. Se usará su precio actual y se comprobarán las existencias disponibles." /></span>
     <div className="sale-builder-control-line">
-      <select aria-label="Producto" value={saleProductChoice} onChange={e=>setSaleProductChoice(e.target.value)}>
+      <select aria-label="Producto" value={saleProductChoice} onChange={async e=>{const id=e.target.value;setSaleProductChoice(id);setSaleVariantChoice("");if(!id)return;setSaleVariantsLoading(true);try{await loadProductVariants(id);}catch(error){setError(friendlyError(error));}finally{setSaleVariantsLoading(false);}}}>
         <option value="">Elige un producto…</option>
         {saleProducts.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}{product.track_inventory?" · Stock "+Number(product.stock_on_hand).toLocaleString("es-CO"):""}</option>)}
       </select>
       {canManageProducts && <button type="button" className="sale-builder-inline-button" title="Crear artículo" aria-label="Crear artículo" onClick={() => setShowQuickSaleProductForm((open) => !open)}><AppIcon name="plus" size={16}/></button>}
     </div>
   </div>
+  {saleProductChoice && (((variantsByProduct[saleProductChoice] || []).some((variant) => variant.is_active)) || saleProducts.find((product) => product.id === saleProductChoice)?.metadata?.has_variants) && <label className="sale-variant-select"><span className="field-label-heading">Combinación / variante *</span><select value={saleVariantChoice} onChange={(event) => setSaleVariantChoice(event.target.value)} required><option value="">{saleVariantsLoading ? "Cargando variantes…" : "Elige color, talla u opción…"}</option>{(variantsByProduct[saleProductChoice] || []).filter((variant) => variant.is_active).map((variant) => <option key={variant.id} value={variant.id}>{variantDisplayLabel(variant)} · {variant.stock_on_hand == null ? "Stock sin configurar" : "Stock " + Number(variant.stock_on_hand).toLocaleString("es-CO")}{variant.sale_price_minor != null ? " · " + money(variant.sale_price_minor, currencyCode) : ""}{variant.sku ? " · " + variant.sku : ""}</option>)}</select>{!saleVariantsLoading && !(variantsByProduct[saleProductChoice] || []).some((variant) => variant.is_active) && <small>No hay combinaciones activas. Revisa el editor de variantes de este producto.</small>}</label>}
   <label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Indica cuántas unidades vas a vender." /></span><input type="number" min="0.001" step="0.001" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label>
   <button type="button" className="secondary-button sale-add-button" onClick={addSaleLine}>+ Agregar</button>
 </div>
@@ -7285,7 +7303,7 @@ function AuthenticatedApp() {
 </div>}
 {!saleProducts.length&&<p className="helper-text">No hay productos activos disponibles para vender. Registra o activa un producto primero.</p>}
 {saleItems.length>0&&<div className="sale-cart"><div className="sale-cart-heading"><strong>Artículos de la venta</strong><span>{saleItems.length} productos</span></div>
-{saleItems.map(item=><div className="sale-cart-row" key={item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>line.product_id===item.product_id?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>line.product_id!==item.product_id))}>Quitar</button></div>)}
+{saleItems.map(item=><div className="sale-cart-row" key={item.line_key || item.product_id}><div className="sale-cart-name"><strong>{item.name}</strong><span>{money(item.unit_price_minor,currencyCode)} por {item.unit_name}{item.variant_id ? " · Código " + (item.sku || "sin código") : ""}</span></div><label><span className="field-label-heading">Cantidad<FieldHelp enabled={contextualHelpEnabled} text="Ajusta las unidades de esta línea de venta; el total se recalcula automáticamente." /></span><input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>setSaleItems(current=>current.map(line=>(line.line_key || line.product_id)===(item.line_key || item.product_id)?{...line,quantity:e.target.value}:line))}/></label><strong className="sale-line-total">{money(Math.round(item.unit_price_minor*Number(item.quantity||0)),currencyCode)}</strong><button type="button" className="text-button danger-text" onClick={()=>setSaleItems(current=>current.filter(line=>(line.line_key || line.product_id)!==(item.line_key || item.product_id)))}>Quitar</button></div>)}
 <div className="sale-tax-summary"><span>Base de productos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).subtotal,0),currencyCode)}</strong></div>{saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0)>0&&<div className="sale-tax-summary"><span>Impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0),currencyCode)}</strong></div>}<div className="sale-total-line"><span>Total con impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0),currencyCode)}</strong></div></div>}
 <div className="sale-bottom-fields">
 <label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0" /></label>
@@ -7953,9 +7971,9 @@ function AuthenticatedApp() {
                   <div className="new-product-variant-actions"><button type="button" className="secondary-button" onClick={() => setNewProductVariantDraft(blankNewProductVariant)}>Limpiar campos</button><button type="button" className="primary-button" onClick={addNewProductVariantDraft}>＋ Añadir combinación</button></div>
                 </section>}
                 <div className="bundle-editor full-span">
-  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Se vende junto a otros productos</strong><small>Agrupa dos o más productos con un precio especial, sin alterar sus precios individuales.</small></span></label>
+  <label className="bundle-toggle"><input type="checkbox" checked={!!productForm.is_bundle} onChange={async event => { const enabled=event.target.checked; setProductForm(current=>({...current,is_bundle:enabled,product_type:"physical",unit_name:enabled?"set":current.unit_name,stock:enabled?"0":current.stock,bundle_components:current.bundle_components?.length>=2?current.bundle_components:[{product_id:"",quantity:"1"},{product_id:"",quantity:"1"}]})); if(enabled){try{await loadBundleProductOptions();}catch(error){setError(friendlyError(error));}} }} /> <span><strong>Crear paquete con precio especial</strong><small>Elige dos o más productos que se venden juntos. El descuento solo se aplica al paquete; cada artículo conserva su precio individual.</small></span></label>
   {productForm.is_bundle && <div className="bundle-builder">
-    <div className="bundle-heading"><strong>Productos incluidos</strong><span>Selecciona al menos 2 productos distintos.</span></div>
+    <div className="bundle-heading"><strong>Productos que incluye el paquete</strong><span>Selecciona al menos 2 productos distintos y la cantidad de cada uno.</span></div>
     {productForm.bundle_components.map((component,index)=><div className="bundle-component-row" key={"bundle-component-"+index}>
       <label><span className="field-label-heading">Producto {index+1}</span><select value={component.product_id} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,product_id:event.target.value}:row)}))}><option value="">Elige un producto…</option>{availableBundleComponents.map(product=><option key={product.id} value={product.id}>{product.name} · {money(product.sale_price_minor,currencyCode)}</option>)}</select></label>
       <label><span className="field-label-heading">Cantidad</span><input type="number" min="1" step="1" value={component.quantity} onChange={event=>setProductForm(current=>({...current,bundle_components:current.bundle_components.map((row,rowIndex)=>rowIndex===index?{...row,quantity:event.target.value}:row)}))}/></label>
@@ -8504,6 +8522,13 @@ function AuthenticatedApp() {
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>
+      {quoteImagePreview && <div className="quote-image-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuoteImagePreview(); }}>
+        <section className="quote-image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="quote-image-preview-title">
+          <div className="quote-image-preview-heading"><div><h3 id="quote-image-preview-title">Vista previa de la cotización</h3><p>{quoteImagePreview.quoteNumber} · Revisa el formato antes de compartir o descargar.</p></div><button type="button" className="icon-action-button" aria-label="Cerrar vista previa" onClick={closeQuoteImagePreview}>×</button></div>
+          <div className="quote-image-preview-visual"><img src={quoteImagePreview.url} alt={"Vista previa vertical de la cotización " + quoteImagePreview.quoteNumber}/></div>
+          <div className="quote-image-preview-actions"><button type="button" className="secondary-button" onClick={closeQuoteImagePreview}>Volver</button><button type="button" className="secondary-button" onClick={downloadQuoteImagePreview}>Descargar imagen</button><button type="button" className="primary-button" onClick={confirmShareQuoteImage}>Enviar / compartir</button></div>
+        </section>
+      </div>}
       <div className="context-help-layer" ref={contextHelpLayerRef}>
         {contextHelpOpen && (() => {
           const pageHelp = inAppPageHelp[screen] || {

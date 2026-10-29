@@ -138,7 +138,7 @@ function SimpleBars({ title, description, data, formatValue, badge = "7 días", 
   const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
   return <section className="simple-chart panel">
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
-    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title}>
+    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title} style={{gridTemplateColumns:"repeat("+Math.max(1,(data||[]).length)+",minmax(0,1fr))"}}>
       {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
         <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
         <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%"}} /></div>
@@ -5426,7 +5426,7 @@ function AuthenticatedApp() {
     if (!activeBusiness?.id) return;
     let catalogLink = window.location.origin + "/?catalog=" + encodeURIComponent(activeBusiness.id);
     const profile = activeBusiness.settings?.commercial_profile || {};
-    const slug = toPublicCatalogSlug(profile.tradeName || activeBusiness.name);
+    const slug = String(activeBusiness?.slug || "").trim().toLowerCase();
     if (slug.length >= 2 && slug.length <= 60 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && !reservedPublicPaths.has(slug)) {
       try {
         const { data, error: resolveError } = await supabase.rpc("resolve_public_catalog_slug", { p_slug: slug });

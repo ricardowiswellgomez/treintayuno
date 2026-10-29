@@ -496,8 +496,21 @@ const unitOptions = [
   ["sesión", "Sesión"], ["servicio", "Servicio"], ["personalizada", "Otra unidad…"]
 ];
 const blankProduct = { name: "", sku: "", category_id: "", description: "", commercial_presentation: "", product_type: "physical", unit_name: "unidad", unit_custom: "", sale_price: "", cost_price: "", tax_code: "none", stock: "0", low_stock: "", is_bundle: false, bundle_components: [{ product_id: "", quantity: "1" }, { product_id: "", quantity: "1" }], bundle_discount: "0" };
-const blankVariantDraft = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
-const blankNewProductVariant = { variant_name: "", variant_value: "", sku: "", sale_price: "", stock_on_hand: "" };
+const blankVariantDraft = { variant_name: "", variant_value: "", variant_name_2: "", variant_value_2: "", sku: "", sale_price: "", stock_on_hand: "", image_paths: [], staged_images: [] };
+const blankNewProductVariant = { variant_name: "", variant_value: "", variant_name_2: "", variant_value_2: "", sku: "", sale_price: "", stock_on_hand: "" };
+const makeInternalProductSku = () => "PRD-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase();
+const makeInternalVariantSku = (productSku) => String(productSku || "PRD").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 48) + "-V-" + crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+const variantDisplayLabel = (variant) => {
+  const names = String(variant?.variant_name || "").split(" + ");
+  const values = String(variant?.variant_value || "").split(" / ");
+  if (names.length > 1 && names.length === values.length) return names.map((name, index) => name + ": " + values[index]).join(" · ");
+  return [variant?.variant_name, variant?.variant_value].filter(Boolean).join(": ");
+};
+const parseVariantCombination = (variant) => {
+  const names = String(variant?.variant_name || "").split(" + ");
+  const values = String(variant?.variant_value || "").split(" / ");
+  return { variant_name: names[0] || "", variant_value: values[0] || "", variant_name_2: names.length > 1 ? names.slice(1).join(" + ") : "", variant_value_2: values.length > 1 ? values.slice(1).join(" / ") : "" };
+};
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
 const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
@@ -1976,6 +1989,7 @@ function AuthenticatedApp() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState(blankProduct);
+  const [productCodeMode, setProductCodeMode] = useState("auto");
   const [newProductVariants, setNewProductVariants] = useState([]);
   const [newProductVariantDraft, setNewProductVariantDraft] = useState(blankNewProductVariant);
   const [bundleProductOptions, setBundleProductOptions] = useState([]);
@@ -2182,6 +2196,8 @@ function AuthenticatedApp() {
   const [quickCustomerAddress, setQuickCustomerAddress] = useState("");
   const [quickCustomerSaving, setQuickCustomerSaving] = useState(false);
   const [saleProductChoice, setSaleProductChoice] = useState("");
+  const [saleVariantChoice, setSaleVariantChoice] = useState("");
+  const [saleVariantsLoading, setSaleVariantsLoading] = useState(false);
   const [showQuickSaleProductForm, setShowQuickSaleProductForm] = useState(false);
   const [quickSaleProductName, setQuickSaleProductName] = useState("");
   const [quickSaleProductCategoryId, setQuickSaleProductCategoryId] = useState("");
@@ -4129,6 +4145,7 @@ function AuthenticatedApp() {
     stagedImages.forEach((image) => URL.revokeObjectURL(image.preview));
     setStagedImages([]);
     setProductForm(blankProduct);
+    setProductCodeMode("auto");
     setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
     if (editingProductId) setOpenProductGalleries((current) => ({ ...current, [editingProductId]: false }));
     setEditingProductId(null);
@@ -4144,6 +4161,7 @@ function AuthenticatedApp() {
     const digits = currencyDigits(currencyCode);
     setStagedImages([]);
     setNewProductVariants([]); setNewProductVariantDraft(blankNewProductVariant);
+    setProductCodeMode(product.metadata?.sku_mode === "auto" ? "auto" : "manual");
     setEditingProductId(product.id);
     setStockMovementPage(1);
     setAdjustDelta(""); setAdjustNote(""); setAdjustOtherNote("");
@@ -4175,11 +4193,13 @@ function AuthenticatedApp() {
   async function loadProductVariants(productId) {
     if (!activeBusiness?.id || !productId) return;
     const { data, error: variantsError } = await supabase.from("product_variants")
-      .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,created_at")
+      .select("id,business_id,product_id,variant_name,variant_value,sku,sale_price_minor,stock_on_hand,is_active,image_paths,created_at")
       .eq("business_id", activeBusiness.id).eq("product_id", productId)
       .order("variant_name").order("variant_value").limit(500);
     if (variantsError) throw variantsError;
-    setVariantsByProduct((current) => ({ ...current, [productId]: data || [] }));
+    const rows = data || [];
+    setVariantsByProduct((current) => ({ ...current, [productId]: rows }));
+    return rows;
   }
 
   function openProductVariants(product) {
@@ -4194,8 +4214,7 @@ function AuthenticatedApp() {
     const digits = currencyDigits(currencyCode);
     (variantDraft.staged_images || []).forEach((image) => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setVariantDraft({
-      variant_name: variant.variant_name || "",
-      variant_value: variant.variant_value || "",
+      ...parseVariantCombination(variant),
       sku: variant.sku || "",
       sale_price: variant.sale_price_minor == null ? "" : String(Number(variant.sale_price_minor) / (10 ** digits)),
       stock_on_hand: variant.stock_on_hand == null ? "" : String(variant.stock_on_hand),
@@ -4246,8 +4265,26 @@ function AuthenticatedApp() {
   async function saveProductVariant(event) {
     event.preventDefault();
     if (!activeBusiness?.id || !viewingVariantsFor) return;
-    if (!variantDraft.variant_name.trim() || !variantDraft.variant_value.trim()) {
-      setError("Completa el nombre y el valor de la variante.");
+    const firstName = String(variantDraft.variant_name || "").trim();
+    const firstValue = String(variantDraft.variant_value || "").trim();
+    const secondName = String(variantDraft.variant_name_2 || "").trim();
+    const secondValue = String(variantDraft.variant_value_2 || "").trim();
+    if (!firstName || !firstValue || Boolean(secondName) !== Boolean(secondValue)) {
+      setError("Completa el primer atributo y valor. El segundo par puede quedar vacío, pero no incompleto.");
+      return;
+    }
+    const existingProduct = products.find((product) => product.id === viewingVariantsFor);
+    const codeMode = existingProduct?.metadata?.sku_mode === "auto" ? "auto" : "manual";
+    if (!editingVariantId && codeMode === "manual" && !String(variantDraft.sku || "").trim()) {
+      setError("Escribe el código de la variante o cambia a códigos automáticos en el producto.");
+      return;
+    }
+    if (String(variantDraft.stock_on_hand || "").trim() !== "" && (!Number.isFinite(Number(variantDraft.stock_on_hand)) || Number(variantDraft.stock_on_hand) < 0)) {
+      setError("Las existencias de la variante deben ser cero o un número positivo.");
+      return;
+    }
+    if (!editingVariantId && existingProduct?.track_inventory && Number(existingProduct.stock_on_hand || 0) > 0) {
+      setError("Este producto tiene existencias generales. Registra primero su salida o ajuste a cero antes de pasar a controlar stock por combinaciones.");
       return;
     }
     setVariantBusy(true); setError(""); setNotice("");
@@ -4255,9 +4292,9 @@ function AuthenticatedApp() {
       const payload = {
         business_id: activeBusiness.id,
         product_id: viewingVariantsFor,
-        variant_name: variantDraft.variant_name.trim(),
-        variant_value: variantDraft.variant_value.trim(),
-        sku: variantDraft.sku.trim() || null,
+        variant_name: secondName ? firstName + " + " + secondName : firstName,
+        variant_value: secondName ? firstValue + " / " + secondValue : firstValue,
+        sku: editingVariantId ? (String(variantDraft.sku || "").trim() || null) : (codeMode === "auto" ? makeInternalVariantSku(existingProduct?.sku) : String(variantDraft.sku || "").trim() || null),
         sale_price_minor: variantDraft.sale_price.trim() === "" ? null : toMinorUnits(variantDraft.sale_price, currencyCode),
         stock_on_hand: variantDraft.stock_on_hand.trim() === "" ? null : Number(variantDraft.stock_on_hand),
         is_active: true
@@ -4281,6 +4318,13 @@ function AuthenticatedApp() {
         if (saveError) throw saveError;
         if (!data?.id) throw new Error("No se pudo crear la variante.");
         variantId = data.id;
+        const { error: parentError } = await supabase.from("products").update({
+          track_inventory: false, stock_on_hand: 0, low_stock_threshold: null,
+          metadata: { ...(existingProduct?.metadata || {}), has_variants: true, sku_mode: existingProduct?.metadata?.sku_mode || "manual" },
+          updated_at: new Date().toISOString()
+        }).eq("business_id", activeBusiness.id).eq("id", viewingVariantsFor);
+        if (parentError) throw parentError;
+        await loadProducts();
       }
       let photosSaved = 0;
       let photosFailed = 0;
@@ -4434,15 +4478,39 @@ function AuthenticatedApp() {
     const currentProduct = editingProductId ? products.find(product => product.id === editingProductId) : null;
     const selectedBundleComponents = (productForm.bundle_components || []).filter(component => component.product_id);
     const selectedBundleIds = selectedBundleComponents.map(component => component.product_id);
+    const effectiveProductSku = editingProductId
+      ? (productCodeMode === "auto" ? (currentProduct?.sku || productForm.sku.trim() || makeInternalProductSku()) : (productForm.sku.trim() || currentProduct?.sku || ""))
+      : (productCodeMode === "auto" ? makeInternalProductSku() : productForm.sku.trim());
+    if (!effectiveProductSku) { setError("Escribe el código del artículo o selecciona códigos automáticos."); return; }
     const draftVariantTouched = Object.values(newProductVariantDraft || {}).some((value) => String(value || "").trim() !== "");
     const variantsToCreate = !editingProductId ? [...newProductVariants] : [];
     if (!editingProductId && draftVariantTouched) {
-      if (!String(newProductVariantDraft.variant_name || "").trim() || !String(newProductVariantDraft.variant_value || "").trim()) {
-        setError("Completa el tipo y el valor de la variante en curso o pulsa «Limpiar campos» antes de guardar el producto.");
+      const firstName = String(newProductVariantDraft.variant_name || "").trim();
+      const firstValue = String(newProductVariantDraft.variant_value || "").trim();
+      const secondName = String(newProductVariantDraft.variant_name_2 || "").trim();
+      const secondValue = String(newProductVariantDraft.variant_value_2 || "").trim();
+      if (!firstName || !firstValue || Boolean(secondName) !== Boolean(secondValue)) {
+        setError("Completa correctamente los atributos y valores de la variante en curso o limpia los campos.");
         return;
       }
-      variantsToCreate.push({ ...newProductVariantDraft, variant_name: newProductVariantDraft.variant_name.trim(), variant_value: newProductVariantDraft.variant_value.trim() });
+      if (productCodeMode === "manual" && !String(newProductVariantDraft.sku || "").trim()) {
+        setError("Escribe el código de la variante o selecciona códigos automáticos.");
+        return;
+      }
+      if (productForm.product_type === "physical" && String(newProductVariantDraft.stock_on_hand || "").trim() === "") {
+        setError("Indica las existencias de esta combinación antes de guardar el producto.");
+        return;
+      }
+      variantsToCreate.push({
+        variant_name: secondName ? firstName + " + " + secondName : firstName,
+        variant_value: secondName ? firstValue + " / " + secondValue : firstValue,
+        sku: productCodeMode === "manual" ? String(newProductVariantDraft.sku || "").trim() : "",
+        sale_price: String(newProductVariantDraft.sale_price || "").trim(),
+        stock_on_hand: String(newProductVariantDraft.stock_on_hand || "").trim()
+      });
     }
+    if (variantsToCreate.some((variant) => productForm.product_type === "physical" && String(variant.stock_on_hand ?? "").trim() === "")) { setError("Cada combinación física debe tener sus propias existencias, aunque sean cero."); return; }
+    if (productCodeMode === "manual" && variantsToCreate.some((variant) => !String(variant.sku || "").trim())) { setError("Completa el código de cada variante porque elegiste códigos manuales."); return; }
     const variantKeys = variantsToCreate.map((variant) => String(variant.variant_name).trim().toLocaleLowerCase() + "::" + String(variant.variant_value).trim().toLocaleLowerCase());
     if (new Set(variantKeys).size !== variantKeys.length) {
       setError("Hay variantes repetidas. Deja una sola fila para cada tipo y valor.");
@@ -4485,6 +4553,8 @@ function AuthenticatedApp() {
       const productMetadata = {
         ...existingMetadata,
         tax_code: productForm.tax_code || "none",
+        sku_mode: productCodeMode,
+        has_variants: Boolean(currentProduct?.metadata?.has_variants) || variantsToCreate.length > 0,
         ...(productForm.is_bundle ? {
           is_bundle: true,
           bundle_components: selectedBundleComponents.map(component => ({ product_id: component.product_id, quantity: Number(component.quantity) })),
@@ -4497,7 +4567,7 @@ function AuthenticatedApp() {
         const { data: updated, error: updateError } = await supabase.from("products")
           .update({
             name: productForm.name.trim(),
-            sku: productForm.sku.trim() || null,
+            sku: effectiveProductSku,
             category_id: productForm.category_id || null,
             description: productForm.description.trim() || null,
             commercial_presentation: productForm.commercial_presentation.trim() || null,
@@ -4526,18 +4596,18 @@ function AuthenticatedApp() {
         p_business_id: activeBusiness.id,
         p_name: productForm.name.trim(),
         p_category_id: productForm.category_id || null,
-        p_sku: productForm.sku.trim() || null,
+        p_sku: effectiveProductSku,
         p_description: productForm.description.trim() || null,
         p_product_type: productForm.product_type,
         p_unit_name: (productForm.unit_name === "personalizada" ? productForm.unit_custom.trim() : productForm.unit_name.trim()) || "unidad",
         p_sale_price_minor: salePriceMinor,
         p_cost_price_minor: costPriceMinor,
-        p_opening_stock: productForm.is_bundle ? 0 : Number(productForm.stock || 0),
-        p_low_stock_threshold: productForm.is_bundle || productForm.low_stock === "" ? null : Number(productForm.low_stock),
+        p_opening_stock: productForm.is_bundle || (variantsToCreate.length > 0 && productForm.product_type === "physical") ? 0 : Number(productForm.stock || 0),
+        p_low_stock_threshold: productForm.is_bundle || variantsToCreate.length > 0 || productForm.low_stock === "" ? null : Number(productForm.low_stock),
         p_commercial_presentation: productForm.commercial_presentation.trim() || null
       });
       if (rpcError) throw rpcError;
-      const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
+      const { error: metadataError } = await supabase.from("products").update({ metadata: productMetadata, ...(productForm.is_bundle ? { track_inventory: false, stock_on_hand: 0, is_published: false } : variantsToCreate.length && productForm.product_type === "physical" ? { track_inventory: false, stock_on_hand: 0, low_stock_threshold: null } : {}) }).eq("business_id", activeBusiness.id).eq("id", newProductId);
       if (metadataError) throw metadataError;
       let variantSaveWarning = "";
       if (variantsToCreate.length) {
@@ -4546,7 +4616,7 @@ function AuthenticatedApp() {
           product_id: newProductId,
           variant_name: String(variant.variant_name).trim(),
           variant_value: String(variant.variant_value).trim(),
-          sku: String(variant.sku || "").trim() || null,
+          sku: productCodeMode === "auto" ? makeInternalVariantSku(effectiveProductSku) : String(variant.sku || "").trim() || null,
           sale_price_minor: String(variant.sale_price || "").trim() === "" ? null : toMinorUnits(variant.sale_price, currencyCode),
           stock_on_hand: String(variant.stock_on_hand || "").trim() === "" ? null : Number(variant.stock_on_hand),
           is_active: true

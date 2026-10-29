@@ -10534,3 +10534,22 @@ body { background: #F5F7FC; color: #19243A; }
   .quote-image-preview-visual img { max-height:calc(100dvh - 220px); }
   .quote-image-preview-actions { display:grid; grid-template-columns:1fr; }
 }
+
+
+/* Historial de suscripciones: negocio, transición y fecha/contacto en una sola fila. */
+.platform-event-row { display:grid; grid-template-columns:minmax(190px,1.2fr) minmax(160px,1fr) minmax(240px,1.25fr) auto; align-items:center; column-gap:16px; row-gap:6px; }
+.platform-event-row>div { min-width:0; display:flex; flex-direction:column; gap:4px; }
+.platform-event-business strong,.platform-event-transition strong,.platform-event-when strong { overflow-wrap:anywhere; line-height:1.4; }
+.platform-event-transition span,.platform-event-when span { color:var(--muted);font-size:12px;line-height:1.4;overflow-wrap:anywhere; }
+.platform-event-when p { margin:2px 0 0; }
+@media(max-width:850px) { .platform-event-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 12px; } .platform-event-when { grid-column:1 / -1; } }
+@media(max-width:520px) { .platform-event-row { grid-template-columns:minmax(0,1fr); } .platform-event-when { grid-column:auto; } }
+.bundle-builder { margin-top:16px; }
+.bundle-heading { display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin:0 0 16px; }
+.bundle-heading strong { display:block;line-height:1.4; }
+.bundle-heading span { display:block;line-height:1.5;color:var(--muted); }
+.bundle-toggle { margin-bottom:0; }
+.bundle-toggle>span { gap:9px; }
+.bundle-toggle>span small { margin-top:2px; }
+.quote-image-preview-backdrop { z-index:2147483647; }
+.quote-image-preview-dialog { position:relative; z-index:1; }

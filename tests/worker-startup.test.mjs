@@ -241,9 +241,9 @@ test("quotation records stay compact like sales rows and reveal actions only whe
   const cssSource = readSource(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(appSource, /className="quote-record-disclosure-bar"/);
   assert.match(appSource, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);
-  assert.match(cssSource, /\.app-shell \.quotes-page \.quote-record\s*\{[\s\S]*?grid-template-areas:"meta customer totals toggle toggle"/);
+  assert.match(cssSource, /\.app-shell \.quotes-page \.quote-record\s*\{[\s\S]*?grid-template-areas:"meta customer totals toggle"/);
   assert.match(cssSource, /\.app-shell \.quotes-page \.quote-record-details\[hidden\] \{display:none!important\}/);
-  assert.match(cssSource, /@media \(max-width:760px\)[\s\S]*?grid-template-areas:"meta totals" "customer customer" "toggle toggle"/);
+  assert.match(cssSource, /@media \(max-width:680px\)[\s\S]*?grid-template-areas:"meta totals" "customer totals" "toggle toggle" "details details"/);
 });
 
 test("support email delivery retries one transient provider failure and then succeeds", async () => {

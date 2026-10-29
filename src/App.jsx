@@ -5489,16 +5489,51 @@ function AuthenticatedApp() {
     const profile = activeBusiness?.settings?.commercial_profile || {};
     const brand = profile.tradeName || activeBusiness?.name || "Mi empresa";
     const logoUrl = getBusinessLogoUrl(activeBusiness?.logo_path);
-    const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\"num\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\"num\">" + escapeHtml(money(item.unit_price_minor, quote.currency_code || currencyCode)) + "</td><td class=\"num\">" + escapeHtml(money(item.line_total_minor, quote.currency_code || currencyCode)) + "</td></tr>").join("");
+    const documentCurrency = quote.currency_code || currencyCode;
+    const items = (quote.items || []).map((item) => "<tr><td>" + escapeHtml(item.item_name) + "</td><td class=\\"num\\">" + escapeHtml(Number(item.quantity).toLocaleString("es-CO")) + "</td><td class=\\"num\\">" + escapeHtml(money(item.unit_price_minor, documentCurrency)) + "</td><td class=\\"num\\">" + escapeHtml(money(item.line_total_minor, documentCurrency)) + "</td></tr>").join("");
     const companyLines = [profile.documentNumber ? "NIT / documento: " + profile.documentNumber : "", profile.email, profile.phone, [profile.address, profile.city].filter(Boolean).join(", "), profile.website].filter(Boolean);
+    const subtotal = Number(quote.subtotal_minor || (quote.items || []).reduce((sum,item)=>sum+Number(item.line_total_minor||0),0));
+    const discount = Number(quote.discount_minor || 0);
+    const tax = Number(quote.tax_minor || 0);
+    const total = Number(quote.total_minor || Math.max(0, subtotal - discount + tax));
+    const summaryRows = "<div><span>Subtotal</span><strong>" + escapeHtml(money(subtotal, documentCurrency)) + "</strong></div>"
+      + (discount > 0 ? "<div><span>Descuento</span><strong>− " + escapeHtml(money(discount, documentCurrency)) + "</strong></div>" : "")
+      + (tax > 0 ? "<div><span>Impuestos</span><strong>" + escapeHtml(money(tax, documentCurrency)) + "</strong></div>" : "")
+      + "<div class=\\"balance\\"><span>Total de la cotización</span><strong>" + escapeHtml(money(total, documentCurrency)) + "</strong></div>";
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(quote.quote_number)} - ${escapeHtml(brand)}</title><style>
-      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:38px auto;max-width:900px;padding:0 28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}header img{max-width:110px;max-height:85px;object-fit:contain}h1{font-size:24px;margin:0 0 4px;color:#174580}h2{margin:25px 0 8px;font-size:22px}p{margin:4px 0}small{color:#69758A}.meta{display:flex;justify-content:space-between;gap:18px;margin:24px 0}.meta>div{min-width:0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px}th{background:#f2f5ef}.num{text-align:right;white-space:nowrap}.total{text-align:right;font-size:20px;font-weight:700;margin-top:22px}.notes{margin-top:24px;padding:14px;background:#f6f7f3;border-radius:8px;white-space:pre-wrap}.footer{margin-top:42px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}@media print{body{margin:0 auto;padding:0 12px}@page{size:letter portrait;margin:14mm}}
-    </style></head><body><header>${logoUrl ? "<img src=\"" + escapeHtml(logoUrl) + "\" alt=\"Logo\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
-      <h2>Cotización ${escapeHtml(quote.quote_number)}</h2><small>Fecha: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</small>
-      <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name)}</p><p>${escapeHtml(quote.customer_email || "")}</p><p>${escapeHtml(quote.customer_phone || "")}</p></div><div><strong>Válida hasta</strong><p>${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
-      <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total: ${escapeHtml(money(quote.total_minor, quote.currency_code || currencyCode))}</div>
-      ${quote.notes ? "<div class=\"notes\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Documento comercial generado desde treseiscinco · ${escapeHtml(brand)}</div>
-      <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\/script></body></html>`;
+      @page{size:letter portrait;margin:14mm}
+      *{box-sizing:border-box}
+      body{font:14px/1.55 Arial,sans-serif;color:#202820;margin:0 auto;max-width:900px;padding:0 12px;background:#fff}
+      header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #174580;padding-bottom:18px}
+      header img{max-width:110px;max-height:85px;object-fit:contain}
+      h1{font-size:24px;margin:0 0 4px;color:#174580}
+      h2{margin:25px 0 8px;font-size:22px;color:#174580}
+      p{margin:4px 0;overflow-wrap:anywhere}
+      small{color:#69758A}
+      .document-number{font-size:13px;font-weight:700;color:#174580;margin-top:4px}
+      .meta{display:flex;justify-content:space-between;gap:24px;margin:24px 0}
+      .meta>div{min-width:0;flex:1}
+      .meta strong{display:block;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;margin-top:20px;page-break-inside:auto}
+      thead{display:table-header-group}
+      tr{break-inside:avoid;page-break-inside:avoid}
+      th,td{text-align:left;border-bottom:1px solid #E1E7F0;padding:10px 8px;vertical-align:top}
+      th{background:#f2f5ef;font-size:12px;text-transform:uppercase;letter-spacing:.025em}
+      .num{text-align:right;white-space:nowrap}
+      .summary{margin:22px 0 0 auto;max-width:340px;break-inside:avoid}
+      .summary>div{display:flex;justify-content:space-between;gap:18px;padding:7px 0;border-bottom:1px solid #E1E7F0}
+      .summary .balance{font-size:16px;font-weight:800;color:#174580;border-top:2px solid #174580;margin-top:4px;padding-top:12px}
+      .notes{margin-top:24px;padding:14px;background:#f6f7f3;border:1px solid #E1E7F0;border-radius:8px;white-space:pre-wrap;break-inside:avoid}
+      .footer{margin-top:38px;border-top:1px solid #E1E7F0;padding-top:12px;color:#69758A;font-size:12px}
+      @media print{html,body{width:auto;max-width:none;margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}header,.meta,.summary,.notes{break-inside:avoid;page-break-inside:avoid}a{color:inherit;text-decoration:none}}
+      @media screen{body{margin:24px auto;padding:0 24px}}
+    </style></head><body><header>${logoUrl ? "<img src=\\"" + escapeHtml(logoUrl) + "\\" alt=\\"Logo\\">" : ""}<div><h1>${escapeHtml(brand)}</h1>${companyLines.map((line) => "<p>" + escapeHtml(line) + "</p>").join("")}</div></header>
+      <h2>Cotización comercial</h2><div class="document-number">${escapeHtml(quote.quote_number || "")}</div><p>Fecha de emisión: ${new Date(quote.created_at).toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"})}</p>
+      <div class="meta"><div><strong>Cliente</strong><p>${escapeHtml(quote.customer_name || "Cliente sin nombre")}</p>${quote.customer_email ? "<p>" + escapeHtml(quote.customer_email) + "</p>" : ""}${quote.customer_phone ? "<p>" + escapeHtml(quote.customer_phone) + "</p>" : ""}</div><div><strong>Condiciones</strong><p>Válida hasta: ${quote.valid_until ? new Date(quote.valid_until + "T12:00:00-05:00").toLocaleDateString("es-CO",{timeZone:"America/Bogota",dateStyle:"long"}) : "Sin fecha límite"}</p><p>Estado: ${escapeHtml(quoteStatusLabel(quote.status))}</p></div></div>
+      <table><thead><tr><th>Artículo / servicio</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Total</th></tr></thead><tbody>${items}</tbody></table>
+      <div class="summary">${summaryRows}</div>
+      ${quote.notes ? "<div class=\\"notes\\"><strong>Notas y condiciones</strong><p>" + escapeHtml(quote.notes) + "</p></div>" : ""}<div class="footer">Cotización comercial generada desde treseiscinco · ${escapeHtml(brand)}. Este documento es una propuesta comercial, no una factura ni comprobante de pago.</div>
+      <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print()},350)})<\\/script></body></html>`;
     const win = window.open(window.location.href, "_blank", "width=900,height=900");
     if (!win) { setError("Permite las ventanas emergentes para abrir la cotización e imprimirla o guardarla como PDF."); return; }
     try { win.opener = null; } catch { /* La impresión no depende de window.opener. */ }

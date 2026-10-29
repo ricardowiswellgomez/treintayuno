@@ -1,0 +1,30 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const worker = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
+const config = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
+const migration = readFileSync(new URL("../supabase/migrations/20261029040000_reject_disposable_signup_domains.sql", import.meta.url), "utf8");
+
+test("signup proxy is protected by Turnstile and rate limiting", () => {
+  assert.match(worker, /async function protectedSignup\(/);
+  assert.match(worker, /env\.SIGNUP_LIMITER/);
+  assert.match(worker, /env\.TURNSTILE_SECRET/);
+  assert.match(worker, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
+  assert.match(worker, /verification\?\.success/);
+  assert.match(config.ratelimits.find((item) => item.name === "SIGNUP_LIMITER")?.simple?.limit?.toString() || "", /5/);
+});
+
+test("temporary email providers are rejected at the server boundary", () => {
+  assert.match(worker, /37xiao\.com/);
+  assert.match(worker, /Ese dominio de correo es temporal/);
+  assert.match(migration, /CREATE TRIGGER reject_disposable_signup_email/);
+  assert.match(migration, /37xiao\.com/);
+  assert.match(migration, /BEFORE INSERT OR UPDATE OF email ON auth\.users/);
+});
+
+test("the frontend intercepts the Auth signup request and requires a token", () => {
+  assert.match(worker, /treseiscinco-signup-security/);
+  assert.match(worker, /x-turnstile-token/);
+  assert.match(worker, /window\.__t365SignupCaptchaToken/);
+});

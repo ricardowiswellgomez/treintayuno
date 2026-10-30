@@ -347,3 +347,9 @@ test("el nombre del asistente se limita a caracteres seguros y la memoria conser
   assert.ok(migration.includes("assistant_memories_delete_own_business"));
   assert.ok(migration.includes("unique (user_id,business_id,memory_key)"));
 });
+
+test("la IA no promete guardar una preferencia cuando la solicitud no puede almacenarse", () => {
+  assert.ok(worker.includes("memoryRequestIntent"));
+  assert.ok(worker.includes("memoryRequestIntent&&(!detectedMemory||Boolean(detectedMemory.rejected))"));
+  assert.ok(worker.includes("MEMORIA NO GUARDADA"));
+});

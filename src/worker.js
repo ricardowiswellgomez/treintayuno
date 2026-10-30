@@ -189,7 +189,7 @@ get("profiles",{select:"display_name",user_id:"eq."+user.id,limit:"1"},token,key
 get("assistant_memories",{select:"memory_type,memory_value,updated_at",business_id:"eq."+bid,user_id:"eq."+user.id,order:"updated_at.desc",limit:"12"},token,key).catch(()=>[])
 ]);if(!mem.length||!businesses.length)return send({error:"No tienes acceso a este negocio."},403);
 const m=mem[0],biz=businesses[0],admin=["owner","admin"].includes(m.role),saved=m.permissions||{},pr=saved,can=k=>admin||!!pr[k],userName=String(profiles[0]?.display_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"").trim().slice(0,80),assistantMemories=[...storedMemories],detectedMemory=detectAssistantMemory(q);
-let memorySaved=false,memoryRejected=Boolean(detectedMemory?.rejected);
+const memoryRequestIntent=/^(?:recu[eé]rdame que|recuerda que|ten en cuenta que|prefiero(?: que)?|me gusta que|mi objetivo(?: principal)? es|mi meta(?: principal)? es)\\b/i.test(q);let memorySaved=false,memoryRejected=memoryRequestIntent&&(!detectedMemory||Boolean(detectedMemory.rejected));
 if(detectedMemory&&!detectedMemory.rejected){try{
 const memoryResponse=await fetch(DB+"/rest/v1/assistant_memories?on_conflict=user_id,business_id,memory_key",{method:"POST",headers:{apikey:key,Authorization:"Bearer "+token,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({user_id:user.id,business_id:bid,memory_key:detectedMemory.key,memory_type:detectedMemory.type,memory_value:detectedMemory.value,updated_at:new Date().toISOString()})});
 memorySaved=memoryResponse.ok;if(memorySaved){assistantMemories.unshift({memory_type:detectedMemory.type,memory_value:detectedMemory.value});assistantMemories.splice(12);}

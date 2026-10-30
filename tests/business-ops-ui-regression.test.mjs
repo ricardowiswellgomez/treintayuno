@@ -202,3 +202,19 @@ test("las cotizaciones muestran filas alineadas y proveedores conserva su módul
   assert.match(css, /\.app-shell \.quotes-page \.quote-share-inline/);
   assert.match(app, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);
 });
+
+test("la ruta heredada de administración no monta su panel hasta confirmar autorización", () => {
+  const route = app.indexOf('screen === "platform_admin" ?');
+  assert.ok(route >= 0);
+  const guardedRoute = app.slice(route, route + 280);
+  assert.match(guardedRoute, /isPlatformAdminReady && isPlatformAdmin \? renderPlatformAdminPanel\(\)/);
+  assert.match(app, /screen !== "platform_admin" \|\| !isPlatformAdminReady/);
+});
+
+test("Bancos se ofrece a propietarios y administradores y no a perfiles de empleado", () => {
+  assert.match(app, /if \(next === "banks"\) return isBusinessManager/);
+  assert.match(app, /screen === "banks" \? renderBanksPage\(\)/);
+  assert.match(app, /bankDashboard\.summary\?\.balance_minor/);
+  assert.match(app, /rpc\("create_bank_transfer"/);
+  assert.match(app, /bank_account_id: expenseDraft\.payment_method === "Efectivo" \? null/);
+});

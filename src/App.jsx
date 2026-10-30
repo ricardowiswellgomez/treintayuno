@@ -228,6 +228,7 @@ const areas = [
   { icon: "▦", title: "Productos", description: "Artículos, existencias, costos y precios.", screen: "products" },
   { icon: "↗", title: "Ventas", description: "Registra ventas, abonos y saldos.", screen: "sales" },
   { icon: "▣", title: "Cuentas", description: "Revisa y gestiona el dinero pendiente de cobrar y pagar.", screen: "accounts" },
+  { icon: "▥", title: "Bancos", description: "Cuentas bancarias, billeteras, saldos y movimientos.", screen: "banks" },
   { icon: "▥", title: "Estadísticas", description: "Ventas, cobros, gastos y balance del negocio.", screen: "stats" },
   { icon: "▧", title: "Cotizaciones", description: "Prepara propuestas comerciales y consulta su estado.", screen: "quotes" },
   { icon: "◎", title: "Clientes", description: "Personas y empresas relacionadas con tus ventas.", screen: "customers" },
@@ -246,6 +247,7 @@ const inAppPageHelp = Object.freeze({
   products: { title: "Productos e inventario", intro: "Mantén el catálogo, los precios, los costos y las existencias de tus artículos en un solo lugar.", steps: ["Busca un producto o filtra la lista para encontrarlo.", "Crea o edita la ficha con su precio, costo, unidad y control de inventario.", "Registra los ajustes de existencias desde el historial para conservar la trazabilidad."], tip: "Comprueba las existencias antes de repetir una operación que pudo haberse guardado." },
   sales: { title: "Ventas", intro: "Registra las ventas y sus pagos para que el inventario y los saldos se mantengan coordinados.", steps: ["Selecciona la fecha, el cliente y los productos vendidos.", "Revisa cantidades, total y abono recibido antes de guardar.", "Abre el detalle de una venta para consultar sus movimientos o registrar un abono adicional."], tip: "Una venta guardada puede descontar existencias; revisa primero si un intento anterior quedó registrado." },
   quotes: { title: "Cotizaciones", intro: "Prepara una propuesta con productos, cantidades, precios y condiciones antes de convertirla en venta.", steps: ["Crea una cotización y completa los datos de contacto del cliente.", "Añade artículos, revisa el total y establece la fecha de validez.", "Guarda la propuesta; después puedes ajustar su estado, imprimirla o compartirla."], tip: "Una cotización no es una venta ni descuenta inventario hasta que se convierta mediante la acción correspondiente." },
+  banks: { title: "Bancos", intro: "Administra las cuentas bancarias y billeteras del negocio y sigue el dinero que entra y sale.", steps: ["Registra cada cuenta y su saldo inicial.", "Asocia los pagos de ventas, compras y gastos a la cuenta correspondiente.", "Consulta ingresos, egresos y transferencias sin duplicar los resultados financieros."], tip: "El efectivo se controla desde Caja. Las transferencias entre tus propias cuentas no son ingresos ni gastos." },
   accounts: { title: "Cuentas", intro: "Controla el dinero que falta por cobrar a tus clientes y los saldos pendientes con proveedores.", steps: ["Elige la pestaña de cuentas por cobrar o por pagar.", "Abre el registro correspondiente y comprueba el saldo pendiente.", "Registra los pagos o abonos con su fecha y medio de pago."], tip: "Registra solo el dinero que efectivamente recibiste o pagaste." },
   stats: { title: "Estadísticas y balance", intro: "Consulta los movimientos registrados en tu negocio y compara los resultados por periodo.", steps: ["Selecciona el periodo de consulta.", "Revisa ventas, cobros, compras y gastos disponibles.", "Descarga el informe cuando necesites conservar o compartir un resumen."], tip: "Las cotizaciones y los saldos por cobrar no se cuentan como ingresos recibidos." },
   customers: { title: "Clientes", intro: "Guarda la información de contacto para relacionar las personas y empresas con tus ventas.", steps: ["Busca un cliente por nombre o datos de contacto.", "Crea o edita su ficha con los datos necesarios.", "Selecciona el cliente al registrar una venta o una cotización."], tip: "Evita duplicar fichas; busca primero por nombre, correo o documento." },
@@ -268,7 +270,7 @@ const sidebarAreaItem = (screen, label = null) => {
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
   { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["banks", "stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
   { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("suppliers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
 ];
@@ -278,7 +280,7 @@ const normalizeSidebarLayout = (layout) => {
   const known = new Map(orderedItems.map((item) => [item.id, item]));
   const normalizeItem = (item) => ({
     ...known.get(item.id),
-    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", suppliers: "Proveedores", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
+    label: item.id === "accounts" || item.screen === "accounts" ? "Cuentas" : ({ home: "Inicio", products: "Productos", banks: "Bancos", profitability: "Rentabilidad", catalog: "Catálogo", purchases: "Compras", coupons: "Cupones", suppliers: "Proveedores", payments: "Pagos", team: "Trabajadores", stats: "Estadísticas", platform_admin: "Administración de plataforma" })[item.id] || String(item.label || known.get(item.id).label).slice(0, 60),
     icon: String(item.icon || known.get(item.id).icon).slice(0, 4)
   });
   if (!Array.isArray(layout) || !layout.length) return fallback;
@@ -303,6 +305,7 @@ const normalizeSidebarLayout = (layout) => {
   // Reconcile prior layouts with the agreed categories without discarding item labels/icons.
   const requiredDestinations = {
     products: "comercial",
+    banks: "finanzas",
     accounts: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
@@ -598,7 +601,7 @@ const summarizeProductVariantStock = (product, variants = []) => {
 };
 const todayInBogota = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const blankSupplier = { name: "", email: "", phone: "", tax_id: "", address: "", notes: "" };
-const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", notes: "" };
+const blankExpense = { category: "Operativo", description: "", amount: "", expense_date: todayInBogota(), payment_method: "Transferencia", supplier_id: "", bank_account_id: "", notes: "" };
 const teamPermissionGroups = [
   { label: "Productos", view: "products_view", manage: "products_manage" },
   { label: "Ventas", view: "sales_view", manage: "sales_manage" },
@@ -1925,6 +1928,18 @@ function AuthenticatedApp() {
   const [accountsSearch, setAccountsSearch] = useState("");
   const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
   const [accountsSort, setAccountsSort] = useState("newest");
+  const [bankDashboard, setBankDashboard] = useState({ accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } });
+  const [bankAccountOptions, setBankAccountOptions] = useState([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankSaving, setBankSaving] = useState(false);
+  const [bankAccountFormOpen, setBankAccountFormOpen] = useState(false);
+  const [bankMovementFormOpen, setBankMovementFormOpen] = useState(false);
+  const [bankTransferFormOpen, setBankTransferFormOpen] = useState(false);
+  const [bankAccountDraft, setBankAccountDraft] = useState({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" });
+  const [bankMovementDraft, setBankMovementDraft] = useState({ movement_type: "income", bank_account_id: "", amount: "", movement_date: todayInBogota(), description: "", category: "", counterparty: "", reference: "", notes: "" });
+  const [bankTransferDraft, setBankTransferDraft] = useState({ from_account_id: "", to_account_id: "", amount: "", movement_date: todayInBogota(), description: "Transferencia entre cuentas propias", reference: "", notes: "" });
+  const [bankMovementFilter, setBankMovementFilter] = useState("all");
+  const [bankSearch, setBankSearch] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
   const [inventoryImportBusy, setInventoryImportBusy] = useState(false);
   const [inventoryImportProgress, setInventoryImportProgress] = useState("");
@@ -2144,9 +2159,11 @@ function AuthenticatedApp() {
   const [purchaseTax, setPurchaseTax] = useState("0");
   const [purchasePayment, setPurchasePayment] = useState("0");
   const [purchaseInitialPaymentMethod, setPurchaseInitialPaymentMethod] = useState("Efectivo");
+  const [purchaseInitialBankAccountId, setPurchaseInitialBankAccountId] = useState("");
   const [purchasePaymentFormFor, setPurchasePaymentFormFor] = useState(null);
   const [purchasePaymentAmount, setPurchasePaymentAmount] = useState("");
   const [purchasePaymentMethod, setPurchasePaymentMethod] = useState("Efectivo");
+  const [purchasePaymentBankAccountId, setPurchasePaymentBankAccountId] = useState("");
   const [purchasePaymentDate, setPurchasePaymentDate] = useState(todayInBogota());
   const [purchasePaymentNotes, setPurchasePaymentNotes] = useState("");
   const [purchasePaymentSaving, setPurchasePaymentSaving] = useState(false);
@@ -2318,10 +2335,12 @@ function AuthenticatedApp() {
   const [salePayment, setSalePayment] = useState("");
   const [saleCashTendered, setSaleCashTendered] = useState("");
   const [saleInitialPaymentMethod, setSaleInitialPaymentMethod] = useState("Efectivo");
+  const [saleInitialBankAccountId, setSaleInitialBankAccountId] = useState("");
   const [salePaymentFormFor, setSalePaymentFormFor] = useState(null);
   const [expandedSaleId, setExpandedSaleId] = useState(null);
   const [salePaymentAmount, setSalePaymentAmount] = useState("");
   const [salePaymentMethod, setSalePaymentMethod] = useState("Efectivo");
+  const [salePaymentBankAccountId, setSalePaymentBankAccountId] = useState("");
   const [salePaymentDate, setSalePaymentDate] = useState(todayInBogota());
   const [salePaymentNotes, setSalePaymentNotes] = useState("");
   const [salePaymentSaving, setSalePaymentSaving] = useState(false);
@@ -2993,6 +3012,242 @@ function AuthenticatedApp() {
     return () => { alive = false; window.clearTimeout(startupTimer); subscription.unsubscribe(); };
   }, [loadBusinesses]);
 
+
+
+  async function loadBankDashboard() {
+    if (!activeBusiness?.id || !isBusinessManager) {
+      setBankDashboard({ accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } });
+      return;
+    }
+    setBankLoading(true);
+    try {
+      const { data, error: queryError } = await supabase.rpc("bank_dashboard", { p_business_id: activeBusiness.id, p_limit: 200, p_offset: 0 });
+      if (queryError) throw queryError;
+      setBankDashboard(data || { accounts: [], movements: [], movement_count: 0, summary: {} });
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBankLoading(false); }
+  }
+
+  async function loadBankAccountOptions() {
+    if (!activeBusiness?.id || !isBusinessManager) { setBankAccountOptions([]); return; }
+    const { data, error: queryError } = await supabase.from("bank_accounts")
+      .select("id,business_id,bank_name,account_name,account_type,account_last4,currency_code,is_active")
+      .eq("business_id", activeBusiness.id).eq("is_active", true).order("bank_name").order("account_name");
+    if (queryError) {
+      setBankAccountOptions([]);
+      if (screen === "banks") setError(friendlyError(queryError));
+      return;
+    }
+    setBankAccountOptions(data || []);
+  }
+
+  async function createBankAccount(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !isBusinessManager || bankSaving) return;
+    const bankName = bankAccountDraft.bank_name.trim();
+    const accountName = bankAccountDraft.account_name.trim();
+    const last4 = bankAccountDraft.account_last4.trim();
+    const opening = toMinorUnits(bankAccountDraft.opening_balance || 0, currencyCode);
+    if (!bankName || !accountName) { setError("Indica la entidad y un nombre para identificar la cuenta."); return; }
+    if (last4 && !/^[0-9]{4}$/.test(last4)) { setError("El número de cuenta debe terminar en exactamente cuatro dígitos."); return; }
+    if (!Number.isSafeInteger(opening)) { setError("El saldo inicial no es válido."); return; }
+    if (bankAccountDraft.opening_balance_date > todayInBogota()) { setError("La fecha del saldo inicial no puede estar en el futuro."); return; }
+    setBankSaving(true); setError(""); setNotice("");
+    try {
+      const { error: insertError } = await supabase.from("bank_accounts").insert({
+        business_id: activeBusiness.id, bank_name: bankName, account_name: accountName,
+        account_type: bankAccountDraft.account_type, account_last4: last4 || null,
+        account_holder: bankAccountDraft.account_holder.trim() || null,
+        currency_code: currencyCode, opening_balance_minor: opening,
+        opening_balance_date: bankAccountDraft.opening_balance_date || todayInBogota(),
+        notes: bankAccountDraft.notes.trim() || null
+      });
+      if (insertError) throw insertError;
+      setBankAccountDraft({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" });
+      setBankAccountFormOpen(false);
+      setNotice("Cuenta bancaria guardada. El saldo inicial quedó registrado sin alterar tus ingresos ni gastos.");
+      await loadBankDashboard();
+      await loadBankAccountOptions();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBankSaving(false); }
+  }
+
+  async function createBankMovement(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !isBusinessManager || bankSaving) return;
+    const amount = toMinorUnits(bankMovementDraft.amount, currencyCode);
+    if (!bankMovementDraft.bank_account_id) { setError("Selecciona la cuenta bancaria del movimiento."); return; }
+    if (!bankMovementDraft.description.trim()) { setError("Describe el movimiento."); return; }
+    if (!Number.isSafeInteger(amount) || amount <= 0) { setError("El importe debe ser mayor que cero."); return; }
+    if (bankMovementDraft.movement_date > todayInBogota()) { setError("La fecha del movimiento no puede estar en el futuro."); return; }
+    setBankSaving(true); setError(""); setNotice("");
+    try {
+      const { error: insertError } = await supabase.from("bank_movements").insert({
+        business_id: activeBusiness.id, bank_account_id: bankMovementDraft.bank_account_id,
+        movement_type: bankMovementDraft.movement_type, amount_minor: amount,
+        movement_date: bankMovementDraft.movement_date, description: bankMovementDraft.description.trim(),
+        category: bankMovementDraft.category.trim() || (bankMovementDraft.movement_type === "income" ? "Otros ingresos" : "Otros egresos"),
+        counterparty: bankMovementDraft.counterparty.trim() || null,
+        reference: bankMovementDraft.reference.trim() || null, notes: bankMovementDraft.notes.trim() || null
+      });
+      if (insertError) throw insertError;
+      setBankMovementDraft({ movement_type: "income", bank_account_id: "", amount: "", movement_date: todayInBogota(), description: "", category: "", counterparty: "", reference: "", notes: "" });
+      setBankMovementFormOpen(false);
+      setNotice("Movimiento bancario registrado.");
+      await loadBankDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBankSaving(false); }
+  }
+
+  async function createBankTransfer(event) {
+    event.preventDefault();
+    if (!activeBusiness?.id || !isBusinessManager || bankSaving) return;
+    const amount = toMinorUnits(bankTransferDraft.amount, currencyCode);
+    if (!bankTransferDraft.from_account_id || !bankTransferDraft.to_account_id || bankTransferDraft.from_account_id === bankTransferDraft.to_account_id) {
+      setError("Selecciona una cuenta de origen y otra cuenta de destino.");
+      return;
+    }
+    if (!Number.isSafeInteger(amount) || amount <= 0) { setError("El importe de la transferencia debe ser mayor que cero."); return; }
+    if (bankTransferDraft.movement_date > todayInBogota()) { setError("La fecha de la transferencia no puede estar en el futuro."); return; }
+    setBankSaving(true); setError(""); setNotice("");
+    try {
+      const { error: transferError } = await supabase.rpc("create_bank_transfer", {
+        p_business_id: activeBusiness.id, p_from_account_id: bankTransferDraft.from_account_id,
+        p_to_account_id: bankTransferDraft.to_account_id, p_amount_minor: amount,
+        p_movement_date: bankTransferDraft.movement_date,
+        p_description: bankTransferDraft.description.trim() || null,
+        p_reference: bankTransferDraft.reference.trim() || null,
+        p_notes: bankTransferDraft.notes.trim() || null
+      });
+      if (transferError) throw transferError;
+      setBankTransferDraft({ from_account_id: "", to_account_id: "", amount: "", movement_date: todayInBogota(), description: "Transferencia entre cuentas propias", reference: "", notes: "" });
+      setBankTransferFormOpen(false);
+      setNotice("Transferencia guardada. Se registró una salida y una entrada vinculadas, sin sumarse a ingresos ni gastos.");
+      await loadBankDashboard();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBankSaving(false); }
+  }
+
+  async function toggleBankAccountActive(account) {
+    if (!activeBusiness?.id || !isBusinessManager || !account?.id || bankSaving) return;
+    setBankSaving(true); setError(""); setNotice("");
+    try {
+      const { data, error: updateError } = await supabase.from("bank_accounts")
+        .update({ is_active: !account.is_active, updated_at: new Date().toISOString() })
+        .eq("business_id", activeBusiness.id).eq("id", account.id)
+        .select("id,is_active").maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("No se pudo actualizar la cuenta bancaria.");
+      setNotice(data.is_active ? "Cuenta bancaria reactivada." : "Cuenta bancaria desactivada. Su historial se conserva.");
+      await loadBankDashboard();
+      await loadBankAccountOptions();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBankSaving(false); }
+  }
+
+  function renderBanksPage() {
+    const accounts = bankDashboard.accounts || [];
+    const movements = bankDashboard.movements || [];
+    const query = bankSearch.trim().toLocaleLowerCase("es");
+    const filteredMovements = movements.filter((item) => {
+      const typeMatches = bankMovementFilter === "all"
+        || (bankMovementFilter === "income" && item.movement_type === "income")
+        || (bankMovementFilter === "expense" && item.movement_type === "expense")
+        || (bankMovementFilter === "transfers" && ["transfer_in", "transfer_out"].includes(item.movement_type));
+      const textMatches = !query || [item.description, item.category, item.counterparty, item.reference, item.bank_name, item.account_name]
+        .filter(Boolean).join(" ").toLocaleLowerCase("es").includes(query);
+      return typeMatches && textMatches;
+    });
+    const accountTypeLabels = { savings: "Ahorros", checking: "Corriente", wallet: "Billetera digital", other: "Otra" };
+    const movementLabels = { income: "Ingreso", expense: "Egreso", transfer_in: "Transferencia recibida", transfer_out: "Transferencia enviada", adjustment_in: "Ajuste de entrada", adjustment_out: "Ajuste de salida" };
+    const positiveTypes = ["income", "transfer_in", "adjustment_in"];
+    return (
+      <section className="banks-page">
+        <div className="products-intro banks-intro">
+          <div><p className="eyebrow">TESORERÍA DEL NEGOCIO</p><h2>Bancos y billeteras</h2><p>Controla los saldos, registra movimientos y consulta cómo entra y sale el dinero de tus cuentas.</p></div>
+          <div className="banks-actions">
+            <button type="button" className="secondary-button compact-button" disabled={bankLoading || bankSaving} onClick={loadBankDashboard}>Actualizar</button>
+            <button type="button" className="secondary-button compact-button" onClick={() => { setBankAccountFormOpen((v) => !v); setBankMovementFormOpen(false); setBankTransferFormOpen(false); }}>＋ Nueva cuenta</button>
+            <button type="button" className="secondary-button compact-button" disabled={!bankAccountOptions.length} onClick={() => { setBankMovementFormOpen((v) => !v); setBankAccountFormOpen(false); setBankTransferFormOpen(false); }}>＋ Movimiento</button>
+            <button type="button" className="primary-button compact-button" disabled={bankAccountOptions.length < 2} onClick={() => { setBankTransferFormOpen((v) => !v); setBankAccountFormOpen(false); setBankMovementFormOpen(false); }}>⇄ Transferir</button>
+          </div>
+        </div>
+        <div className="bank-summary-grid">
+          <article className="bank-summary-card panel"><span>Saldo consolidado</span><strong>{money(bankDashboard.summary?.balance_minor || 0, currencyCode)}</strong><small>{bankDashboard.summary?.account_count || 0} cuentas activas</small></article>
+          <article className="bank-summary-card panel"><span>Entradas del mes</span><strong className="bank-positive">{money(bankDashboard.summary?.income_month_minor || 0, currencyCode)}</strong><small>Dinero recibido en las cuentas</small></article>
+          <article className="bank-summary-card panel"><span>Salidas del mes</span><strong>{money(bankDashboard.summary?.expenses_month_minor || 0, currencyCode)}</strong><small>Pagos y egresos de las cuentas</small></article>
+        </div>
+        {bankAccountFormOpen && <form className="bank-form panel" onSubmit={createBankAccount}>
+          <div className="bank-form-heading"><div><span className="eyebrow">NUEVA CUENTA</span><h3>Registrar cuenta bancaria o billetera</h3><p>Solo guardamos los últimos cuatro dígitos; nunca las claves ni los números completos.</p></div></div>
+          <div className="bank-form-grid">
+            <label><span>Entidad financiera *</span><input value={bankAccountDraft.bank_name} onChange={(e) => setBankAccountDraft((v) => ({ ...v, bank_name: e.target.value }))} maxLength={120} required placeholder="Ej. Bancolombia, Nequi" /></label>
+            <label><span>Nombre para identificarla *</span><input value={bankAccountDraft.account_name} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_name: e.target.value }))} maxLength={120} required placeholder="Ej. Ahorros principal" /></label>
+            <label><span>Tipo de cuenta</span><select value={bankAccountDraft.account_type} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_type: e.target.value }))}><option value="savings">Cuenta de ahorros</option><option value="checking">Cuenta corriente</option><option value="wallet">Billetera digital</option><option value="other">Otra</option></select></label>
+            <label><span>Últimos cuatro dígitos</span><input inputMode="numeric" value={bankAccountDraft.account_last4} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_last4: e.target.value.replace(/[^0-9]/g, "").slice(-4) }))} maxLength={4} placeholder="Opcional" /></label>
+            <label><span>Titular</span><input value={bankAccountDraft.account_holder} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_holder: e.target.value }))} maxLength={120} placeholder="Nombre del titular" /></label>
+            <label><span>Moneda</span><input value={currencyCode} readOnly /></label>
+            <label><span>Saldo inicial *</span><input type="number" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankAccountDraft.opening_balance} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance: e.target.value }))} required /></label>
+            <label><span>Fecha del saldo inicial</span><input type="date" max={todayInBogota()} value={bankAccountDraft.opening_balance_date} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance_date: e.target.value }))} required /></label>
+            <label className="bank-form-full"><span>Notas</span><input value={bankAccountDraft.notes} onChange={(e) => setBankAccountDraft((v) => ({ ...v, notes: e.target.value }))} maxLength={1000} placeholder="Información útil para identificar la cuenta" /></label>
+          </div>
+          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setBankAccountFormOpen(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={bankSaving}>{bankSaving ? "Guardando…" : "Guardar cuenta"}</button></div>
+        </form>}
+        {bankMovementFormOpen && <form className="bank-form panel" onSubmit={createBankMovement}>
+          <div className="bank-form-heading"><div><span className="eyebrow">MOVIMIENTO MANUAL</span><h3>Registrar ingreso o egreso</h3><p>Los abonos de ventas, pagos a proveedores y gastos pueden vincularse automáticamente desde sus respectivos módulos.</p></div></div>
+          <div className="bank-form-grid">
+            <label><span>Tipo de movimiento</span><select value={bankMovementDraft.movement_type} onChange={(e) => setBankMovementDraft((v) => ({ ...v, movement_type: e.target.value }))}><option value="income">Ingreso</option><option value="expense">Egreso</option></select></label>
+            <label><span>Cuenta *</span><select value={bankMovementDraft.bank_account_id} onChange={(e) => setBankMovementDraft((v) => ({ ...v, bank_account_id: e.target.value }))} required><option value="">Seleccionar cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>
+            <label><span>Descripción *</span><input value={bankMovementDraft.description} onChange={(e) => setBankMovementDraft((v) => ({ ...v, description: e.target.value }))} maxLength={220} required placeholder="Ej. Intereses recibidos" /></label>
+            <label><span>Valor *</span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankMovementDraft.amount} onChange={(e) => setBankMovementDraft((v) => ({ ...v, amount: e.target.value }))} required /></label>
+            <label><span>Fecha *</span><input type="date" max={todayInBogota()} value={bankMovementDraft.movement_date} onChange={(e) => setBankMovementDraft((v) => ({ ...v, movement_date: e.target.value }))} required /></label>
+            <label><span>Categoría</span><input value={bankMovementDraft.category} onChange={(e) => setBankMovementDraft((v) => ({ ...v, category: e.target.value }))} maxLength={100} placeholder={bankMovementDraft.movement_type === "income" ? "Otros ingresos" : "Otros egresos"} /></label>
+            <label><span>Persona o empresa</span><input value={bankMovementDraft.counterparty} onChange={(e) => setBankMovementDraft((v) => ({ ...v, counterparty: e.target.value }))} maxLength={180} /></label>
+            <label><span>Referencia</span><input value={bankMovementDraft.reference} onChange={(e) => setBankMovementDraft((v) => ({ ...v, reference: e.target.value }))} maxLength={180} /></label>
+            <label className="bank-form-full"><span>Notas</span><input value={bankMovementDraft.notes} onChange={(e) => setBankMovementDraft((v) => ({ ...v, notes: e.target.value }))} maxLength={1000} /></label>
+          </div>
+          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setBankMovementFormOpen(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={bankSaving}>{bankSaving ? "Guardando…" : "Guardar movimiento"}</button></div>
+        </form>}
+        {bankTransferFormOpen && <form className="bank-form panel" onSubmit={createBankTransfer}>
+          <div className="bank-form-heading"><div><span className="eyebrow">ENTRE CUENTAS PROPIAS</span><h3>Transferir dinero</h3><p>Se crean dos registros vinculados: salida en origen y entrada en destino. No se contabiliza como ingreso o gasto.</p></div></div>
+          <div className="bank-form-grid">
+            <label><span>Cuenta de origen *</span><select value={bankTransferDraft.from_account_id} onChange={(e) => setBankTransferDraft((v) => ({ ...v, from_account_id: e.target.value }))} required><option value="">Seleccionar origen</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}</option>)}</select></label>
+            <label><span>Cuenta de destino *</span><select value={bankTransferDraft.to_account_id} onChange={(e) => setBankTransferDraft((v) => ({ ...v, to_account_id: e.target.value }))} required><option value="">Seleccionar destino</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode && a.id !== bankTransferDraft.from_account_id).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}</option>)}</select></label>
+            <label><span>Valor *</span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankTransferDraft.amount} onChange={(e) => setBankTransferDraft((v) => ({ ...v, amount: e.target.value }))} required /></label>
+            <label><span>Fecha *</span><input type="date" max={todayInBogota()} value={bankTransferDraft.movement_date} onChange={(e) => setBankTransferDraft((v) => ({ ...v, movement_date: e.target.value }))} required /></label>
+            <label><span>Descripción</span><input value={bankTransferDraft.description} onChange={(e) => setBankTransferDraft((v) => ({ ...v, description: e.target.value }))} maxLength={220} /></label>
+            <label><span>Referencia</span><input value={bankTransferDraft.reference} onChange={(e) => setBankTransferDraft((v) => ({ ...v, reference: e.target.value }))} maxLength={180} /></label>
+            <label className="bank-form-full"><span>Notas</span><input value={bankTransferDraft.notes} onChange={(e) => setBankTransferDraft((v) => ({ ...v, notes: e.target.value }))} maxLength={1000} /></label>
+          </div>
+          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setBankTransferFormOpen(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={bankSaving}>{bankSaving ? "Transfiriendo…" : "Registrar transferencia"}</button></div>
+        </form>}
+        <div className="bank-section-heading"><div><h3>Mis cuentas</h3><p>Los saldos incluyen el saldo inicial y los movimientos registrados desde Bancos.</p></div><span className="count-label">{accounts.length} cuentas</span></div>
+        {bankLoading && !accounts.length ? <div className="empty-state">Consultando cuentas bancarias…</div> : accounts.length ? <div className="bank-accounts-grid">
+          {accounts.map((account) => <article key={account.id} className={"bank-account-card panel" + (!account.is_active ? " bank-account-inactive" : "")}>
+            <div className="bank-account-top"><span className="bank-account-icon"><AppIcon name={account.account_type === "wallet" ? "payments" : "banks"} size={22} /></span><span className={"status-pill " + (account.is_active ? "status-active" : "status-inactive")}>{account.is_active ? "Activa" : "Inactiva"}</span></div>
+            <div className="bank-account-name"><h4>{account.bank_name}</h4><p>{account.account_name} · {accountTypeLabels[account.account_type] || "Cuenta"}{account.account_last4 ? " · •••• " + account.account_last4 : ""}</p></div>
+            <strong className="bank-account-balance">{money(account.balance_minor || 0, account.currency_code || currencyCode)}</strong>
+            <small>Saldo inicial: {money(account.opening_balance_minor || 0, account.currency_code || currencyCode)} · Desde {account.opening_balance_date || "—"}</small>
+            {account.account_holder && <small>Titular: {account.account_holder}</small>}
+            <div className="bank-account-actions"><button type="button" className="secondary-button action-small" disabled={bankSaving} onClick={() => toggleBankAccountActive(account)}>{account.is_active ? "Desactivar" : "Reactivar"}</button></div>
+          </article>)}
+        </div> : <div className="empty-state"><span className="empty-icon">▥</span><h3>Aún no tienes cuentas bancarias</h3><p>Registra Bancolombia, Banco de Bogotá, Nequi, Daviplata u otras cuentas que utilice tu negocio. No necesitas conectar tus claves bancarias.</p><button type="button" className="primary-button" onClick={() => setBankAccountFormOpen(true)}>＋ Registrar primera cuenta</button></div>}
+        <section className="bank-movements-section panel">
+          <div className="bank-section-heading"><div><h3>Movimientos bancarios</h3><p>Ingresos, egresos y transferencias de las cuentas registradas.</p></div><span className="count-label">{bankDashboard.movement_count || movements.length} registros</span></div>
+          <div className="bank-movement-toolbar"><input value={bankSearch} onChange={(e) => setBankSearch(e.target.value)} placeholder="Buscar movimiento, entidad o referencia" aria-label="Buscar movimientos bancarios" />
+            <div className="stats-period-buttons" role="group" aria-label="Filtrar movimientos bancarios">{[["all", "Todos"], ["income", "Ingresos"], ["expense", "Egresos"], ["transfers", "Transferencias"]].map(([value, label]) => <button type="button" key={value} className={bankMovementFilter === value ? "stats-period-button active" : "stats-period-button"} aria-pressed={bankMovementFilter === value} onClick={() => setBankMovementFilter(value)}>{label}</button>)}</div>
+          </div>
+          {bankLoading && !movements.length ? <div className="empty-state">Cargando movimientos…</div> : filteredMovements.length ? <div className="bank-movement-list">
+            {filteredMovements.map((movement) => { const positive = positiveTypes.includes(movement.movement_type); return <article className="bank-movement-row" key={movement.id}>
+              <span className={"bank-movement-mark " + (positive ? "bank-positive" : "bank-negative")}>{positive ? "＋" : "−"}</span>
+              <div className="bank-movement-main"><strong>{movement.description}</strong><span>{movement.bank_name} · {movement.account_name} · {movement.movement_date}</span><small>{movementLabels[movement.movement_type] || movement.movement_type}{movement.category ? " · " + movement.category : ""}{movement.counterparty ? " · " + movement.counterparty : ""}{movement.reference ? " · Ref. " + movement.reference : ""}</small></div>
+              <strong className={"bank-movement-amount " + (positive ? "bank-positive" : "bank-negative")}>{positive ? "+" : "−"}{money(movement.amount_minor, movement.currency_code || currencyCode)}</strong>
+            </article>;})}
+          </div> : <div className="empty-state"><h3>No hay movimientos para mostrar</h3><p>Los nuevos abonos y pagos asociados a cuentas bancarias aparecerán aquí automáticamente. También puedes registrar movimientos manuales.</p></div>}
+          <p className="bank-footnote">Los pagos en efectivo pertenecen a Caja. Las transferencias entre tus propias cuentas no incrementan los ingresos ni los gastos. Los movimientos de ventas, compras y gastos se conservan en sus módulos de origen.</p>
+        </section>
+      </section>
+    );
+  }
 
   async function loadOutstandingAccounts() {
     if (!activeBusiness?.id || !["accounts","receivables","payables"].includes(screen)) return;
@@ -6332,7 +6587,7 @@ function AuthenticatedApp() {
     if (tax < 0 || payment < 0 || payment > total) { setError("Revisa el impuesto y el abono: no pueden ser negativos y el abono no puede superar el total."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
-      const { data, error: purchaseError } = await supabase.rpc("create_purchase", {
+      const { data, error: purchaseError } = await supabase.rpc("create_purchase_with_bank_account", {
         p_business_id: activeBusiness.id,
         p_supplier_id: purchaseSupplierId || null,
         p_notes: purchaseNotes.trim() || null,
@@ -6340,6 +6595,7 @@ function AuthenticatedApp() {
         p_tax_minor: tax,
         p_amount_paid_minor: payment,
         p_initial_payment_method: purchaseInitialPaymentMethod,
+        p_initial_bank_account_id: purchaseInitialPaymentMethod === "Efectivo" ? null : (purchaseInitialBankAccountId || null),
         p_items: purchaseCart.map((item) => ({
           product_id: item.product_id, item_name: item.name, quantity: Number(item.quantity),
           unit_cost_minor: toMinorUnits(item.unit_cost, currencyCode)
@@ -6347,7 +6603,7 @@ function AuthenticatedApp() {
       });
       if (purchaseError) throw purchaseError;
       setShowPurchaseForm(false); setPurchaseSupplierId(""); setPurchaseDate(todayInBogota()); setPurchasesPage(1);
-      setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseInitialPaymentMethod("Efectivo"); setPurchaseNotes("");
+      setPurchaseCart([]); setPurchaseTax("0"); setPurchasePayment("0"); setPurchaseInitialPaymentMethod("Efectivo"); setPurchaseInitialBankAccountId(""); setPurchaseNotes("");
       setNotice("Compra guardada. El ingreso a inventario y su historial se actualizaron juntos.");
       await loadPurchasesModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -6358,7 +6614,7 @@ function AuthenticatedApp() {
     const outstanding = Math.max(0, Number(purchase.total_minor || 0) - Number(purchase.amount_paid_minor || 0));
     setPurchasePaymentFormFor(purchase.id);
     setPurchasePaymentAmount(String(outstanding / (10 ** currencyDigits(currencyCode))));
-    setPurchasePaymentMethod("Efectivo");
+    setPurchasePaymentMethod("Efectivo"); setPurchasePaymentBankAccountId("");
     setPurchasePaymentDate(todayInBogota());
     setPurchasePaymentNotes("");
     setError(""); setNotice("");
@@ -6373,17 +6629,18 @@ function AuthenticatedApp() {
     if (amount > outstanding) { setError("El pago no puede superar el saldo pendiente de la compra."); return; }
     setPurchasePaymentSaving(true); setError(""); setNotice("");
     try {
-      const { data, error: paymentError } = await supabase.rpc("record_purchase_payment", {
+      const { data, error: paymentError } = await supabase.rpc("record_purchase_payment_with_bank_account", {
         p_business_id: activeBusiness.id,
         p_purchase_id: purchase.id,
         p_amount_minor: amount,
         p_payment_method: purchasePaymentMethod,
         p_paid_at: new Date((purchasePaymentDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
-        p_notes: purchasePaymentNotes.trim() || null
+        p_notes: purchasePaymentNotes.trim() || null,
+        p_bank_account_id: purchasePaymentMethod === "Efectivo" ? null : (purchasePaymentBankAccountId || null)
       });
       if (paymentError) throw paymentError;
       setPurchasePaymentFormFor(null);
-      setPurchasePaymentAmount(""); setPurchasePaymentMethod("Efectivo");
+      setPurchasePaymentAmount(""); setPurchasePaymentMethod("Efectivo"); setPurchasePaymentBankAccountId("");
       setPurchasePaymentDate(todayInBogota()); setPurchasePaymentNotes("");
       const result = Array.isArray(data) ? data[0] : data;
       setNotice("Pago registrado. Saldo por pagar: " + money(result?.balance_minor ?? Math.max(0, outstanding - amount), currencyCode) + ".");
@@ -6428,6 +6685,7 @@ function AuthenticatedApp() {
         business_id: activeBusiness.id, category: expenseDraft.category.trim() || "Otro",
         description: expenseDraft.description.trim(), amount_minor: amountMinor, currency_code: currencyCode,
         expense_date: expenseDraft.expense_date || todayInBogota(), payment_method: expenseDraft.payment_method || null,
+        bank_account_id: expenseDraft.payment_method === "Efectivo" ? null : (expenseDraft.bank_account_id || null),
         supplier_id: expenseDraft.supplier_id || null, notes: expenseDraft.notes.trim() || null
       });
       if (expenseError) throw expenseError;
@@ -6650,20 +6908,21 @@ function AuthenticatedApp() {
     if (cashTendered !== null && cashTendered < 0) { setError("El efectivo recibido no puede ser negativo."); return; }
     setSaleSaving(true); setError(""); setNotice("");
     try {
-      const { data, error: saleError } = await supabase.rpc("create_sale_with_date", {
+      const { data, error: saleError } = await supabase.rpc("create_sale_with_bank_account", {
         p_business_id: activeBusiness.id, p_customer_id: saleCustomerId || null,
         p_items: saleItems.map((item) => ({ product_id: item.product_id, variant_id: item.variant_id || null, quantity: Number(item.quantity) })),
         p_amount_paid_minor: payment, p_notes: saleNotes.trim() || null,
         p_initial_payment_method: saleInitialPaymentMethod,
         p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
-        p_advisor_name: saleAdvisorName.trim() || null
+        p_advisor_name: saleAdvisorName.trim() || null,
+        p_initial_bank_account_id: saleInitialPaymentMethod === "Efectivo" ? null : (saleInitialBankAccountId || null)
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;
       const wasOnFirstSalesPage = salesPage === 1;
       setSalesPage(1);
       setShowSaleForm(false); setSaleCustomerId(""); setSaleAdvisorName(""); setSaleProductChoice(""); setSaleVariantChoice(""); setSaleQuantity("1");
-      setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes("");
+      setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleInitialBankAccountId(""); setSaleNotes("");
       setNotice("Venta " + (sale?.sale_number || "registrada") + " guardada. El inventario se actualizó." + (cashChange > 0 ? " Devuelta: " + money(cashChange, currencyCode) + "." : ""));
       if (wasOnFirstSalesPage) await loadSalesModuleData();
     } catch (e) { setError(friendlyError(e)); }
@@ -6679,17 +6938,18 @@ function AuthenticatedApp() {
     if (amount > outstanding) { setError("El abono no puede superar el saldo pendiente de la venta."); return; }
     setSalePaymentSaving(true); setError(""); setNotice("");
     try {
-      const { data, error: paymentError } = await supabase.rpc("record_sale_payment", {
+      const { data, error: paymentError } = await supabase.rpc("record_sale_payment_with_bank_account", {
         p_business_id: activeBusiness.id,
         p_sale_id: sale.id,
         p_amount_minor: amount,
         p_payment_method: salePaymentMethod,
         p_paid_at: new Date((salePaymentDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
-        p_notes: salePaymentNotes.trim() || null
+        p_notes: salePaymentNotes.trim() || null,
+        p_bank_account_id: salePaymentMethod === "Efectivo" ? null : (salePaymentBankAccountId || null)
       });
       if (paymentError) throw paymentError;
       setSalePaymentFormFor(null);
-      setSalePaymentAmount(""); setSalePaymentMethod("Efectivo");
+      setSalePaymentAmount(""); setSalePaymentMethod("Efectivo"); setSalePaymentBankAccountId("");
       setSalePaymentDate(todayInBogota()); setSalePaymentNotes("");
       const result = Array.isArray(data) ? data[0] : data;
       setNotice("Abono registrado. Saldo pendiente: " + money(result?.balance_minor ?? Math.max(0, outstanding - amount), currencyCode) + ".");
@@ -6703,7 +6963,7 @@ function AuthenticatedApp() {
     setSalePaymentFormFor(sale.id);
     setExpandedSaleId(sale.id);
     setSalePaymentAmount(String(outstanding / (10 ** currencyDigits(currencyCode))));
-    setSalePaymentMethod("Efectivo");
+    setSalePaymentMethod("Efectivo"); setSalePaymentBankAccountId("");
     setSalePaymentDate(todayInBogota());
     setSalePaymentNotes("");
     setError(""); setNotice("");
@@ -6711,7 +6971,7 @@ function AuthenticatedApp() {
 
   function clearSaleDraft() {
     setShowSaleForm(false); setSaleCustomerId(""); setSaleProductChoice(""); setSaleQuantity("1");
-    setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleNotes(""); setError("");
+    setSaleItems([]); setSaleDate(todayInBogota()); setSalePayment(""); setSaleCashTendered(""); setSaleInitialPaymentMethod("Efectivo"); setSaleInitialBankAccountId(""); setSaleNotes(""); setError("");
   }
 
   function saleStatusLabel(status) {
@@ -7008,6 +7268,7 @@ function AuthenticatedApp() {
   function canAccessScreen(next) {
     if (next === "home" || next === "setup") return true;
     if (next === "platform_admin") return isPlatformAdmin;
+    if (next === "banks") return isBusinessManager;
     if (next === "accounts") return canPermission("sales_view") || canViewPurchases;
     if (next === "receivables") return canPermission("sales_view");
     if (next === "payables") return canViewPurchases;
@@ -7025,6 +7286,24 @@ function AuthenticatedApp() {
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
+
+  useEffect(() => {
+    let active = true;
+    if (!activeBusiness?.id || !isBusinessManager) { setBankAccountOptions([]); return () => { active = false; }; }
+    supabase.from("bank_accounts")
+      .select("id,business_id,bank_name,account_name,account_type,account_last4,currency_code,is_active")
+      .eq("business_id", activeBusiness.id).eq("is_active", true).order("bank_name").order("account_name")
+      .then(({ data, error: queryError }) => {
+        if (!active) return;
+        if (queryError) { setBankAccountOptions([]); return; }
+        setBankAccountOptions(data || []);
+      });
+    return () => { active = false; };
+  }, [activeBusiness?.id, isBusinessManager]);
+
+  useEffect(() => {
+    if (screen === "banks" && isBusinessManager) loadBankDashboard();
+  }, [screen, activeBusiness?.id, isBusinessManager]);
   const homeShortcutOrder = ["products","sales","accounts","customers","stats","quotes","purchases"];
   const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
 
@@ -7440,7 +7719,7 @@ function AuthenticatedApp() {
             <div className="products-intro"><div><p className="eyebrow">CONTROL INTERNO</p><h2>Administración de plataforma</h2><p>Usuarios, actividad, pruebas de 30 días, pagos e historial. Los cobros recurrentes se conectarán después.</p></div><button type="button" className="secondary-button" onClick={loadPlatformAdminDashboard} disabled={platformAdminLoading}>Actualizar</button></div>
             {!isPlatformAdmin?<div className="empty-state"><h3>Acceso restringido</h3><p>Este panel se valida también en el servidor.</p></div>:platformAdminLoading&&!platformAdminData?<div className="empty-state">Cargando estadísticas…</div>:<>
               <div className="platform-admin-metrics">
-                {[[ "Cuentas registradas",platformAdminData?.summary?.total_users ],["Activos hoy",platformAdminData?.summary?.active_today],["Activos en 7 días",platformAdminData?.summary?.active_7d],["Activos en 30 días",platformAdminData?.summary?.active_30d],["PWA detectadas",platformAdminData?.summary?.installed_users],["Pruebas activas",platformAdminData?.summary?.trials_live],["Suscripciones activas",platformAdminData?.summary?.subscribers_active]].map(([label,value])=><article key={label} className="platform-admin-metric panel"><span>{label}</span><strong>{Number(value||0).toLocaleString("es-CO")}</strong></article>)}
+                {[[ "Empresas registradas",platformAdminData?.summary?.businesses ],["Usuarios registrados",platformAdminData?.summary?.total_users ],["Activos hoy",platformAdminData?.summary?.active_today],["Activos en 7 días",platformAdminData?.summary?.active_7d],["Activos en 30 días",platformAdminData?.summary?.active_30d],["PWA detectadas",platformAdminData?.summary?.installed_users],["Pruebas activas",platformAdminData?.summary?.trials_live],["Suscripciones activas",platformAdminData?.summary?.subscribers_active]].map(([label,value])=><article key={label} className="platform-admin-metric panel"><span>{label}</span><strong>{Number(value||0).toLocaleString("es-CO")}</strong></article>)}
                 <article className="platform-admin-metric panel"><span>Pagos confirmados este mes</span><strong>{money(platformAdminData?.summary?.collected_month||0,"COP")}</strong></article>
               </div>
               <div className="platform-admin-controls"><label><span>Buscar negocio o correo</span><input value={platformAdminSearch} onChange={e=>setPlatformAdminSearch(e.target.value)} placeholder="Nombre o correo"/></label><label><span>Motivo de la acción</span><input value={platformAdminNote} onChange={e=>setPlatformAdminNote(e.target.value)} maxLength={2000} placeholder="Nota interna opcional"/></label></div>
@@ -7610,7 +7889,8 @@ function AuthenticatedApp() {
 <div className="sale-tax-summary"><span>Base de productos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).subtotal,0),currencyCode)}</strong></div>{saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0)>0&&<div className="sale-tax-summary"><span>Impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).tax,0),currencyCode)}</strong></div>}<div className="sale-total-line"><span>Total con impuestos</span><strong>{money(saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0),currencyCode)}</strong></div></div>}
 <div className="sale-bottom-fields">
 <label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0" /></label>
-<div className="sale-payment-method-field"><span className="field-label-heading">Medio de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo recibiste el dinero de esta venta. Esta selección registra el medio, pero no procesa el pago." /></span><PaymentMethodTiles value={saleInitialPaymentMethod} ariaLabel="Medio de pago inicial" onChange={(method) => { setSaleInitialPaymentMethod(method); if (method !== "Efectivo") setSaleCashTendered(""); }} /></div>
+<div className="sale-payment-method-field"><span className="field-label-heading">Medio de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo recibiste el dinero de esta venta. Esta selección registra el medio, pero no procesa el pago." /></span><PaymentMethodTiles value={saleInitialPaymentMethod} ariaLabel="Medio de pago inicial" onChange={(method) => { setSaleInitialPaymentMethod(method); if (method !== "Efectivo") setSaleCashTendered(""); else setSaleInitialBankAccountId(""); }} /></div>
+{saleInitialPaymentMethod !== "Efectivo" && Number(salePayment || 0) > 0 && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Depositar el abono en</span><select value={saleInitialBankAccountId} onChange={(e) => setSaleInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
 {saleInitialPaymentMethod === "Efectivo" && <label className="cash-tendered-field"><span className="field-label-heading">Efectivo recibido (opcional)<FieldHelp enabled={contextualHelpEnabled} text="Escribe el billete o total entregado por el cliente. Si supera el saldo de la venta, calculamos la devuelta y registramos solo el importe de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={saleCashTendered} onChange={event=>setSaleCashTendered(event.target.value)} placeholder="Ej. 20000" />{String(saleCashTendered).trim()!=="" && saleItems.length > 0 && <small className="cash-change-preview">Efectivo introducido · Abono a registrar: {money(Math.min(toMinorUnits(saleCashTendered,currencyCode),saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)} · Devuelta: {money(Math.max(0,toMinorUnits(saleCashTendered,currencyCode)-saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)}</small>}</label>}
 <label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
@@ -7636,7 +7916,8 @@ function AuthenticatedApp() {
 {canManageSales && Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))>0 && !["canceled","refunded","draft"].includes(sale.status) && <button type="button" className="secondary-button sale-register-payment-button" onClick={()=>salePaymentFormFor===sale.id?setSalePaymentFormFor(null):openSalePaymentForm(sale)}>{salePaymentFormFor===sale.id?"Cancelar":"＋ Registrar abono"}</button>}
 {canManageSales && salePaymentFormFor===sale.id && <form className="sale-payment-form" onSubmit={(event)=>registerSalePayment(event,sale)}>
 <label><span className="field-label-heading">Valor del abono<FieldHelp enabled={contextualHelpEnabled} text="Monto del pago adicional. No puede superar el saldo pendiente de la venta." /></span><input type="number" min="0.01" max={Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePaymentAmount} onChange={e=>setSalePaymentAmount(e.target.value)} required/></label>
-<div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el medio por el cual se recibió este abono." /></span><PaymentMethodTiles value={salePaymentMethod} onChange={setSalePaymentMethod} ariaLabel="Medio de pago del abono de venta" /></div>
+<div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el medio por el cual se recibió este abono." /></span><PaymentMethodTiles value={salePaymentMethod} onChange={(method) => { setSalePaymentMethod(method); if (method === "Efectivo") setSalePaymentBankAccountId(""); }} ariaLabel="Medio de pago del abono de venta" /></div>
+{salePaymentMethod !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Depositar en</span><select value={salePaymentBankAccountId} onChange={(e) => setSalePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
 <label><span className="field-label-heading">Fecha del abono<FieldHelp enabled={contextualHelpEnabled} text="Fecha en que recibiste realmente el dinero; se guarda en el historial de pagos." /></span><input type="date" max={todayInBogota()} value={salePaymentDate} onChange={e=>setSalePaymentDate(e.target.value)} required/></label>
 <label className="sale-payment-notes"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Referencia corta para identificar el pago, por ejemplo el número de una transferencia." /></span><input value={salePaymentNotes} onChange={e=>setSalePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago"/></label>
 <div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={salePaymentSaving}>{salePaymentSaving?"Registrando…":"Guardar abono"}</button></div>
@@ -8093,7 +8374,8 @@ function AuthenticatedApp() {
                 <div className="purchase-form-grid purchase-money-fields">
                   <label><span className="field-label-heading">Impuestos u otros cargos<FieldHelp enabled={contextualHelpEnabled} text="Registra impuestos, transporte u otros cobros que se suman al costo de la compra." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchaseTax} onChange={(e) => setPurchaseTax(e.target.value)} /></label>
                   <label><span className="field-label-heading">Abono realizado<FieldHelp enabled={contextualHelpEnabled} text="Dinero que pagas ahora al proveedor como parte de esta compra. Si es menor que el total, queda un saldo por pagar." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePayment} onChange={(e) => setPurchasePayment(e.target.value)} /></label>
-                  <div className="payment-method-field"><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo pagaste esta compra al proveedor." /></span><PaymentMethodTiles value={purchaseInitialPaymentMethod} onChange={setPurchaseInitialPaymentMethod} ariaLabel="Medio de pago inicial de la compra" /></div>
+                  <div className="payment-method-field"><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo pagaste esta compra al proveedor." /></span><PaymentMethodTiles value={purchaseInitialPaymentMethod} onChange={(method) => { setPurchaseInitialPaymentMethod(method); if (method === "Efectivo") setPurchaseInitialBankAccountId(""); }} ariaLabel="Medio de pago inicial de la compra" /></div>
+{purchaseInitialPaymentMethod !== "Efectivo" && Number(purchasePayment || 0) > 0 && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchaseInitialBankAccountId} onChange={(e) => setPurchaseInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                   <label className="purchase-span-two"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Añade un comentario sobre la compra, como número de factura, transporte o detalles de entrega." /></span><input value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} maxLength={1500} placeholder="Factura, transporte, entrega…" /></label>
                 </div>
                 <div className="purchase-total-summary"><span>Total estimado</span><strong>{money(purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), 0) + toMinorUnits(purchaseTax || 0, currencyCode), currencyCode)}</strong></div>
@@ -8114,7 +8396,8 @@ function AuthenticatedApp() {
                     {canManagePurchases && pending > 0 && !["canceled","refunded","draft"].includes(purchase.status) && <button type="button" className="secondary-button purchase-register-payment-button" onClick={() => purchasePaymentFormFor === purchase.id ? setPurchasePaymentFormFor(null) : openPurchasePaymentForm(purchase)}>{purchasePaymentFormFor === purchase.id ? "Cancelar" : "＋ Registrar pago"}</button>}
                     {canManagePurchases && purchasePaymentFormFor === purchase.id && <form className="purchase-payment-form" onSubmit={(event) => recordPurchasePayment(event,purchase)}>
                       <label><span className="field-label-heading">Valor del pago<FieldHelp enabled={contextualHelpEnabled} text="Importe que estás pagando al proveedor ahora. No puede superar lo que falta por pagar." /></span><input type="number" min="0.01" max={pending/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePaymentAmount} onChange={(e) => setPurchasePaymentAmount(e.target.value)} required /></label>
-                      <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio usado para hacer este pago al proveedor." /></span><PaymentMethodTiles value={purchasePaymentMethod} onChange={setPurchasePaymentMethod} ariaLabel="Medio de pago del abono de compra" /></div>
+                      <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio usado para hacer este pago al proveedor." /></span><PaymentMethodTiles value={purchasePaymentMethod} onChange={(method) => { setPurchasePaymentMethod(method); if (method === "Efectivo") setPurchasePaymentBankAccountId(""); }} ariaLabel="Medio de pago del abono de compra" /></div>
+{purchasePaymentMethod !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchasePaymentBankAccountId} onChange={(e) => setPurchasePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                       <label><span className="field-label-heading">Fecha del pago<FieldHelp enabled={contextualHelpEnabled} text="Fecha real en que hiciste este pago al proveedor." /></span><input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={(e) => setPurchasePaymentDate(e.target.value)} required /></label>
                       <label className="purchase-payment-notes"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Añade una referencia breve para recordar este pago, como el número de una transferencia." /></span><input value={purchasePaymentNotes} onChange={(e) => setPurchasePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago" /></label>
                       <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setPurchasePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={purchasePaymentSaving}>{purchasePaymentSaving ? "Registrando…" : "Guardar pago"}</button></div>
@@ -8155,7 +8438,8 @@ function AuthenticatedApp() {
                   <label><span className="field-label-heading">Categoría<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el tipo de gasto para agruparlo y entender en qué se usa el dinero." /></span><select value={expenseDraft.category} onChange={(e) => setExpenseDraft((d) => ({ ...d, category: e.target.value }))}><option>Operativo</option><option>Arriendo</option><option>Servicios públicos</option><option>Transporte</option><option>Publicidad</option><option>Reparaciones y mantenimiento</option><option>Muebles y equipos</option><option>Honorarios y servicios</option><option>Comisiones bancarias</option><option>Otro</option></select></label>
                   <label><span className="field-label-heading">Valor *<FieldHelp enabled={contextualHelpEnabled} text="Monto del gasto. Queda registrado como salida de dinero y se considera en el cálculo de rentabilidad." /></span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={expenseDraft.amount} onChange={(e) => setExpenseDraft((d) => ({ ...d, amount: e.target.value }))} required placeholder="0" /></label>
                   <label><span className="field-label-heading">Fecha *<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha en que se realizó el gasto." /></span><input type="date" value={expenseDraft.expense_date} onChange={(e) => setExpenseDraft((d) => ({ ...d, expense_date: e.target.value }))} required /></label>
-                  <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio utilizado para pagar este gasto." /></span><PaymentMethodTiles value={expenseDraft.payment_method || "Efectivo"} onChange={(method) => setExpenseDraft((d) => ({ ...d, payment_method: method }))} ariaLabel="Medio de pago del gasto" /></div>
+                  <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio utilizado para pagar este gasto." /></span><PaymentMethodTiles value={expenseDraft.payment_method || "Efectivo"} onChange={(method) => setExpenseDraft((d) => ({ ...d, payment_method: method, bank_account_id: method === "Efectivo" ? "" : d.bank_account_id }))} ariaLabel="Medio de pago del gasto" /></div>
+{expenseDraft.payment_method !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta desde la que pagaste</span><select value={expenseDraft.bank_account_id || ""} onChange={(e) => setExpenseDraft((d) => ({ ...d, bank_account_id: e.target.value }))}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                   <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Vincula el gasto con un proveedor si corresponde." /></span><select value={expenseDraft.supplier_id} onChange={(e) => { if (e.target.value === "__create_expense_supplier__") { setShowQuickExpenseSupplierForm(true); setError(""); return; } setExpenseDraft((d) => ({ ...d, supplier_id: e.target.value })); }}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}{canPermission("suppliers_manage")&&<option value="__create_expense_supplier__">＋ Nuevo proveedor…</option>}</select></label>
                   {showQuickExpenseSupplierForm && canPermission("suppliers_manage") && <div className="inline-create-panel quick-expense-supplier full-span"><strong>Nuevo proveedor</strong><p className="inline-create-hint">Se guardará como contacto y quedará seleccionado en este gasto, sin borrar los datos del formulario.</p><div className="inline-create-fields-grid"><label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre del proveedor que quedará asociado al gasto." /></span><input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required /></label><label><span className="field-label-heading">NIT o documento<FieldHelp enabled={contextualHelpEnabled} text="Identificación tributaria o documento del proveedor, si lo tienes." /></span><input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} /></label><label><span className="field-label-heading">Teléfono<FieldHelp enabled={contextualHelpEnabled} text="Número al que puedes contactar al proveedor." /></span><input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} /></label><label><span className="field-label-heading">Correo<FieldHelp enabled={contextualHelpEnabled} text="Correo de contacto del proveedor." /></span><input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} /></label><label className="inline-create-span-two"><span className="field-label-heading">Dirección<FieldHelp enabled={contextualHelpEnabled} text="Dirección para entregas o documentos, si corresponde." /></span><input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} /></label></div><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !supplierDraft.name.trim()} onClick={() => addSupplier()}>{busy ? "Guardando…" : "Guardar y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickExpenseSupplierForm(false); setSupplierDraft(blankSupplier); }}>Cancelar</button></div></div>}
                   <label className="purchase-span-two"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Guarda una referencia, factura o detalle útil para reconocer este gasto después." /></span><input value={expenseDraft.notes} onChange={(e) => setExpenseDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1500} placeholder="Factura, referencia o detalle" /></label>
@@ -8726,7 +9010,7 @@ function AuthenticatedApp() {
             {settingsTab === "platform_admin" && isPlatformAdmin && renderPlatformAdminPanel()}
           </section>
 
-        ) : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
+        ) : screen === "banks" ? renderBanksPage() : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
           <section className="accounts-page">
             <div className="products-intro"><div><h2>Cuentas por cobrar</h2><p>Controla las ventas pendientes y registra abonos sin perder el registro actual.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>
             <div className="accounts-tabs" role="tablist" aria-label="Tipo de cuenta">

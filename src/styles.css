@@ -11357,3 +11357,27 @@ body { background: #F5F7FC; color: #19243A; }
     margin-bottom:26px!important;
   }
 }
+
+
+/* Voice controls for the assistant: compact header toggle and native MP3 player. */
+.ai-assistant-header-actions{display:flex!important;align-items:center!important;gap:8px!important}
+.ai-assistant-header .ai-audio-toggle{
+  width:auto!important;height:auto!important;min-width:0!important;min-height:28px!important;
+  padding:5px 8px!important;border:1px solid #ffffff66!important;border-radius:8px!important;
+  background:transparent!important;color:#fff!important;font-size:10px!important;line-height:1.2!important;white-space:nowrap
+}
+.ai-assistant-message-tools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.ai-assistant-message-tools .ai-assistant-meta{margin:0}
+.ai-assistant-message .ai-message-speak{
+  width:auto!important;height:auto!important;min-width:0!important;min-height:28px!important;
+  padding:5px 9px!important;border:1px solid var(--line,#E1E7F0)!important;border-radius:8px!important;
+  background:var(--paper,#FFFFFF)!important;color:var(--green,#174580)!important;font-size:11px!important;line-height:1.25
+}
+.ai-assistant-message .ai-message-speak:disabled{opacity:.6}
+.ai-assistant-audio{display:block;width:100%;height:38px;flex:1 1 100%;min-width:0}
+.ai-assistant-speech-error{margin:0;padding:0 12px 10px;color:#a33;font-size:11px;line-height:1.4}
+@media(max-width:420px){
+  .ai-assistant-header-actions{gap:5px!important}
+  .ai-assistant-header .ai-audio-toggle{padding:4px 6px!important;font-size:9px!important}
+  .ai-assistant-message-tools{gap:6px}
+}

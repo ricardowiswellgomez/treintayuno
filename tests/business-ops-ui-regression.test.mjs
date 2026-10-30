@@ -253,3 +253,26 @@ test("el sidebar deja de dibujar contenedores alrededor de las categorías y amp
   assert.match(sidebarRefinements, /\.business-logo-stage\s*\{[\s\S]*?height:\s*115px!important;[\s\S]*?margin:\s*12px 0 8px!important/);
   assert.match(sidebarRefinements, /@media\(max-width:760px\)[\s\S]*?height:\s*99px!important;[\s\S]*?margin:\s*10px 0 7px!important/);
 });
+
+ 
+test("el menú predeterminado coloca Clientes y Proveedores después de Ventas y Bancos antes de Cupones para todos los perfiles", () => {
+  const defaultStart = app.indexOf("const defaultSidebarLayout = () => [");
+  const normalizeEnd = app.indexOf("const currencyDigits", defaultStart);
+  assert.ok(defaultStart >= 0 && normalizeEnd > defaultStart);
+  const sidebarLogic = app.slice(defaultStart, normalizeEnd);
+  assert.match(sidebarLogic, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.match(sidebarLogic, /items: \["stats", "profitability", "accounts", "purchases", "banks", "coupons", "payments"\]/);
+  assert.match(sidebarLogic, /customers: "comercial"/);
+  assert.match(sidebarLogic, /suppliers: "comercial"/);
+  assert.match(sidebarLogic, /repositionItem\("comercial", "customers", "sales", "after"\)/);
+  assert.match(sidebarLogic, /repositionItem\("comercial", "suppliers", "customers", "after"\)/);
+  assert.match(sidebarLogic, /repositionItem\("finanzas", "banks", "coupons", "before"\)/);
+});
+
+test("el sidebar separa mejor los iconos del texto y baja ligeramente el logo 365", () => {
+  const navigationSpacing = css.slice(css.lastIndexOf("/* Sidebar navigation spacing and logo position. */"));
+  assert.match(navigationSpacing, /\.sidebar > \.brand\s*\{[\s\S]*?padding:\s*5px 4px 0!important/);
+  assert.match(navigationSpacing, /\.sidebar \.nav-item\s*\{[\s\S]*?gap:\s*13px!important/);
+  assert.match(navigationSpacing, /\.nav-item \.nav-icon\s*\{[\s\S]*?width:\s*22px!important;[\s\S]*?flex:\s*0 0 22px!important/);
+  assert.match(navigationSpacing, /@media\(max-width:760px\)[\s\S]*?gap:\s*11px!important/);
+});

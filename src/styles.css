@@ -11248,3 +11248,22 @@ body { background: #F5F7FC; color: #19243A; }
     min-height:99px!important;
   }
 }
+
+
+/* Sidebar navigation spacing and logo position. */
+.app-shell > .sidebar > .brand {
+  padding:5px 4px 0!important;
+  margin-bottom:12px!important;
+}
+.app-shell > .sidebar .nav-item {
+  gap:13px!important;
+}
+.app-shell > .sidebar .nav-item .nav-icon {
+  width:22px!important;
+  flex:0 0 22px!important;
+}
+@media(max-width:760px) {
+  .app-shell > .sidebar .nav-item {
+    gap:11px!important;
+  }
+}

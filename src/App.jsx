@@ -270,9 +270,9 @@ const sidebarAreaItem = (screen, label = null) => {
 };
 const defaultSidebarLayout = () => [
   { id: "inicio", type: "group", title: "", items: [{ id: "home", screen: "home", label: "Inicio", icon: "⌂" }] },
-  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "catalog"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "finanzas", type: "group", title: "FINANZAS", items: ["banks", "stats", "profitability", "accounts", "purchases", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
-  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("customers"), sidebarAreaItem("suppliers"), sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
+  { id: "comercial", type: "group", title: "COMERCIAL", items: ["products", "sales", "customers", "suppliers", "catalog"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "finanzas", type: "group", title: "FINANZAS", items: ["stats", "profitability", "accounts", "purchases", "banks", "coupons", "payments"].map(sidebarAreaItem).filter(Boolean) },
+  { id: "personal", type: "group", title: "PERSONAL", items: [sidebarAreaItem("team", "Trabajadores")].filter(Boolean) },
   { id: "administracion", type: "group", title: "ADMINISTRACIÓN", items: [{ id: "settings", screen: "settings", label: "Configuración", icon: "⚙" }] }
 ];
 const normalizeSidebarLayout = (layout) => {
@@ -310,8 +310,8 @@ const normalizeSidebarLayout = (layout) => {
     accounts: "finanzas",
     purchases: "finanzas",
     coupons: "finanzas",
-    customers: "personal",
-    suppliers: "personal",
+    customers: "comercial",
+    suppliers: "comercial",
     team: "personal"
   };
   const movedItems = new Map();
@@ -368,6 +368,25 @@ const normalizeSidebarLayout = (layout) => {
     target.items.push(item);
     placed.add(item.id);
   }
+  // Keep the requested default sequence even for existing saved layouts.
+  // Items retain their saved labels/icons; only these default positions are normalized.
+  const repositionItem = (groupId, itemId, anchorId, position) => {
+    const group = groups.find((candidate) => candidate.id === groupId);
+    if (!group) return;
+    const itemIndex = group.items.findIndex((item) => item.id === itemId);
+    if (itemIndex < 0) return;
+    const [item] = group.items.splice(itemIndex, 1);
+    const anchorIndex = group.items.findIndex((entry) => entry.id === anchorId);
+    if (anchorIndex < 0) {
+      group.items.push(item);
+      return;
+    }
+    group.items.splice(anchorIndex + (position === "after" ? 1 : 0), 0, item);
+  };
+  repositionItem("comercial", "customers", "sales", "after");
+  repositionItem("comercial", "suppliers", "customers", "after");
+  repositionItem("finanzas", "banks", "coupons", "before");
+
   return groups;
 };
 

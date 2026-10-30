@@ -95,7 +95,14 @@ create policy bank_accounts_select_managers on public.bank_accounts for select t
   using ((select private.can_manage_members(business_id)));
 drop policy if exists bank_accounts_insert_managers on public.bank_accounts;
 create policy bank_accounts_insert_managers on public.bank_accounts for insert to authenticated
-  with check ((select private.can_manage_members(business_id)) and created_by = (select auth.uid()));
+  with check (
+    (select private.can_manage_members(bank_accounts.business_id))
+    and bank_accounts.created_by = (select auth.uid())
+    and bank_accounts.opening_balance_date <= (now() at time zone 'America/Bogota')::date
+    and bank_accounts.currency_code = (
+      select b.currency_code from public.businesses b where b.id = bank_accounts.business_id
+    )
+  );
 drop policy if exists bank_accounts_update_managers on public.bank_accounts;
 create policy bank_accounts_update_managers on public.bank_accounts for update to authenticated
   using ((select private.can_manage_members(business_id)))

@@ -6629,7 +6629,7 @@ function AuthenticatedApp() {
         p_tax_minor: tax,
         p_amount_paid_minor: payment,
         p_initial_payment_method: purchaseInitialPaymentMethod,
-        p_initial_bank_account_id: purchaseInitialPaymentMethod === "Efectivo" ? null : (purchaseInitialBankAccountId || null),
+        p_initial_bank_account_id: purchaseInitialPaymentMethod === "Efectivo" || payment <= 0 ? null : (purchaseInitialBankAccountId || null),
         p_items: purchaseCart.map((item) => ({
           product_id: item.product_id, item_name: item.name, quantity: Number(item.quantity),
           unit_cost_minor: toMinorUnits(item.unit_cost, currencyCode)
@@ -6949,7 +6949,7 @@ function AuthenticatedApp() {
         p_initial_payment_method: saleInitialPaymentMethod,
         p_sold_at: new Date((saleDate || todayInBogota()) + "T12:00:00-05:00").toISOString(),
         p_advisor_name: saleAdvisorName.trim() || null,
-        p_initial_bank_account_id: saleInitialPaymentMethod === "Efectivo" ? null : (saleInitialBankAccountId || null)
+        p_initial_bank_account_id: saleInitialPaymentMethod === "Efectivo" || payment <= 0 ? null : (saleInitialBankAccountId || null)
       });
       if (saleError) throw saleError;
       const sale = Array.isArray(data) ? data[0] : data;

@@ -175,7 +175,11 @@ test("Ventas muestra iconos de ayuda reales en el bloque de caja visible al entr
 
 test("las cotizaciones muestran filas alineadas y proveedores conserva su módulo propio", () => {
   assert.match(app, /title: "Proveedores"[\s\S]*?screen: "suppliers"/);
-  assert.match(app, /sidebarAreaItem\("suppliers"\)/);
+  const defaultMenuStart = app.indexOf("const defaultSidebarLayout = () => [");
+  const defaultMenuEnd = app.indexOf("const normalizeSidebarLayout", defaultMenuStart);
+  const defaultMenu = app.slice(defaultMenuStart, defaultMenuEnd);
+  assert.match(defaultMenu, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.match(app, /suppliers: "comercial"/);
   const purchaseTabsStart = app.indexOf('className="purchase-module-tabs"');
   const purchaseTabsEnd = app.indexOf("</div>", purchaseTabsStart);
   const purchaseTabs = app.slice(purchaseTabsStart, purchaseTabsEnd);

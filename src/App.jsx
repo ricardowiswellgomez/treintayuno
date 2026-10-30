@@ -1934,6 +1934,7 @@ function AuthenticatedApp() {
   const [bankLoading, setBankLoading] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
   const [bankAccountFormOpen, setBankAccountFormOpen] = useState(false);
+  const [bankEditingAccountId, setBankEditingAccountId] = useState(null);
   const [bankMovementFormOpen, setBankMovementFormOpen] = useState(false);
   const [bankTransferFormOpen, setBankTransferFormOpen] = useState(false);
   const [bankAccountDraft, setBankAccountDraft] = useState({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" });
@@ -3051,26 +3052,51 @@ function AuthenticatedApp() {
     const opening = toMinorUnits(bankAccountDraft.opening_balance || 0, currencyCode);
     if (!bankName || !accountName) { setError("Indica la entidad y un nombre para identificar la cuenta."); return; }
     if (last4 && !/^[0-9]{4}$/.test(last4)) { setError("El número de cuenta debe terminar en exactamente cuatro dígitos."); return; }
-    if (!Number.isSafeInteger(opening)) { setError("El saldo inicial no es válido."); return; }
-    if (bankAccountDraft.opening_balance_date > todayInBogota()) { setError("La fecha del saldo inicial no puede estar en el futuro."); return; }
+    if (!bankEditingAccountId && !Number.isSafeInteger(opening)) { setError("El saldo inicial no es válido."); return; }
+    if (!bankEditingAccountId && bankAccountDraft.opening_balance_date > todayInBogota()) { setError("La fecha del saldo inicial no puede estar en el futuro."); return; }
     setBankSaving(true); setError(""); setNotice("");
     try {
-      const { error: insertError } = await supabase.from("bank_accounts").insert({
-        business_id: activeBusiness.id, bank_name: bankName, account_name: accountName,
+      const accountDetails = {
+        bank_name: bankName, account_name: accountName,
         account_type: bankAccountDraft.account_type, account_last4: last4 || null,
         account_holder: bankAccountDraft.account_holder.trim() || null,
-        currency_code: currencyCode, opening_balance_minor: opening,
-        opening_balance_date: bankAccountDraft.opening_balance_date || todayInBogota(),
-        notes: bankAccountDraft.notes.trim() || null
-      });
-      if (insertError) throw insertError;
+        notes: bankAccountDraft.notes.trim() || null,
+        updated_at: new Date().toISOString()
+      };
+      if (bankEditingAccountId) {
+        const { data, error: updateError } = await supabase.from("bank_accounts").update(accountDetails)
+          .eq("business_id", activeBusiness.id).eq("id", bankEditingAccountId).select("id").maybeSingle();
+        if (updateError) throw updateError;
+        if (!data) throw new Error("No se pudo actualizar la cuenta bancaria.");
+      } else {
+        const { error: insertError } = await supabase.from("bank_accounts").insert({
+          business_id: activeBusiness.id, ...accountDetails, currency_code: currencyCode,
+          opening_balance_minor: opening,
+          opening_balance_date: bankAccountDraft.opening_balance_date || todayInBogota()
+        });
+        if (insertError) throw insertError;
+      }
       setBankAccountDraft({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" });
       setBankAccountFormOpen(false);
-      setNotice("Cuenta bancaria guardada. El saldo inicial quedó registrado sin alterar tus ingresos ni gastos.");
+      setBankEditingAccountId(null);
+      setNotice(bankEditingAccountId ? "Cuenta bancaria actualizada. El saldo y el historial se conservaron." : "Cuenta bancaria guardada. El saldo inicial quedó registrado sin alterar tus ingresos ni gastos.");
       await loadBankDashboard();
       await loadBankAccountOptions();
     } catch (e) { setError(friendlyError(e)); }
     finally { setBankSaving(false); }
+  }
+
+  function editBankAccount(account) {
+    if (!account?.id || !isBusinessManager) return;
+    setBankEditingAccountId(account.id);
+    setBankAccountDraft({
+      bank_name: account.bank_name || "", account_name: account.account_name || "",
+      account_type: account.account_type || "savings", account_last4: account.account_last4 || "",
+      account_holder: account.account_holder || "", opening_balance: "0",
+      opening_balance_date: account.opening_balance_date || todayInBogota(), notes: account.notes || ""
+    });
+    setBankAccountFormOpen(true); setBankMovementFormOpen(false); setBankTransferFormOpen(false);
+    setError(""); setNotice("");
   }
 
   async function createBankMovement(event) {
@@ -3168,7 +3194,7 @@ function AuthenticatedApp() {
           <div><p className="eyebrow">TESORERÍA DEL NEGOCIO</p><h2>Bancos y billeteras</h2><p>Controla los saldos, registra movimientos y consulta cómo entra y sale el dinero de tus cuentas.</p></div>
           <div className="banks-actions">
             <button type="button" className="secondary-button compact-button" disabled={bankLoading || bankSaving} onClick={loadBankDashboard}>Actualizar</button>
-            <button type="button" className="secondary-button compact-button" onClick={() => { setBankAccountFormOpen((v) => !v); setBankMovementFormOpen(false); setBankTransferFormOpen(false); }}>＋ Nueva cuenta</button>
+            <button type="button" className="secondary-button compact-button" onClick={() => { setBankEditingAccountId(null); setBankAccountDraft({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" }); setBankAccountFormOpen((v) => !v); setBankMovementFormOpen(false); setBankTransferFormOpen(false); }}>＋ Nueva cuenta</button>
             <button type="button" className="secondary-button compact-button" disabled={!bankAccountOptions.length} onClick={() => { setBankMovementFormOpen((v) => !v); setBankAccountFormOpen(false); setBankTransferFormOpen(false); }}>＋ Movimiento</button>
             <button type="button" className="primary-button compact-button" disabled={bankAccountOptions.length < 2} onClick={() => { setBankTransferFormOpen((v) => !v); setBankAccountFormOpen(false); setBankMovementFormOpen(false); }}>⇄ Transferir</button>
           </div>
@@ -3179,7 +3205,7 @@ function AuthenticatedApp() {
           <article className="bank-summary-card panel"><span>Salidas del mes</span><strong>{money(bankDashboard.summary?.expenses_month_minor || 0, currencyCode)}</strong><small>Pagos y egresos de las cuentas</small></article>
         </div>
         {bankAccountFormOpen && <form className="bank-form panel" onSubmit={createBankAccount}>
-          <div className="bank-form-heading"><div><span className="eyebrow">NUEVA CUENTA</span><h3>Registrar cuenta bancaria o billetera</h3><p>Solo guardamos los últimos cuatro dígitos; nunca las claves ni los números completos.</p></div></div>
+          <div className="bank-form-heading"><div><span className="eyebrow">{bankEditingAccountId ? "EDITAR CUENTA" : "NUEVA CUENTA"}</span><h3>{bankEditingAccountId ? "Actualizar datos de la cuenta" : "Registrar cuenta bancaria o billetera"}</h3><p>Solo guardamos los últimos cuatro dígitos; nunca las claves ni los números completos.</p></div></div>
           <div className="bank-form-grid">
             <label><span>Entidad financiera *</span><input value={bankAccountDraft.bank_name} onChange={(e) => setBankAccountDraft((v) => ({ ...v, bank_name: e.target.value }))} maxLength={120} required placeholder="Ej. Bancolombia, Nequi" /></label>
             <label><span>Nombre para identificarla *</span><input value={bankAccountDraft.account_name} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_name: e.target.value }))} maxLength={120} required placeholder="Ej. Ahorros principal" /></label>
@@ -3187,11 +3213,12 @@ function AuthenticatedApp() {
             <label><span>Últimos cuatro dígitos</span><input inputMode="numeric" value={bankAccountDraft.account_last4} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_last4: e.target.value.replace(/[^0-9]/g, "").slice(-4) }))} maxLength={4} placeholder="Opcional" /></label>
             <label><span>Titular</span><input value={bankAccountDraft.account_holder} onChange={(e) => setBankAccountDraft((v) => ({ ...v, account_holder: e.target.value }))} maxLength={120} placeholder="Nombre del titular" /></label>
             <label><span>Moneda</span><input value={currencyCode} readOnly /></label>
-            <label><span>Saldo inicial *</span><input type="number" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankAccountDraft.opening_balance} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance: e.target.value }))} required /></label>
-            <label><span>Fecha del saldo inicial</span><input type="date" max={todayInBogota()} value={bankAccountDraft.opening_balance_date} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance_date: e.target.value }))} required /></label>
+            {!bankEditingAccountId && <><label><span>Saldo inicial *</span><input type="number" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankAccountDraft.opening_balance} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance: e.target.value }))} required /></label>
+            <label><span>Fecha del saldo inicial</span><input type="date" max={todayInBogota()} value={bankAccountDraft.opening_balance_date} onChange={(e) => setBankAccountDraft((v) => ({ ...v, opening_balance_date: e.target.value }))} required /></label></>}
+            {bankEditingAccountId && <p className="helper-text bank-form-full">El saldo inicial y su fecha no se modifican al editar una cuenta, para conservar la trazabilidad de los movimientos.</p>}
             <label className="bank-form-full"><span>Notas</span><input value={bankAccountDraft.notes} onChange={(e) => setBankAccountDraft((v) => ({ ...v, notes: e.target.value }))} maxLength={1000} placeholder="Información útil para identificar la cuenta" /></label>
           </div>
-          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setBankAccountFormOpen(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={bankSaving}>{bankSaving ? "Guardando…" : "Guardar cuenta"}</button></div>
+          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => { setBankAccountFormOpen(false); setBankEditingAccountId(null); }}>Cancelar</button><button type="submit" className="primary-button" disabled={bankSaving}>{bankSaving ? "Guardando…" : bankEditingAccountId ? "Guardar cambios" : "Guardar cuenta"}</button></div>
         </form>}
         {bankMovementFormOpen && <form className="bank-form panel" onSubmit={createBankMovement}>
           <div className="bank-form-heading"><div><span className="eyebrow">MOVIMIENTO MANUAL</span><h3>Registrar ingreso o egreso</h3><p>Los abonos de ventas, pagos a proveedores y gastos pueden vincularse automáticamente desde sus respectivos módulos.</p></div></div>
@@ -3229,7 +3256,7 @@ function AuthenticatedApp() {
             <strong className="bank-account-balance">{money(account.balance_minor || 0, account.currency_code || currencyCode)}</strong>
             <small>Saldo inicial: {money(account.opening_balance_minor || 0, account.currency_code || currencyCode)} · Desde {account.opening_balance_date || "—"}</small>
             {account.account_holder && <small>Titular: {account.account_holder}</small>}
-            <div className="bank-account-actions"><button type="button" className="secondary-button action-small" disabled={bankSaving} onClick={() => toggleBankAccountActive(account)}>{account.is_active ? "Desactivar" : "Reactivar"}</button></div>
+            <div className="bank-account-actions"><button type="button" className="secondary-button action-small" disabled={bankSaving} onClick={() => editBankAccount(account)}>Editar</button><button type="button" className="secondary-button action-small" disabled={bankSaving} onClick={() => toggleBankAccountActive(account)}>{account.is_active ? "Desactivar" : "Reactivar"}</button></div>
           </article>)}
         </div> : <div className="empty-state"><span className="empty-icon">▥</span><h3>Aún no tienes cuentas bancarias</h3><p>Registra Bancolombia, Banco de Bogotá, Nequi, Daviplata u otras cuentas que utilice tu negocio. No necesitas conectar tus claves bancarias.</p><button type="button" className="primary-button" onClick={() => setBankAccountFormOpen(true)}>＋ Registrar primera cuenta</button></div>}
         <section className="bank-movements-section panel">
@@ -3849,7 +3876,7 @@ function AuthenticatedApp() {
       const tableNames=[
         "product_categories","products","product_images","product_variants","customers","suppliers",
         "sales","sale_items","sale_payments","purchases","purchase_items","purchase_payments",
-        "expenses","stock_movements","audit_logs","quotes","quote_items","business_coupons"
+        "expenses","bank_accounts","bank_movements","stock_movements","audit_logs","quotes","quote_items","business_coupons"
       ];
       const backup={format:"treseiscinco-business-backup-v1",generated_at:new Date().toISOString(),
         business:{id:activeBusiness.id,name:activeBusiness.name,currency_code:activeBusiness.currency_code,
@@ -3891,6 +3918,12 @@ function AuthenticatedApp() {
     }).catch(()=>{if(alive){setIsPlatformAdmin(false);setIsPlatformAdminReady(true);}});
     return () => { alive=false; };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (settingsTab === "platform_admin" && isPlatformAdminReady && !isPlatformAdmin) {
+      setSettingsTab(activeBusiness?.role === "owner" ? "general" : "account");
+    }
+  }, [settingsTab, isPlatformAdmin, isPlatformAdminReady, activeBusiness?.role]);
 
   useEffect(() => {
     if (screen !== "platform_admin" || !isPlatformAdminReady) return;

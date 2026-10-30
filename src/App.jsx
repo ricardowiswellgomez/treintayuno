@@ -8947,6 +8947,7 @@ function AuthenticatedApp() {
                 ["catalog", "Catálogo"],
                 ["customization", "Personalización"],
                 ["help", "Ayudas"],
+                ["assistant", "Asistente"],
                 ["language", "Idioma"],
                 ["taxes", "Impuestos"],
                 ["data", "Datos y copias"]
@@ -8956,7 +8957,7 @@ function AuthenticatedApp() {
               ]).concat(isPlatformAdmin ? [["platform_admin", "Administración de plataforma"]] : []).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={settingsTab === tab} className={settingsTab === tab ? "settings-tab active" : "settings-tab"} onClick={() => setSettingsTab(tab)}>{label}</button>)}
             </div>
             <form className="settings-card panel" onSubmit={saveSettings} hidden={settingsTab === "platform_admin"}>
-              <div hidden={!["account", "general", "company", "catalog", "customization", "help", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
+              <div hidden={!["account", "general", "company", "catalog", "customization", "help", "assistant", "language", "taxes", "data"].includes(settingsTab)} className="settings-tab-panel">
               <div hidden={settingsTab !== "account"} className="settings-tab-content account-settings-panel">
                 <div className="settings-icon"><AppIcon name="mail" size={23}/></div>
                 <h3>Correo de acceso</h3>
@@ -9016,11 +9017,16 @@ function AuthenticatedApp() {
               <h3>Ayudas contextuales</h3>
               <p>El botón flotante «Ayuda» muestra la guía de la sección actual. Los consejos junto a los campos se pueden ocultar por separado.</p>
               <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar consejos junto a los campos<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva los iconos de ayuda breve junto a los campos. El botón general «Ayuda» permanece visible." /></strong><small>Esta opción solo controla los iconos junto a los campos. El botón flotante «Ayuda» siempre permanece disponible.</small></span></label>
-              <div className="settings-section-divider" />
-              <h3>Nombre del asistente</h3>
-              <p>Elige cómo quieres llamar a tu asistente. Por defecto se llama Angie; puedes cambiarlo cuando quieras. La voz seguirá siendo Celeste.</p>
-              <label className="settings-field"><span>Nombre del asistente</span><input type="text" maxLength={32} value={settingsAssistantName} onChange={(event) => setSettingsAssistantName(event.target.value)} placeholder="Angie" disabled={activeBusiness?.role !== "owner" || busy} /></label>
               {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar estas preferencias.</p>}
+              </div>
+              <div hidden={settingsTab !== "assistant"} className="settings-tab-content assistant-settings-panel">
+                <div className="settings-icon"><AppIcon name="sparkles" size={23} /></div>
+                <h3>Tu asistente inteligente</h3>
+                <p>Personaliza cómo se presenta tu asistente. El nombre se conserva para este negocio y la voz de respuesta permanece en Celeste.</p>
+                <label className="settings-field"><span>Nombre del asistente</span><input type="text" maxLength={32} value={settingsAssistantName} onChange={(event) => setSettingsAssistantName(event.target.value)} placeholder="Angie" disabled={activeBusiness?.role !== "owner" || busy} /></label>
+                <div className="settings-assistant-voice"><strong>Voz de respuesta</strong><span>Celeste · Aura‑2 en español</span><small>La reproducción automática se puede activar o desactivar desde el encabezado del asistente.</small></div>
+                <p className="helper-text">El asistente recuerda las preferencias y objetivos no sensibles que le pidas guardar. Los recuerdos son privados por usuario y negocio, y puedes borrarlos desde el propio asistente.</p>
+                {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede cambiar el nombre del asistente.</p>}
               </div>
               <div hidden={settingsTab !== "language"} className="settings-tab-content language-settings-panel">
                 <div className="settings-icon"><AppIcon name="grid" size={23} /></div>

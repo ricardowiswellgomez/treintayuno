@@ -353,3 +353,10 @@ test("la IA no promete guardar una preferencia cuando la solicitud no puede alma
   assert.ok(worker.includes("memoryRequestIntent&&(!detectedMemory||Boolean(detectedMemory.rejected))"));
   assert.ok(worker.includes("MEMORIA NO GUARDADA"));
 });
+
+test("la personalización del nombre y la voz vive en su propia pestaña Asistente, no en Ayudas", () => {
+  assert.ok(app.includes('["assistant", "Asistente"]'));
+  assert.ok(app.includes('settingsTab !== "assistant"'));
+  assert.ok(app.includes("Voz de respuesta"));
+  assert.ok(app.includes("Celeste · Aura‑2 en español"));
+});

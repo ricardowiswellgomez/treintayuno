@@ -2515,6 +2515,10 @@ function AuthenticatedApp() {
   async function generateAiSpeech(text, messageId) {
     const content = String(text || "").trim();
     if (!content || aiSpeechBusy) return;
+    if (aiAudio?.messageId === String(messageId) && aiAudioRef.current) {
+      setAiSpeechError("");
+      try { aiAudioRef.current.currentTime = 0; await aiAudioRef.current.play(); return; } catch {}
+    }
     setAiSpeechBusy(true); setAiSpeechError("");
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();

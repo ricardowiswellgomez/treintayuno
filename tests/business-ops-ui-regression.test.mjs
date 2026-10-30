@@ -244,3 +244,12 @@ test("Bancos registra sus cuentas y movimientos en Auditorías", () => {
   assert.match(app, /bank_name:"Entidad bancaria"/);
   assert.match(app, /account_last4:"Últimos cuatro dígitos"/);
 });
+
+ 
+test("el sidebar deja de dibujar contenedores alrededor de las categorías y amplía el logo del negocio", () => {
+  const sidebarRefinements = css.slice(css.lastIndexOf("/* Sidebar cleanup: category groups stay structurally sortable but have no visible container. */"));
+  assert.match(sidebarRefinements, /\.sidebar-nav-group,[\s\S]*?border:\s*0!important;[\s\S]*?background:\s*transparent!important/);
+  assert.match(sidebarRefinements, /\.nav-list-editing \.sidebar-nav-group[\s\S]*?box-shadow:\s*none!important/);
+  assert.match(sidebarRefinements, /\.business-logo-stage\s*\{[\s\S]*?height:\s*115px!important;[\s\S]*?margin:\s*12px 0 8px!important/);
+  assert.match(sidebarRefinements, /@media\(max-width:760px\)[\s\S]*?height:\s*99px!important;[\s\S]*?margin:\s*10px 0 7px!important/);
+});

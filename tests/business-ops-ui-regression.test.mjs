@@ -173,12 +173,15 @@ test("Ventas muestra iconos de ayuda reales en el bloque de caja visible al entr
 
 
 
-test("las cotizaciones muestran filas alineadas y proveedores conserva su módulo propio", () => {
+test("Cotizaciones es independiente de Ventas y Proveedores conserva su módulo propio", () => {
   assert.match(app, /title: "Proveedores"[\s\S]*?screen: "suppliers"/);
   const defaultMenuStart = app.indexOf("const defaultSidebarLayout = () => [");
   const defaultMenuEnd = app.indexOf("const normalizeSidebarLayout", defaultMenuStart);
   const defaultMenu = app.slice(defaultMenuStart, defaultMenuEnd);
-  assert.match(defaultMenu, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.match(defaultMenu, /items: \["products", "sales", "quotes", "customers", "suppliers", "catalog"\]/);
+  assert.doesNotMatch(app, /SalesModuleCards/);
+  assert.match(app, /quotes: "comercial"/);
+  assert.match(app, /screen === "quotes" \? "PROPUESTAS COMERCIALES"/);
   assert.match(app, /suppliers: "comercial"/);
   const purchaseTabsStart = app.indexOf('className="purchase-module-tabs"');
   const purchaseTabsEnd = app.indexOf("</div>", purchaseTabsStart);
@@ -259,24 +262,28 @@ test("el sidebar deja de dibujar contenedores alrededor de las categorías y amp
 });
 
  
-test("el menú predeterminado coloca Clientes y Proveedores después de Ventas y Bancos antes de Cupones para todos los perfiles", () => {
+test("el menú predeterminado coloca Cotizaciones después de Ventas, Clientes y Proveedores después de Cotizaciones y Bancos antes de Cupones para todos los perfiles", () => {
   const defaultStart = app.indexOf("const defaultSidebarLayout = () => [");
   const normalizeEnd = app.indexOf("const currencyDigits", defaultStart);
   assert.ok(defaultStart >= 0 && normalizeEnd > defaultStart);
   const sidebarLogic = app.slice(defaultStart, normalizeEnd);
-  assert.match(sidebarLogic, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.match(sidebarLogic, /items: \["products", "sales", "quotes", "customers", "suppliers", "catalog"\]/);
   assert.match(sidebarLogic, /items: \["stats", "profitability", "accounts", "purchases", "banks", "coupons", "payments"\]/);
   assert.match(sidebarLogic, /customers: "comercial"/);
   assert.match(sidebarLogic, /suppliers: "comercial"/);
-  assert.match(sidebarLogic, /repositionItem\("comercial", "customers", "sales", "after"\)/);
+  assert.match(sidebarLogic, /repositionItem\("comercial", "quotes", "sales", "after"\)/);
+  assert.match(sidebarLogic, /repositionItem\("comercial", "customers", "quotes", "after"\)/);
   assert.match(sidebarLogic, /repositionItem\("comercial", "suppliers", "customers", "after"\)/);
   assert.match(sidebarLogic, /repositionItem\("finanzas", "banks", "coupons", "before"\)/);
 });
 
-test("el sidebar separa mejor los iconos del texto y baja ligeramente el logo 365", () => {
-  const navigationSpacing = css.slice(css.lastIndexOf("/* Sidebar navigation spacing and logo position. */"));
-  assert.match(navigationSpacing, /\.sidebar > \.brand\s*\{[\s\S]*?padding:\s*5px 4px 0!important/);
-  assert.match(navigationSpacing, /\.sidebar \.nav-item\s*\{[\s\S]*?gap:\s*13px!important/);
-  assert.match(navigationSpacing, /\.nav-item \.nav-icon\s*\{[\s\S]*?width:\s*22px!important;[\s\S]*?flex:\s*0 0 22px!important/);
-  assert.match(navigationSpacing, /@media\(max-width:760px\)[\s\S]*?gap:\s*11px!important/);
-});
+test("el sidebar baja y amplía el logo 365, redondea el logo del negocio y aumenta el espacio antes del menú", () => {
+  const navigationSpacing = css.slice(css.lastIndexOf("/* Sidebar final polish: circular business logo"));
+  assert.match(navigationSpacing, /padding:\s*14px 4px 0!important/);
+  assert.match(navigationSpacing, /width:min\(100%,189px\)!important;[\s\S]*?max-height:69px!important/);
+  assert.match(navigationSpacing, /margin-bottom:24px!important/);
+  assert.match(navigationSpacing, /width:132px!important;[\s\S]*?height:132px!important;[\s\S]*?border-radius:50%!important/);
+  assert.match(navigationSpacing, /margin:18px 0 24px!important/);
+  assert.match(navigationSpacing, /margin-bottom:34px!important/);
+  assert.match(navigationSpacing, /@media\(max-width:760px\)[\s\S]*?width:min\(100%,147px\)!important;[\s\S]*?height:112px!important/);
+});;

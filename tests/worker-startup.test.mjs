@@ -126,10 +126,10 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Clientes y Proveedores aparecen después de Ventas por defecto y Proveedores sigue siendo un módulo independiente", () => {
+test("Cotizaciones aparece después de Ventas y Clientes y Proveedores siguen siendo módulos independientes", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
-  assert.match(sidebarSource, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.match(sidebarSource, /items: \["products", "sales", "quotes", "customers", "suppliers", "catalog"\]/);
   assert.doesNotMatch(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
   assert.match(appSource, /screen: "suppliers"/);
   assert.match(appSource, /if \(next === "suppliers"\) return isBusinessManager \|\| canViewSuppliers \|\| canViewPurchases/);

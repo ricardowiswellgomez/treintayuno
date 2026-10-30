@@ -237,3 +237,10 @@ test("los subtítulos de categorías del menú solo aparecen al personalizar la 
     /\{!group\.items\.some\(\(navItem\) => navItem\.id === "home"\) && <div className="sidebar-group-heading">/
   );
 });
+
+test("Bancos registra sus cuentas y movimientos en Auditorías", () => {
+  assert.match(app, /bank_accounts:"cuenta bancaria"/);
+  assert.match(app, /bank_movements:"movimiento bancario"/);
+  assert.match(app, /bank_name:"Entidad bancaria"/);
+  assert.match(app, /account_last4:"Últimos cuatro dígitos"/);
+});

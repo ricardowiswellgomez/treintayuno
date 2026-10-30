@@ -126,12 +126,15 @@ test("sidebar text label is not styled as an icon", () => {
   assert.match(cssSource, /\.nav-item \.nav-label-text\{[^}]*width:auto/);
 });
 
-test("Proveedores remains a standalone Personal/sidebar module, not a Compras tab", () => {
+test("Clientes y Proveedores aparecen después de Ventas por defecto y Proveedores sigue siendo un módulo independiente", () => {
   const appSource = readSource(new URL("../src/App.jsx", import.meta.url), "utf8");
   const sidebarSource = appSource.slice(appSource.indexOf("const defaultSidebarLayout"), appSource.indexOf("const normalizeSidebarLayout"));
-  assert.match(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
+  assert.match(sidebarSource, /items: \["products", "sales", "customers", "suppliers", "catalog"\]/);
+  assert.doesNotMatch(sidebarSource, /id: "personal".*sidebarAreaItem\("suppliers"\)/s);
   assert.match(appSource, /screen: "suppliers"/);
   assert.match(appSource, /if \(next === "suppliers"\) return isBusinessManager \|\| canViewSuppliers \|\| canViewPurchases/);
+  assert.match(appSource, /customers: "comercial"/);
+  assert.match(appSource, /suppliers: "comercial"/);
   assert.doesNotMatch(appSource, /aria-label="Compras, gastos y proveedores"/);
   assert.doesNotMatch(appSource, /setPurchaseModuleTab\("suppliers"\)/);
   const tabsStart = appSource.indexOf('<div className="purchase-module-tabs"');

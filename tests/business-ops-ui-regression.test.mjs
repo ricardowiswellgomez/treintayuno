@@ -290,29 +290,30 @@ test("el sidebar baja y amplía el logo 365, redondea el logo del negocio y aume
 });;
 
 
+
 test("Celeste usa Aura-2 español con el speaker oficial y devuelve MP3 real", () => {
-  assert.match(worker, /@cf\\/deepgram\\/aura-2-es/);
-  assert.match(worker, /speaker:"celeste"/);
-  assert.match(worker, /encoding:"mp3"/);
-  assert.match(worker, /returnRawResponse:true/);
-  assert.match(worker, /Content-Type":"audio\\/mpeg"/);
-  assert.match(worker, /X-TTS-Speaker":"celeste"/);
-  assert.match(app, /fetch\\("\/api\/ai\/speech"/);
-  assert.match(app, /Escuchar con Celeste/);
-  assert.doesNotMatch(app, /speechSynthesis|SpeechSynthesisUtterance/);
+  assert.ok(worker.includes("@cf/deepgram/aura-2-es"));
+  assert.ok(worker.includes('speaker:"celeste"'));
+  assert.ok(worker.includes('encoding:"mp3"'));
+  assert.ok(worker.includes("returnRawResponse:true"));
+  assert.ok(worker.includes('"Content-Type":"audio/mpeg"'));
+  assert.ok(worker.includes('"X-TTS-Speaker":"celeste"'));
+  assert.ok(app.includes('fetch("/api/ai/speech"'));
+  assert.ok(app.includes("Escuchar con Celeste"));
+  assert.ok(!app.includes("speechSynthesis") && !app.includes("SpeechSynthesisUtterance"));
 });
 test("la IA recibe el contexto de la pantalla abierta y sus gráficos accesibles", () => {
-  assert.match(app, /captureAiScreenContext/);
-  assert.match(app, /screenContext: captureAiScreenContext\\(\\)/);
-  assert.match(app, /GRÁFICOS VISIBLES/);
-  assert.match(worker, /CONTEXTO DE LA PANTALLA QUE EL USUARIO TIENE ABIERTA/);
+  assert.ok(app.includes("captureAiScreenContext"));
+  assert.ok(app.includes("screenContext: captureAiScreenContext()"));
+  assert.ok(app.includes("GRÁFICOS VISIBLES"));
+  assert.ok(worker.includes("CONTEXTO DE LA PANTALLA QUE EL USUARIO TIENE ABIERTA"));
 });
 test("las ayudas contextuales conservan reglas y cálculos y retiran ayudas obvias o duplicadas", () => {
-  const helpCount = (app.match(/<FieldHelp\\b/g) || []).length;
+  const helpCount = app.split("<FieldHelp").length - 1;
   assert.ok(helpCount < 143);
   assert.ok(helpCount >= 55);
-  assert.doesNotMatch(app, /Escribe el nombre que se mostrará en tu cuenta/);
-  assert.doesNotMatch(app, /Nombre de la persona de contacto\\. Si registras una empresa/);
-  assert.match(app, /Si el producto ya está en tu inventario/);
-  assert.match(app, /Cada combinación, por ejemplo Rojo \\/ Talla S/);
+  assert.ok(!app.includes("Escribe el nombre que se mostrará en tu cuenta"));
+  assert.ok(!app.includes("Nombre de la persona de contacto. Si registras una empresa"));
+  assert.ok(app.includes("Si el producto ya está en tu inventario"));
+  assert.ok(app.includes("Cada combinación, por ejemplo Rojo / Talla S"));
 });

@@ -2549,7 +2549,7 @@ function AuthenticatedApp() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No pudimos consultar la IA.");
       setAiHistory((current) => [...current, { role: "assistant", content: payload.answer, elapsedMs: payload.elapsedMs, dataBacked: payload.dataBacked }]);
-      if (aiAutoSpeak && payload.answer) generateAiSpeech(payload.answer, "latest");
+      if (aiAutoSpeak && payload.answer) generateAiSpeech(payload.answer, String(nextHistory.length));
     } catch (error) {
       const messageText = String(error?.message || "");
       const friendlyMessage = /failed to fetch|networkerror|load failed/i.test(messageText)

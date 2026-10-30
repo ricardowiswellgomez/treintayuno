@@ -178,7 +178,20 @@ jobs:
             # APK-only commit onto the latest main so publication never rejects fresh app work.
             for attempt in 1 2 3; do
               git fetch origin main
-              git rebase origin/main
+              if ! git rebase origin/main; then
+                conflicts="$(git diff --name-only --diff-filter=U)"
+                if [ "$conflicts" = "public/treseiscinco.apk" ]; then
+                  # The only conflict can be the binary APK: keep this run's newly built APK.
+                  git checkout --theirs -- public/treseiscinco.apk
+                  git add public/treseiscinco.apk
+                  GIT_EDITOR=true git rebase --continue
+                else
+                  git rebase --abort
+                  echo "ERROR: unexpected conflict while rebasing the APK publication commit."
+                  printf '%s\n' "$conflicts"
+                  exit 1
+                fi
+              fi
               if git push origin HEAD:main; then
                 break
               fi

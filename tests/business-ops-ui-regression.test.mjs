@@ -339,3 +339,11 @@ test("la IA aprende solo preferencias y objetivos expresamente solicitados y per
   assert.ok(worker.includes("SOLICITUD DE RECUERDO RECHAZADA"));
   assert.ok(app.includes("Borrar mis recuerdos de este negocio"));
 });
+
+test("el nombre del asistente se limita a caracteres seguros y la memoria conserva RLS por usuario y negocio", async () => {
+  const migration = await readFile(new URL("../supabase/migrations/20261030071434_assistant_memories.sql", import.meta.url), "utf8");
+  assert.ok(worker.includes('replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ._-]/g,"")'));
+  assert.ok(migration.includes("enable row level security"));
+  assert.ok(migration.includes("assistant_memories_delete_own_business"));
+  assert.ok(migration.includes("unique (user_id,business_id,memory_key)"));
+});

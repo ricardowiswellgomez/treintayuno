@@ -452,6 +452,74 @@ begin
 end;
 $function$;
 
+
+-- Las cuentas y los movimientos bancarios también forman parte del historial de cambios.
+create or replace function private.log_business_audit_event()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $function$
+declare
+  v_old jsonb; v_new jsonb; v_row jsonb; v_business_id uuid; v_entity_id uuid;
+  v_actor uuid := auth.uid(); v_action text; v_label text; v_changes jsonb := '{}'::jsonb;
+  v_key text; v_old_value jsonb; v_new_value jsonb; v_member_name text;
+begin
+  if tg_op = 'DELETE' then v_old:=to_jsonb(old); v_row:=v_old; v_action:='Eliminó';
+  elsif tg_op = 'UPDATE' then v_old:=to_jsonb(old); v_new:=to_jsonb(new); v_row:=v_new; v_action:='Actualizó';
+  else v_new:=to_jsonb(new); v_row:=v_new; v_action:='Creó'; end if;
+
+  begin
+    v_business_id := nullif(v_row->>'business_id','')::uuid;
+    if v_business_id is null and tg_table_name='businesses' then v_business_id := nullif(v_row->>'id','')::uuid; end if;
+  exception when others then v_business_id:=null; end;
+  begin v_entity_id:=nullif(v_row->>'id','')::uuid; exception when others then v_entity_id:=null; end;
+  if v_business_id is null then if tg_op='DELETE' then return old; else return new; end if; end if;
+  if tg_table_name='business_members' then
+    select coalesce(nullif(p.display_name,''),'miembro del equipo') into v_member_name
+    from public.profiles p where p.user_id=nullif(v_row->>'user_id','')::uuid;
+  end if;
+
+  v_label := coalesce(
+    nullif(v_row->>'sale_number',''),nullif(v_row->>'purchase_number',''),nullif(v_row->>'quote_number',''),
+    nullif(v_row->>'name',''),nullif(v_row->>'full_name',''),nullif(v_row->>'company_name',''),
+    nullif(v_row->>'bank_name',''),nullif(v_row->>'account_name',''),
+    nullif(v_row->>'description',''),nullif(v_row->>'item_name',''),nullif(v_row->>'category',''),
+    nullif(v_row->>'sku',''),nullif(v_row->>'reference',''),v_member_name,
+    case when tg_table_name in ('sale_payments','purchase_payments')
+      then 'pago por '||coalesce(v_row->>'amount_minor','importe no indicado') else null end,
+    case when tg_table_name='businesses'
+      then coalesce(nullif(v_row->>'name',''),'configuración del negocio') else null end,
+    left(coalesce(v_row->>'notes',''),100),tg_table_name
+  );
+
+  if tg_op='UPDATE' then
+    for v_key in select jsonb_object_keys(v_new) loop
+      if v_key not in ('updated_at','created_at') then
+        v_old_value:=v_old->v_key; v_new_value:=v_new->v_key;
+        if v_old_value is distinct from v_new_value then
+          v_changes:=v_changes||jsonb_build_object(v_key,jsonb_build_object('antes',v_old_value,'despues',v_new_value));
+        end if;
+      end if;
+    end loop;
+    if v_changes='{}'::jsonb then return new; end if;
+  elsif tg_op='INSERT' then v_changes:=jsonb_build_object('registro','creado');
+  else v_changes:=jsonb_build_object('registro','eliminado'); end if;
+
+  insert into public.audit_logs(business_id,actor_user_id,action,entity_type,entity_id,details,created_at)
+  values(v_business_id,v_actor,v_action,tg_table_name,v_entity_id,
+    jsonb_build_object('label',v_label,'changes',v_changes,'source','database_trigger'),now());
+  if tg_op='DELETE' then return old; else return new; end if;
+end;
+$function$;
+
+drop trigger if exists audit_business_changes on public.bank_accounts;
+create trigger audit_business_changes after insert or update or delete on public.bank_accounts
+  for each row execute function private.log_business_audit_event();
+drop trigger if exists audit_business_changes on public.bank_movements;
+create trigger audit_business_changes after insert or update or delete on public.bank_movements
+  for each row execute function private.log_business_audit_event();
+
 revoke all on function public.bank_dashboard(uuid,integer,integer) from public, anon;
 revoke all on function public.create_bank_transfer(uuid,uuid,uuid,bigint,date,text,text,text) from public, anon;
 revoke all on function public.create_sale_with_bank_account(uuid,uuid,jsonb,bigint,text,text,timestamptz,text,uuid) from public, anon;

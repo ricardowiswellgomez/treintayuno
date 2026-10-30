@@ -29,6 +29,7 @@ function AppIcon({ name, size = 20 }) {
     team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a4 4 0 0 1 3 4v2" /></>,
     suppliers: <><path d="M3 6h11v12H3zM14 10h4l3 3v5h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></>,
     payments: <><path d="M4 6h16v12H4z" /><path d="M4 10h16M8 15h3" /></>,
+    banks: <><path d="M3 9h18M4 20h16M5 9v11M9 9v11M15 9v11M19 9v11M12 3 2 8h20L12 3Z" /></>,
     receivables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2 2 3-4" /></>,
     payables: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M14 16l2-2 3 4" /></>,
     coupons: <><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z" /><path d="m9 9 6 6M15 9h.01M9 15h.01" /></>,

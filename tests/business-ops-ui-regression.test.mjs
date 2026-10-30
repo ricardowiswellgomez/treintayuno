@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const app = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 const iconGenerator = await readFile(new URL("../scripts/generate-android-icons.mjs", import.meta.url), "utf8");
+const worker = await readFile(new URL("../src/worker.js", import.meta.url), "utf8");
 const androidWorkflow = await readFile(new URL("../.github/workflows/build.yml", import.meta.url), "utf8");
 
 test("el acceso no ofrece ni ejecuta inicio de sesión por SMS", () => {
@@ -287,3 +288,31 @@ test("el sidebar baja y amplía el logo 365, redondea el logo del negocio y aume
   assert.match(navigationSpacing, /margin-bottom:34px!important/);
   assert.match(navigationSpacing, /@media\(max-width:760px\)[\s\S]*?width:min\(100%,147px\)!important;[\s\S]*?height:112px!important/);
 });;
+
+
+test("Celeste usa Aura-2 español con el speaker oficial y devuelve MP3 real", () => {
+  assert.match(worker, /@cf\\/deepgram\\/aura-2-es/);
+  assert.match(worker, /speaker:"celeste"/);
+  assert.match(worker, /encoding:"mp3"/);
+  assert.match(worker, /returnRawResponse:true/);
+  assert.match(worker, /Content-Type":"audio\\/mpeg"/);
+  assert.match(worker, /X-TTS-Speaker":"celeste"/);
+  assert.match(app, /fetch\\("\/api\/ai\/speech"/);
+  assert.match(app, /Escuchar con Celeste/);
+  assert.doesNotMatch(app, /speechSynthesis|SpeechSynthesisUtterance/);
+});
+test("la IA recibe el contexto de la pantalla abierta y sus gráficos accesibles", () => {
+  assert.match(app, /captureAiScreenContext/);
+  assert.match(app, /screenContext: captureAiScreenContext\\(\\)/);
+  assert.match(app, /GRÁFICOS VISIBLES/);
+  assert.match(worker, /CONTEXTO DE LA PANTALLA QUE EL USUARIO TIENE ABIERTA/);
+});
+test("las ayudas contextuales conservan reglas y cálculos y retiran ayudas obvias o duplicadas", () => {
+  const helpCount = (app.match(/<FieldHelp\\b/g) || []).length;
+  assert.ok(helpCount < 143);
+  assert.ok(helpCount >= 55);
+  assert.doesNotMatch(app, /Escribe el nombre que se mostrará en tu cuenta/);
+  assert.doesNotMatch(app, /Nombre de la persona de contacto\\. Si registras una empresa/);
+  assert.match(app, /Si el producto ya está en tu inventario/);
+  assert.match(app, /Cada combinación, por ejemplo Rojo \\/ Talla S/);
+});

@@ -1930,6 +1930,8 @@ function AuthenticatedApp() {
   const [accountsStatusFilter, setAccountsStatusFilter] = useState("pending");
   const [accountsSort, setAccountsSort] = useState("newest");
   const [bankDashboard, setBankDashboard] = useState({ accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } });
+  const [bankDashboardBusinessId, setBankDashboardBusinessId] = useState(null);
+  const bankDashboardRequestRef = useRef(0);
   const [bankAccountOptions, setBankAccountOptions] = useState([]);
   const [bankLoading, setBankLoading] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
@@ -3017,21 +3019,32 @@ function AuthenticatedApp() {
 
 
   async function loadBankDashboard() {
-    if (!activeBusiness?.id || !isBusinessManager) {
-      setBankDashboard({ accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } });
+    const requestId = ++bankDashboardRequestRef.current;
+    const emptyDashboard = { accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } };
+    const businessId = activeBusiness?.id || null;
+    setBankDashboard(emptyDashboard);
+    setBankDashboardBusinessId(null);
+    if (!businessId || !isBusinessManager) {
+      setBankLoading(false);
       return;
     }
     setBankLoading(true);
     try {
-      const { data, error: queryError } = await supabase.rpc("bank_dashboard", { p_business_id: activeBusiness.id, p_limit: 200, p_offset: 0 });
+      const { data, error: queryError } = await supabase.rpc("bank_dashboard", { p_business_id: businessId, p_limit: 200, p_offset: 0 });
       if (queryError) throw queryError;
-      setBankDashboard(data || { accounts: [], movements: [], movement_count: 0, summary: {} });
-    } catch (e) { setError(friendlyError(e)); }
-    finally { setBankLoading(false); }
+      if (requestId !== bankDashboardRequestRef.current) return;
+      setBankDashboard(data || emptyDashboard);
+      setBankDashboardBusinessId(businessId);
+    } catch (e) {
+      if (requestId === bankDashboardRequestRef.current) setError(friendlyError(e));
+    } finally {
+      if (requestId === bankDashboardRequestRef.current) setBankLoading(false);
+    }
   }
 
   async function loadBankAccountOptions() {
-    if (!activeBusiness?.id || !isBusinessManager) { setBankAccountOptions([]); return; }
+    setBankAccountOptions([]);
+    if (!activeBusiness?.id || !isBusinessManager) return;
     const { data, error: queryError } = await supabase.from("bank_accounts")
       .select("id,business_id,bank_name,account_name,account_type,account_last4,currency_code,is_active")
       .eq("business_id", activeBusiness.id).eq("is_active", true).order("bank_name").order("account_name");
@@ -3195,8 +3208,8 @@ function AuthenticatedApp() {
           <div className="banks-actions">
             <button type="button" className="secondary-button compact-button" disabled={bankLoading || bankSaving} onClick={loadBankDashboard}>Actualizar</button>
             <button type="button" className="secondary-button compact-button" onClick={() => { setBankEditingAccountId(null); setBankAccountDraft({ bank_name: "", account_name: "", account_type: "savings", account_last4: "", account_holder: "", opening_balance: "0", opening_balance_date: todayInBogota(), notes: "" }); setBankAccountFormOpen((v) => !v); setBankMovementFormOpen(false); setBankTransferFormOpen(false); }}>＋ Nueva cuenta</button>
-            <button type="button" className="secondary-button compact-button" disabled={!bankAccountOptions.length} onClick={() => { setBankMovementFormOpen((v) => !v); setBankAccountFormOpen(false); setBankTransferFormOpen(false); }}>＋ Movimiento</button>
-            <button type="button" className="primary-button compact-button" disabled={bankAccountOptions.length < 2} onClick={() => { setBankTransferFormOpen((v) => !v); setBankAccountFormOpen(false); setBankMovementFormOpen(false); }}>⇄ Transferir</button>
+            <button type="button" className="secondary-button compact-button" disabled={!visibleBankAccountOptions.length} onClick={() => { setBankMovementFormOpen((v) => !v); setBankAccountFormOpen(false); setBankTransferFormOpen(false); }}>＋ Movimiento</button>
+            <button type="button" className="primary-button compact-button" disabled={visibleBankAccountOptions.length < 2} onClick={() => { setBankTransferFormOpen((v) => !v); setBankAccountFormOpen(false); setBankMovementFormOpen(false); }}>⇄ Transferir</button>
           </div>
         </div>
         <div className="bank-summary-grid">
@@ -3224,7 +3237,7 @@ function AuthenticatedApp() {
           <div className="bank-form-heading"><div><span className="eyebrow">MOVIMIENTO MANUAL</span><h3>Registrar ingreso o egreso</h3><p>Los abonos de ventas, pagos a proveedores y gastos pueden vincularse automáticamente desde sus respectivos módulos.</p></div></div>
           <div className="bank-form-grid">
             <label><span>Tipo de movimiento</span><select value={bankMovementDraft.movement_type} onChange={(e) => setBankMovementDraft((v) => ({ ...v, movement_type: e.target.value }))}><option value="income">Ingreso</option><option value="expense">Egreso</option></select></label>
-            <label><span>Cuenta *</span><select value={bankMovementDraft.bank_account_id} onChange={(e) => setBankMovementDraft((v) => ({ ...v, bank_account_id: e.target.value }))} required><option value="">Seleccionar cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>
+            <label><span>Cuenta *</span><select value={bankMovementDraft.bank_account_id} onChange={(e) => setBankMovementDraft((v) => ({ ...v, bank_account_id: e.target.value }))} required><option value="">Seleccionar cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>
             <label><span>Descripción *</span><input value={bankMovementDraft.description} onChange={(e) => setBankMovementDraft((v) => ({ ...v, description: e.target.value }))} maxLength={220} required placeholder="Ej. Intereses recibidos" /></label>
             <label><span>Valor *</span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankMovementDraft.amount} onChange={(e) => setBankMovementDraft((v) => ({ ...v, amount: e.target.value }))} required /></label>
             <label><span>Fecha *</span><input type="date" max={todayInBogota()} value={bankMovementDraft.movement_date} onChange={(e) => setBankMovementDraft((v) => ({ ...v, movement_date: e.target.value }))} required /></label>
@@ -3238,7 +3251,7 @@ function AuthenticatedApp() {
         {bankTransferFormOpen && <form className="bank-form panel" onSubmit={createBankTransfer}>
           <div className="bank-form-heading"><div><span className="eyebrow">ENTRE CUENTAS PROPIAS</span><h3>Transferir dinero</h3><p>Se crean dos registros vinculados: salida en origen y entrada en destino. No se contabiliza como ingreso o gasto.</p></div></div>
           <div className="bank-form-grid">
-            <label><span>Cuenta de origen *</span><select value={bankTransferDraft.from_account_id} onChange={(e) => setBankTransferDraft((v) => ({ ...v, from_account_id: e.target.value }))} required><option value="">Seleccionar origen</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}</option>)}</select></label>
+            <label><span>Cuenta de origen *</span><select value={bankTransferDraft.from_account_id} onChange={(e) => setBankTransferDraft((v) => ({ ...v, from_account_id: e.target.value }))} required><option value="">Seleccionar origen</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}</option>)}</select></label>
             <label><span>Cuenta de destino *</span><select value={bankTransferDraft.to_account_id} onChange={(e) => setBankTransferDraft((v) => ({ ...v, to_account_id: e.target.value }))} required><option value="">Seleccionar destino</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode && a.id !== bankTransferDraft.from_account_id).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}</option>)}</select></label>
             <label><span>Valor *</span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={bankTransferDraft.amount} onChange={(e) => setBankTransferDraft((v) => ({ ...v, amount: e.target.value }))} required /></label>
             <label><span>Fecha *</span><input type="date" max={todayInBogota()} value={bankTransferDraft.movement_date} onChange={(e) => setBankTransferDraft((v) => ({ ...v, movement_date: e.target.value }))} required /></label>
@@ -7320,10 +7333,14 @@ function AuthenticatedApp() {
     return false;
   }
   const visibleAreas = areas.filter((area) => canAccessScreen(area.screen));
+  const visibleBankAccountOptions = isBusinessManager && activeBusiness?.id
+    ? bankAccountOptions.filter((account) => account.business_id === activeBusiness.id && account.is_active && account.currency_code === currencyCode)
+    : [];
 
   useEffect(() => {
     let active = true;
-    if (!activeBusiness?.id || !isBusinessManager) { setBankAccountOptions([]); return () => { active = false; }; }
+    setBankAccountOptions([]);
+    if (!activeBusiness?.id || !isBusinessManager) return () => { active = false; };
     supabase.from("bank_accounts")
       .select("id,business_id,bank_name,account_name,account_type,account_last4,currency_code,is_active")
       .eq("business_id", activeBusiness.id).eq("is_active", true).order("bank_name").order("account_name")
@@ -7336,7 +7353,13 @@ function AuthenticatedApp() {
   }, [activeBusiness?.id, isBusinessManager]);
 
   useEffect(() => {
-    if (screen === "banks" && isBusinessManager) loadBankDashboard();
+    if (screen === "banks") loadBankDashboard();
+    else {
+      bankDashboardRequestRef.current += 1;
+      setBankDashboard({ accounts: [], movements: [], movement_count: 0, summary: { account_count: 0, balance_minor: 0, income_month_minor: 0, expenses_month_minor: 0 } });
+      setBankDashboardBusinessId(null);
+      setBankLoading(false);
+    }
   }, [screen, activeBusiness?.id, isBusinessManager]);
   const homeShortcutOrder = ["products","sales","accounts","customers","stats","quotes","purchases"];
   const homeShortcutAreas = visibleAreas.filter((area) => homeShortcutOrder.includes(area.screen)).sort((a,b) => homeShortcutOrder.indexOf(a.screen)-homeShortcutOrder.indexOf(b.screen));
@@ -7924,7 +7947,7 @@ function AuthenticatedApp() {
 <div className="sale-bottom-fields">
 <label><span className="field-label-heading">Abono recibido<FieldHelp enabled={contextualHelpEnabled} text="Dinero que el cliente entrega ahora como parte de esta venta. Si es menor que el total, quedará un saldo pendiente." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePayment} onChange={e=>setSalePayment(e.target.value)} placeholder="0" /></label>
 <div className="sale-payment-method-field"><span className="field-label-heading">Medio de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Selecciona cómo recibiste el dinero de esta venta. Esta selección registra el medio, pero no procesa el pago." /></span><PaymentMethodTiles value={saleInitialPaymentMethod} ariaLabel="Medio de pago inicial" onChange={(method) => { setSaleInitialPaymentMethod(method); if (method !== "Efectivo") setSaleCashTendered(""); else setSaleInitialBankAccountId(""); }} /></div>
-{saleInitialPaymentMethod !== "Efectivo" && Number(salePayment || 0) > 0 && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Depositar el abono en</span><select value={saleInitialBankAccountId} onChange={(e) => setSaleInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
+{saleInitialPaymentMethod !== "Efectivo" && Number(salePayment || 0) > 0 && visibleBankAccountOptions.length > 0 && <label className="bank-linked-account-field"><span>Depositar el abono en</span><select value={saleInitialBankAccountId} onChange={(e) => setSaleInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
 {saleInitialPaymentMethod === "Efectivo" && <label className="cash-tendered-field"><span className="field-label-heading">Efectivo recibido (opcional)<FieldHelp enabled={contextualHelpEnabled} text="Escribe el billete o total entregado por el cliente. Si supera el saldo de la venta, calculamos la devuelta y registramos solo el importe de la venta." /></span><input type="number" min="0" step={currencyDigits(currencyCode)===0?"1":"0.01"} value={saleCashTendered} onChange={event=>setSaleCashTendered(event.target.value)} placeholder="Ej. 20000" />{String(saleCashTendered).trim()!=="" && saleItems.length > 0 && <small className="cash-change-preview">Efectivo introducido · Abono a registrar: {money(Math.min(toMinorUnits(saleCashTendered,currencyCode),saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)} · Devuelta: {money(Math.max(0,toMinorUnits(saleCashTendered,currencyCode)-saleItems.reduce((sum,item)=>sum+productTaxAmounts(item.unit_price_minor,item.quantity,item.tax_code||"none",normalizeTaxProfile(activeBusiness.settings?.tax_profile||settingsTaxProfile).pricesIncludeVat).total,0)),currencyCode)}</small>}</label>}
 <label><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Anota un detalle breve para recordar una entrega, un acuerdo o una referencia de la venta." /></span><input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} maxLength={1000} placeholder="Ej. entrega el viernes"/></label></div>
 <p className="helper-text">Se usará el precio actual. La venta y la salida de inventario se guardan juntas; si no hay unidades suficientes, no se guardará.</p>
@@ -7951,7 +7974,7 @@ function AuthenticatedApp() {
 {canManageSales && salePaymentFormFor===sale.id && <form className="sale-payment-form" onSubmit={(event)=>registerSalePayment(event,sale)}>
 <label><span className="field-label-heading">Valor del abono<FieldHelp enabled={contextualHelpEnabled} text="Monto del pago adicional. No puede superar el saldo pendiente de la venta." /></span><input type="number" min="0.01" max={Math.max(0,Number(sale.total_minor)-Number(sale.amount_paid_minor))/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode)===0?"1":"0.01"} value={salePaymentAmount} onChange={e=>setSalePaymentAmount(e.target.value)} required/></label>
 <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Selecciona el medio por el cual se recibió este abono." /></span><PaymentMethodTiles value={salePaymentMethod} onChange={(method) => { setSalePaymentMethod(method); if (method === "Efectivo") setSalePaymentBankAccountId(""); }} ariaLabel="Medio de pago del abono de venta" /></div>
-{salePaymentMethod !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Depositar en</span><select value={salePaymentBankAccountId} onChange={(e) => setSalePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
+{salePaymentMethod !== "Efectivo" && visibleBankAccountOptions.length > 0 && <label className="bank-linked-account-field"><span>Depositar en</span><select value={salePaymentBankAccountId} onChange={(e) => setSalePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
 <label><span className="field-label-heading">Fecha del abono<FieldHelp enabled={contextualHelpEnabled} text="Fecha en que recibiste realmente el dinero; se guarda en el historial de pagos." /></span><input type="date" max={todayInBogota()} value={salePaymentDate} onChange={e=>setSalePaymentDate(e.target.value)} required/></label>
 <label className="sale-payment-notes"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Referencia corta para identificar el pago, por ejemplo el número de una transferencia." /></span><input value={salePaymentNotes} onChange={e=>setSalePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago"/></label>
 <div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setSalePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={salePaymentSaving}>{salePaymentSaving?"Registrando…":"Guardar abono"}</button></div>
@@ -8409,7 +8432,7 @@ function AuthenticatedApp() {
                   <label><span className="field-label-heading">Impuestos u otros cargos<FieldHelp enabled={contextualHelpEnabled} text="Registra impuestos, transporte u otros cobros que se suman al costo de la compra." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchaseTax} onChange={(e) => setPurchaseTax(e.target.value)} /></label>
                   <label><span className="field-label-heading">Abono realizado<FieldHelp enabled={contextualHelpEnabled} text="Dinero que pagas ahora al proveedor como parte de esta compra. Si es menor que el total, queda un saldo por pagar." /></span><input type="number" min="0" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePayment} onChange={(e) => setPurchasePayment(e.target.value)} /></label>
                   <div className="payment-method-field"><span className="field-label-heading">Forma de pago inicial<FieldHelp enabled={contextualHelpEnabled} text="Indica cómo pagaste esta compra al proveedor." /></span><PaymentMethodTiles value={purchaseInitialPaymentMethod} onChange={(method) => { setPurchaseInitialPaymentMethod(method); if (method === "Efectivo") setPurchaseInitialBankAccountId(""); }} ariaLabel="Medio de pago inicial de la compra" /></div>
-{purchaseInitialPaymentMethod !== "Efectivo" && Number(purchasePayment || 0) > 0 && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchaseInitialBankAccountId} onChange={(e) => setPurchaseInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
+{purchaseInitialPaymentMethod !== "Efectivo" && Number(purchasePayment || 0) > 0 && visibleBankAccountOptions.length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchaseInitialBankAccountId} onChange={(e) => setPurchaseInitialBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                   <label className="purchase-span-two"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Añade un comentario sobre la compra, como número de factura, transporte o detalles de entrega." /></span><input value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} maxLength={1500} placeholder="Factura, transporte, entrega…" /></label>
                 </div>
                 <div className="purchase-total-summary"><span>Total estimado</span><strong>{money(purchaseCart.reduce((sum, item) => sum + Math.round(toMinorUnits(item.unit_cost, currencyCode) * Number(item.quantity || 0)), 0) + toMinorUnits(purchaseTax || 0, currencyCode), currencyCode)}</strong></div>
@@ -8431,7 +8454,7 @@ function AuthenticatedApp() {
                     {canManagePurchases && purchasePaymentFormFor === purchase.id && <form className="purchase-payment-form" onSubmit={(event) => recordPurchasePayment(event,purchase)}>
                       <label><span className="field-label-heading">Valor del pago<FieldHelp enabled={contextualHelpEnabled} text="Importe que estás pagando al proveedor ahora. No puede superar lo que falta por pagar." /></span><input type="number" min="0.01" max={pending/(10**currencyDigits(currencyCode))} step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={purchasePaymentAmount} onChange={(e) => setPurchasePaymentAmount(e.target.value)} required /></label>
                       <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio usado para hacer este pago al proveedor." /></span><PaymentMethodTiles value={purchasePaymentMethod} onChange={(method) => { setPurchasePaymentMethod(method); if (method === "Efectivo") setPurchasePaymentBankAccountId(""); }} ariaLabel="Medio de pago del abono de compra" /></div>
-{purchasePaymentMethod !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchasePaymentBankAccountId} onChange={(e) => setPurchasePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
+{purchasePaymentMethod !== "Efectivo" && visibleBankAccountOptions.length > 0 && <label className="bank-linked-account-field"><span>Cuenta de donde salió el pago</span><select value={purchasePaymentBankAccountId} onChange={(e) => setPurchasePaymentBankAccountId(e.target.value)}><option value="">No asociar a una cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                       <label><span className="field-label-heading">Fecha del pago<FieldHelp enabled={contextualHelpEnabled} text="Fecha real en que hiciste este pago al proveedor." /></span><input type="date" max={todayInBogota()} value={purchasePaymentDate} onChange={(e) => setPurchasePaymentDate(e.target.value)} required /></label>
                       <label className="purchase-payment-notes"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Añade una referencia breve para recordar este pago, como el número de una transferencia." /></span><input value={purchasePaymentNotes} onChange={(e) => setPurchasePaymentNotes(e.target.value)} maxLength={1000} placeholder="Referencia o detalle del pago" /></label>
                       <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setPurchasePaymentFormFor(null)}>Cancelar</button><button type="submit" className="primary-button" disabled={purchasePaymentSaving}>{purchasePaymentSaving ? "Registrando…" : "Guardar pago"}</button></div>
@@ -8473,7 +8496,7 @@ function AuthenticatedApp() {
                   <label><span className="field-label-heading">Valor *<FieldHelp enabled={contextualHelpEnabled} text="Monto del gasto. Queda registrado como salida de dinero y se considera en el cálculo de rentabilidad." /></span><input type="number" min="0.01" step={currencyDigits(currencyCode) === 0 ? "1" : "0.01"} value={expenseDraft.amount} onChange={(e) => setExpenseDraft((d) => ({ ...d, amount: e.target.value }))} required placeholder="0" /></label>
                   <label><span className="field-label-heading">Fecha *<FieldHelp enabled={contextualHelpEnabled} text="Registra la fecha en que se realizó el gasto." /></span><input type="date" value={expenseDraft.expense_date} onChange={(e) => setExpenseDraft((d) => ({ ...d, expense_date: e.target.value }))} required /></label>
                   <div className="payment-method-field"><span className="field-label-heading">Forma de pago<FieldHelp enabled={contextualHelpEnabled} text="Elige el medio utilizado para pagar este gasto." /></span><PaymentMethodTiles value={expenseDraft.payment_method || "Efectivo"} onChange={(method) => setExpenseDraft((d) => ({ ...d, payment_method: method, bank_account_id: method === "Efectivo" ? "" : d.bank_account_id }))} ariaLabel="Medio de pago del gasto" /></div>
-{expenseDraft.payment_method !== "Efectivo" && bankAccountOptions.filter((a) => a.currency_code === currencyCode).length > 0 && <label className="bank-linked-account-field"><span>Cuenta desde la que pagaste</span><select value={expenseDraft.bank_account_id || ""} onChange={(e) => setExpenseDraft((d) => ({ ...d, bank_account_id: e.target.value }))}><option value="">No asociar a una cuenta</option>{bankAccountOptions.filter((a) => a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
+{expenseDraft.payment_method !== "Efectivo" && visibleBankAccountOptions.length > 0 && <label className="bank-linked-account-field"><span>Cuenta desde la que pagaste</span><select value={expenseDraft.bank_account_id || ""} onChange={(e) => setExpenseDraft((d) => ({ ...d, bank_account_id: e.target.value }))}><option value="">No asociar a una cuenta</option>{visibleBankAccountOptions.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name}{a.account_last4 ? " · •••• " + a.account_last4 : ""}</option>)}</select></label>}
                   <label><span className="field-label-heading">Proveedor<FieldHelp enabled={contextualHelpEnabled} text="Vincula el gasto con un proveedor si corresponde." /></span><select value={expenseDraft.supplier_id} onChange={(e) => { if (e.target.value === "__create_expense_supplier__") { setShowQuickExpenseSupplierForm(true); setError(""); return; } setExpenseDraft((d) => ({ ...d, supplier_id: e.target.value })); }}><option value="">Sin proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}{canPermission("suppliers_manage")&&<option value="__create_expense_supplier__">＋ Nuevo proveedor…</option>}</select></label>
                   {showQuickExpenseSupplierForm && canPermission("suppliers_manage") && <div className="inline-create-panel quick-expense-supplier full-span"><strong>Nuevo proveedor</strong><p className="inline-create-hint">Se guardará como contacto y quedará seleccionado en este gasto, sin borrar los datos del formulario.</p><div className="inline-create-fields-grid"><label><span className="field-label-heading">Nombre *<FieldHelp enabled={contextualHelpEnabled} text="Nombre del proveedor que quedará asociado al gasto." /></span><input value={supplierDraft.name} onChange={(e) => setSupplierDraft((d) => ({ ...d, name: e.target.value }))} maxLength={180} required /></label><label><span className="field-label-heading">NIT o documento<FieldHelp enabled={contextualHelpEnabled} text="Identificación tributaria o documento del proveedor, si lo tienes." /></span><input value={supplierDraft.tax_id} onChange={(e) => setSupplierDraft((d) => ({ ...d, tax_id: e.target.value }))} maxLength={80} /></label><label><span className="field-label-heading">Teléfono<FieldHelp enabled={contextualHelpEnabled} text="Número al que puedes contactar al proveedor." /></span><input type="tel" value={supplierDraft.phone} onChange={(e) => setSupplierDraft((d) => ({ ...d, phone: e.target.value }))} maxLength={60} /></label><label><span className="field-label-heading">Correo<FieldHelp enabled={contextualHelpEnabled} text="Correo de contacto del proveedor." /></span><input type="email" value={supplierDraft.email} onChange={(e) => setSupplierDraft((d) => ({ ...d, email: e.target.value }))} maxLength={254} /></label><label className="inline-create-span-two"><span className="field-label-heading">Dirección<FieldHelp enabled={contextualHelpEnabled} text="Dirección para entregas o documentos, si corresponde." /></span><input value={supplierDraft.address} onChange={(e) => setSupplierDraft((d) => ({ ...d, address: e.target.value }))} maxLength={300} /></label></div><div className="inline-create-actions"><button type="button" className="primary-button" disabled={busy || !supplierDraft.name.trim()} onClick={() => addSupplier()}>{busy ? "Guardando…" : "Guardar y seleccionar"}</button><button type="button" className="text-button" onClick={() => { setShowQuickExpenseSupplierForm(false); setSupplierDraft(blankSupplier); }}>Cancelar</button></div></div>}
                   <label className="purchase-span-two"><span className="field-label-heading">Nota<FieldHelp enabled={contextualHelpEnabled} text="Guarda una referencia, factura o detalle útil para reconocer este gasto después." /></span><input value={expenseDraft.notes} onChange={(e) => setExpenseDraft((d) => ({ ...d, notes: e.target.value }))} maxLength={1500} placeholder="Factura, referencia o detalle" /></label>
@@ -9044,7 +9067,13 @@ function AuthenticatedApp() {
             {settingsTab === "platform_admin" && isPlatformAdmin && renderPlatformAdminPanel()}
           </section>
 
-        ) : screen === "banks" ? renderBanksPage() : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
+        ) : screen === "banks" ? (
+          !isBusinessManager
+            ? <section className="empty-state"><span className="empty-icon">▥</span><h3>Acceso restringido</h3><p>Solo el propietario y los administradores del negocio pueden consultar Bancos.</p><button type="button" className="secondary-button" onClick={() => navigate("home")}>Volver a Inicio</button></section>
+            : bankDashboardBusinessId === activeBusiness?.id
+              ? renderBanksPage()
+              : <section className="empty-state">Cargando cuentas bancarias del negocio activo…</section>
+        ) : ((screen === "accounts" && accountsTab === "receivables") || screen === "receivables") ? (
           <section className="accounts-page">
             <div className="products-intro"><div><h2>Cuentas por cobrar</h2><p>Controla las ventas pendientes y registra abonos sin perder el registro actual.</p></div><button type="button" className="secondary-button" onClick={()=>navigate("sales")}>Ir a ventas</button></div>
             <div className="accounts-tabs" role="tablist" aria-label="Tipo de cuenta">

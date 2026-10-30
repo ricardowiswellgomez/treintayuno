@@ -213,7 +213,11 @@ test("la ruta heredada de administración no monta su panel hasta confirmar auto
 
 test("Bancos se ofrece a propietarios y administradores y no a perfiles de empleado", () => {
   assert.match(app, /if \(next === "banks"\) return isBusinessManager/);
-  assert.match(app, /screen === "banks" \? renderBanksPage\(\)/);
+  assert.match(app, /screen === "banks" \? \(/);
+  assert.match(app, /bankDashboardBusinessId === activeBusiness\?\.id/);
+  assert.match(app, /requestId !== bankDashboardRequestRef\.current/);
+  assert.match(app, /const visibleBankAccountOptions = isBusinessManager && activeBusiness\?\.id/);
+  assert.match(app, /!isBusinessManager[\s\S]*?Acceso restringido/);
   assert.match(app, /bankDashboard\.summary\?\.balance_minor/);
   assert.match(app, /rpc\("create_bank_transfer"/);
   assert.match(app, /bank_account_id: expenseDraft\.payment_method === "Efectivo" \? null/);

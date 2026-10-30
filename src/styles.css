@@ -11210,3 +11210,41 @@ body { background: #F5F7FC; color: #19243A; }
 @media(max-width:700px){.bank-summary-grid{grid-template-columns:1fr 1fr}.bank-accounts-grid{grid-template-columns:1fr}.banks-actions{justify-content:flex-start}.bank-section-heading{align-items:flex-start;flex-direction:column}.bank-form-grid{grid-template-columns:1fr}.bank-form-full{grid-column:auto}.bank-movement-toolbar{align-items:stretch;flex-direction:column}.bank-movement-toolbar>input{width:100%}.bank-movement-row{grid-template-columns:30px minmax(0,1fr);gap:9px}.bank-movement-amount{grid-column:2;justify-self:start}.bank-movements-section{padding:14px}}
 @media(max-width:420px){.bank-summary-grid{grid-template-columns:1fr}.banks-actions>*{flex:1 1 auto}}
 
+ 
+/* Sidebar cleanup: category groups stay structurally sortable but have no visible container. */
+.app-shell > .sidebar .sidebar-nav-group,
+.app-shell > .sidebar .nav-list-editing .sidebar-nav-group {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  min-width:0!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Clear separation between the 365 brand and the business owner's logo. */
+.app-shell > .sidebar .business-logo-stage {
+  height:115px!important;
+  min-height:115px!important;
+  margin:12px 0 8px!important;
+  padding:0!important;
+}
+.app-shell > .sidebar .business-logo-stage .business-avatar {
+  height:115px!important;
+  min-height:115px!important;
+}
+@media(max-width:760px) {
+  .app-shell > .sidebar .business-logo-stage {
+    height:99px!important;
+    min-height:99px!important;
+    margin:10px 0 7px!important;
+  }
+  .app-shell > .sidebar .business-logo-stage .business-avatar {
+    height:99px!important;
+    min-height:99px!important;
+  }
+}

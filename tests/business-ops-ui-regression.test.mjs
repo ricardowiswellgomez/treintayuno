@@ -325,7 +325,7 @@ test("los gráficos de líneas y barras exponen etiquetas y cifras para que la I
 });
 
 test("la IA reconoce su nombre configurable y el nombre visible del perfil del usuario", () => {
-  assert.ok(app.includes('settingsAssistantName, setSettingsAssistantName("Angie")'));
+  assert.ok(app.includes('const [settingsAssistantName, setSettingsAssistantName] = useState("Angie")'));
   assert.ok(app.includes('assistant_name: normalizedAssistantName'));
   assert.ok(app.includes('assistantName: assistantDisplayName'));
   assert.ok(worker.includes('profiles",{select:"display_name"'));

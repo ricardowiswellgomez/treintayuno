@@ -11381,3 +11381,5 @@ body { background: #F5F7FC; color: #19243A; }
   .ai-assistant-header .ai-audio-toggle{padding:4px 6px!important;font-size:9px!important}
   .ai-assistant-message-tools{gap:6px}
 }
+
+.ai-assistant-memory-action{display:flex;justify-content:flex-end;padding:0 12px 9px}.ai-assistant-memory-action .text-button{font-size:11px;color:var(--muted,#69758A)}.ai-assistant-memory-action .text-button:disabled{opacity:.55}

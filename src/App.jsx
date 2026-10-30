@@ -2413,6 +2413,7 @@ function AuthenticatedApp() {
   const [settingsConversionRate, setSettingsConversionRate] = useState("");
   const [settingsTheme, setSettingsTheme] = useState(defaultBusinessTheme);
   const [settingsHelpEnabled, setSettingsHelpEnabled] = useState(true);
+  const [settingsAssistantName, setSettingsAssistantName] = useState("Angie");
   const [settingsTaxProfile, setSettingsTaxProfile] = useState(DEFAULT_TAX_PROFILE);
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState("");
@@ -2443,6 +2444,7 @@ function AuthenticatedApp() {
   const [aiAutoSpeak, setAiAutoSpeak] = useState(true);
   const [aiSpeechBusy, setAiSpeechBusy] = useState(false);
   const [aiSpeechError, setAiSpeechError] = useState("");
+  const [aiMemoryBusy, setAiMemoryBusy] = useState(false);
   const [aiAudio, setAiAudio] = useState(null);
   const aiAudioRef = useRef(null);
   const aiAudioUrlRef = useRef("");
@@ -2488,6 +2490,18 @@ function AuthenticatedApp() {
       recognition.onerror = () => { setAiVoiceListening(false); setError("No pude escuchar con claridad. Revisa el permiso del micrófono e inténtalo de nuevo."); };
       recognition.onend = () => setAiVoiceListening(false); recognition.start();
     } catch { setAiVoiceListening(false); setError("No se pudo iniciar el micrófono. Revisa los permisos del navegador."); }
+  }
+  const assistantDisplayName = String(activeBusiness?.settings?.assistant_name || "Angie").trim().slice(0,32) || "Angie";
+  async function clearAiMemories() {
+    if (!activeBusiness?.id || !session?.user?.id || aiMemoryBusy) return;
+    if (!window.confirm("¿Borrar las preferencias y objetivos que "+assistantDisplayName+" ha guardado para ti en este negocio? No se borrarán ventas, productos ni otros datos.")) return;
+    setAiMemoryBusy(true);
+    try {
+      const { error: memoryError } = await supabase.from("assistant_memories").delete().eq("business_id", activeBusiness.id).eq("user_id", session.user.id);
+      if (memoryError) throw memoryError;
+      setAiHistory((current) => [...current, { role: "assistant", content: "Listo. Borré los recuerdos guardados para ti en este negocio." }]);
+    } catch (error) { setAiSpeechError(String(error?.message || "No pude borrar los recuerdos ahora.")); }
+    finally { setAiMemoryBusy(false); }
   }
   function captureAiScreenContext() {
     const root = document.querySelector(".main-content") || document.querySelector(".app-main") || document.querySelector(".app-content") || document.querySelector(".app-shell");
@@ -2543,7 +2557,8 @@ function AuthenticatedApp() {
           history: nextHistory.slice(0, -1).slice(-6),
           businessId: activeBusiness?.id,
           screen: screen,
-          screenContext: captureAiScreenContext()
+          screenContext: captureAiScreenContext(),
+          assistantName: assistantDisplayName
         })
       });
       const payload = await response.json();
@@ -4348,6 +4363,7 @@ function AuthenticatedApp() {
     setSettingsTab(activeBusiness.role === "owner" ? "general" : "account");
     setSettingsTheme(normalizeBusinessTheme(activeBusiness.theme));
     setSettingsHelpEnabled(activeBusiness.settings?.contextual_help_enabled !== false);
+    setSettingsAssistantName(String(activeBusiness.settings?.assistant_name || "Angie").trim().slice(0,32) || "Angie");
     setSettingsTaxProfile(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     setSettingsLogoFile(null);
     setSettingsLogoPreview("");
@@ -4606,7 +4622,9 @@ function AuthenticatedApp() {
     if (commercialProfile.orderChannel === "wompi" && (!wompiStatus.configured || !wompiStatus.enabled)) { setError("Antes de activar Wompi en el catálogo, completa y guarda las credenciales del comercio en la sección de conexión Wompi."); setSettingsTab("company"); return; }
     const savedCommercialProfile = normalizeCommercialProfile(activeBusiness.settings?.commercial_profile);
     const commercialProfileChanged = JSON.stringify(commercialProfile) !== JSON.stringify(savedCommercialProfile);
-    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
+    const normalizedAssistantName = String(settingsAssistantName || "Angie").trim().replace(/\s+/g," ").slice(0,32) || "Angie";
+    const assistantNameChanged = normalizedAssistantName !== (String(activeBusiness.settings?.assistant_name || "Angie").trim() || "Angie");
+    const nextSettings = { ...(activeBusiness.settings || {}), contextual_help_enabled: settingsHelpEnabled, assistant_name: normalizedAssistantName, commercial_profile: commercialProfile, tax_profile: nextTaxProfile };
     const nameChanged = businessName !== activeBusiness.name;
     const nextSlug = settingsCatalogSlug.trim().toLowerCase();
     const slugChanged = nextSlug !== String(activeBusiness.slug || "");
@@ -4617,7 +4635,7 @@ function AuthenticatedApp() {
     const helpChanged = settingsHelpEnabled !== (activeBusiness.settings?.contextual_help_enabled !== false);
     const taxProfileChanged = JSON.stringify(nextTaxProfile) !== JSON.stringify(normalizeTaxProfile(activeBusiness.settings?.tax_profile));
     const logoChanged = Boolean(settingsLogoFile) || (settingsRemoveLogo && Boolean(activeBusiness.logo_path));
-    if (!nameChanged && !slugChanged && !currencyChanged && !themeChanged && !helpChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
+    if (!nameChanged && !slugChanged && !currencyChanged && !themeChanged && !helpChanged && !assistantNameChanged && !logoChanged && !commercialProfileChanged && !taxProfileChanged) {
       setNotice("No hay cambios pendientes.");
       return;
     }
@@ -8994,7 +9012,11 @@ function AuthenticatedApp() {
               <h3>Ayudas contextuales</h3>
               <p>El botón flotante «Ayuda» muestra la guía de la sección actual. Los consejos junto a los campos se pueden ocultar por separado.</p>
               <label className="settings-help-toggle"><input type="checkbox" checked={settingsHelpEnabled} onChange={(e) => setSettingsHelpEnabled(e.target.checked)} disabled={activeBusiness?.role !== "owner"} /><span><strong>Mostrar consejos junto a los campos<FieldHelp enabled={contextualHelpEnabled} text="Activa o desactiva los iconos de ayuda breve junto a los campos. El botón general «Ayuda» permanece visible." /></strong><small>Esta opción solo controla los iconos junto a los campos. El botón flotante «Ayuda» siempre permanece disponible.</small></span></label>
-              {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar esta preferencia.</p>}
+              <div className="settings-section-divider" />
+              <h3>Nombre del asistente</h3>
+              <p>Elige cómo quieres llamar a tu asistente. Por defecto se llama Angie; puedes cambiarlo cuando quieras. La voz seguirá siendo Celeste.</p>
+              <label className="settings-field"><span>Nombre del asistente</span><input type="text" maxLength={32} value={settingsAssistantName} onChange={(event) => setSettingsAssistantName(event.target.value)} placeholder="Angie" disabled={activeBusiness?.role !== "owner" || busy} /></label>
+              {activeBusiness?.role !== "owner" && <p className="helper-text">Solo el propietario puede modificar estas preferencias.</p>}
               </div>
               <div hidden={settingsTab !== "language"} className="settings-tab-content language-settings-panel">
                 <div className="settings-icon"><AppIcon name="grid" size={23} /></div>
@@ -9244,14 +9266,14 @@ function AuthenticatedApp() {
       </section>
       <div className="ai-assistant-layer ai-with-help">
         {aiOpen && <section id="treseiscinco-ai-panel" className="ai-assistant-panel" role="dialog" aria-label="Asistente IA de treseiscinco">
-          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>IA de treseiscinco</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · voz Celeste</small></div></div><div className="ai-assistant-header-actions"><button type="button" className="ai-audio-toggle" onClick={toggleAiAutoSpeak}>{aiAutoSpeak ? "🔊 Voz automática" : "🔇 Voz manual"}</button><button type="button" aria-label="Cerrar asistente" onClick={() => { try { aiAudioRef.current?.pause?.(); } catch {} setAiOpen(false); }}>×</button></div></header>
+          <header className="ai-assistant-header"><div><span className="ai-assistant-spark">✦</span><div><strong>{assistantDisplayName}</strong><small>{activeBusiness?.name || "Sin negocio seleccionado"} · voz Celeste</small></div></div><div className="ai-assistant-header-actions"><button type="button" className="ai-audio-toggle" onClick={toggleAiAutoSpeak}>{aiAutoSpeak ? "🔊 Voz automática" : "🔇 Voz manual"}</button><button type="button" aria-label="Cerrar asistente" onClick={() => { try { aiAudioRef.current?.pause?.(); } catch {} setAiOpen(false); }}>×</button></div></header>
           <div ref={aiMessagesRef} className="ai-assistant-messages" aria-live="polite">
             {!aiHistory.length && <div className="ai-assistant-welcome"><strong>Tu negocio, con datos reales.</strong><p>Consulta quién te ha comprado más, cómo van tus ventas y qué productos necesitan reposición. La IA solo usa los datos permitidos por tu perfil.</p><div className="ai-assistant-suggestions"><button type="button" onClick={() => setAiMessage("¿Quién me ha comprado más este mes?")}>Mejor cliente este mes</button><button type="button" onClick={() => setAiMessage("¿Qué productos debo reponer?")}>Qué debo reponer</button><button type="button" onClick={() => setAiMessage("Dame un resumen de ventas de este mes.")}>Resumen de ventas</button></div></div>}
             {aiHistory.map((item, index) => <div className={"ai-assistant-message " + item.role} key={index}><span>{item.role === "assistant" ? "IA" : "Tú"}</span><p>{item.content}</p>{item.role === "assistant" && <div className="ai-assistant-message-tools"><small className="ai-assistant-meta">{item.dataBacked ? "Información del negocio" : "Respuesta del asistente"}</small><button type="button" className="ai-message-speak" disabled={aiSpeechBusy} onClick={() => generateAiSpeech(item.content, String(index))}>{aiSpeechBusy ? "Preparando voz…" : "▶ Escuchar con Celeste"}</button>{aiAudio?.messageId === String(index) && <audio ref={aiAudioRef} controls preload="none" className="ai-assistant-audio" src={aiAudio.url} />}</div>}</div>)}
             {aiBusy && <div className="ai-assistant-thinking">Estoy revisando la información…</div>}
           </div>
           <form className="ai-assistant-form" onSubmit={sendAiMessage}><textarea value={aiMessage} onChange={(e) => setAiMessage(e.target.value)} placeholder={aiVoiceListening ? "Escuchando… habla ahora" : "Escribe o dicta tu pregunta…"} rows={2} maxLength={1500} disabled={aiBusy} /><button type="button" className={"ai-voice-button"+(aiVoiceListening?" listening":"")} onClick={toggleAiVoice} aria-label={aiVoiceListening?"Detener dictado":"Hablar con la IA"} title={aiVoiceListening?"Detener dictado":"Hablar con la IA"}>{aiVoiceListening ? "■" : "🎙"}</button><button type="submit" disabled={aiBusy || !aiMessage.trim()} aria-label="Enviar pregunta">➤</button></form>
-          <p className="ai-assistant-disclaimer">Uso los datos permitidos de tu negocio y puedo interpretar lo que aparece en la pantalla actual. La voz en español es Aura‑2 · Celeste.</p>{aiSpeechError && <p className="ai-assistant-speech-error" role="status">{aiSpeechError}</p>}
+          <p className="ai-assistant-disclaimer">Soy {assistantDisplayName}. Aprendo las preferencias y objetivos que me pidas recordar; no guardo datos sensibles. La voz en español es Aura‑2 · Celeste.</p><div className="ai-assistant-memory-action"><button type="button" className="text-button" onClick={clearAiMemories} disabled={aiMemoryBusy}>{aiMemoryBusy ? "Borrando…" : "Borrar mis recuerdos de este negocio"}</button></div>{aiSpeechError && <p className="ai-assistant-speech-error" role="status">{aiSpeechError}</p>}
         </section>}
         <button type="button" className="ai-assistant-trigger" aria-expanded={aiOpen} aria-controls="treseiscinco-ai-panel" onClick={() => { document.dispatchEvent(new CustomEvent("treseiscinco:field-help-open", { detail: { source: null } })); setAiOpen((open) => !open); }}><span>✦</span> IA</button>
       </div>

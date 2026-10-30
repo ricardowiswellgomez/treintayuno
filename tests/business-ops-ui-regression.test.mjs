@@ -323,3 +323,19 @@ test("los gráficos de líneas y barras exponen etiquetas y cifras para que la I
   assert.ok(app.includes('(data||[]).slice(0,24).map((item)=>(item.label||item.key||"Dato")+": "'));
   assert.ok(app.includes("GRÁFICOS VISIBLES"));
 });
+
+test("la IA reconoce su nombre configurable y el nombre visible del perfil del usuario", () => {
+  assert.ok(app.includes('settingsAssistantName, setSettingsAssistantName("Angie")'));
+  assert.ok(app.includes('assistant_name: normalizedAssistantName'));
+  assert.ok(app.includes('assistantName: assistantDisplayName'));
+  assert.ok(worker.includes('profiles",{select:"display_name"'));
+  assert.ok(worker.includes('Te llamas "+assistantName'));
+});
+test("la IA aprende solo preferencias y objetivos expresamente solicitados y permite borrarlos", () => {
+  assert.ok(worker.includes("detectAssistantMemory"));
+  assert.ok(worker.includes("assistant_memories"));
+  assert.ok(worker.includes("resolution=merge-duplicates"));
+  assert.ok(worker.includes("MEMORIA GUARDADA CORRECTAMENTE"));
+  assert.ok(worker.includes("SOLICITUD DE RECUERDO RECHAZADA"));
+  assert.ok(app.includes("Borrar mis recuerdos de este negocio"));
+});

@@ -77,7 +77,7 @@ function SimpleArea({ title, description, data, series, formatValue, badge = "Ev
   return <section className="simple-chart panel simple-area-chart">
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
     {rows.length ? <>
-      <div className="simple-area-visual"><svg viewBox={"0 0 "+width+" "+height} role="img" aria-label={title} preserveAspectRatio="none">
+      <div className="simple-area-visual"><svg viewBox={"0 0 "+width+" "+height} role="img" aria-label={title+" · "+seriesList.map((item)=>item.label+": "+rows.slice(0,18).map((row)=>(row.label||row.key||"Dato")+": "+valueText(Number(row[item.key])||0)).join(", ")).join("; ")} preserveAspectRatio="none">
         {[0,1,2,3,4].map((step)=>{const y=top+step*plotHeight/4;return <line key={step} x1={left} x2={width-right} y1={y} y2={y} className="simple-area-gridline"/>;})}
         {seriesList.map((item)=>{const points=rows.map((row,index)=>({x:xAt(index),y:yAt(Number(row[item.key])||0),value:Number(row[item.key])||0,label:row.label||row.key||""}));if(!points.length)return null;const line=points.map((point,index)=>(index?"L":"M")+point.x.toFixed(2)+" "+point.y.toFixed(2)).join(" ");const areaPath="M"+points[0].x.toFixed(2)+" "+zeroY.toFixed(2)+" "+points.map((point)=>"L"+point.x.toFixed(2)+" "+point.y.toFixed(2)).join(" ")+" L"+points[points.length-1].x.toFixed(2)+" "+zeroY.toFixed(2)+" Z";return <g key={item.key}><path d={areaPath} fill={item.color} fillOpacity=".13"/><path d={line} fill="none" stroke={item.color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>{points.map((point,index)=><circle key={index} cx={point.x} cy={point.y} r={rows.length>45?2.2:3.2} fill={item.color}><title>{item.label} · {point.label}: {valueText(point.value)}</title></circle>)}</g>;})}
         {rows.map((row,index)=>(index===0||index===rows.length-1||index%stride===0)?<text key={row.key||index} x={xAt(index)} y={height-10} textAnchor="middle" className="simple-area-x-label">{row.label}</text>:null)}
@@ -139,7 +139,7 @@ function SimpleBars({ title, description, data, formatValue, badge = "7 días", 
   const maxValue = Math.max(1,...(data||[]).map((item)=>Math.abs(Number(item.value)||0)));
   return <section className="simple-chart panel">
     <div className="simple-chart-heading"><div><h3>{title}</h3><p>{description}</p></div><span className="simple-chart-badge">{badge}</span></div>
-    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title} style={{gridTemplateColumns:"repeat("+Math.max(1,(data||[]).length)+",minmax(0,1fr))"}}>
+    {data?.length ? <div className="simple-chart-bars" role="img" aria-label={title+" · "+(data||[]).slice(0,24).map((item)=>(item.label||item.key||"Dato")+": "+(formatValue?formatValue(item.value):Number(item.value||0).toLocaleString("es-CO"))).join(", ")} style={{gridTemplateColumns:"repeat("+Math.max(1,(data||[]).length)+",minmax(0,1fr))"}}>
       {data.map((item,index)=><div className="simple-chart-column" key={item.key||item.label||index}>
         <div className="simple-chart-value">{formatValue ? formatValue(item.value) : item.value}</div>
         <div className="simple-chart-track"><div className={"simple-chart-bar"+(Number(item.value)<0?" negative":"")} style={{height:Math.max(3,Math.abs(Number(item.value)||0)/maxValue*100)+"%",backgroundColor:colors?.length?colors[index%colors.length]:undefined}} /></div>

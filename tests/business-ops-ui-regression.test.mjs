@@ -317,3 +317,9 @@ test("las ayudas contextuales conservan reglas y cálculos y retiran ayudas obvi
   assert.ok(app.includes("Si el producto ya está en tu inventario"));
   assert.ok(app.includes("Cada combinación, por ejemplo Rojo / Talla S"));
 });
+
+test("los gráficos de líneas y barras exponen etiquetas y cifras para que la IA pueda interpretarlos", () => {
+  assert.ok(app.includes('seriesList.map((item)=>item.label+": "+rows.slice(0,18)'));
+  assert.ok(app.includes('(data||[]).slice(0,24).map((item)=>(item.label||item.key||"Dato")+": "'));
+  assert.ok(app.includes("GRÁFICOS VISIBLES"));
+});

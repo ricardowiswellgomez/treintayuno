@@ -222,3 +222,18 @@ test("Bancos se ofrece a propietarios y administradores y no a perfiles de emple
   assert.match(app, /rpc\("create_bank_transfer"/);
   assert.match(app, /bank_account_id: expenseDraft\.payment_method === "Efectivo" \? null/);
 });
+
+test("los subtítulos de categorías del menú solo aparecen al personalizar la navegación", () => {
+  const navStart = app.indexOf('<nav className={"nav-list"');
+  const navEnd = app.indexOf("</nav>", navStart);
+  assert.ok(navStart >= 0 && navEnd > navStart, "debe localizarse la navegación lateral");
+  const sidebarNav = app.slice(navStart, navEnd);
+  assert.match(
+    sidebarNav,
+    /\{sidebarEditing && !group\.items\.some\(\(navItem\) => navItem\.id === "home"\) && <div className="sidebar-group-heading">/
+  );
+  assert.doesNotMatch(
+    sidebarNav,
+    /\{!group\.items\.some\(\(navItem\) => navItem\.id === "home"\) && <div className="sidebar-group-heading">/
+  );
+});

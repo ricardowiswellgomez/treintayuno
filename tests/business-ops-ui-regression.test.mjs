@@ -202,3 +202,45 @@ test("las cotizaciones muestran filas alineadas y proveedores conserva su módul
   assert.match(css, /\.app-shell \.quotes-page \.quote-share-inline/);
   assert.match(app, /className="quote-record-details" hidden=\{expandedQuoteId !== quote.id\}/);
 });
+
+test("la ruta heredada de administración no monta su panel hasta confirmar autorización", () => {
+  const route = app.indexOf('screen === "platform_admin" ?');
+  assert.ok(route >= 0);
+  const guardedRoute = app.slice(route, route + 280);
+  assert.match(guardedRoute, /isPlatformAdminReady && isPlatformAdmin \? renderPlatformAdminPanel\(\)/);
+  assert.match(app, /screen !== "platform_admin" \|\| !isPlatformAdminReady/);
+});
+
+test("Bancos se ofrece a propietarios y administradores y no a perfiles de empleado", () => {
+  assert.match(app, /if \(next === "banks"\) return isBusinessManager/);
+  assert.match(app, /screen === "banks" \? \(/);
+  assert.match(app, /bankDashboardBusinessId === activeBusiness\?\.id/);
+  assert.match(app, /requestId !== bankDashboardRequestRef\.current/);
+  assert.match(app, /const visibleBankAccountOptions = isBusinessManager && activeBusiness\?\.id/);
+  assert.match(app, /!isBusinessManager[\s\S]*?Acceso restringido/);
+  assert.match(app, /bankDashboard\.summary\?\.balance_minor/);
+  assert.match(app, /rpc\("create_bank_transfer"/);
+  assert.match(app, /bank_account_id: expenseDraft\.payment_method === "Efectivo" \? null/);
+});
+
+test("los subtítulos de categorías del menú solo aparecen al personalizar la navegación", () => {
+  const navStart = app.indexOf('<nav className={"nav-list"');
+  const navEnd = app.indexOf("</nav>", navStart);
+  assert.ok(navStart >= 0 && navEnd > navStart, "debe localizarse la navegación lateral");
+  const sidebarNav = app.slice(navStart, navEnd);
+  assert.match(
+    sidebarNav,
+    /\{sidebarEditing && !group\.items\.some\(\(navItem\) => navItem\.id === "home"\) && <div className="sidebar-group-heading">/
+  );
+  assert.doesNotMatch(
+    sidebarNav,
+    /\{!group\.items\.some\(\(navItem\) => navItem\.id === "home"\) && <div className="sidebar-group-heading">/
+  );
+});
+
+test("Bancos registra sus cuentas y movimientos en Auditorías", () => {
+  assert.match(app, /bank_accounts:"cuenta bancaria"/);
+  assert.match(app, /bank_movements:"movimiento bancario"/);
+  assert.match(app, /bank_name:"Entidad bancaria"/);
+  assert.match(app, /account_last4:"Últimos cuatro dígitos"/);
+});

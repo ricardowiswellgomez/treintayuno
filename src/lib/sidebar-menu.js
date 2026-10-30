@@ -6,6 +6,7 @@
 export function getSidebarItemLabel(item) {
   const canonicalLabels = {
     accounts: "Cuentas",
+    banks: "Bancos",
     coupons: "Cupones",
     suppliers: "Proveedores"
   };

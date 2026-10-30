@@ -11159,3 +11159,54 @@ body { background: #F5F7FC; color: #19243A; }
     padding: 16px;
   }
 }
+
+
+/* Bancos: saldos, cuentas y movimientos financieros. */
+.banks-page{display:flex;flex-direction:column;gap:20px;min-width:0}
+.banks-intro{align-items:flex-start;flex-wrap:wrap}
+.banks-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.bank-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.bank-summary-card{display:flex;flex-direction:column;gap:8px;padding:18px;min-width:0}
+.bank-summary-card>span{font-size:14px;color:var(--muted);font-weight:600}
+.bank-summary-card>strong{font:700 clamp(20px,2.2vw,27px) Manrope,sans-serif;letter-spacing:-.7px;overflow-wrap:anywhere}
+.bank-summary-card>small{font-size:13px;color:var(--muted)}
+.bank-positive{color:#16815c!important}
+.bank-negative{color:#b34a43!important}
+.bank-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+.bank-section-heading h3{font:700 17px Manrope,sans-serif;margin:0 0 5px}
+.bank-section-heading p{font-size:14px;color:var(--muted);line-height:1.55;margin:0}
+.bank-accounts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.bank-account-card{padding:17px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.bank-account-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bank-account-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--soft-green);color:var(--green)}
+.bank-account-name h4{font:700 16px Manrope,sans-serif;margin:0 0 4px;overflow-wrap:anywhere}
+.bank-account-name p{font-size:13px;line-height:1.5;color:var(--muted);margin:0;overflow-wrap:anywhere}
+.bank-account-balance{font:700 clamp(21px,2.3vw,27px) Manrope,sans-serif;letter-spacing:-.6px;overflow-wrap:anywhere}
+.bank-account-card>small{font-size:12px;color:var(--muted);line-height:1.45}
+.bank-account-inactive{opacity:.7}
+.bank-account-actions{display:flex;justify-content:flex-end;margin-top:auto}
+.bank-form{padding:19px;display:flex;flex-direction:column;gap:14px}
+.bank-form-heading h3{font:700 17px Manrope,sans-serif;margin:0 0 5px}
+.bank-form-heading p{font-size:13px;color:var(--muted);line-height:1.55;margin:0}
+.bank-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.bank-form-grid label,.bank-linked-account-field{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:700;color:#3b4039;min-width:0}
+.bank-form-grid input,.bank-form-grid select,.bank-linked-account-field select{width:100%;min-width:0;border:1px solid #dedfd7;background:#fff;border-radius:9px;padding:11px 12px;outline:none;color:var(--ink);font:400 15px "DM Sans",sans-serif}
+.bank-form-grid input:focus,.bank-form-grid select:focus,.bank-linked-account-field select:focus{border-color:#1BAF9E;box-shadow:0 0 0 3px #1745801a}
+.bank-form-full{grid-column:1/-1}
+.bank-linked-account-field{margin:8px 0 4px;max-width:480px}
+.bank-movements-section{padding:18px;display:flex;flex-direction:column;gap:14px}
+.bank-movement-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bank-movement-toolbar>input{width:min(100%,390px);min-width:180px;border:1px solid #dedfd7;border-radius:9px;padding:11px 12px;background:#fff;color:var(--ink)}
+.bank-movement-list{display:flex;flex-direction:column}
+.bank-movement-row{display:grid;grid-template-columns:35px minmax(0,1fr) auto;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}
+.bank-movement-row:last-child{border-bottom:0}
+.bank-movement-mark{display:grid;place-items:center;width:31px;height:31px;border-radius:10px;background:var(--soft-green);font-size:18px;font-weight:800}
+.bank-movement-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.bank-movement-main strong{font-size:14px;overflow-wrap:anywhere}
+.bank-movement-main span,.bank-movement-main small{font-size:12px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.bank-movement-amount{font-size:14px;white-space:nowrap}
+.bank-footnote{font-size:12px;line-height:1.6;color:var(--muted);margin:0;padding-top:10px;border-top:1px solid var(--line)}
+@media(max-width:1050px){.bank-accounts-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.bank-summary-grid{grid-template-columns:1fr 1fr}.bank-accounts-grid{grid-template-columns:1fr}.banks-actions{justify-content:flex-start}.bank-section-heading{align-items:flex-start;flex-direction:column}.bank-form-grid{grid-template-columns:1fr}.bank-form-full{grid-column:auto}.bank-movement-toolbar{align-items:stretch;flex-direction:column}.bank-movement-toolbar>input{width:100%}.bank-movement-row{grid-template-columns:30px minmax(0,1fr);gap:9px}.bank-movement-amount{grid-column:2;justify-self:start}.bank-movements-section{padding:14px}}
+@media(max-width:420px){.bank-summary-grid{grid-template-columns:1fr}.banks-actions>*{flex:1 1 auto}}
+
